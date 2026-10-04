@@ -43,6 +43,13 @@
 			description: 'Customize appearance with CSS variables for selection, drag-over, and icons.'
 		},
 		{
+			href: '/examples/theme-comparison',
+			icon: '🎭',
+			title: 'Theme Comparison',
+			badge: 'new',
+			description: 'web-multiselect and svelte-treeview side by side under one shared --base-* theme (Cobalt2) — visual proof the KeenMate token contract renders both consistently.'
+		},
+		{
 			href: '/examples/responsive',
 			icon: '📐',
 			title: 'Responsive',
