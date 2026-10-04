@@ -19,8 +19,12 @@
 
 .stv__toggle-icon {
 	width: var(--stv-toggle-icon-width);
-	display: inline-block;
-	text-align: center;
+	/* inline-flex + center so the glyph sits on the row's shared vertical center,
+	   aligned with the checkbox box (which is also flex-centered). A former
+	   inline-block + vertical-align nudge pushed the glyph off-center. */
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 	margin-right: var(--stv-toggle-icon-margin-right);
 	font-size: var(--stv-toggle-icon-size);
 	color: var(--stv-toggle-icon-color);
@@ -64,7 +68,6 @@
 	mask-position: center;
 	-webkit-mask-size: contain;
 	mask-size: contain;
-	vertical-align: -0.15em;
 	-webkit-mask-image: var(--stv-icon-expand);
 	mask-image: var(--stv-icon-expand);
 }

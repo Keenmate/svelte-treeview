@@ -21,7 +21,7 @@
 	align-items: center;
 	padding: var(--stv-node-content-padding);
 	border-radius: var(--stv-node-content-border-radius);
-	transition: background-color 0.2s, box-shadow 0.15s ease;
+	transition: background-color var(--stv-transition-normal) var(--stv-ease-standard), box-shadow var(--stv-transition-fast) var(--stv-ease-standard);
 	flex: 1;
 	position: relative;
 	overflow: visible;

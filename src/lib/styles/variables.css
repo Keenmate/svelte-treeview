@@ -33,32 +33,71 @@
 .stv__container {
 	/* -------------------------------------------------------------------------
 	   BASE SIZING UNIT
-	   ------------------------------------------------------------------------- */
-	--stv-rem: 10px;
+	   -------------------------------------------------------------------------
+	   Bridges to the shared --base-rem knob (web-multiselect parity) so ONE theme
+	   variable scales every KeenMate component together; 10px fallback keeps the
+	   historical absolute sizing when no base layer is loaded. */
+	--stv-rem: var(--base-rem, 10px);
 
 	/* -------------------------------------------------------------------------
 	   COLORS — theme integration via --base-* tokens
-	   Tinted variants are derived via color-mix(); no -rgb companion needed.
+	   -------------------------------------------------------------------------
+	   Token names, roles and fallback palette are aligned 1:1 with
+	   @keenmate/web-multiselect's --ms-* contract so a shared --base-* theme gives
+	   the tree the SAME look & feel as every other KeenMate component. Tinted
+	   variants are derived via color-mix(); fallbacks use light-dark(<light>,<dark>)
+	   so `html { color-scheme: light dark }` gets OS-aware behavior automatically.
 
-	   Color fallbacks use light-dark(<light>, <dark>) so consumers that declare
-	   `html { color-scheme: light dark }` get OS-aware behavior automatically.
-	   The brand accent (--base-accent-color) is treated as theme-independent —
-	   both themes share the same primary.
-	   ------------------------------------------------------------------------- */
-	--stv-primary: var(--base-accent-color, #0d6efd);
+	   KEY SEMANTIC (matches ms --ms-primary-bg + pure-admin's canonical
+	   `base-hover-bg` = "Hover state background"): --stv-primary-bg is a NEUTRAL
+	   text-tinted surface, NOT an accent tint. A plain row/menu hover reads as a
+	   soft gray wash; the accent is reserved for SELECTION (highlight / checked /
+	   drop) so the two never read the same.
+
+	   ACCENT — brand hue + hover/active steps (--base-accent-color contract). */
+	--stv-accent-color: var(--base-accent-color, #3b82f6);
+	--stv-accent-color-hover: var(--base-accent-color-hover, #2563eb);
+	--stv-accent-color-active: var(--base-accent-color-active, #1d4ed8);
+
+	/* TEXT HIERARCHY (FluentUI-style) — fallbacks match ms exactly so
+	   heading/body/secondary/muted keep the same relative contrast steps. */
+	--stv-text-color-1: var(--base-text-color-1, light-dark(#111827, #f5f5f5));
+	--stv-text-color-2: var(--base-text-color-2, light-dark(#353b47, #d4d4d4));
+	--stv-text-color-3: var(--base-text-color-3, light-dark(#6b7280, #a3a3a3));
+	--stv-text-color-4: var(--base-text-color-4, light-dark(#a0a3a9, #737373));
+	--stv-text-color-on-accent: var(--base-text-color-on-accent, #ffffff);
+
+	/* STATUS — the hue itself (pure-admin canonical: `base-*-color` = the status
+	   colour; `base-text-on-*` is the on-surface text). */
 	--stv-success: var(--base-success-color, light-dark(#198754, #2ea561));
 	--stv-danger: var(--base-danger-color, light-dark(#dc3545, #f87c86));
-	/* Note: --stv-light doubles as context-menu hover surface + elevated chip bg.
-	   Dark value is #2b2b2b (not #1a1a1a) so the elevated surface remains
-	   distinguishable against the main bg in dark mode. */
-	--stv-light: var(--base-main-bg, light-dark(#f8f9fa, #2b2b2b));
-	--stv-elevated-bg: var(--base-elevated-bg, light-dark(#ffffff, #2b2b2b));
-	--stv-border: var(--base-border-color, light-dark(#dee2e6, #3d3d3d));
-	--stv-body-color: var(--base-text-color-1, light-dark(#212529, #f5f5f5));
+
+	/* SURFACES */
 	/* Tree surface — painted on .stv__container in base.css so the tree shows
 	   a visible background without consumer wrapping. Override to `transparent`
 	   to retain the pre-rc10 "no surface" behavior. */
 	--stv-bg: var(--base-main-bg, light-dark(#ffffff, #1a1a1a));
+	--stv-elevated-bg: var(--base-elevated-bg, light-dark(#ffffff, #2b2b2b));
+	--stv-border: var(--base-border-color, light-dark(#cbd5e1, #52525b));
+
+	/* NEUTRAL HOVER / ACTIVE SURFACES — mirror ms --ms-primary-bg / -hover.
+	   --base-hover-bg drives the resting hover; --base-active-bg the stronger
+	   pressed/active step. Fallback mixes the body text colour into the tree
+	   surface (8% / 14%) so hover stays visible on dark + neon themes. */
+	--stv-primary-bg: var(--base-hover-bg, color-mix(in srgb, var(--stv-text-color-1) 8%, var(--stv-bg)));
+	--stv-primary-bg-hover: var(--base-active-bg, color-mix(in srgb, var(--stv-text-color-1) 14%, var(--stv-bg)));
+
+	/* --stv-light — elevated chip / debug-stat surface. (Context-menu hover now
+	   uses the neutral --stv-primary-bg to match ms; this stays for chip tints.)
+	   Dark value #2b2b2b (not #1a1a1a) keeps the elevated surface distinguishable
+	   from the main bg in dark mode. */
+	--stv-light: var(--base-main-bg, light-dark(#f8f9fa, #2b2b2b));
+
+	/* LEGACY ALIASES — pre-alignment names kept for back-compat; prefer the
+	   canonical names above. --stv-primary was the accent; --stv-body-color was
+	   text-color-1. */
+	--stv-primary: var(--stv-accent-color);
+	--stv-body-color: var(--stv-text-color-1);
 
 	/* -------------------------------------------------------------------------
 	   TYPOGRAPHY — unitless --base-* multipliers × --stv-rem
@@ -68,7 +107,16 @@
 	--stv-node-icon-font-size: calc(var(--base-font-size-sm, 1.4) * var(--stv-rem));
 	--stv-node-icon-margin-right: calc(0.6 * var(--stv-rem));
 	--stv-node-path-font-size: calc(var(--base-font-size-xs, 1.2) * var(--stv-rem));
-	--stv-node-path-color: var(--base-text-color-3, light-dark(#6c757d, #a3a3a3));
+	--stv-node-path-color: var(--stv-text-color-3);
+
+	/* -------------------------------------------------------------------------
+	   MOTION — durations + shared easing (ms parity)
+	   -------------------------------------------------------------------------
+	   Easing flows from the shared --base-ease-standard token (exact match for
+	   ms --ms-easing-snappy); durations stay local. */
+	--stv-transition-fast: 150ms;
+	--stv-transition-normal: 200ms;
+	--stv-ease-standard: var(--base-ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
 
 	/* -------------------------------------------------------------------------
 	   NODE LAYOUT
@@ -78,7 +126,8 @@
 	   hover/selection highlight still has a little breathing room — was 0.8rem. */
 	--stv-node-content-padding: calc(0.4 * var(--stv-rem)) calc(0.4 * var(--stv-rem));
 	--stv-node-content-border-radius: calc(var(--base-border-radius-sm, 0) * var(--stv-rem));
-	--stv-node-hover-bg: var(--base-hover-bg, color-mix(in srgb, var(--stv-primary) 8%, transparent));
+	/* NEUTRAL hover (text-tinted surface), NOT an accent tint — see --stv-primary-bg. */
+	--stv-node-hover-bg: var(--stv-primary-bg);
 	--stv-children-margin-top: calc(0.2 * var(--stv-rem));
 
 	/* -------------------------------------------------------------------------
@@ -89,10 +138,10 @@
 	   left ~4px of dead space next to a 1.6rem glyph. */
 	--stv-toggle-icon-size: calc(1.6 * var(--stv-rem));
 	--stv-toggle-icon-width: calc(var(--stv-toggle-icon-size) + calc(0.1 * var(--stv-rem)));
-	--stv-toggle-icon-color: var(--base-text-color-3, light-dark(#6c757d, #a3a3a3));
+	--stv-toggle-icon-color: var(--stv-text-color-3);
 	/* Pure gap between the chevron and the label — was 0.8rem, tightened to 0.25rem. */
 	--stv-toggle-icon-margin-right: calc(0.25 * var(--stv-rem));
-	--stv-toggle-icon-transition: transform 0.2s;
+	--stv-toggle-icon-transition: transform var(--stv-transition-normal) var(--stv-ease-standard);
 
 	/* Disclosure glyph — ONE variable set, reconfigured per `icon-set` via the
 	   .stv__container[data-icon-set=…] blocks BELOW this rule (NOT four parallel
@@ -116,19 +165,38 @@
 	   and follow the shared --base-icon-* contract. Override either to diverge. */
 	--stv-icon-check: var(--base-icon-check, url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 6 9 17l-5-5'/></svg>"));
 	--stv-icon-indeterminate: var(--base-icon-indeterminate, url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12h14'/></svg>"));
+	/* mask-size of the check/dash glyph INSIDE the checkbox box. Defaults to the
+	   shared --base-icon-check-size (the SAME knob pure-admin's .pa-checkbox and
+	   ms read), so a theme rescales the mark once for every KeenMate checkbox;
+	   68% assumes a Lucide glyph that fills its viewBox edge-to-edge. Was an
+	   implicit `contain` (glyph filled the box) — 68% matches ms's inset mark. */
+	--stv-icon-check-size: var(--base-icon-check-size, 68%);
 
 	/* -------------------------------------------------------------------------
 	   CHECKBOX
 	   ------------------------------------------------------------------------- */
-	--stv-checkbox-size: calc(1.5 * var(--stv-rem));
-	--stv-checkbox-border-width: 1.5px; /* hairline — does not scale */
+	/* Box dimensions aligned with web-multiselect (--ms-checkbox-*): 1.6rem box,
+	   1px border, flat 0.3rem radius — so a KeenMate checkbox is the same size in
+	   every component. (Radius is flat 0.3, NOT the --base-border-radius-sm scale,
+	   matching ms — a theme's sm radius shouldn't reshape the small checkbox.) */
+	--stv-checkbox-size: calc(1.6 * var(--stv-rem));
+	/* Box scale — the shared --base-checkbox-scale contract (base-css-variables).
+	   Applied to the box's width/height via calc (see checkbox.css), NOT a CSS
+	   transform, so the masked tick/dash stays crisp + centered at any scale. */
+	--stv-checkbox-scale: var(--base-checkbox-scale, 1);
+	--stv-checkbox-border-width: 1px; /* hairline — does not scale */
 	--stv-checkbox-checkmark-width: 2px; /* hairline — does not scale */
-	--stv-checkbox-border-color: var(--base-border-color, light-dark(#adb5bd, #5a5a5a));
-	--stv-checkbox-border-radius: calc(var(--base-border-radius-sm, 0.3) * var(--stv-rem));
-	--stv-checkbox-bg: var(--base-input-bg, light-dark(#ffffff, #1f1f1f));
-	--stv-checkbox-checked-bg: var(--stv-primary);
-	--stv-checkbox-checked-border-color: var(--stv-primary);
-	--stv-checkbox-checkmark-color: var(--base-text-color-on-accent, #fff);
+	/* Dedicated --base-checkbox-border-color (ms parity): deliberately a stronger
+	   mid-gray than the faint generic --base-border-color so the box reads as a
+	   real clickable control; same #8f8f8f in both themes. */
+	--stv-checkbox-border-color: var(--base-checkbox-border-color, #8f8f8f);
+	--stv-checkbox-border-radius: calc(0.3 * var(--stv-rem));
+	--stv-checkbox-bg: var(--base-input-bg, light-dark(#ffffff, #1a1a1a));
+	--stv-checkbox-checked-bg: var(--stv-accent-color);
+	--stv-checkbox-checked-border-color: var(--stv-accent-color);
+	/* Checked-box hover deepens to the accent's hover step (ms parity). */
+	--stv-checkbox-checked-bg-hover: var(--stv-accent-color-hover);
+	--stv-checkbox-checkmark-color: var(--stv-text-color-on-accent);
 	--stv-checkbox-focus-ring-width: 2px;
 	--stv-checkbox-focus-ring-color: color-mix(in srgb, var(--stv-primary) 25%, transparent);
 	--stv-checkbox-focus-ring: 0 0 0 var(--stv-checkbox-focus-ring-width) var(--stv-checkbox-focus-ring-color);
@@ -216,15 +284,16 @@
 	--stv-context-menu-padding: calc(0.4 * var(--stv-rem)) 0;
 	--stv-context-menu-item-padding: calc(0.8 * var(--stv-rem)) calc(1.6 * var(--stv-rem));
 	--stv-context-menu-item-font-size: calc(var(--base-font-size-sm, 1.4) * var(--stv-rem));
-	--stv-context-menu-item-color: var(--stv-body-color);
-	--stv-context-menu-item-hover-bg: var(--stv-light);
+	--stv-context-menu-item-color: var(--stv-text-color-1);
+	/* NEUTRAL text-tinted hover (ms --ms-primary-bg parity), not an accent tint. */
+	--stv-context-menu-item-hover-bg: var(--stv-primary-bg);
 	--stv-context-menu-icon-size: calc(1.6 * var(--stv-rem));
 	--stv-context-menu-icon-font-size: calc(var(--base-font-size-xs, 1.2) * var(--stv-rem));
-	--stv-context-menu-shortcut-color: var(--base-text-color-4, light-dark(#9ca3af, #6b7280));
+	--stv-context-menu-shortcut-color: var(--stv-text-color-4);
 	--stv-context-menu-shortcut-font-size: calc(var(--base-font-size-xs, 1.2) * var(--stv-rem));
-	--stv-context-menu-arrow-color: var(--base-text-color-4, light-dark(#9ca3af, #6b7280));
+	--stv-context-menu-arrow-color: var(--stv-text-color-4);
 	--stv-context-menu-divider-color: var(--stv-border);
-	--stv-context-menu-divider-label-color: var(--base-text-color-4, light-dark(#9ca3af, #6b7280));
+	--stv-context-menu-divider-label-color: var(--stv-text-color-4);
 
 	/* -------------------------------------------------------------------------
 	   LOADING OVERLAY + SPINNER
@@ -232,9 +301,9 @@
 	/* Loading overlay: semi-transparent surface — use main-bg so it composites
 	   correctly against both light and dark page backgrounds. */
 	--stv-loading-bg: color-mix(in srgb, var(--base-main-bg, light-dark(#ffffff, #1a1a1a)) 80%, transparent);
-	--stv-loading-color: var(--base-text-color-3, light-dark(#718096, #a3a3a3));
+	--stv-loading-color: var(--stv-text-color-3);
 	--stv-spinner-size: calc(3.2 * var(--stv-rem));
-	--stv-spinner-track: var(--base-border-color, light-dark(#e2e8f0, #3d3d3d));
+	--stv-spinner-track: var(--stv-border);
 	--stv-spinner-color: var(--stv-primary);
 
 	/* -------------------------------------------------------------------------

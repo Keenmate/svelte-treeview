@@ -32,12 +32,15 @@
 
 .stv__checkbox-box {
 	display: inline-block;
-	width: var(--stv-checkbox-size);
-	height: var(--stv-checkbox-size);
+	/* Box scaled via calc (shared --base-checkbox-scale contract) — NOT a CSS
+	   transform, so the masked glyph never gets its own compositing layer and stays
+	   crisp + centered at any scale. See base-css-variables → "Checkbox render method". */
+	width: calc(var(--stv-checkbox-size) * var(--stv-checkbox-scale));
+	height: calc(var(--stv-checkbox-size) * var(--stv-checkbox-scale));
 	border: var(--stv-checkbox-border-width) solid var(--stv-checkbox-border-color);
 	border-radius: var(--stv-checkbox-border-radius);
 	background: var(--stv-checkbox-bg);
-	transition: background-color 0.15s ease, border-color 0.15s ease;
+	transition: background-color var(--stv-transition-fast) var(--stv-ease-standard), border-color var(--stv-transition-fast) var(--stv-ease-standard);
 	position: relative;
 	flex-shrink: 0;
 }
@@ -59,6 +62,13 @@
 	border-color: var(--stv-checkbox-checked-border-color);
 }
 
+/* Checked-box hover deepens to the accent's hover step (ms parity) */
+.stv__checkbox:hover input:checked + .stv__checkbox-box,
+.stv__checkbox:hover input:indeterminate + .stv__checkbox-box {
+	background: var(--stv-checkbox-checked-bg-hover);
+	border-color: var(--stv-checkbox-checked-bg-hover);
+}
+
 /* Checkmark — a currentColor-tinted mask (was a CSS-border checkmark) so it follows
    --stv-icon-check → the shared --base-icon-check contract. Fills the box; the Lucide
    glyph's own viewBox padding keeps it visually inset, and it scales with the box. */
@@ -66,8 +76,8 @@
 	display: block;
 	inset: 0;
 	background-color: var(--stv-checkbox-checkmark-color);
-	-webkit-mask: var(--stv-icon-check) no-repeat center / contain;
-	mask: var(--stv-icon-check) no-repeat center / contain;
+	-webkit-mask: var(--stv-icon-check) no-repeat center / var(--stv-icon-check-size);
+	mask: var(--stv-icon-check) no-repeat center / var(--stv-icon-check-size);
 }
 
 /* Indeterminate state — dash (swaps the check glyph for --stv-icon-indeterminate) */
@@ -80,8 +90,8 @@
 	display: block;
 	inset: 0;
 	background-color: var(--stv-checkbox-checkmark-color);
-	-webkit-mask: var(--stv-icon-indeterminate) no-repeat center / contain;
-	mask: var(--stv-icon-indeterminate) no-repeat center / contain;
+	-webkit-mask: var(--stv-icon-indeterminate) no-repeat center / var(--stv-icon-check-size);
+	mask: var(--stv-icon-indeterminate) no-repeat center / var(--stv-icon-check-size);
 }
 
 /* Focus ring */
