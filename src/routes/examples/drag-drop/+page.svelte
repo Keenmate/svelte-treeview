@@ -815,6 +815,21 @@
 			</p>
 		</div>
 
+		<div class="note">
+			<p class="note-title">Custom drag visual (<code>draggedNodeClass</code>)</p>
+			<p style="margin: 0;">
+				The source tree passes <code>draggedNodeClass="dd-source-dragging"</code>, which
+				<strong>replaces</strong> the built-in <code>.stv__node-content--dragged</code> look on the
+				dimmed row left in place while you drag. To merely tune the default instead of replacing it,
+				set <code>--stv-dragged-opacity</code> / <code>--stv-dragged-scale</code> (the scale is
+				anchored to the left edge so it never shifts the label — the fix for the old "phantom indent"
+				on grab). Mirrors <code>highlightedNodeClass</code> / <code>scrollHighlightClass</code>.
+				The visual dims <strong>every traveling node</strong>: drag a folder and its whole
+				subtree dims; Ctrl/Shift+click several rows and drag any one and the entire set dims —
+				not just the grabbed node.
+			</p>
+		</div>
+
 		<div class="controls">
 			<button class="btn btn-secondary" onclick={clearTarget}>Clear Target Tree</button>
 			<button class="btn" onclick={resetTarget}>Reset Target Tree (100 nodes)</button>
@@ -918,6 +933,7 @@
 						onDelete={(c) => addLog(`Deleted ${c.paths.length} node(s) from source-tree`)}
 						onNodeDragStart={handleSourceDragStart}
 						onNodeDrop={handleSourceDrop}
+						draggedNodeClass="dd-source-dragging"
 						{isCopyAllowed}
 						{dropZoneMode}
 						{dropZoneLayout}
@@ -1622,6 +1638,15 @@ beforeDragStartCallback={(ctx) => {
 					<td>Alternative glow effect for drop target</td>
 				</tr>
 				<tr>
+					<td><code>stv__node-content--dragged</code></td>
+					<td>The dragged source row (dimmed, left in place)</td>
+					<td>
+						Default: <code>--stv-dragged-opacity</code> + left-anchored
+						<code>--stv-dragged-scale</code>. Replace entirely via the
+						<code>draggedNodeClass</code> prop (see DD01).
+					</td>
+				</tr>
+				<tr>
 					<td><code>stv__drop-placeholder</code></td>
 					<td>Dragging over empty tree</td>
 					<td>Styles the drop placeholder area</td>
@@ -1690,3 +1715,18 @@ beforeDragStartCallback={(ctx) => {
 		<p><a href="/">&larr; Back to Examples</a></p>
 	</footer>
 </div>
+
+<style>
+	/* DD01 demo for draggedNodeClass: a custom look for the dimmed source row left in
+	   place during a drag. Replaces the built-in .stv__node-content--dragged entirely. */
+	:global(.dd-source-dragging) {
+		opacity: 0.6;
+		outline: 1px dashed #667eea;
+		outline-offset: 2px;
+		border-radius: 4px;
+		background-color: rgba(102, 126, 234, 0.08);
+		/* left-anchored so the shrink never shifts the label (same rule the default uses) */
+		transform-origin: left center;
+		transform: scale(0.97);
+	}
+</style>

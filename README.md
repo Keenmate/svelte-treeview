@@ -22,7 +22,7 @@ There's a vanilla-TypeScript sibling — [`@keenmate/web-treeview`](https://gith
 | Indent math | `level × indent` | `(level − 1) × indent` (root at zero offset) |
 | Virtual scroll | Flat mode only | Built-in (three-div spacer / `translateY`) |
 | Label markup | `<span class="stv__node-label">` by default — replace via `nodeTemplate` snippet | `<span class="wtv__node-label">` by default — replace via `renderNodeCallback` |
-| Checkbox | `<label>` + custom `.stv__checkbox-box` span | Bare native `<input type="checkbox">` |
+| Checkbox | Canonical single styled `<input class="stv__checkbox">` (shared KeenMate render contract) | Bare native `<input type="checkbox">` |
 | Update mechanism | Svelte 5 runes + per-node `_rev` keyed `{#each}` | Imperative reconciler diffing `data-rev` / `data-expanded` attributes |
 
 svelte-treeview is broader (two rendering modes, easier vertical guide lines via `.stv__children`); web-treeview is purpose-built for virtual scrolling over large datasets with a flatter DOM.

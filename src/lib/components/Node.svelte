@@ -19,8 +19,10 @@
 		isProgressiveRender?: boolean;
 		renderBatchSize?: number;
 
-		// Drag state (passed as props for efficient Svelte diffing)
-		isDraggedNode?: boolean;
+		// Drag state (passed as props for efficient Svelte diffing).
+		// isDraggedNode is NOT a prop — each node derives it from config.draggedPaths so the
+		// dragged visual dims the whole set in recursive mode too (a forwarded flag would only
+		// mark a dragged subtree's root, never a nested dragged file).
 		isDragInProgress?: boolean;
 		hoveredNodeForDropPath?: string | null;
 		activeDropPosition?: DropPosition | null;
@@ -41,7 +43,6 @@
 		renderBatchSize = 50,
 
 		// Drag state
-		isDraggedNode = false,
 		isDragInProgress = false,
 		hoveredNodeForDropPath = null,
 		activeDropPosition = null,
@@ -73,6 +74,13 @@
 	const isCustomGlyph = $derived(expandIconClass !== 'stv__toggle-icon--expand');
 	const highlightedNodeClass = $derived(config.highlightedNodeClass);
 	const focusedNodeClass = $derived(config.focusedNodeClass);
+	// When set, replaces the built-in .stv__node-content--dragged visual on the dimmed
+	// source row (see template). Mirrors highlightedNodeClass / focusedNodeClass.
+	const draggedNodeClass = $derived(config.draggedNodeClass);
+	// This node is part of the active drag (lead, a multi-drag member, or a traveling
+	// descendant). Derived per-node from the controller's complete manifest so recursive
+	// and flat rendering dim the identical set.
+	const isDraggedNode = $derived(config.draggedPaths?.has(node.path) ?? false);
 	// Data-driven per-row classes. The callbacks read node data; recompute when the
 	// node's _rev bumps (same trigger the rest of the render uses).
 	const customNodeClass = $derived(config.nodeClass ? (config.nodeClass(node) ?? '') : '');
@@ -310,15 +318,6 @@
 		}
 	}
 
-	// Svelte action to set the indeterminate DOM property (not settable via attribute)
-	function setIndeterminate(el: HTMLInputElement, value: boolean) {
-		el.indeterminate = value;
-		return {
-			update(newValue: boolean) {
-				el.indeterminate = newValue;
-			}
-		};
-	}
 
 	function _onNodeClicked(event?: MouseEvent) {
 		uiLogger.debug(`Node clicked: ${node.path}`, { id: node.id, hasChildren: node.hasChildren })
@@ -383,35 +382,37 @@
 		{/if}
 
 		{#if shouldShowCheckboxes && node.isSelectable}
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-			<label
+			<!-- Canonical single-<input> checkbox — the shared KeenMate render
+			     contract (same DOM as web-multiselect / web-treeview): the input IS
+			     the box, indeterminate is a modifier class + aria-checked="mixed"
+			     (not the native .indeterminate prop, which doesn't survive re-render /
+			     virtual scroll). tabindex=-1 keeps keyboard nav scoped to
+			     .stv__container; onclick preventDefaults so the controller's
+			     node.isSelected stays the source of truth. -->
+			<input
+				type="checkbox"
 				class="stv__checkbox"
+				class:stv__checkbox--indeterminate={isIndeterminate}
+				checked={node.isSelected && !isIndeterminate}
+				aria-checked={isIndeterminate ? 'mixed' : undefined}
+				tabindex={-1}
 				onclick={(e) => {
 					e.preventDefault();
 					e.stopPropagation();
 					callbacks.onCheckboxToggle(node);
 				}}
-			>
-				<input
-					type="checkbox"
-					checked={node.isSelected && !isIndeterminate}
-					use:setIndeterminate={isIndeterminate}
-					tabindex={-1}
-				/>
-				<span class="stv__checkbox-box"></span>
-			</label>
+			/>
 		{/if}
 
 		<!-- Node content with separate click handler -->
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
-			class="stv__node-content {node.isHighlighted ? highlightedNodeClass : ''} {node.isFocused && focusedNodeClass ? focusedNodeClass : ''} {customNodeContentClass}"
+			class="stv__node-content {node.isHighlighted ? highlightedNodeClass : ''} {node.isFocused && focusedNodeClass ? focusedNodeClass : ''} {isDraggedNode && draggedNodeClass ? draggedNodeClass : ''} {customNodeContentClass}"
 			class:stv__node-content--highlighted={node.isHighlighted && !highlightedNodeClass}
 			class:stv__node-content--focused={node.isFocused}
 			class:stv__clickable={node.isSelectable}
-			class:stv__node-content--dragged={isDraggedNode}
+			class:stv__node-content--dragged={isDraggedNode && !draggedNodeClass}
 			class:stv__node-content--draggable={node?.isDraggable}
 			class:stv__node-content--glow-before={dropZoneMode === 'glow' && isDragInProgress && isHoveredForDrop && activeDropPosition === 'before' && isPositionAllowed('before')}
 			class:stv__node-content--glow-after={dropZoneMode === 'glow' && isDragInProgress && isHoveredForDrop && activeDropPosition === 'after' && isPositionAllowed('after')}
@@ -465,7 +466,6 @@
 					{children}
 					{isProgressiveRender}
 					{renderBatchSize}
-					{isDraggedNode}
 					{isDragInProgress}
 					{hoveredNodeForDropPath}
 					{activeDropPosition}

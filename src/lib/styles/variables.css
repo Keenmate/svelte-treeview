@@ -224,6 +224,12 @@
 	--stv-drop-placeholder-hover-shadow: 0 0 0 4px color-mix(in srgb, var(--stv-primary) 30%, transparent);
 	--stv-drop-placeholder-hover-scale: 1.015;
 
+	/* Dragged source row (the dimmed node left in place while its ghost follows the pointer).
+	   Scale is anchored to the left edge (transform-origin in drag-drop.css) so a shrink
+	   below 1 lifts the row without shifting the label. Set --stv-dragged-scale: 1 to disable. */
+	--stv-dragged-opacity: 0.5;
+	--stv-dragged-scale: 0.95;
+
 	/* Touch drag ghost */
 	--tree-ghost-bg: color-mix(in srgb, var(--stv-primary) 90%, transparent);
 	--tree-ghost-color: #fff;

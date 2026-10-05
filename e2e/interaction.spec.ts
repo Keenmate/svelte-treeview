@@ -54,12 +54,14 @@ function nodeContent(node: Locator): Locator {
 	return node.locator('> .stv__node-row .stv__node-content').first();
 }
 
+// The checkbox is a single styled <input class="stv__checkbox"> — the input IS
+// the box, so label and input resolve to the same element.
 function checkboxLabelOf(node: Locator): Locator {
 	return node.locator('> .stv__node-row .stv__checkbox').first();
 }
 
 function checkboxInputOf(node: Locator): Locator {
-	return node.locator('> .stv__node-row .stv__checkbox input[type="checkbox"]').first();
+	return checkboxLabelOf(node);
 }
 
 /**

@@ -15,14 +15,18 @@ const PAGE = '/test/checkbox-mode';
 function tree(page: Page) {
 	return page.locator('.stv__container').first();
 }
+// The checkbox is now a single styled <input class="stv__checkbox"> — the input
+// IS the box, so input and "label" resolve to the same element.
 function checkboxInput(page: Page, path: string): Locator {
-	return tree(page).locator(`.stv__node[data-tree-path="${path}"] > .stv__node-row .stv__checkbox input`).first();
-}
-function checkboxLabel(page: Page, path: string): Locator {
 	return tree(page).locator(`.stv__node[data-tree-path="${path}"] > .stv__node-row .stv__checkbox`).first();
 }
+function checkboxLabel(page: Page, path: string): Locator {
+	return checkboxInput(page, path);
+}
+// Indeterminate is a modifier class + aria-checked="mixed" (not the native
+// .indeterminate DOM property) so it survives re-render + virtual scroll.
 function isIndeterminate(input: Locator): Promise<boolean> {
-	return input.evaluate((el) => (el as HTMLInputElement).indeterminate);
+	return input.evaluate((el) => el.classList.contains('stv__checkbox--indeterminate'));
 }
 
 test.describe('Checkbox mode switch', () => {

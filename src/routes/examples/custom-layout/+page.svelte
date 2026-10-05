@@ -786,7 +786,6 @@
 							{#each ctrl.flatNodesToRender as node (node.id + '|' + node.path + '|' + node.hasChildren)}
 								<Node
 									{node}
-									isDraggedNode={false}
 									isDragInProgress={false}
 									hoveredNodeForDropPath={null}
 									activeDropPosition={null}

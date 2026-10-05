@@ -1,100 +1,101 @@
 /* =============================================================================
-   CHECKBOX — custom styled, indeterminate support
+   CHECKBOX — styled native <input>, canonical KeenMate render contract.
+
+   Single-element model, shared byte-for-byte (modulo prefix) with
+   web-multiselect's .ms__checkbox and web-treeview: the <input> ITSELF is the
+   box (appearance: none), the tick / dash is an ::after mask, and the
+   indeterminate state is a MODIFIER CLASS (.stv__checkbox--indeterminate) +
+   aria-checked="mixed" — NOT the native .indeterminate DOM property — so it
+   survives re-render + virtual scroll and emits the same DOM as the web
+   components. See base-css-variables → "Checkbox render method".
    ============================================================================= */
 
-/* `!important` here is not a hack — it's the documented escape hatch for
-   component-layer rules colliding with unlayered consumer resets. Bootstrap's
-   reboot.css ships an unlayered `label { display: inline-block }` which, per
-   the cascade-layers spec, BEATS every layered rule regardless of selector
-   specificity. The checkbox label MUST be flex (the visually-hidden input is
-   `position: absolute` so the visible .stv__checkbox-box would jump out of
-   line in `inline-block` mode). Same reasoning applies to `margin: 0` — some
-   reboot variants add `label { margin-bottom: 0.5rem }`. Mirror this pattern
-   for any future <label>/<button>/<input> styles that must hold against
-   unlayered resets. */
 .stv__checkbox {
-	display: inline-flex !important;
-	align-items: center;
-	justify-content: center;
-	margin: 0 4px 0 0 !important;
-	cursor: pointer;
+	/* Styled native checkbox — appearance:none so the <input> is itself the box */
+	appearance: none;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	/* border-box so the declared size IS the rendered outer size (matches the web
+	   components' native input) and the scaled border grows INWARD rather than
+	   enlarging the box. Part of the shared --base-checkbox-scale contract. */
+	box-sizing: border-box;
+	flex-shrink: 0;
 	position: relative;
-}
-
-/* Hide native input but keep it accessible */
-.stv__checkbox input[type="checkbox"] {
-	position: absolute;
-	opacity: 0;
-	width: 0;
-	height: 0;
-	pointer-events: none;
-}
-
-.stv__checkbox-box {
-	display: inline-block;
-	/* Box scaled via calc (shared --base-checkbox-scale contract) — NOT a CSS
-	   transform, so the masked glyph never gets its own compositing layer and stays
-	   crisp + centered at any scale. See base-css-variables → "Checkbox render method". */
+	margin: 0 4px 0 0;
+	cursor: pointer;
+	/* Box, border AND radius scaled via calc (shared --base-checkbox-scale
+	   contract) — NOT a CSS transform. calc keeps all three proportional without
+	   promoting the box to its own compositing layer, so the masked glyph never
+	   pixel-snaps and stays crisp + centered at any scale. */
 	width: calc(var(--stv-checkbox-size) * var(--stv-checkbox-scale));
 	height: calc(var(--stv-checkbox-size) * var(--stv-checkbox-scale));
-	border: var(--stv-checkbox-border-width) solid var(--stv-checkbox-border-color);
-	border-radius: var(--stv-checkbox-border-radius);
+	border: calc(var(--stv-checkbox-border-width) * var(--stv-checkbox-scale)) solid var(--stv-checkbox-border-color);
+	border-radius: calc(var(--stv-checkbox-border-radius) * var(--stv-checkbox-scale));
 	background: var(--stv-checkbox-bg);
 	transition: background-color var(--stv-transition-fast) var(--stv-ease-standard), border-color var(--stv-transition-fast) var(--stv-ease-standard);
-	position: relative;
-	flex-shrink: 0;
 }
 
-/* Checkmark / dash (hidden by default) */
-.stv__checkbox-box::after {
+/* Checkmark / dash — a currentColor-tinted mask following --stv-icon-check →
+   the shared --base-icon-check contract. Hidden until checked / indeterminate.
+   Masked at center / --stv-icon-check-size over the full box, no transform, so
+   it stays optically centered on every row. The indeterminate dash below
+   inherits this same mask box. */
+.stv__checkbox::after {
 	content: '';
 	position: absolute;
 	display: none;
-}
-
-.stv__checkbox:hover .stv__checkbox-box {
-	border-color: var(--stv-primary);
-}
-
-/* Checked state */
-.stv__checkbox input:checked + .stv__checkbox-box {
-	background: var(--stv-checkbox-checked-bg);
-	border-color: var(--stv-checkbox-checked-border-color);
-}
-
-/* Checked-box hover deepens to the accent's hover step (ms parity) */
-.stv__checkbox:hover input:checked + .stv__checkbox-box,
-.stv__checkbox:hover input:indeterminate + .stv__checkbox-box {
-	background: var(--stv-checkbox-checked-bg-hover);
-	border-color: var(--stv-checkbox-checked-bg-hover);
-}
-
-/* Checkmark — a currentColor-tinted mask (was a CSS-border checkmark) so it follows
-   --stv-icon-check → the shared --base-icon-check contract. Fills the box; the Lucide
-   glyph's own viewBox padding keeps it visually inset, and it scales with the box. */
-.stv__checkbox input:checked + .stv__checkbox-box::after {
-	display: block;
 	inset: 0;
 	background-color: var(--stv-checkbox-checkmark-color);
 	-webkit-mask: var(--stv-icon-check) no-repeat center / var(--stv-icon-check-size);
 	mask: var(--stv-icon-check) no-repeat center / var(--stv-icon-check-size);
 }
 
-/* Indeterminate state — dash (swaps the check glyph for --stv-icon-indeterminate) */
-.stv__checkbox input:indeterminate + .stv__checkbox-box {
+/* Hover */
+.stv__checkbox:hover:not(:disabled) {
+	border-color: var(--stv-primary);
+}
+
+/* Checked */
+.stv__checkbox:checked {
 	background: var(--stv-checkbox-checked-bg);
 	border-color: var(--stv-checkbox-checked-border-color);
 }
 
-.stv__checkbox input:indeterminate + .stv__checkbox-box::after {
+.stv__checkbox:checked::after {
 	display: block;
-	inset: 0;
-	background-color: var(--stv-checkbox-checkmark-color);
-	-webkit-mask: var(--stv-icon-indeterminate) no-repeat center / var(--stv-icon-check-size);
-	mask: var(--stv-icon-indeterminate) no-repeat center / var(--stv-icon-check-size);
+}
+
+/* Indeterminate (tristate) — cascade checkbox-mode: a partially-selected branch.
+   Filled like checked but with a dash. Rendered from a modifier class (not the
+   native :indeterminate property) so it survives string re-render + virtual
+   scroll and matches the web components. */
+.stv__checkbox--indeterminate {
+	background: var(--stv-checkbox-checked-bg);
+	border-color: var(--stv-checkbox-checked-border-color);
+}
+
+.stv__checkbox--indeterminate::after {
+	display: block;
+	/* Swap the check glyph for the dash — follows --stv-icon-indeterminate →
+	   --base-icon-indeterminate. Inherits the mask box from .stv__checkbox::after. */
+	-webkit-mask-image: var(--stv-icon-indeterminate);
+	mask-image: var(--stv-icon-indeterminate);
+}
+
+/* Checked / indeterminate + hover → deepen to the accent's hover step (ms parity) */
+.stv__checkbox:checked:hover:not(:disabled),
+.stv__checkbox--indeterminate:hover:not(:disabled) {
+	background: var(--stv-checkbox-checked-bg-hover);
+	border-color: var(--stv-checkbox-checked-bg-hover);
 }
 
 /* Focus ring */
-.stv__checkbox input:focus-visible + .stv__checkbox-box {
+.stv__checkbox:focus-visible {
 	box-shadow: var(--stv-checkbox-focus-ring);
+}
+
+/* Disabled */
+.stv__checkbox:disabled {
+	cursor: not-allowed;
+	opacity: 0.6;
 }

@@ -325,6 +325,11 @@ export interface NodeConfig {
 	highlightedNodeClass: string | null | undefined;
 	focusedNodeClass: string | null | undefined;
 	dragOverNodeClass: string | null | undefined;
+	draggedNodeClass: string | null | undefined;
+	// Every traveling path in the active drag. Each Node tests its own membership so the
+	// dragged visual dims the whole set in BOTH recursive and flat rendering (recursive
+	// nodes can't inherit a single top-level flag, else nested files never dim).
+	draggedPaths: Set<string>;
 	// Data-driven per-row class hooks. Applied to .stv__node (nodeClass) and
 	// .stv__node-content (nodeContentClass). Typed LTreeNode<any> here because
 	// NodeConfig is non-generic plumbing; the public Tree props are LTreeNode<T>.
@@ -570,6 +575,7 @@ export interface TreeControllerProps<T> {
 	nodeClass?: (node: LTreeNode<T>) => string | null | undefined;
 	nodeContentClass?: (node: LTreeNode<T>) => string | null | undefined;
 	dragOverNodeClass?: string | null | undefined;
+	draggedNodeClass?: string | null | undefined;
 	/** @deprecated Prefer the `iconSet` prop on `<Tree>`. Escape hatch to override
 	 *  the expand glyph's CSS class; canonical is `stv__toggle-icon--expand`. */
 	expandIconClass?: string | null | undefined;
@@ -611,6 +617,8 @@ export class TreeController<T> {
 		nodeClass: undefined,
 		nodeContentClass: undefined,
 		dragOverNodeClass: undefined,
+		draggedNodeClass: undefined,
+		draggedPaths: new Set(),
 		dropZoneMode: 'glow',
 		dropZoneLayout: 'around',
 		dropZoneStart: 33,
@@ -773,6 +781,7 @@ export class TreeController<T> {
 		undefined
 	);
 	dragOverNodeClass = $state<string | null | undefined>(undefined);
+	draggedNodeClass = $state<string | null | undefined>(undefined);
 	dropZoneMode = $state<'floating' | 'glow'>('glow');
 	dropZoneLayout = $state<'around' | 'above' | 'below' | 'wave' | 'wave2'>('around');
 	dropZoneStart = $state<number | string>(33);
@@ -818,6 +827,11 @@ export class TreeController<T> {
 
 	// Drag and drop
 	draggedNode: LTreeNode<any> | null = $state.raw(null);
+	// Every TRAVELING path in the active drag — the complete placement manifest (lead +
+	// multi-drag members + their descendants, minus any leave-behind holes) — so the dragged
+	// visual dims the whole set in both recursive and flat rendering, not just the roots.
+	// Reassigned wholesale (never mutated) so the Set read stays reactive. Empty when idle.
+	draggedPaths = $state.raw<Set<string>>(new Set());
 	isDragInProgress = $state(false);
 	// Snapshot of highlightedPaths taken when the OS-convention selection sync
 	// in _onNodeDragStart replaces the highlight with the dragged node. Restored
@@ -991,6 +1005,7 @@ export class TreeController<T> {
 		this.nodeClass = props.nodeClass;
 		this.nodeContentClass = props.nodeContentClass;
 		this.dragOverNodeClass = props.dragOverNodeClass;
+		this.draggedNodeClass = props.draggedNodeClass;
 		this.dropZoneMode = props.dropZoneMode ?? 'glow';
 		this.dropZoneLayout = props.dropZoneLayout ?? 'around';
 		this.dropZoneStart = props.dropZoneStart ?? 33;
@@ -1122,6 +1137,8 @@ export class TreeController<T> {
 			nodeClass: this.nodeClass,
 			nodeContentClass: this.nodeContentClass,
 			dragOverNodeClass: this.dragOverNodeClass,
+			draggedNodeClass: this.draggedNodeClass,
+			draggedPaths: this.draggedPaths,
 			dropZoneMode: this.dropZoneMode,
 			dropZoneLayout: this.dropZoneLayout,
 			dropZoneStart: this.dropZoneStart,
@@ -1159,6 +1176,8 @@ export class TreeController<T> {
 				nodeClass: this.nodeClass,
 				nodeContentClass: this.nodeContentClass,
 				dragOverNodeClass: this.dragOverNodeClass,
+			draggedNodeClass: this.draggedNodeClass,
+			draggedPaths: this.draggedPaths,
 				dropZoneMode: this.dropZoneMode,
 				dropZoneLayout: this.dropZoneLayout,
 				dropZoneStart: this.dropZoneStart,
@@ -3163,6 +3182,7 @@ export class TreeController<T> {
 		if (updates.nodeClass !== undefined) this.nodeClass = updates.nodeClass;
 		if (updates.nodeContentClass !== undefined) this.nodeContentClass = updates.nodeContentClass;
 		if (updates.dragOverNodeClass !== undefined) this.dragOverNodeClass = updates.dragOverNodeClass;
+		if (updates.draggedNodeClass !== undefined) this.draggedNodeClass = updates.draggedNodeClass;
 		if (updates.dropZoneMode !== undefined) this.dropZoneMode = updates.dropZoneMode ?? 'glow';
 		if (updates.dropZoneLayout !== undefined)
 			this.dropZoneLayout = updates.dropZoneLayout ?? 'around';
@@ -4201,6 +4221,8 @@ export class TreeController<T> {
 		// highlight set nor its _dragSetOverride, so both must be published here.)
 		const placementManifest =
 			this._dragSetOverride ?? this._completeManifest(draggedRefs.map((r) => r.path));
+		// Dim every traveling node (roots + descendants, minus holes), not just the roots.
+		this.draggedPaths = new Set(placementManifest);
 		setDragSet(
 			this.treeId,
 			draggedRefs.map((r) => r.path),
@@ -4334,6 +4356,7 @@ export class TreeController<T> {
 		this._dragSetOverride = null;
 		this.isDragInProgress = false;
 		this.draggedNode = null;
+		this.draggedPaths = new Set();
 		this.hoveredNodeForDrop = null;
 		this.activeDropPosition = null;
 		this.isDropPlaceholderActive = false;
@@ -4642,11 +4665,13 @@ export class TreeController<T> {
 		}
 
 		this.touchDragState = { ...this.touchDragState, isDragging: true };
-		setDragSet(
-			this.treeId,
-			draggedRefs.map((r) => r.path),
-			this._dragSetOverride ?? this._completeManifest(draggedRefs.map((r) => r.path))
-		);
+		// The dragged visual dims EVERY traveling node, so use the complete placement
+		// manifest (roots + descendants, minus any leave-behind holes), not just the
+		// top-level roots — otherwise a folder's children or a nested file wouldn't dim.
+		const placementManifest =
+			this._dragSetOverride ?? this._completeManifest(draggedRefs.map((r) => r.path));
+		this.draggedPaths = new Set(placementManifest);
+		setDragSet(this.treeId, draggedRefs.map((r) => r.path), placementManifest);
 		this.createGhostElement(node, event.clientX, event.clientY);
 		this.onNodeDragStartHandler?.({ ...this.nodeRef(node), event, dragged: draggedRefs });
 
@@ -5032,6 +5057,7 @@ export class TreeController<T> {
 			currentDropTarget: null
 		};
 		this.draggedNode = null;
+		this.draggedPaths = new Set();
 		this.isDragInProgress = false;
 		this.isDropPlaceholderActive = false;
 		this.hoveredNodeForDrop = null;

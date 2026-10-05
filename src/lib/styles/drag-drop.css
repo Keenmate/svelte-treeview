@@ -18,8 +18,12 @@
 }
 
 .stv__node-content--dragged {
-	opacity: 0.5;
-	transform: scale(0.95);
+	opacity: var(--stv-dragged-opacity, 0.5);
+	/* Anchor the shrink to the left edge. .stv__node-content is flex:1 (full-row width),
+	   so a default center-origin scale pulls the icon+label inward = a visible "extra
+	   indent" on the dimmed in-place row. Left origin keeps the label anchored. */
+	transform-origin: left center;
+	transform: scale(var(--stv-dragged-scale, 0.95));
 	transition:
 		opacity 0.2s,
 		transform 0.2s;

@@ -307,6 +307,12 @@
 		/** Data-driven per-row class hook. Return extra class(es) for `.stv__node-content`. */
 		nodeContentClass?: (node: LTreeNode<T>) => string | null | undefined;
 		dragOverNodeClass?: string | null | undefined;
+		/** Class for the dragged source row (the dimmed node left in place while its ghost
+		 *  follows the pointer). When set, REPLACES the built-in `.stv__node-content--dragged`
+		 *  visual (opacity + left-anchored scale) so you own the drag feedback — mirrors
+		 *  `highlightedNodeClass` / `scrollHighlightClass`. Tune the default via
+		 *  `--stv-dragged-opacity` / `--stv-dragged-scale` instead of replacing it. */
+		draggedNodeClass?: string | null | undefined;
 		/** Pick the disclosure glyph as a single knob (default `'chevron'`). Re-points
 		 *  the ONE `--stv-icon-*` variable set via `data-icon-set` on `.stv__container`
 		 *  — it does not switch between separate CSS classes. `'plus-minus'` is a swap
@@ -502,6 +508,7 @@
 		nodeClass,
 		nodeContentClass,
 		dragOverNodeClass,
+		draggedNodeClass,
 		scrollHighlightTimeout = 4000,
 		scrollHighlightClass = 'stv__node-content--scroll-highlight',
 		contextMenuXOffset = 8,
@@ -621,6 +628,7 @@
 		nodeClass,
 		nodeContentClass,
 		dragOverNodeClass,
+		draggedNodeClass,
 		expandIconClass,
 		collapseIconClass,
 		leafIconClass,
@@ -861,6 +869,9 @@
 	});
 	$effect(() => {
 		controller.dragOverNodeClass = dragOverNodeClass;
+	});
+	$effect(() => {
+		controller.draggedNodeClass = draggedNodeClass;
 	});
 	$effect(() => {
 		controller.dropZoneMode = dropZoneMode ?? 'glow';
@@ -1366,6 +1377,7 @@
 				| 'nodeContentClass'
 				| 'focusedNodeClass'
 				| 'dragOverNodeClass'
+				| 'draggedNodeClass'
 				| 'scrollHighlightTimeout'
 				| 'scrollHighlightClass'
 				| 'contextMenuXOffset'
@@ -1500,6 +1512,7 @@
 		if (updates.nodeContentClass !== undefined) nodeContentClass = updates.nodeContentClass;
 		if (updates.focusedNodeClass !== undefined) focusedNodeClass = updates.focusedNodeClass;
 		if (updates.dragOverNodeClass !== undefined) dragOverNodeClass = updates.dragOverNodeClass;
+		if (updates.draggedNodeClass !== undefined) draggedNodeClass = updates.draggedNodeClass;
 		if (updates.scrollHighlightTimeout !== undefined)
 			scrollHighlightTimeout = updates.scrollHighlightTimeout;
 		if (updates.scrollHighlightClass !== undefined)
@@ -1785,7 +1798,6 @@
 									{node}
 									children={nodeTemplate}
 									isProgressiveRender={false}
-									isDraggedNode={controller.draggedNode?.path === node.path}
 									isDragInProgress={controller.isDragInProgress}
 									hoveredNodeForDropPath={controller.hoveredNodeForDrop?.path}
 									activeDropPosition={controller.activeDropPosition}
@@ -1808,7 +1820,6 @@
 							{node}
 							children={nodeTemplate}
 							isProgressiveRender={false}
-							isDraggedNode={controller.draggedNode?.path === node.path}
 							isDragInProgress={controller.isDragInProgress}
 							hoveredNodeForDropPath={controller.hoveredNodeForDrop?.path}
 							activeDropPosition={controller.activeDropPosition}
@@ -1830,7 +1841,6 @@
 								children={nodeTemplate}
 								isProgressiveRender={controller.isProgressiveRender}
 								renderBatchSize={controller.initialBatchSize}
-								isDraggedNode={controller.draggedNode?.path === node.path}
 								isDragInProgress={controller.isDragInProgress}
 								hoveredNodeForDropPath={controller.hoveredNodeForDrop?.path}
 								activeDropPosition={controller.activeDropPosition}

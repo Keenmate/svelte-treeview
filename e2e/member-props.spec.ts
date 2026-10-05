@@ -27,12 +27,12 @@ function nodeByPath(page: Page, path: string): Locator {
 }
 
 function checkbox(node: Locator): Locator {
-	// .stv__checkbox is the <label>; the actual input lives inside.
-	return node.locator('> .stv__node-row .stv__checkbox input[type="checkbox"]').first();
+	// .stv__checkbox is now the styled <input> itself (single-element contract).
+	return node.locator('> .stv__node-row .stv__checkbox').first();
 }
 
 function checkboxLabel(node: Locator): Locator {
-	// The visible label wrapping the (visually hidden) input + custom box span.
+	// Same element as checkbox() — the input IS the box, no wrapping label.
 	return node.locator('> .stv__node-row .stv__checkbox').first();
 }
 

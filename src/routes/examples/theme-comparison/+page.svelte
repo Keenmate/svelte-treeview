@@ -116,6 +116,10 @@
 	];
 	let iconSize = $state<IconSizeKey>('standard');
 
+	// Checkbox BOX size — the shared --base-checkbox-scale knob. Multiplies the
+	// checkbox box (width/height via calc, no transform) in BOTH components at once.
+	let checkboxScale = $state(1);
+
 	// Which --base-icon-* token(s) each disclosure set renders → mapped to the
 	// matching family glyph. `arrow` returns nothing (not themeable).
 	const disclosureVars = (set: TreeIconSet, f: Record<Glyph, string>): Record<string, string> => {
@@ -162,6 +166,14 @@
 			...disclosureVars(treeIconSet, f)
 		};
 		for (const [k, v] of Object.entries(vars)) el.style.setProperty(k, v);
+	});
+
+	// Checkbox box scale — shared --base-checkbox-scale (both components read it).
+	$effect(() => {
+		const el = comparisonEl;
+		if (!el) return;
+		if (checkboxScale === 1) el.style.removeProperty('--base-checkbox-scale');
+		else el.style.setProperty('--base-checkbox-scale', String(checkboxScale));
 	});
 
 	// --- web-multiselect (web component) wiring -------------------------------
@@ -268,6 +280,21 @@
 				>{size.label}</button>
 			{/each}
 			<span class="muted">→ <code>--base-icon-check-size</code> (checkbox glyph, tree + multiselect)</span>
+		</div>
+
+		<div class="controls">
+			<span class="controls-label">Checkbox size:</span>
+			<input
+				type="range"
+				min="0.5"
+				max="2.5"
+				step="0.05"
+				bind:value={checkboxScale}
+				aria-label="Checkbox box scale"
+			/>
+			<code class="scale-readout">{checkboxScale.toFixed(2)}×</code>
+			<button class="btn btn-secondary" onclick={() => (checkboxScale = 1)}>Reset</button>
+			<span class="muted">→ <code>--base-checkbox-scale</code> (box size via calc, no transform — both components)</span>
 		</div>
 
 		<div class="comparison {themeClass}" bind:this={comparisonEl}>
@@ -407,6 +434,12 @@
 	.demo-ms {
 		display: block;
 		max-width: 420px;
+	}
+
+	.scale-readout {
+		min-width: 3.5em;
+		display: inline-block;
+		font-variant-numeric: tabular-nums;
 	}
 
 	/* Custom nodeTemplate row: icon + label + themed folder-count badge. The badge

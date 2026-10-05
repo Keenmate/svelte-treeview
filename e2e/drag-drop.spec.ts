@@ -74,6 +74,24 @@ async function pointerDrag(page: Page, fromX: number, fromY: number, toX: number
 	if (opts?.ctrl) await page.keyboard.up('Control');
 }
 
+/**
+ * Engage a pointer drag on `srcRow` and HOLD it (down + move past the 5px threshold,
+ * then a short travel) WITHOUT releasing, so the caller can assert mid-drag classes.
+ * Pair with `page.keyboard.press('Escape')` + `page.mouse.up()` to cancel cleanly
+ * (no drop → no reorg → paths stay stable).
+ */
+async function engageDragNoDrop(page: Page, srcRow: Locator) {
+	await srcRow.scrollIntoViewIfNeeded();
+	const box = await srcRow.boundingBox();
+	if (!box) throw new Error('Missing boundingBox');
+	const cx = box.x + box.width / 2;
+	const cy = box.y + box.height / 2;
+	await page.mouse.move(cx, cy);
+	await page.mouse.down();
+	await page.mouse.move(cx + 8, cy + 8, { steps: 3 });
+	await page.mouse.move(cx + 30, cy + 30, { steps: 5 });
+}
+
 // ── Section 1: single-tree drag ────────────────────────────────────────────
 
 test.describe('single-tree drag', () => {
@@ -107,6 +125,39 @@ test.describe('single-tree drag', () => {
 
 		await expect(page.getByTestId('single-drop-count')).toHaveText('1');
 		await expect(page.getByTestId('single-drop-position')).toHaveText('child');
+	});
+
+	test('dragged visual covers a folder\'s whole subtree; a nested file dims alone (recursive mode)', async ({
+		page
+	}) => {
+		await gotoFixture(page);
+		const section = page.getByTestId('section-single');
+		await section.scrollIntoViewIfNeeded();
+
+		const alpha = nodeRow(nodeByPath(section, '1')); // folder
+		const alpha1 = nodeRow(nodeByPath(section, '1.1')); // child file
+		const alpha2 = nodeRow(nodeByPath(section, '1.2')); // child file
+		const beta = nodeRow(nodeByPath(section, '2')); // outsider
+
+		// Drag the FOLDER: it AND every rendered descendant dim; an unrelated node doesn't.
+		await engageDragNoDrop(page, alpha);
+		await expect(alpha).toHaveClass(/stv__node-content--dragged/);
+		await expect(alpha1).toHaveClass(/stv__node-content--dragged/);
+		await expect(alpha2).toHaveClass(/stv__node-content--dragged/);
+		await expect(beta).not.toHaveClass(/stv__node-content--dragged/);
+		await page.keyboard.press('Escape');
+		await page.mouse.up();
+		await expect(alpha).not.toHaveClass(/stv__node-content--dragged/);
+		await expect(alpha1).not.toHaveClass(/stv__node-content--dragged/);
+
+		// Drag a NESTED FILE: ONLY it dims — not its parent folder, not its sibling.
+		// (The old top-level-flag model left a nested file undimmed entirely.)
+		await engageDragNoDrop(page, alpha1);
+		await expect(alpha1).toHaveClass(/stv__node-content--dragged/);
+		await expect(alpha).not.toHaveClass(/stv__node-content--dragged/);
+		await expect(alpha2).not.toHaveClass(/stv__node-content--dragged/);
+		await page.keyboard.press('Escape');
+		await page.mouse.up();
 	});
 
 	test('drop on left-top of a target resolves to "before"', async ({ page }) => {
@@ -442,6 +493,44 @@ test.describe('multi-drag (selectionMode=multi)', () => {
 
 		const afterRoots = await rootNodeNamesInOrder(section);
 		expect(afterRoots).toEqual(['Multi-A', 'Multi-B', 'Multi-C', 'Multi-D']);
+	});
+
+	test('the dragged visual dims the WHOLE multi-drag set mid-drag, not just the lead', async ({
+		page
+	}) => {
+		await gotoFixture(page);
+		const section = page.getByTestId('section-multi');
+		await section.scrollIntoViewIfNeeded();
+
+		// Highlight Multi-B (2) and Multi-C (3); grab B as the lead.
+		await nodeRow(nodeByPath(section, '2')).click();
+		await nodeRow(nodeByPath(section, '3')).click({ modifiers: ['Control'] });
+		await expect(page.getByTestId('multi-highlighted-size')).toHaveText('2');
+
+		const lead = nodeRow(nodeByPath(section, '2'));
+		const member = nodeRow(nodeByPath(section, '3'));
+		const outsider = nodeRow(nodeByPath(section, '4'));
+		const from = await lead.boundingBox();
+		if (!from) throw new Error('Missing boundingBox');
+
+		// Engage the pointer drag (down + move past the 5px threshold) but DON'T release,
+		// so we can observe the mid-drag classes.
+		await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+		await page.mouse.down();
+		await page.mouse.move(from.x + from.width / 2 + 8, from.y + from.height / 2 + 8, { steps: 3 });
+		await page.mouse.move(from.x + from.width / 2 + 40, from.y + from.height / 2 + 40, { steps: 5 });
+
+		// BOTH the lead and the other highlighted member carry the dragged modifier;
+		// a node outside the set does not.
+		await expect(lead).toHaveClass(/stv__node-content--dragged/);
+		await expect(member).toHaveClass(/stv__node-content--dragged/);
+		await expect(outsider).not.toHaveClass(/stv__node-content--dragged/);
+
+		// Cancel with Escape (no reorg, so paths stay stable) — the modifier clears everywhere.
+		await page.keyboard.press('Escape');
+		await page.mouse.up();
+		await expect(lead).not.toHaveClass(/stv__node-content--dragged/);
+		await expect(member).not.toHaveClass(/stv__node-content--dragged/);
 	});
 
 	test('top-level absorption: descendant of a highlighted ancestor rides along inside', async ({
