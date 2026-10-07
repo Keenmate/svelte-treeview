@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [5.0.0-rc15] - Unreleased
+## [5.0.0-rc15] - 2026-10-07 [PUBLISHED]
 
 ### Changed
 - **The checkbox now emits the canonical single-`<input>` render contract shared with `@keenmate/web-multiselect` (`.ms__checkbox`) and web-treeview — same DOM output, different tech.** The old `<label class="stv__checkbox">` + hidden `<input>` + visible `<span class="stv__checkbox-box">` three-element model is **gone**; `.stv__checkbox` is now the styled `<input type="checkbox">` itself (`appearance:none`, the input IS the box), the tick/dash is `.stv__checkbox::after`, and the **indeterminate state is a modifier class `.stv__checkbox--indeterminate` + `aria-checked="mixed"`, not the native `.indeterminate` DOM property** (so it survives re-render / virtual scroll — removes the `setIndeterminate` Svelte action). Box + border + radius all scale via `calc(... * var(--stv-checkbox-scale))` with `box-sizing: border-box` and no CSS `transform`, so the two components render pixel-identical boxes that scale in lockstep off the shared `--base-checkbox-scale`. **CSS hook `.stv__checkbox-box` is removed** (style `.stv__checkbox` directly). The checkmark render method (calc-all, no transform, `border-box`) is documented in `@keenmate/base-css-variables` → "Checkbox render method".
