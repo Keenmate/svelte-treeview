@@ -106,6 +106,10 @@
 	--stv-node-font-size: calc(var(--base-font-size-sm, 1.4) * var(--stv-rem));
 	--stv-node-icon-font-size: calc(var(--base-font-size-sm, 1.4) * var(--stv-rem));
 	--stv-node-icon-margin-right: calc(0.6 * var(--stv-rem));
+	/* Per-node icon color (default inherits the row text color) + reserved-column width
+	   used when shouldAlignNodeIcons is on. A per-node iconColor overrides the color. */
+	--stv-node-icon-color: currentColor;
+	--stv-node-icon-width: calc(1.8 * var(--stv-rem));
 	--stv-node-path-font-size: calc(var(--base-font-size-xs, 1.2) * var(--stv-rem));
 	--stv-node-path-color: var(--stv-text-color-3);
 
@@ -117,6 +121,10 @@
 	--stv-transition-fast: 150ms;
 	--stv-transition-normal: 200ms;
 	--stv-ease-standard: var(--base-ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
+	/* Row (.stv__node-content) transition. Default none = instant hover (crisper).
+	   Set to e.g. `background-color var(--stv-transition-normal) var(--stv-ease-standard),
+	   box-shadow var(--stv-transition-fast) var(--stv-ease-standard)` to restore the fade. */
+	--stv-node-content-transition: none;
 
 	/* -------------------------------------------------------------------------
 	   NODE LAYOUT
@@ -274,6 +282,25 @@
 	--stv-drop-arrow-before-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 13a1 1 0 0 0-1-1H5.061a1 1 0 0 1-.75-1.811l6.836-6.835a1.207 1.207 0 0 1 1.707 0l6.835 6.835a1 1 0 0 1-.75 1.811H16a1 1 0 0 0-1 1v6a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1z'/%3E%3C/svg%3E");
 	--stv-drop-arrow-after-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 11a1 1 0 0 0 1 1h2.939a1 1 0 0 1 .75 1.811l-6.835 6.836a1.207 1.207 0 0 1-1.707 0L4.31 13.81a1 1 0 0 1 .75-1.811H8a1 1 0 0 0 1-1V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1z'/%3E%3C/svg%3E");
 	--stv-drop-arrow-child-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 9a1 1 0 0 0 1-1V5.061a1 1 0 0 1 1.811-.75l6.836 6.836a1.207 1.207 0 0 1 0 1.707l-6.836 6.835a1 1 0 0 1-1.811-.75V16a1 1 0 0 0-1-1H9a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1z'/%3E%3Cpath d='M4 9v6'/%3E%3C/svg%3E");
+
+	/* -------------------------------------------------------------------------
+	   TOOLTIP (hover/focus node tooltip)
+	   Same --base-tooltip-* chain + defaults as web-multiselect's option tooltip,
+	   so one shared theme renders both components' tooltips identically.
+	   ------------------------------------------------------------------------- */
+	--stv-tooltip-bg: var(--base-tooltip-bg, var(--base-inverse-bg, light-dark(#333333, #f5f5f5)));
+	--stv-tooltip-color: var(--base-tooltip-text-color, light-dark(#ffffff, #1a1a1a));
+	--stv-tooltip-padding: calc(0.8 * var(--stv-rem)) calc(1.2 * var(--stv-rem));
+	--stv-tooltip-border-radius: calc(var(--base-border-radius-lg, 0.8) * var(--stv-rem));
+	--stv-tooltip-font-size: calc(var(--base-font-size-sm, 1.4) * var(--stv-rem));
+	/* Width model: auto = shrink-to-content (capped by max-width). Set --stv-tooltip-width
+	   to a length for a fixed box (also set --stv-tooltip-max-width: none), or
+	   --stv-tooltip-min-width for a floor that still grows up to max-width. */
+	--stv-tooltip-width: auto;
+	--stv-tooltip-min-width: 0;
+	--stv-tooltip-max-width: calc(32 * var(--stv-rem));
+	--stv-tooltip-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+	--stv-tooltip-z-index: 10000;
 
 	/* -------------------------------------------------------------------------
 	   CONTEXT MENU

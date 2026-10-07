@@ -14,6 +14,9 @@
 		type DropOperation,
 		type ClickBehavior,
 		type NodeTitleOverflow,
+		type TooltipPlacement,
+		type TooltipDelay,
+		type NodeRenderContext,
 		type CheckboxMode,
 		type CascadeSelectPolicy,
 		type SelectionMode,
@@ -22,7 +25,7 @@
 		type TreeChange,
 		type ApplyChangesResult
 	} from '../ltree/types.js';
-	import { setContext, onDestroy } from 'svelte';
+	import { setContext, onDestroy, type Snippet } from 'svelte';
 	import type { RenderStats } from './RenderCoordinator.svelte.js';
 	import { TreeController } from '../core/TreeController.svelte.js';
 	import type {
@@ -34,7 +37,7 @@
 	} from '../core/TreeController.svelte.js';
 	import { createTreeController } from '../core/createTreeController.js';
 	import type { TreeNavigationOverrides } from '../core/navigation.js';
-	import { containerSize as trackContainerSize } from '../core/responsive.svelte.js';
+	import { containerSize as trackContainerSize, environmentState } from '../core/responsive.svelte.js';
 	import { classifyDevice, getEnvironment } from '../vendor/environment/environment.js';
 	import type { ElementSize } from '../vendor/environment/element-size.js';
 	import type { DeviceClass } from '../vendor/environment/environment.js';
@@ -89,7 +92,15 @@
 		insertResult?: InsertArrayResult<T> | null | undefined;
 
 		// SLOTS
-		nodeTemplate?: any;
+		/** Custom row content. Receives (node, ctx) — ctx is the NodeRenderContext
+		 *  (device + container + live node state) so the template can adapt to device. */
+		nodeTemplate?: Snippet<[LTreeNode<T>, NodeRenderContext]>;
+		/** Rich tooltip content for a node's row. Receives (node, ctx); wins over
+		 *  getNodeTooltipCallback when both are given. Shown only if shouldShowNodeTooltips. */
+		tooltip?: Snippet<[LTreeNode<T>, NodeRenderContext]>;
+		/** Custom icon render for a node. Receives (node, value, ctx) where value is the resolved
+		 *  icon from iconMember/getIconCallback. Wins over the default `<i class={value}>`. */
+		icon?: Snippet<[LTreeNode<T>, string | null | undefined, NodeRenderContext]>;
 		treeHeader?: any;
 		treeBody?: any;
 		treeFooter?: any;
@@ -331,6 +342,30 @@
 		 *  multi-line), `ellipsis` (single-line clip), or `info` (ellipsis + a trailing ⓘ
 		 *  on clipped rows that reveals the full label on click). See NodeTitleOverflow. */
 		nodeTitleOverflow?: NodeTitleOverflow;
+		/** Enable hover/focus tooltips on node rows. Content comes from the `tooltip`
+		 *  snippet (preferred) or `getNodeTooltipCallback`; no content ⇒ no tooltip. */
+		shouldShowNodeTooltips?: boolean;
+		/** Plain-text tooltip for a node (fallback when no `tooltip` snippet is given). */
+		getNodeTooltipCallback?: (node: LTreeNode<T>) => string | null | undefined;
+		/** Tooltip placement relative to the row. Default `'top-start'`. */
+		tooltipPlacement?: TooltipPlacement;
+		/** Show/hide delay(s), ms. Default `{ show: 400, hide: 100 }`. */
+		tooltipDelay?: TooltipDelay;
+		/** Gap from the row (or cursor), px. Default `8`. */
+		tooltipOffset?: number;
+		/** Anchor the tooltip to the pointer instead of the row. Default `false`. */
+		tooltipFollowCursor?: boolean;
+		/** Per-node icon VALUE from a data key — rendered as a dedicated `.stv__node-icon`
+		 *  element on every node (default `<i class="stv__node-icon {value}">`, FA-friendly). */
+		iconMember?: string | null | undefined;
+		/** Per-node icon VALUE from a callback (overrides iconMember). */
+		getIconCallback?: (node: LTreeNode<T>) => string | null | undefined;
+		/** Per-node icon COLOR from a data key (applied to the icon element). */
+		iconColorMember?: string | null | undefined;
+		/** Per-node icon COLOR from a callback (overrides iconColorMember). */
+		getIconColorCallback?: (node: LTreeNode<T>) => string | null | undefined;
+		/** Reserve the icon column so labels align even on rows with no icon. Default `false`. */
+		shouldAlignNodeIcons?: boolean;
 		scrollHighlightTimeout?: number | null | undefined;
 		scrollHighlightClass?: string | null | undefined;
 		contextMenuXOffset?: number | null | undefined;
@@ -503,6 +538,19 @@
 		leafIconClass = 'stv__toggle-icon--leaf',
 		toggleIconMode = 'rotate',
 		nodeTitleOverflow = 'wrap',
+		shouldShowNodeTooltips = false,
+		getNodeTooltipCallback,
+		tooltipPlacement = 'top-start',
+		tooltipDelay,
+		tooltipOffset = 8,
+		tooltipFollowCursor = false,
+		tooltip,
+		iconMember,
+		getIconCallback,
+		iconColorMember,
+		getIconColorCallback,
+		shouldAlignNodeIcons = false,
+		icon,
 		highlightedNodeClass,
 		focusedNodeClass,
 		nodeClass,
@@ -634,6 +682,17 @@
 		leafIconClass,
 		toggleIconMode,
 		nodeTitleOverflow,
+		shouldShowNodeTooltips,
+		getNodeTooltipCallback,
+		tooltipPlacement,
+		tooltipDelay,
+		tooltipOffset,
+		tooltipFollowCursor,
+		iconMember,
+		getIconCallback,
+		iconColorMember,
+		getIconColorCallback,
+		shouldAlignNodeIcons,
 		scrollHighlightTimeout,
 		scrollHighlightClass,
 		contextMenuXOffset,
@@ -652,10 +711,27 @@
 		controller.navigation = { ...controller.createDefaultNavigation(), ...navigationOverrides };
 	}
 
+	// Reactive render environment shared with every Node — device class + the tree's
+	// container box. Mutated (not replaced) in an $effect below so the context reference
+	// stays stable; each Node merges it with the node's live state into a NodeRenderContext.
+	const nodeRenderEnv = $state<{ deviceClass: NodeRenderContext['deviceClass']; container: ElementSize }>({
+		deviceClass: 'desktop',
+		container: { width: 0, height: 0 }
+	});
+
 	// ── Set contexts (must happen synchronously during component init) ──
 	setContext('Ltree', controller.tree);
 	setContext('NodeCallbacks', controller.nodeCallbacks);
 	setContext('NodeConfig', controller.nodeConfig);
+	// The rich-content tooltip snippet (stable identity) reaches every Node via
+	// context, so it doesn't need threading through each render site + the recursive
+	// forward. The string callback + options travel in NodeConfig.
+	// svelte-ignore state_referenced_locally
+	setContext('NodeTooltip', tooltip);
+	// The icon snippet (stable identity) also reaches every Node via context.
+	// svelte-ignore state_referenced_locally
+	setContext('NodeIcon', icon);
+	setContext('NodeRenderEnv', nodeRenderEnv);
 	if (controller.renderCoordinator) {
 		setContext('RenderCoordinator', controller.renderCoordinator);
 	}
@@ -691,6 +767,14 @@
 		_lastEmittedBox = snapshot;
 		containerSize = snapshot;
 		onContainerResize?.(snapshot, classifyDevice(getEnvironment()));
+	});
+
+	// Feed the shared NodeRenderContext env: reactive device class + container box.
+	// Reuses the same signals (environmentState / _box) — no extra observers.
+	const _env = environmentState();
+	$effect(() => {
+		nodeRenderEnv.deviceClass = _env.deviceClass;
+		nodeRenderEnv.container = { width: _box.width, height: _box.height };
 	});
 
 	// ── Context menu element + Floating UI positioning ─────────────────
@@ -854,6 +938,39 @@
 	});
 	$effect(() => {
 		controller.nodeTitleOverflow = nodeTitleOverflow ?? 'wrap';
+	});
+	$effect(() => {
+		controller.shouldShowNodeTooltips = shouldShowNodeTooltips ?? false;
+	});
+	$effect(() => {
+		controller.getNodeTooltipCallback = getNodeTooltipCallback;
+	});
+	$effect(() => {
+		controller.tooltipPlacement = tooltipPlacement ?? 'top-start';
+	});
+	$effect(() => {
+		controller.tooltipDelay = tooltipDelay ?? { show: 400, hide: 100 };
+	});
+	$effect(() => {
+		controller.tooltipOffset = tooltipOffset ?? 8;
+	});
+	$effect(() => {
+		controller.tooltipFollowCursor = tooltipFollowCursor ?? false;
+	});
+	$effect(() => {
+		controller.iconMember = iconMember;
+	});
+	$effect(() => {
+		controller.getIconCallback = getIconCallback;
+	});
+	$effect(() => {
+		controller.iconColorMember = iconColorMember;
+	});
+	$effect(() => {
+		controller.getIconColorCallback = getIconColorCallback;
+	});
+	$effect(() => {
+		controller.shouldAlignNodeIcons = shouldAlignNodeIcons ?? false;
 	});
 	$effect(() => {
 		controller.highlightedNodeClass = highlightedNodeClass;
@@ -1372,6 +1489,17 @@
 				| 'leafIconClass'
 				| 'toggleIconMode'
 				| 'nodeTitleOverflow'
+				| 'shouldShowNodeTooltips'
+				| 'getNodeTooltipCallback'
+				| 'tooltipPlacement'
+				| 'tooltipDelay'
+				| 'tooltipOffset'
+				| 'tooltipFollowCursor'
+				| 'iconMember'
+				| 'getIconCallback'
+				| 'iconColorMember'
+				| 'getIconColorCallback'
+				| 'shouldAlignNodeIcons'
 				| 'highlightedNodeClass'
 				| 'nodeClass'
 				| 'nodeContentClass'
@@ -1506,6 +1634,22 @@
 		if (updates.leafIconClass !== undefined) leafIconClass = updates.leafIconClass;
 		if (updates.toggleIconMode !== undefined) toggleIconMode = updates.toggleIconMode;
 		if (updates.nodeTitleOverflow !== undefined) nodeTitleOverflow = updates.nodeTitleOverflow;
+		if (updates.shouldShowNodeTooltips !== undefined)
+			shouldShowNodeTooltips = updates.shouldShowNodeTooltips;
+		if (updates.getNodeTooltipCallback !== undefined)
+			getNodeTooltipCallback = updates.getNodeTooltipCallback;
+		if (updates.tooltipPlacement !== undefined) tooltipPlacement = updates.tooltipPlacement;
+		if (updates.tooltipDelay !== undefined) tooltipDelay = updates.tooltipDelay;
+		if (updates.tooltipOffset !== undefined) tooltipOffset = updates.tooltipOffset;
+		if (updates.tooltipFollowCursor !== undefined)
+			tooltipFollowCursor = updates.tooltipFollowCursor;
+		if (updates.iconMember !== undefined) iconMember = updates.iconMember;
+		if (updates.getIconCallback !== undefined) getIconCallback = updates.getIconCallback;
+		if (updates.iconColorMember !== undefined) iconColorMember = updates.iconColorMember;
+		if (updates.getIconColorCallback !== undefined)
+			getIconColorCallback = updates.getIconColorCallback;
+		if (updates.shouldAlignNodeIcons !== undefined)
+			shouldAlignNodeIcons = updates.shouldAlignNodeIcons;
 		if (updates.highlightedNodeClass !== undefined)
 			highlightedNodeClass = updates.highlightedNodeClass;
 		if (updates.nodeClass !== undefined) nodeClass = updates.nodeClass;

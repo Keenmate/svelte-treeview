@@ -21,7 +21,11 @@
 	align-items: center;
 	padding: var(--stv-node-content-padding);
 	border-radius: var(--stv-node-content-border-radius);
-	transition: background-color var(--stv-transition-normal) var(--stv-ease-standard), box-shadow var(--stv-transition-fast) var(--stv-ease-standard);
+	/* No row transition by default (instant hover — crisper). Opt back into the old
+	   animated hover/shadow by setting --stv-node-content-transition, e.g.
+	   `background-color var(--stv-transition-normal) var(--stv-ease-standard),
+	    box-shadow var(--stv-transition-fast) var(--stv-ease-standard)`. */
+	transition: var(--stv-node-content-transition, none);
 	flex: 1;
 	position: relative;
 	overflow: visible;
@@ -40,9 +44,24 @@
 	cursor: pointer;
 }
 
+/* Dedicated per-node icon element (iconMember / getIconCallback / `icon` snippet),
+   rendered on every node between the toggle/checkbox and the label. Default render is
+   `<i class="stv__node-icon {value}">` (FontAwesome-friendly); color follows
+   --stv-node-icon-color (default currentColor) or a per-node iconColor. */
 .stv__node-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
 	margin-right: var(--stv-node-icon-margin-right);
 	font-size: var(--stv-node-icon-font-size);
+	color: var(--stv-node-icon-color, currentColor);
+	line-height: 1;
+}
+
+/* Reserve a fixed column so labels align even on rows with no icon (shouldAlignNodeIcons). */
+.stv__node-icon--aligned {
+	width: var(--stv-node-icon-width, calc(1.8 * var(--stv-rem)));
 }
 
 /* Wrapper hook for label-only styling (truncation, ellipsis, font weight, etc.).

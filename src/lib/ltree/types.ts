@@ -32,6 +32,37 @@ export type IconSet = 'chevron' | 'triangle' | 'plus-minus' | 'arrow';
  * Only affects the default label render path; a `nodeTemplate` snippet owns its own layout.
  */
 export type NodeTitleOverflow = 'wrap' | 'ellipsis' | 'info';
+/**
+ * Placement of a node tooltip relative to its row (same 12 values as Floating UI).
+ * Default `'top-start'` so the tooltip anchors to a full-width row's start edge
+ * rather than centring on it.
+ */
+export type TooltipPlacement =
+	| 'top' | 'top-start' | 'top-end'
+	| 'right' | 'right-start' | 'right-end'
+	| 'bottom' | 'bottom-start' | 'bottom-end'
+	| 'left' | 'left-start' | 'left-end';
+/** Tooltip show / hide delay, in ms. A single number sets both. */
+export type TooltipDelay = number | { show?: number; hide?: number };
+/**
+ * Context passed as the LAST argument to the render snippets (`nodeTemplate`, `icon`,
+ * `tooltip`) so they can branch on the current device / container space AND the node's
+ * live render state — e.g. a compact icon on a phone, or a badge only when selected.
+ * `deviceClass` and `container` come from the responsive signal; the rest mirror the
+ * node's current state at render time.
+ */
+export interface NodeRenderContext {
+	/** Device capability class ('mobile' | 'tablet' | 'desktop') from classifyDevice. */
+	deviceClass: 'mobile' | 'tablet' | 'desktop';
+	/** The tree's own container border-box, in px. */
+	container: { width: number; height: number };
+	isExpanded: boolean;
+	isSelected: boolean;
+	isHighlighted: boolean;
+	isFocused: boolean;
+	level: number;
+	hasChildren: boolean;
+}
 export type ClickBehavior = 'select' | 'expand' | 'expand-and-focus';
 export type CheckboxMode = 'independent' | 'cascade';
 /**

@@ -31,6 +31,20 @@
 			description: 'Right-click context menus with icons, disabled states, dividers, and dynamic items.'
 		},
 		{
+			href: '/examples/icons',
+			icon: '🎭',
+			title: 'Icons',
+			badge: 'new',
+			description: 'Per-node icons on every node (branch + leaf) — FontAwesome classes via iconMember, per-node color, emoji via getIconCallback, and inline SVG via the icon snippet.'
+		},
+		{
+			href: '/examples/tooltips',
+			icon: '💬',
+			title: 'Tooltips',
+			badge: 'new',
+			description: 'Hover/focus node tooltips — a plain-text getNodeTooltipCallback or a rich tooltip snippet, with placement / delay / follow-cursor / sizing knobs, themed via the shared --base-tooltip-* tokens.'
+		},
+		{
 			href: '/examples/search',
 			icon: '🔍',
 			title: 'Search & Filter',

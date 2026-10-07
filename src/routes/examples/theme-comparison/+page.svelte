@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import Tree from '$lib/components/Tree.svelte';
-	import type { LTreeNode } from '$lib/ltree/types.js';
+	import type { LTreeNode, ContextMenuEntry } from '$lib/ltree/types.js';
 	import './cobalt2.css';
 	import './dracula.css';
 	import './corporate.css';
@@ -33,6 +33,27 @@
 
 	// Tree checkbox state (preselect a couple so the accent-on-checkbox shows).
 	let selectedPaths = $state<Set<string>>(new Set(['1.1', '1.3.1']));
+
+	// Context menu — a themed sample that exercises the full --stv-context-menu-*
+	// token set (icons, shortcuts, a named divider, a submenu, a danger item) so
+	// right-clicking any row shows how each theme styles the menu surface, hover,
+	// dividers and the accent/danger text.
+	const contextMenuItems = (node: LTreeNode<Item>): ContextMenuEntry[] => [
+		{ label: 'Open', icon: '📂', shortcut: 'Enter', onclick: () => {} },
+		{ label: 'Rename', icon: '✏️', shortcut: 'F2', onclick: () => {} },
+		{ divider: true, label: 'Move to' },
+		{
+			label: 'Move to…',
+			icon: '➡️',
+			children: [
+				{ label: 'Fruits', icon: '🍎', onclick: () => {} },
+				{ label: 'Vegetables', icon: '🥦', onclick: () => {} }
+			]
+		},
+		{ label: 'Duplicate', icon: '⧉', shortcut: 'Ctrl+D', onclick: () => {} },
+		{ divider: true },
+		{ label: 'Delete', icon: '🗑️', shortcut: 'Del', className: 'danger', onclick: () => {} }
+	];
 
 	// Themes — each is a .theme-<key> scope (in its own .css) that sets the full
 	// --base-* token layer, extracted verbatim from the matching pure-admin theme.
@@ -325,18 +346,30 @@
 						bind:selectedPaths
 						iconSet={treeIconSet}
 						expandLevel={5}
+						getContextMenuItemsCallback={contextMenuItems}
+						shouldShowNodeTooltips
 					>
 						{#snippet nodeTemplate(node: LTreeNode<Item>)}
-							<!-- Custom row: icon + label + folder count badge, with a native
-							     `title` tooltip (hover). The badge is themed via --base-* so it
-							     retints with the selected theme. -->
-							<span class="demo-node" title={node.data?.desc}>
+							<!-- Custom row: icon + label + folder count badge. Hover shows the
+							     themed tooltip below (shouldShowNodeTooltips + the `tooltip` snippet),
+							     the direct analog of the multiselect's option tooltips. -->
+							<span class="demo-node">
 								<span class="demo-node__icon">{node.data?.icon}</span>
 								<span class="demo-node__label">{node.data?.name}</span>
 								{#if childCount(node) > 0}
 									<span class="demo-node__count">{childCount(node)}</span>
 								{/if}
 							</span>
+						{/snippet}
+						{#snippet tooltip(node: LTreeNode<Item>)}
+							<!-- Rich tooltip content. Portaled + Floating-UI positioned by the
+							     library; themed via the shared --base-tooltip-* tokens so it matches
+							     web-multiselect's option tooltip under every theme. -->
+							<div class="demo-tip">
+								<strong>{node.data?.icon} {node.data?.name}</strong>
+								<span class="demo-tip__desc">{node.data?.desc}</span>
+								<span class="demo-tip__path">path {node.data?.path}</span>
+							</div>
 						{/snippet}
 					</Tree>
 				</div>
@@ -363,12 +396,23 @@
 				has no per-node disclosure counterpart.
 			</p>
 			<p>
-				<strong>Rich rows:</strong> the tree uses a <code>nodeTemplate</code> snippet (icon + label +
-				a themed folder-count badge) and a native <code>title</code> tooltip — hover any row.
-				svelte-treeview has no dedicated tooltip prop: tooltips come either from
-				<code>nodeTitleOverflow="info"</code> (a ⓘ reveal shown only on clipped labels) or, as here,
-				your own <code>title</code> / markup inside <code>nodeTemplate</code>. The multiselect mirrors
-				the data via <code>iconMember</code> / <code>subtitleMember</code> with option tooltips on.
+				<strong>Right-click a row</strong> to open the context menu — it reads the same
+				<code>--base-*</code> layer through the <code>--stv-context-menu-*</code> tokens
+				(<code>--base-dropdown-bg</code> surface, accent hover, divider, danger text), so the menu
+				retints with every theme switch. The sample includes icons, shortcuts, a named divider, a
+				submenu and a <code>className: 'danger'</code> item.
+			</p>
+			<p>
+				<strong>Rich rows + tooltips:</strong> the tree uses a <code>nodeTemplate</code> snippet
+				(icon + label + a themed folder-count badge). <strong>Hover any row</strong> for the
+				tooltip — enabled with <code>shouldShowNodeTooltips</code> and a <code>tooltip</code>
+				snippet (rich content: name, description, path). It's portaled and Floating-UI
+				positioned by the library, and themed through the shared <code>--base-tooltip-*</code>
+				tokens, so it renders identically to the multiselect's option tooltips under every theme.
+				For plain text, pass <code>getNodeTooltipCallback</code> instead of the snippet; for a
+				clipped-label reveal only, <code>nodeTitleOverflow="info"</code> still applies. The
+				multiselect mirrors the data via <code>iconMember</code> / <code>subtitleMember</code>
+				with option tooltips on.
 			</p>
 		</div>
 	</div>
@@ -471,6 +515,23 @@
 			--base-accent-color-light,
 			color-mix(in srgb, var(--base-accent-color, #3b82f6) 15%, transparent)
 		);
+	}
+
+	/* Tooltip snippet content. The library paints the portaled .stv__tooltip surface
+	   (bg/radius/shadow via --base-tooltip-*); this just lays out the inner lines.
+	   :global because the content is portaled to <body>, outside this component's scope. */
+	:global(.demo-tip) {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+	}
+	:global(.demo-tip__desc) {
+		opacity: 0.85;
+	}
+	:global(.demo-tip__path) {
+		font-size: 0.85em;
+		opacity: 0.6;
+		font-variant-numeric: tabular-nums;
 	}
 
 	@media (max-width: 760px) {

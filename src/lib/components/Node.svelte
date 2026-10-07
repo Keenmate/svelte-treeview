@@ -2,18 +2,19 @@
 	import {type LTreeNode} from "../ltree/ltree-node.svelte.js"
 	import Node from "./Node.svelte"
 	import {getContext, onDestroy, type Snippet} from "svelte"
-	import type {Ltree, DropPosition, DropOperation} from "../ltree/types.js"
+	import type {Ltree, DropPosition, DropOperation, NodeRenderContext} from "../ltree/types.js"
 	import type {RenderCoordinator} from "./RenderCoordinator.svelte.js"
 	import type {NodeCallbacks, NodeConfig} from "../core/TreeController.svelte.js"
 	import { uiLogger } from "../logger.js"
 	import { observeElementSize } from "../vendor/environment/element-size.js"
 	import { computePosition, autoUpdate, offset, flip, shift } from "@floating-ui/dom"
+	import { tooltip } from "../actions/tooltip.js"
 
 	// Define component props interface
 	// Callbacks and config come from context, drag state comes as props
 	interface Props {
 		node: LTreeNode<T>;
-		children?: Snippet<[LTreeNode<T>]>; // Keep the general children slot for backward compatibility
+		children?: Snippet<[LTreeNode<T>, NodeRenderContext]>; // nodeTemplate — (node, ctx)
 
 		// Progressive rendering
 		isProgressiveRender?: boolean;
@@ -118,6 +119,68 @@
 	// (no nodeTemplate) participates; a snippet owns its own layout.
 	const nodeTitleOverflow = $derived(config.nodeTitleOverflow)
 	const displayValue = $derived(tree.getNodeDisplayValue(node))
+
+	// ── Node tooltip (hover/focus) ──────────────────────────────────────────
+	// Rich content comes from the `tooltip` snippet (via context); the plain-text
+	// callback is the fallback. The snippet is rendered into a hidden host element
+	// which the `tooltip` action adopts into its portaled panel on show (mirrors
+	// the KeenMate core createTooltip `content: HTMLElement` path).
+	const nodeTooltipSnippet = getContext<Snippet<[LTreeNode<T>, NodeRenderContext]> | undefined>('NodeTooltip')
+	const tooltipText = $derived(
+		config.getNodeTooltipCallback ? (config.getNodeTooltipCallback(node) ?? null) : null
+	)
+	let tooltipHostEl: HTMLElement | undefined = $state()
+	const tooltipContent = $derived(
+		nodeTooltipSnippet ? (tooltipHostEl ?? null) : tooltipText
+	)
+	const tooltipEnabled = $derived(
+		!!config.shouldShowNodeTooltips &&
+			(nodeTooltipSnippet ? !!tooltipHostEl : !!(tooltipText && tooltipText.trim()))
+	)
+
+	// ── Per-node icon (dedicated .stv__node-icon element, all nodes) ─────────
+	// VALUE from getIconCallback (wins) or iconMember; COLOR from getIconColorCallback
+	// or iconColorMember. Default render is `<i class={value}>` (FA-friendly); the `icon`
+	// snippet (via context) overrides. shouldAlignNodeIcons reserves an empty column.
+	const nodeIconSnippet = getContext<Snippet<[LTreeNode<T>, string | null | undefined, NodeRenderContext]> | undefined>('NodeIcon')
+	const hasIconSupport = $derived(!!(config.iconMember || config.getIconCallback || nodeIconSnippet))
+	const iconValue = $derived.by(() => {
+		if (config.getIconCallback) return config.getIconCallback(node) ?? null
+		if (config.iconMember && node.data) {
+			const v = (node.data as any)[config.iconMember]
+			return v != null ? String(v) : null
+		}
+		return null
+	})
+	const iconColor = $derived.by(() => {
+		if (config.getIconColorCallback) return config.getIconColorCallback(node) ?? null
+		if (config.iconColorMember && node.data) {
+			const v = (node.data as any)[config.iconColorMember]
+			return v != null ? String(v) : null
+		}
+		return null
+	})
+	// Render the icon element when there's a snippet, a value, or we're reserving the
+	// column (shouldAlignNodeIcons) while icon support is configured.
+	const showIcon = $derived(
+		!!nodeIconSnippet || !!iconValue || (config.shouldAlignNodeIcons && hasIconSupport)
+	)
+	const alignIcons = $derived(!!config.shouldAlignNodeIcons)
+
+	// ── Render context passed to the nodeTemplate / icon / tooltip snippets ──
+	// Device + container (shared reactive env from Tree) merged with this node's live
+	// state, so a snippet can adapt to device/space and selection without re-resolving.
+	const renderEnv = getContext<{ deviceClass: NodeRenderContext['deviceClass']; container: { width: number; height: number } } | undefined>('NodeRenderEnv')
+	const renderCtx = $derived<NodeRenderContext>({
+		deviceClass: renderEnv?.deviceClass ?? 'desktop',
+		container: renderEnv?.container ?? { width: 0, height: 0 },
+		isExpanded: !!node.isExpanded,
+		isSelected: !!node.isSelected,
+		isHighlighted: !!node.isHighlighted,
+		isFocused: !!node.isFocused,
+		level: node.level ?? 0,
+		hasChildren: !!node.hasChildren
+	})
 
 	let labelEl: HTMLElement | undefined = $state()
 	let isTruncated = $state(false)
@@ -404,6 +467,14 @@
 			/>
 		{/if}
 
+		{#if showIcon}
+			{#if nodeIconSnippet}
+				<span class="stv__node-icon" class:stv__node-icon--aligned={alignIcons} style:color={iconColor}>{@render nodeIconSnippet(node, iconValue, renderCtx)}</span>
+			{:else}
+				<i class="stv__node-icon {iconValue ?? ''}" class:stv__node-icon--aligned={alignIcons} style:color={iconColor}></i>
+			{/if}
+		{/if}
+
 		<!-- Node content with separate click handler -->
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -427,9 +498,17 @@
 				callbacks.onNodeRightClicked(node, e);
 			}}
 			onpointerdown={(e) => callbacks.onPointerDown(node, e)}
+			use:tooltip={{
+				enabled: tooltipEnabled,
+				content: tooltipContent,
+				placement: config.tooltipPlacement,
+				offset: config.tooltipOffset,
+				delay: config.tooltipDelay,
+				followCursor: config.tooltipFollowCursor
+			}}
 		>
 			{#if children}
-				{@render children(node)}
+				{@render children(node, renderCtx)}
 			{:else}
 				<span
 					class="stv__node-label"
@@ -455,6 +534,12 @@
 	     placed by @floating-ui relative to the ⓘ button. -->
 	{#if isRevealOpen}
 		<div class="stv__node-info-reveal" role="tooltip" bind:this={revealEl}>{displayValue}</div>
+	{/if}
+
+	<!-- Hidden host for the `tooltip` snippet. The tooltip action adopts this element
+	     into its portaled panel on show (and reveals it); it stays display:none here. -->
+	{#if nodeTooltipSnippet}
+		<div bind:this={tooltipHostEl} style="display:none">{@render nodeTooltipSnippet(node, renderCtx)}</div>
 	{/if}
 
 	<!-- In flat mode, children are rendered by Tree.svelte, not recursively here -->

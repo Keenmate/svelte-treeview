@@ -1,5 +1,44 @@
-/* floating.css — no Floating-UI-anchored chrome lives here.
+/* floating.css — Floating-UI-anchored chrome.
    (The context menu has its own substantial styling surface in context-menu.css
-    as a Tier-3 feature; the debug popup is statically positioned. This file is
-    the canonical stub for tooltips, dropdowns, popovers, and menus when more
-    floating surfaces are added.) */
+    as a Tier-3 feature; the debug popup is statically positioned.) */
+
+/* =============================================================================
+   NODE TOOLTIP (hover/focus)
+   Portaled to <body> by the `tooltip` action; positioned via Floating UI.
+   Same shape + shared --base-tooltip-* tokens as web-multiselect's option
+   tooltip, so under one KeenMate theme both components render an identical
+   tooltip surface.
+   ============================================================================= */
+.stv__tooltip {
+	position: fixed;
+	z-index: var(--stv-tooltip-z-index, 10000);
+	opacity: 0;
+	visibility: hidden;
+	transition: opacity 0.15s ease, visibility 0.15s ease;
+
+	/* Hardcoded fallbacks (second arg) so the tooltip stays legible even if it ever
+	   mounts outside a .stv__container, where the --stv-tooltip-* vars don't resolve. */
+	background: var(--stv-tooltip-bg, light-dark(#333333, #f5f5f5));
+	color: var(--stv-tooltip-color, light-dark(#ffffff, #1a1a1a));
+	padding: var(--stv-tooltip-padding, 0.8rem 1.2rem);
+	border-radius: var(--stv-tooltip-border-radius, 4px);
+	font-family: var(--stv-font-family);
+	font-size: var(--stv-tooltip-font-size, 1.4rem);
+	line-height: 1.5;
+	/* Width: auto (shrink-to-content) by default, capped by max-width. Set
+	   --stv-tooltip-width to a length for a FIXED box (disables the shrink — pair
+	   with --stv-tooltip-max-width: none so the width isn't re-capped), or
+	   --stv-tooltip-min-width for a floor that still grows up to max-width. */
+	width: var(--stv-tooltip-width, auto);
+	min-width: var(--stv-tooltip-min-width, 0);
+	max-width: var(--stv-tooltip-max-width, 32rem);
+	word-wrap: break-word;
+	white-space: pre-wrap;
+	box-shadow: var(--stv-tooltip-shadow, 0 2px 8px rgba(0, 0, 0, 0.15));
+	pointer-events: none; /* never intercept the pointer */
+}
+
+.stv__tooltip--visible {
+	opacity: 1;
+	visibility: visible;
+}

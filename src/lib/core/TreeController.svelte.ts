@@ -14,6 +14,8 @@ import {
 	type ApplyChangesResult,
 	type ToggleIconMode,
 	type NodeTitleOverflow,
+	type TooltipPlacement,
+	type TooltipDelay,
 	type ClickBehavior,
 	type CheckboxMode,
 	type CascadeSelectPolicy,
@@ -322,6 +324,26 @@ export interface NodeConfig {
 	leafIconClass: string;
 	toggleIconMode: ToggleIconMode;
 	nodeTitleOverflow: NodeTitleOverflow;
+	// Hover/focus tooltip per node. The `tooltip` SNIPPET (rich content) travels via
+	// the 'NodeTooltip' context, not here; these are the plain-config knobs. A string
+	// from getNodeTooltipCallback is the fallback when no snippet is given.
+	shouldShowNodeTooltips: boolean;
+	getNodeTooltipCallback: ((node: LTreeNode<any>) => string | null | undefined) | undefined;
+	tooltipPlacement: TooltipPlacement;
+	tooltipDelay: TooltipDelay;
+	tooltipOffset: number;
+	tooltipFollowCursor: boolean;
+	// Per-node icon rendered as a dedicated .stv__node-icon element on ALL nodes (branch
+	// + leaf), independent of nodeTemplate. VALUE from iconMember/getIconCallback; default
+	// render is `<i class="stv__node-icon {value}">` (FA-friendly), overridable via the
+	// `icon` snippet (travels on the 'NodeIcon' context). COLOR from iconColorMember/
+	// getIconColorCallback (falls back to --stv-node-icon-color). shouldAlignNodeIcons
+	// reserves the column so labels align even on rows with no icon.
+	iconMember: string | null | undefined;
+	getIconCallback: ((node: LTreeNode<any>) => string | null | undefined) | undefined;
+	iconColorMember: string | null | undefined;
+	getIconColorCallback: ((node: LTreeNode<any>) => string | null | undefined) | undefined;
+	shouldAlignNodeIcons: boolean;
 	highlightedNodeClass: string | null | undefined;
 	focusedNodeClass: string | null | undefined;
 	dragOverNodeClass: string | null | undefined;
@@ -585,6 +607,17 @@ export interface TreeControllerProps<T> {
 	leafIconClass?: string | null | undefined;
 	toggleIconMode?: ToggleIconMode;
 	nodeTitleOverflow?: NodeTitleOverflow;
+	shouldShowNodeTooltips?: boolean;
+	getNodeTooltipCallback?: (node: LTreeNode<T>) => string | null | undefined;
+	tooltipPlacement?: TooltipPlacement;
+	tooltipDelay?: TooltipDelay;
+	tooltipOffset?: number;
+	tooltipFollowCursor?: boolean;
+	iconMember?: string | null | undefined;
+	getIconCallback?: (node: LTreeNode<T>) => string | null | undefined;
+	iconColorMember?: string | null | undefined;
+	getIconColorCallback?: (node: LTreeNode<T>) => string | null | undefined;
+	shouldAlignNodeIcons?: boolean;
 	scrollHighlightTimeout?: number | null | undefined;
 	scrollHighlightClass?: string | null | undefined;
 	contextMenuXOffset?: number | null | undefined;
@@ -624,6 +657,17 @@ export class TreeController<T> {
 		dropZoneStart: 33,
 		toggleIconMode: 'rotate',
 		nodeTitleOverflow: 'wrap',
+		shouldShowNodeTooltips: false,
+		getNodeTooltipCallback: undefined,
+		tooltipPlacement: 'top-start',
+		tooltipDelay: { show: 400, hide: 100 },
+		tooltipOffset: 8,
+		tooltipFollowCursor: false,
+		iconMember: undefined,
+		getIconCallback: undefined,
+		iconColorMember: undefined,
+		getIconColorCallback: undefined,
+		shouldAlignNodeIcons: false,
 		dropZoneMaxWidth: 120,
 		isCopyAllowed: false,
 		isAccordionExpand: false
@@ -774,6 +818,23 @@ export class TreeController<T> {
 	leafIconClass = $state('stv__toggle-icon--leaf');
 	toggleIconMode = $state<ToggleIconMode>('rotate');
 	nodeTitleOverflow = $state<NodeTitleOverflow>('wrap');
+	shouldShowNodeTooltips = $state<boolean>(false);
+	getNodeTooltipCallback = $state<((node: LTreeNode<any>) => string | null | undefined) | undefined>(
+		undefined
+	);
+	tooltipPlacement = $state<TooltipPlacement>('top-start');
+	tooltipDelay = $state<TooltipDelay>({ show: 400, hide: 100 });
+	tooltipOffset = $state<number>(8);
+	tooltipFollowCursor = $state<boolean>(false);
+	iconMember = $state<string | null | undefined>(undefined);
+	getIconCallback = $state<((node: LTreeNode<any>) => string | null | undefined) | undefined>(
+		undefined
+	);
+	iconColorMember = $state<string | null | undefined>(undefined);
+	getIconColorCallback = $state<((node: LTreeNode<any>) => string | null | undefined) | undefined>(
+		undefined
+	);
+	shouldAlignNodeIcons = $state<boolean>(false);
 	highlightedNodeClass = $state<string | null | undefined>(undefined);
 	focusedNodeClass = $state<string | null | undefined>(undefined);
 	nodeClass = $state<((node: LTreeNode<any>) => string | null | undefined) | undefined>(undefined);
@@ -1000,6 +1061,17 @@ export class TreeController<T> {
 		this.leafIconClass = props.leafIconClass ?? 'stv__toggle-icon--leaf';
 		this.toggleIconMode = props.toggleIconMode ?? 'rotate';
 		this.nodeTitleOverflow = props.nodeTitleOverflow ?? 'wrap';
+		this.shouldShowNodeTooltips = props.shouldShowNodeTooltips ?? false;
+		this.getNodeTooltipCallback = props.getNodeTooltipCallback;
+		this.tooltipPlacement = props.tooltipPlacement ?? 'top-start';
+		this.tooltipDelay = props.tooltipDelay ?? { show: 400, hide: 100 };
+		this.tooltipOffset = props.tooltipOffset ?? 8;
+		this.tooltipFollowCursor = props.tooltipFollowCursor ?? false;
+		this.iconMember = props.iconMember;
+		this.getIconCallback = props.getIconCallback;
+		this.iconColorMember = props.iconColorMember;
+		this.getIconColorCallback = props.getIconColorCallback;
+		this.shouldAlignNodeIcons = props.shouldAlignNodeIcons ?? false;
 		this.highlightedNodeClass = props.highlightedNodeClass;
 		this.focusedNodeClass = props.focusedNodeClass;
 		this.nodeClass = props.nodeClass;
@@ -1132,6 +1204,17 @@ export class TreeController<T> {
 			leafIconClass: this.leafIconClass,
 			toggleIconMode: this.toggleIconMode,
 			nodeTitleOverflow: this.nodeTitleOverflow,
+			shouldShowNodeTooltips: this.shouldShowNodeTooltips,
+			getNodeTooltipCallback: this.getNodeTooltipCallback,
+			tooltipPlacement: this.tooltipPlacement,
+			tooltipDelay: this.tooltipDelay,
+			tooltipOffset: this.tooltipOffset,
+			tooltipFollowCursor: this.tooltipFollowCursor,
+			iconMember: this.iconMember,
+			getIconCallback: this.getIconCallback,
+			iconColorMember: this.iconColorMember,
+			getIconColorCallback: this.getIconColorCallback,
+			shouldAlignNodeIcons: this.shouldAlignNodeIcons,
 			highlightedNodeClass: this.highlightedNodeClass,
 			focusedNodeClass: this.focusedNodeClass,
 			nodeClass: this.nodeClass,
@@ -1171,6 +1254,17 @@ export class TreeController<T> {
 				leafIconClass: this.leafIconClass,
 				toggleIconMode: this.toggleIconMode,
 				nodeTitleOverflow: this.nodeTitleOverflow,
+				shouldShowNodeTooltips: this.shouldShowNodeTooltips,
+				getNodeTooltipCallback: this.getNodeTooltipCallback,
+				tooltipPlacement: this.tooltipPlacement,
+				tooltipDelay: this.tooltipDelay,
+				tooltipOffset: this.tooltipOffset,
+				tooltipFollowCursor: this.tooltipFollowCursor,
+				iconMember: this.iconMember,
+				getIconCallback: this.getIconCallback,
+				iconColorMember: this.iconColorMember,
+				getIconColorCallback: this.getIconColorCallback,
+				shouldAlignNodeIcons: this.shouldAlignNodeIcons,
 				highlightedNodeClass: this.highlightedNodeClass,
 				focusedNodeClass: this.focusedNodeClass,
 				nodeClass: this.nodeClass,
@@ -3183,6 +3277,24 @@ export class TreeController<T> {
 		if (updates.nodeContentClass !== undefined) this.nodeContentClass = updates.nodeContentClass;
 		if (updates.dragOverNodeClass !== undefined) this.dragOverNodeClass = updates.dragOverNodeClass;
 		if (updates.draggedNodeClass !== undefined) this.draggedNodeClass = updates.draggedNodeClass;
+		if (updates.shouldShowNodeTooltips !== undefined)
+			this.shouldShowNodeTooltips = updates.shouldShowNodeTooltips ?? false;
+		if (updates.getNodeTooltipCallback !== undefined)
+			this.getNodeTooltipCallback = updates.getNodeTooltipCallback;
+		if (updates.tooltipPlacement !== undefined)
+			this.tooltipPlacement = updates.tooltipPlacement ?? 'top-start';
+		if (updates.tooltipDelay !== undefined)
+			this.tooltipDelay = updates.tooltipDelay ?? { show: 400, hide: 100 };
+		if (updates.tooltipOffset !== undefined) this.tooltipOffset = updates.tooltipOffset ?? 8;
+		if (updates.tooltipFollowCursor !== undefined)
+			this.tooltipFollowCursor = updates.tooltipFollowCursor ?? false;
+		if (updates.iconMember !== undefined) this.iconMember = updates.iconMember;
+		if (updates.getIconCallback !== undefined) this.getIconCallback = updates.getIconCallback;
+		if (updates.iconColorMember !== undefined) this.iconColorMember = updates.iconColorMember;
+		if (updates.getIconColorCallback !== undefined)
+			this.getIconColorCallback = updates.getIconColorCallback;
+		if (updates.shouldAlignNodeIcons !== undefined)
+			this.shouldAlignNodeIcons = updates.shouldAlignNodeIcons ?? false;
 		if (updates.dropZoneMode !== undefined) this.dropZoneMode = updates.dropZoneMode ?? 'glow';
 		if (updates.dropZoneLayout !== undefined)
 			this.dropZoneLayout = updates.dropZoneLayout ?? 'around';
