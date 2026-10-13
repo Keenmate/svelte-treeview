@@ -67,7 +67,7 @@
 
 	// Drop zone configuration (with localStorage persistence)
 	let dropZoneMode = $state<'floating' | 'glow'>('glow');
-	let dropZoneLayout = $state<'around' | 'above' | 'below' | 'wave' | 'wave2'>('around');
+	let dropZoneLayout = $state<'around' | 'before' | 'after' | 'wave' | 'wave2'>('around');
 	let dropZoneStart = $state<number | string>('33%');
 	let dropZoneMaxWidth = $state(120);
 	let showDropZoneWhenEmpty = $state(true); // Keep the target tree's drop zone visible + paste-ready while empty
@@ -93,7 +93,7 @@
 			try {
 				const config = JSON.parse(saved);
 				if (config.mode) dropZoneMode = config.mode;
-				if (config.layout) dropZoneLayout = config.layout;
+				if (config.layout) dropZoneLayout = config.layout === 'above' ? 'before' : config.layout === 'below' ? 'after' : config.layout; // map pre-5.0 saved values
 				if (config.start !== undefined) dropZoneStart = config.start;
 				if (config.maxWidth !== undefined) dropZoneMaxWidth = config.maxWidth;
 				if (config.isCopyAllowed !== undefined) isCopyAllowed = config.isCopyAllowed;
@@ -849,8 +849,8 @@
 					Layout:
 					<select bind:value={dropZoneLayout}>
 						<option value="around">Around (before + after/child)</option>
-						<option value="above">Above (all 3 in row above)</option>
-						<option value="below">Below (all 3 in row below)</option>
+						<option value="before">Before (all 3 in a row above the node)</option>
+						<option value="after">After (all 3 in a row below the node)</option>
 						<option value="wave">Wave (stacked vertically)</option>
 						<option value="wave2">Wave2 (diagonal pattern)</option>
 					</select>

@@ -359,7 +359,7 @@ export interface NodeConfig {
 	nodeClass: ((node: LTreeNode<any>) => string | null | undefined) | undefined;
 	nodeContentClass: ((node: LTreeNode<any>) => string | null | undefined) | undefined;
 	dropZoneMode: 'floating' | 'glow';
-	dropZoneLayout: 'around' | 'above' | 'below' | 'wave' | 'wave2';
+	dropZoneLayout: 'around' | 'before' | 'after' | 'wave' | 'wave2';
 	dropZoneStart: number | string;
 	dropZoneMaxWidth: number;
 	isCopyAllowed: boolean;
@@ -486,7 +486,7 @@ export interface TreeControllerProps<T> {
 	// DRAG AND DROP
 	dragDropMode?: DragDropMode;
 	dropZoneMode?: 'floating' | 'glow';
-	dropZoneLayout?: 'around' | 'above' | 'below' | 'wave' | 'wave2';
+	dropZoneLayout?: 'around' | 'before' | 'after' | 'wave' | 'wave2';
 	dropZoneStart?: number | string;
 	dropZoneMaxWidth?: number;
 	isCopyAllowed?: boolean;
@@ -848,7 +848,7 @@ export class TreeController<T> {
 	dragOverNodeClass = $state<string | null | undefined>(undefined);
 	draggedNodeClass = $state<string | null | undefined>(undefined);
 	dropZoneMode = $state<'floating' | 'glow'>('glow');
-	dropZoneLayout = $state<'around' | 'above' | 'below' | 'wave' | 'wave2'>('around');
+	dropZoneLayout = $state<'around' | 'before' | 'after' | 'wave' | 'wave2'>('around');
 	dropZoneStart = $state<number | string>(33);
 	dropZoneMaxWidth = $state(120);
 	scrollHighlightTimeout = $state(4000);

@@ -215,16 +215,27 @@
 	/* -------------------------------------------------------------------------
 	   SELECTION & HIGHLIGHT STATES
 
-	   One visual channel per state so they compose instead of fighting:
-	     • hover + selection-highlight → BACKGROUND (selection wins; hover suppressed
-	       under a highlighted row)
-	     • cursor-focus → BORDER EDGE: a thin INSET left accent bar (--focus-bar-*),
-	       painted inside the pill so it never spills onto neighbours / the scroll edge
+	   Highlight (the multi-select set) and focus (the keyboard cursor) read the
+	   shared --base-highlighted-* / --base-focused-* item-state tokens, so a
+	   highlighted tree row and a selected web-multiselect option on the same page
+	   look identical and one override re-themes both. Fallbacks = the same defaults
+	   for standalone use. One visual channel per state so they compose:
+	     • hover + highlight → BACKGROUND (highlight wins; hover suppressed under it)
+	     • focus → an INSET OUTLINE ring (outline-offset = −width): no layout shift,
+	       no bleed, and its own paint channel — box-shadow presets / the scroll
+	       flash can't erase it
 	     • checked → the CHECKBOX only; style checked rows via `selectedNodeClass`
 	   ------------------------------------------------------------------------- */
-	--stv-highlighted-bg: color-mix(in srgb, var(--stv-primary) 12%, transparent);
-	--stv-focus-bar-width: 2px;
-	--stv-focus-bar-color: var(--stv-primary);
+	--stv-highlighted-bg: var(--base-highlighted-bg, color-mix(in srgb, var(--stv-primary) 10%, transparent));
+	--stv-highlighted-bg-hover: var(--base-highlighted-bg-hover, var(--stv-highlighted-bg));
+	--stv-highlighted-text: var(--base-highlighted-text, currentColor);
+	--stv-highlighted-ring: var(--base-highlighted-ring, none);
+	--stv-focused-bg: var(--base-focused-bg, transparent);
+	--stv-focused-text: var(--base-focused-text, currentColor);
+	--stv-focused-ring: var(--base-focused-ring, var(--base-ring-width, 1px) solid var(--stv-primary));
+	/* Keep = −(ring width) so the ring stays inside the row. Follows
+	   --base-ring-width; thicken the ring there, not inside the shorthand. */
+	--stv-focused-outline-offset: calc(-1 * var(--base-ring-width, 1px));
 	--stv-highlight-bg: color-mix(in srgb, var(--stv-primary) 30%, transparent);
 	--stv-highlight-color: inherit;
 	/* Hairline ring used by the --highlight-border / --highlight-glow presets. */

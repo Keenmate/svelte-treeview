@@ -245,7 +245,7 @@ CANVAS_PACKAGE:
 
 COMPARISON_WITH_WEB_TREEVIEW (sibling package @keenmate/web-treeview at ../web-treeview):
 - Same logical tree, different DOM strategy. Reference when porting features or debugging visual diffs.
-- Rendering modes: svelte-treeview = recursive (default) + flat; web-treeview = flat only.
+- Rendering modes: svelte-treeview = flat (default, `isFlatRenderingEnabled`) + recursive; web-treeview = flat only.
 - Children DOM: svelte-treeview wraps in `.stv__children` (recursive mode); web-treeview has no wrapper — siblings under `.wtv__tree`.
 - Indent math: both now `(level − 1) × indent` (root at zero offset). svelte-treeview recursive mode gives level-1 nodes margin-left 0 and every deeper node one indent (compounds); flat mode multiplies `(level − 1) × indent` explicitly.
 - Virtual scroll: svelte-treeview flat mode only; web-treeview has built-in three-div spacer/translateY structure.

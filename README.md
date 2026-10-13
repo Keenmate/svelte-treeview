@@ -2,34 +2,47 @@
 
 A high-performance, feature-rich hierarchical tree view component for Svelte 5 with drag & drop support, search functionality, and flexible data structures using LTree.
 
+## Demos & docs
+
+- 🚀 [Live demo](https://svelte-treeview.keenmate.dev) — interactive examples and the full feature gallery
+- 📘 [Usage / API reference](./docs/usage.md) — every Prop, Method, Event, and Snippet
+- 🎨 [Theming contract](./docs/theming.md) — `--base-*` tokens, `--stv-*` variables, dark mode, cascade layers
+- 📚 [Examples / cookbook](./docs/examples.md) — node templates, search, drag & drop, tree editing, context menus
+- ♿ [Accessibility](./docs/accessibility.md) — keyboard navigation, focus management, selection model
+- 📒 [Release history](./CHANGELOG.md)
+
 ## What is it
 
 `@keenmate/svelte-treeview` is a hierarchical tree-view component for Svelte 5 apps. It renders flat, path-keyed data (`"1"`, `"1.2"`, `"1.2.3"`) into an expandable tree with built-in drag & drop, three-level selection (focus / multi-highlight / checkboxes), context menus, integrated FlexSearch filtering, and virtual scrolling for 50,000+ nodes.
 
 It's aimed at Svelte 5 developers building file browsers, org charts, navigation trees, settings dialogs, or any UI that displays hierarchical data. The core (data structure, expand/collapse, search, drag-and-drop logic) is decoupled from the renderer via `TreeProvider` + `TreeController`, so you can plug in custom HTML, Canvas, or SVG renderers on the same engine.
 
-The component ships standalone with sensible light/dark defaults and integrates cleanly with [Pure Admin](https://pureadmin.io/) and the wider `@keenmate/*` design-token suite via the `--base-*` CSS variable contract.
+The component ships standalone with sensible light/dark defaults and integrates cleanly with [Pure Admin](https://pureadmin.io/) and the wider `@keenmate/*` design-token suite via the [`--base-*` CSS variable contract](https://github.com/Keenmate/base-css-variables).
 
 ### How it differs from `@keenmate/web-treeview`
 
-There's a vanilla-TypeScript sibling — [`@keenmate/web-treeview`](https://github.com/KeenMate/web-treeview) — built on the same LTree path-based engine. Same logical tree, different DOM strategy. Neither is "more mature"; they target different priorities.
+There's a vanilla-TypeScript sibling, [`@keenmate/web-treeview`](https://github.com/KeenMate/web-treeview), built on the same LTree path-based engine. It's the same logical tree with the same API vocabulary, rendered with a different DOM strategy. Neither is "more mature"; they target different priorities.
+
+**Shared between the two:** path-keyed data, the three-level selection model (`focusedNode` / `highlightedPaths` / `selectedPaths`) with cascade checkboxes, the `highlightedNodeClass` / `focusedNodeClass` / `selectedNodeClass` override family and the default state looks (soft highlight tint + thin focus ring, both from the shared `--base-highlighted-*` / `--base-focused-*` tokens), the canonical single-`<input>` checkbox, per-node icons, node tooltips, render context, clipboard, context menus, and the `--base-*` design tokens. Indentation is `(level − 1) × indent` in both, with the root at zero offset.
 
 | | svelte-treeview | web-treeview |
 |---|---|---|
-| Framework | Svelte 5 | Vanilla TS web component |
-| Rendering modes | Recursive (default) + flat | Flat only |
-| Children DOM | `.stv__children` wrapper (recursive mode) | None — siblings under `.wtv__tree` |
-| Indent math | `level × indent` | `(level − 1) × indent` (root at zero offset) |
-| Virtual scroll | Flat mode only | Built-in (three-div spacer / `translateY`) |
-| Label markup | `<span class="stv__node-label">` by default — replace via `nodeTemplate` snippet | `<span class="wtv__node-label">` by default — replace via `renderNodeCallback` |
-| Checkbox | Canonical single styled `<input class="stv__checkbox">` (shared KeenMate render contract) | Bare native `<input type="checkbox">` |
+| Framework | Svelte 5 component | Vanilla TS web component (any framework or none) |
+| Rendering modes | Flat (default) + recursive | Flat only |
+| Children DOM | `.stv__children` wrapper (recursive mode) | None; siblings sit under `.wtv__tree` |
+| Virtual scroll | Flat mode | Built in (three-div spacer / `translateY`) |
+| Custom node markup | `nodeTemplate` / `icon` / `tooltip` snippets | `renderNodeCallback` / `renderIconCallback` |
+| Drag & drop | Unified Pointer Events (no native drag session, so mid-drag re-renders can't freeze it) | Native HTML5 DnD + a long-press touch path |
 | Update mechanism | Svelte 5 runes + per-node `_rev` keyed `{#each}` | Imperative reconciler diffing `data-rev` / `data-expanded` attributes |
 
-svelte-treeview is broader (two rendering modes, easier vertical guide lines via `.stv__children`); web-treeview is purpose-built for virtual scrolling over large datasets with a flatter DOM.
+Pick svelte-treeview in a Svelte 5 app, or when you want recursive rendering (easy vertical guide lines via `.stv__children`) or the Svelte ecosystem around it (e.g. the Canvas renderer in `@keenmate/svelte-treeview-canvas`, built on the same headless `TreeController`). Pick web-treeview outside Svelte, or when the job is mainly virtual scrolling over very large datasets with a flat DOM.
 
-## Live Demo
+## What's New in v5.0.0
 
-Browse interactive code examples and the full API reference at **[svelte-treeview.keenmate.dev](https://svelte-treeview.keenmate.dev)**
+- **Node state styling — one look shared with web-multiselect through `--base-*` item-state tokens** — Highlight (the Ctrl/Shift multi-select set) and keyboard focus now read the new `--base-highlighted-*` / `--base-focused-*` tokens from `@keenmate/base-css-variables`, so a highlighted tree row and a selected multiselect option on the same page are identical and one override re-themes both (inline fallbacks keep the same defaults when the base file isn't loaded). Each state owns one visual channel so they compose instead of fighting: highlight is a soft accent tint (`--stv-highlighted-bg`, 10%) with no outline, hover is a neutral tint suppressed under a highlighted row, and focus is a thin 1px inset outline ring (`--stv-focused-ring`). Outline is a separate paint channel from background and box-shadow, so the presets and the post-`scrollToPath` flash can't erase the ring, and drawing it inset means no layout shift and no bleed onto neighbouring rows. Focus ships this default look via `.stv__node-content--focused-default`, applied only when no `focusedNodeClass` is set; `--stv-focused-ring: none` hides it.
+- **`selectedNodeClass` — completes the class-override family for checked rows** — Alongside `highlightedNodeClass` and `focusedNodeClass`, the new `selectedNodeClass` prop applies a CSS class to every checked (`isSelected`) node. Checked rows deliberately carry no default row treatment (the checkbox is the signal), so this is the opt-in hook for styling them; it's threaded through `<Tree>`, `update()` and `TreeController`.
+- **Lighter highlight presets + breathing room next to the checkbox** — `--highlight-border` and `--highlight-glow` are now 1px inset hairline rings (`--stv-highlight-ring-color`) over the soft tint, replacing a 2px border with forced padding that made the row jump and an outer glow that bled onto neighbours; both follow `--stv-node-content-border-radius`. `--highlight-brackets` now keeps its `❯ label ❮` chevrons with checkboxes on. The row pill sits `--stv-checkbox-gap` clear of the checkbox, applied as a margin on the pill rather than the `<input>`, because unlayered resets like Bootstrap's reboot (`input { margin: 0 }`) and Tailwind preflight beat the library's layered rules.
+- **Tooltip follow-cursor + drop-placeholder overflow fixes** — With `tooltipFollowCursor`, the tooltip now tracks the pointer from the moment it enters the row, so a stationary hover no longer pins the tooltip to the row's corner. The empty-tree drop placeholder no longer triggers a horizontal scrollbar on ancestors with `overflow-x` set.
 
 ## What's New in v5.0.0-rc15
 
@@ -41,15 +54,6 @@ Browse interactive code examples and the full API reference at **[svelte-treevie
 - **One disclosure-glyph knob + all-Lucide icons** — The four parallel toggle-glyph CSS-class families collapsed into a single `iconSet` prop (`chevron` | `triangle` | `plus-minus` | `arrow`) that re-points one `--stv-icon-*` set via `data-icon-set`, each chaining to a shared `--base-icon-*` token. Every remaining built-in glyph (submenu arrow, drag-denied badge, scroll-highlight markers, checkbox tick/dash) is now a Lucide icon drawn via CSS `mask`, inheriting `currentColor` and reskinnable from one base token.
 - **Responsive signal + clipped-label affordance** — The tree surfaces a live measure of its own container box and the device via a bindable `containerSize` and an `onContainerResize(size, deviceClass)` callback (device/viewport engine transferred from `@keenmate/web-components-core`), so consumers can adapt to available space. Separately, `nodeTitleOverflow` (`wrap` | `ellipsis` | `info`) controls the built-in label when it's wider than the row, with `info` adding a trailing ⓘ that reveals the full label — the touch/no-hover substitute for a native title tooltip.
 
-## What's New in v5.0.0-rc14
-
-- **Touch drag & drop — works again under touch emulation; native `draggable` no longer eats the gesture** — Touch drag was effectively dead wherever the browser synthesizes touch events (most visibly Chrome DevTools device mode): the long-press engaged and the ghost appeared, but the first finger move delivered no `touchmove`/`touchend`, because Chrome tried to route a `draggable=true` element through its mouse-driven native HTML5 drag engine — which never starts under emulation while also suppressing the touch stream. `Node.svelte` now clears `draggable` synchronously on `touchstart` (before the move that triggers the hijack) and restores it on `touchend`/`touchcancel`, so the touch-drag handlers get the full stream. It's scoped to real touch gestures, so mouse-drag on a touchscreen laptop is untouched.
-- **Drag & drop — "can't do that" feedback for locked nodes and refused drops** — Long-pressing a non-draggable node used to do nothing at all; now it plays a clear blocked-action reaction: a 🚫 no-entry badge that stays on the row for as long as you hold it, a gently pulsing tint, and a distinct haptic double-buzz. The same 🚫 flashes briefly on a drop target that refuses the drop. Two new fire-and-forget events, `onNodeDragDenied` (source side) and `onNodeDropDenied` (target side), carry the node's `NodeRef` so you can raise your own toast/snackbar; both fire regardless of the built-in visual, which you can disable with `shouldIndicateUndraggable={false}`.
-- **`touchDragDelay` — the long-press hold before a touch-drag engages is configurable** — Previously hardcoded at 300 ms, the hold duration is now a prop threaded through `<Tree>` and `update()`, so you can dial in a snappier 150 ms or a more deliberate, iOS/Android-like 500 ms feel.
-- **`displayValueFallback` — configurable placeholder for nodes with no display value** — `getNodeDisplayValue` falls back to a placeholder when neither `displayValueMember` nor `getDisplayValueCallback` resolves (a dataless node, or a tree that labels only via a `nodeTemplate` snippet) — and that placeholder, previously a hardcoded `[N/A]` that also surfaced in the touch-drag ghost, is now overridable per tree (pass `""` to render nothing). It's reactive, so changing it at runtime re-renders the affected labels; a live demo sits in `/examples/data`.
-- **`cascadeSelectPolicy` — control which paths a cascade selection emits, independent of how it cascades** — `checkboxMode` decides whether checking a branch fills its subtree; this new knob decides what `bind:selectedPaths`/`onSelectionChange` actually report, without changing what's checked on screen. Three policies: `'rolled-up'` (minimal cover — a fully-checked subtree collapses to its root), `'leaves'` (only checked leaves), and `'all'` (every fully-checked node). Only applies in cascade mode. Heads up: the default is now `'rolled-up'`, so cascade consumers who previously read the full flattened set from `selectedPaths` should pass `cascadeSelectPolicy="all"` to keep the old output.
-- **Virtual scroll — the last rows are reachable again, and near-bottom jitter is gone** — In virtual mode the scroll spacer is sized as `count × rowHeight`, which assumes uniform rows; a 2px `flatGap` margin on every level-transition row (invisible to `getBoundingClientRect`) meant the spacer under-counted real content, so the final rows fell past the scroll range and scrolling near the bottom snapped back. The gap is now forced off in the virtual-scroll branch (kept in flat/recursive, which aren't virtualized), making the spacer exact. Fixed-height virtualization still needs uniform row content, so keep rows single-line or set `virtualRowHeight` if labels can wrap.
-
 ## v5.0: Core/Renderer Split + Virtual Scroll
 
 > [!IMPORTANT]
@@ -59,7 +63,7 @@ Browse interactive code examples and the full API reference at **[svelte-treevie
 - **Core/Renderer split**: Use the built-in HTML `Tree` renderer, or create custom visualizations (Canvas, WebGL, SVG) via `TreeProvider` + `TreeController`
 - **Virtual scroll**: Render 50,000+ node trees smoothly with `isVirtualScrollEnabled={true}` — only ~50 DOM nodes at any time
 - **Canvas companion**: For canvas rendering, install [`@keenmate/svelte-treeview-canvas`](https://github.com/keenmate/svelte-treeview-canvas)
-- **Drop position naming**: `'above'`/`'below'` renamed to `'before'`/`'after'` (CSS classes and events updated accordingly)
+- **Drop position naming**: `'above'`/`'below'` renamed to `'before'`/`'after'` everywhere: the `DropPosition` a drop reports (events, callbacks, `.stv__drop-zone--*` classes) and the `dropZoneLayout` values that place the floating zone row (`'before'` = row above the node, `'after'` = row below; `.stv__drop-zones--before` / `--after`)
 
 ### Rendering Modes
 
@@ -146,15 +150,6 @@ import '@keenmate/svelte-treeview/styles.css';
 > // GOOD - Items remain plain objects
 > let treeData = $state.raw<TreeNode[]>([])
 > ```
-
-## Demos & docs
-
-- 🚀 [Live demo](https://svelte-treeview.keenmate.dev) — interactive examples and the full feature gallery
-- 📘 [Usage / API reference](./docs/usage.md) — every Prop, Method, Event, and Snippet
-- 🎨 [Theming contract](./docs/theming.md) — `--base-*` tokens, `--stv-*` variables, dark mode, cascade layers
-- 📚 [Examples / cookbook](./docs/examples.md) — node templates, search, drag & drop, tree editing, context menus
-- ♿ [Accessibility](./docs/accessibility.md) — keyboard navigation, focus management, selection model
-- 📒 [Release history](./CHANGELOG.md)
 
 ## Data Structure
 

@@ -1,6 +1,6 @@
 # Tree Editor API Design
 
-This document outlines the design for enhanced tree editing capabilities including drag-and-drop reordering with above/below/child positioning.
+This document outlines the design for enhanced tree editing capabilities including drag-and-drop reordering with before/after/child positioning.
 
 ## Use Case: In-Browser Tree Editor
 
@@ -36,7 +36,7 @@ User builds/edits a tree structure in browser, then saves to backend:
 tree.addNode(parentPath: string, data: T): LTreeNode<T>
 
 // Move node to new location
-tree.moveNode(sourcePath: string, targetPath: string, position: 'above'|'below'|'child'): boolean
+tree.moveNode(sourcePath: string, targetPath: string, position: 'before'|'after'|'child'): boolean
 
 // Remove node (and descendants?)
 tree.removeNode(path: string, includeDescendants?: boolean): boolean
@@ -54,7 +54,7 @@ When nodes move, paths must update:
 
 - The moved node gets new path
 - All descendants get new paths (parent path changed)
-- Siblings may need reordering for 'above'/'below'
+- Siblings may need reordering for 'before'/'after'
 
 ## Sibling Ordering
 
@@ -67,7 +67,7 @@ Path alone can't express "insert between A and B":
 
 ### The Solution: Explicit `order` Field
 
-For above/below positioning to work, user's data model needs an order field:
+For before/after positioning to work, user's data model needs an order field:
 
 ```typescript
 // User's data model
@@ -75,7 +75,7 @@ interface MyNode {
   id: number;
   path: string;
   name: string;
-  order: number;  // Required for above/below positioning
+  order: number;  // Required for before/after positioning
 }
 
 // Example data
@@ -93,7 +93,7 @@ sortCallback: (nodes) => nodes.sort((a, b) => {
 })
 ```
 
-### Insert "above" B Example
+### Insert "before" B Example
 
 - New node gets `path: '1.{nextId}'` (sibling of B)
 - New node gets `order: 15` (between A's 10 and B's 20)

@@ -85,7 +85,7 @@ export interface TreeMutationOptions {
 	 *  (e.g. when restoring state from URL params or other external sources). */
 	silent?: boolean;
 }
-export type DropZoneLayout = 'around' | 'above' | 'below' | 'wave' | 'wave2';
+export type DropZoneLayout = 'around' | 'before' | 'after' | 'wave' | 'wave2';
 export type DropOperation = 'move' | 'copy';
 
 // Incremental update types

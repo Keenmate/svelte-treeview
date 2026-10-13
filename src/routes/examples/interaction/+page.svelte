@@ -131,14 +131,14 @@
 		{ value: 'stv__node-content--highlight-glow', label: 'Glow (soft ring)' }
 	];
 
-	// Empty ('') = the built-in default focus look (an inset left accent bar). The
+	// Empty ('') = the built-in default focus look (a thin inset ring). The
 	// rest are page-scoped demo classes (see the style block below) you'd define
 	// yourself and pass via focusedNodeClass to override the default.
 	const focusedNodeClassOptions = [
-		{ value: '', label: 'Default (left bar)' },
+		{ value: '', label: 'Default (ring)' },
 		{ value: 'demo-focused-underline', label: 'Underline' },
 		{ value: 'demo-focused-bg', label: 'Background tint' },
-		{ value: 'demo-focused-ring', label: 'Ring (inset)' },
+		{ value: 'demo-focused-bar', label: 'Left bar' },
 		{ value: 'demo-focus-none', label: 'None' }
 	];
 
@@ -735,8 +735,8 @@ function restoreFromUrl(nodePath: string) {
 </div>
 
 <style>
-	/* Demo focus styles. The component ships a DEFAULT focus look (an inset left
-	   accent bar, shown when no focusedNodeClass is set); these are opt-in FLAVORS
+	/* Demo focus styles. The component ships a DEFAULT focus look (a thin inset
+	   ring, shown when no focusedNodeClass is set); these are opt-in FLAVORS
 	   an app defines itself and passes via `focusedNodeClass` to override it.
 	   :global so they apply to nodes rendered inside <Tree>. */
 	/* .demo-focus-none needs no rule — passing ANY focusedNodeClass already
@@ -753,7 +753,11 @@ function restoreFromUrl(nodePath: string) {
 	:global(.demo-focused-bg) {
 		background-color: color-mix(in srgb, var(--stv-primary, #0d6efd) 12%, transparent);
 	}
-	:global(.demo-focused-ring) {
-		box-shadow: inset 0 0 0 1px var(--stv-primary, #0d6efd);
+	/* Left accent bar, painted as a background-image layer so it sits over the
+	   highlight tint and survives box-shadow presets. */
+	:global(.demo-focused-bar) {
+		background-image: linear-gradient(var(--stv-primary, #0d6efd), var(--stv-primary, #0d6efd));
+		background-repeat: no-repeat;
+		background-size: 2px 100%;
 	}
 </style>

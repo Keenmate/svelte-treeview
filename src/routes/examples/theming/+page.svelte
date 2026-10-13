@@ -655,10 +655,11 @@
 				<tr class="section-row"><td colspan="3">Selection &amp; highlight states</td></tr>
 				<tr><td><code>--stv-highlight-bg</code></td><td><code>#cce8ff</code></td><td>Explorer-style highlight background</td></tr>
 				<tr><td><code>--stv-highlight-color</code></td><td><code>inherit</code></td><td>Highlight text color</td></tr>
-				<tr><td><code>--stv-highlighted-bg</code></td><td><code>color-mix(primary 12%, transparent)</code></td><td>Default highlight tint (multi-select)</td></tr>
+				<tr><td><code>--stv-highlighted-bg</code></td><td><code>var(--base-highlighted-bg) → primary 10%</code></td><td>Default highlight tint (multi-select)</td></tr>
 				<tr><td><code>--stv-highlight-ring-color</code></td><td><code>color-mix(primary 45%, transparent)</code></td><td>Hairline ring of the border / glow presets</td></tr>
-				<tr><td><code>--stv-focus-bar-width</code></td><td><code>2px</code></td><td>Default focus bar thickness (0 hides it)</td></tr>
-				<tr><td><code>--stv-focus-bar-color</code></td><td><code>var(--stv-primary)</code></td><td>Default focus bar color</td></tr>
+				<tr><td><code>--stv-highlighted-bg-hover</code> / <code>-color</code> / <code>-border</code></td><td><code>var(--base-highlighted-bg-hover / -text / -ring)</code></td><td>Highlighted row on hover, its text color, optional ring (outline shorthand)</td></tr>
+				<tr><td><code>--stv-focused-ring</code></td><td><code>var(--base-focused-ring) → 1px solid primary</code></td><td>Default focus ring, drawn inset (<code>none</code> hides it)</td></tr>
+				<tr><td><code>--stv-focused-bg</code> / <code>-color</code></td><td><code>var(--base-focused-bg / -text)</code></td><td>Focused row background (transparent) and text color</td></tr>
 				<tr><td><code>--stv-checkbox-gap</code></td><td><code>calc(0.6 * rem)</code></td><td>Space between checkbox and node row</td></tr>
 
 				<tr class="section-row"><td colspan="3">Drag / drop states</td></tr>

@@ -255,7 +255,7 @@
 
 	// Drop zone configuration (with localStorage persistence)
 	let dropZoneMode = $state<'floating' | 'glow'>('floating');
-	let dropZoneLayout = $state<'around' | 'above' | 'below' | 'wave' | 'wave2'>('wave');
+	let dropZoneLayout = $state<'around' | 'before' | 'after' | 'wave' | 'wave2'>('wave');
 	let dropZoneStart = $state<number | string>('50%');
 	let dropZoneMaxWidth = $state(120);
 
@@ -266,7 +266,7 @@
 			try {
 				const config = JSON.parse(saved);
 				if (config.mode) dropZoneMode = config.mode;
-				if (config.layout) dropZoneLayout = config.layout;
+				if (config.layout) dropZoneLayout = config.layout === 'above' ? 'before' : config.layout === 'below' ? 'after' : config.layout; // map pre-5.0 saved values
 				if (config.start !== undefined) dropZoneStart = config.start;
 				if (config.maxWidth !== undefined) dropZoneMaxWidth = config.maxWidth;
 			} catch (e) {
@@ -1190,8 +1190,8 @@
 						<div class="input-row">
 							<select bind:value={dropZoneLayout} style="flex: 1;">
 								<option value="around">Around</option>
-								<option value="above">Above</option>
-								<option value="below">Below</option>
+								<option value="before">Before</option>
+								<option value="after">After</option>
 								<option value="wave">Wave</option>
 								<option value="wave2">Wave2</option>
 							</select>

@@ -60,7 +60,7 @@
 }
 
 /* =============================================================================
-   LAYOUT: "around" — Above on top, Below/Child on bottom (default)
+   LAYOUT: "around" — Before on top, After/Child on bottom (default)
    ============================================================================= */
 .stv__drop-zones--around .stv__drop-zone--before {
 	top: 0;
@@ -93,106 +93,106 @@
 }
 
 /* =============================================================================
-   LAYOUT: "above" — All 3 zones in a row above the node
+   LAYOUT: "before" — All 3 zones in a row above (before) the node
    ============================================================================= */
-.stv__drop-zones--above .stv__drop-zone--before,
-.stv__drop-zones--above .stv__drop-zone--after,
-.stv__drop-zones--above .stv__drop-zone--child {
+.stv__drop-zones--before .stv__drop-zone--before,
+.stv__drop-zones--before .stv__drop-zone--after,
+.stv__drop-zones--before .stv__drop-zone--child {
 	top: 0;
 	transform: translateY(-100%);
 }
 
-.stv__drop-zones--above .stv__drop-zone--before {
+.stv__drop-zones--before .stv__drop-zone--before {
 	left: var(--drop-zone-start, 33%);
 	right: calc((100% - var(--drop-zone-start, 33%)) * 2 / 3);
 	border-radius: var(--stv-drop-zone-border-radius) 0 0 var(--stv-drop-zone-border-radius);
 }
 
-.stv__drop-zones--above .stv__drop-zone--after {
+.stv__drop-zones--before .stv__drop-zone--after {
 	left: calc(var(--drop-zone-start, 33%) + (100% - var(--drop-zone-start, 33%)) / 3);
 	right: calc((100% - var(--drop-zone-start, 33%)) / 3);
 	border-radius: 0;
 }
 
-.stv__drop-zones--above .stv__drop-zone--child {
+.stv__drop-zones--before .stv__drop-zone--child {
 	left: calc(var(--drop-zone-start, 33%) + (100% - var(--drop-zone-start, 33%)) * 2 / 3);
 	right: 0;
 	border-radius: 0 var(--stv-drop-zone-border-radius) var(--stv-drop-zone-border-radius) 0;
 }
 
 /* Horizontal expansion: when one or two zones are hidden, remaining zones fill */
-.stv__drop-zones--above:not(:has(.stv__drop-zone--child)) .stv__drop-zone--before,
-.stv__drop-zones--above:not(:has(.stv__drop-zone--after)) .stv__drop-zone--before,
-.stv__drop-zones--above:not(:has(.stv__drop-zone--before)) .stv__drop-zone--after {
+.stv__drop-zones--before:not(:has(.stv__drop-zone--child)) .stv__drop-zone--before,
+.stv__drop-zones--before:not(:has(.stv__drop-zone--after)) .stv__drop-zone--before,
+.stv__drop-zones--before:not(:has(.stv__drop-zone--before)) .stv__drop-zone--after {
 	left: var(--drop-zone-start, 33%);
 	right: calc((100% - var(--drop-zone-start, 33%)) / 2);
 	border-radius: var(--stv-drop-zone-border-radius) 0 0 var(--stv-drop-zone-border-radius);
 }
 
-.stv__drop-zones--above:not(:has(.stv__drop-zone--child)) .stv__drop-zone--after,
-.stv__drop-zones--above:not(:has(.stv__drop-zone--after)) .stv__drop-zone--child,
-.stv__drop-zones--above:not(:has(.stv__drop-zone--before)) .stv__drop-zone--child {
+.stv__drop-zones--before:not(:has(.stv__drop-zone--child)) .stv__drop-zone--after,
+.stv__drop-zones--before:not(:has(.stv__drop-zone--after)) .stv__drop-zone--child,
+.stv__drop-zones--before:not(:has(.stv__drop-zone--before)) .stv__drop-zone--child {
 	left: calc(var(--drop-zone-start, 33%) + (100% - var(--drop-zone-start, 33%)) / 2);
 	right: 0;
 	border-radius: 0 var(--stv-drop-zone-border-radius) var(--stv-drop-zone-border-radius) 0;
 }
 
-.stv__drop-zones--above:not(:has(.stv__drop-zone--after)):not(:has(.stv__drop-zone--child)) .stv__drop-zone--before,
-.stv__drop-zones--above:not(:has(.stv__drop-zone--before)):not(:has(.stv__drop-zone--child)) .stv__drop-zone--after,
-.stv__drop-zones--above:not(:has(.stv__drop-zone--before)):not(:has(.stv__drop-zone--after)) .stv__drop-zone--child {
+.stv__drop-zones--before:not(:has(.stv__drop-zone--after)):not(:has(.stv__drop-zone--child)) .stv__drop-zone--before,
+.stv__drop-zones--before:not(:has(.stv__drop-zone--before)):not(:has(.stv__drop-zone--child)) .stv__drop-zone--after,
+.stv__drop-zones--before:not(:has(.stv__drop-zone--before)):not(:has(.stv__drop-zone--after)) .stv__drop-zone--child {
 	left: var(--drop-zone-start, 33%);
 	right: 0;
 	border-radius: var(--stv-drop-zone-border-radius);
 }
 
 /* =============================================================================
-   LAYOUT: "below" — All 3 zones in a row below the node
+   LAYOUT: "after" — All 3 zones in a row below (after) the node
    ============================================================================= */
-.stv__drop-zones--below .stv__drop-zone--before,
-.stv__drop-zones--below .stv__drop-zone--after,
-.stv__drop-zones--below .stv__drop-zone--child {
+.stv__drop-zones--after .stv__drop-zone--before,
+.stv__drop-zones--after .stv__drop-zone--after,
+.stv__drop-zones--after .stv__drop-zone--child {
 	bottom: 0;
 	transform: translateY(100%);
 }
 
-.stv__drop-zones--below .stv__drop-zone--before {
+.stv__drop-zones--after .stv__drop-zone--before {
 	left: var(--drop-zone-start, 33%);
 	right: calc((100% - var(--drop-zone-start, 33%)) * 2 / 3);
 	border-radius: var(--stv-drop-zone-border-radius) 0 0 var(--stv-drop-zone-border-radius);
 }
 
-.stv__drop-zones--below .stv__drop-zone--after {
+.stv__drop-zones--after .stv__drop-zone--after {
 	left: calc(var(--drop-zone-start, 33%) + (100% - var(--drop-zone-start, 33%)) / 3);
 	right: calc((100% - var(--drop-zone-start, 33%)) / 3);
 	border-radius: 0;
 }
 
-.stv__drop-zones--below .stv__drop-zone--child {
+.stv__drop-zones--after .stv__drop-zone--child {
 	left: calc(var(--drop-zone-start, 33%) + (100% - var(--drop-zone-start, 33%)) * 2 / 3);
 	right: 0;
 	border-radius: 0 var(--stv-drop-zone-border-radius) var(--stv-drop-zone-border-radius) 0;
 }
 
 /* Horizontal expansion */
-.stv__drop-zones--below:not(:has(.stv__drop-zone--child)) .stv__drop-zone--before,
-.stv__drop-zones--below:not(:has(.stv__drop-zone--after)) .stv__drop-zone--before,
-.stv__drop-zones--below:not(:has(.stv__drop-zone--before)) .stv__drop-zone--after {
+.stv__drop-zones--after:not(:has(.stv__drop-zone--child)) .stv__drop-zone--before,
+.stv__drop-zones--after:not(:has(.stv__drop-zone--after)) .stv__drop-zone--before,
+.stv__drop-zones--after:not(:has(.stv__drop-zone--before)) .stv__drop-zone--after {
 	left: var(--drop-zone-start, 33%);
 	right: calc((100% - var(--drop-zone-start, 33%)) / 2);
 	border-radius: var(--stv-drop-zone-border-radius) 0 0 var(--stv-drop-zone-border-radius);
 }
 
-.stv__drop-zones--below:not(:has(.stv__drop-zone--child)) .stv__drop-zone--after,
-.stv__drop-zones--below:not(:has(.stv__drop-zone--after)) .stv__drop-zone--child,
-.stv__drop-zones--below:not(:has(.stv__drop-zone--before)) .stv__drop-zone--child {
+.stv__drop-zones--after:not(:has(.stv__drop-zone--child)) .stv__drop-zone--after,
+.stv__drop-zones--after:not(:has(.stv__drop-zone--after)) .stv__drop-zone--child,
+.stv__drop-zones--after:not(:has(.stv__drop-zone--before)) .stv__drop-zone--child {
 	left: calc(var(--drop-zone-start, 33%) + (100% - var(--drop-zone-start, 33%)) / 2);
 	right: 0;
 	border-radius: 0 var(--stv-drop-zone-border-radius) var(--stv-drop-zone-border-radius) 0;
 }
 
-.stv__drop-zones--below:not(:has(.stv__drop-zone--after)):not(:has(.stv__drop-zone--child)) .stv__drop-zone--before,
-.stv__drop-zones--below:not(:has(.stv__drop-zone--before)):not(:has(.stv__drop-zone--child)) .stv__drop-zone--after,
-.stv__drop-zones--below:not(:has(.stv__drop-zone--before)):not(:has(.stv__drop-zone--after)) .stv__drop-zone--child {
+.stv__drop-zones--after:not(:has(.stv__drop-zone--after)):not(:has(.stv__drop-zone--child)) .stv__drop-zone--before,
+.stv__drop-zones--after:not(:has(.stv__drop-zone--before)):not(:has(.stv__drop-zone--child)) .stv__drop-zone--after,
+.stv__drop-zones--after:not(:has(.stv__drop-zone--before)):not(:has(.stv__drop-zone--after)) .stv__drop-zone--child {
 	left: var(--drop-zone-start, 33%);
 	right: 0;
 	border-radius: var(--stv-drop-zone-border-radius);
@@ -233,7 +233,7 @@
 }
 
 /* =============================================================================
-   LAYOUT: "wave2" — Diagonal wave pattern (above/below offset 7% left, child centered)
+   LAYOUT: "wave2" — Diagonal wave pattern (before/after offset 7% left, child centered)
    ============================================================================= */
 .stv__drop-zones--wave2 .stv__drop-zone--before,
 .stv__drop-zones--wave2 .stv__drop-zone--after,

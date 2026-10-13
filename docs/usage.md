@@ -100,7 +100,7 @@ Without both requirements, no search indexing will occur.
 |------|------|---------|-------------|
 | `dragDropMode` | `DragDropMode` | `'none'` | Controls allowed drag operations: `'none'`, `'self'`, `'cross'`, `'both'` |
 | `dropZoneMode` | `string` | `'glow'` | Drop indicator style: `'floating'` or `'glow'` |
-| `dropZoneLayout` | `string` | `'around'` | Zone arrangement: `'around'`, `'above'`, `'below'`, `'wave'`, `'wave2'` |
+| `dropZoneLayout` | `string` | `'around'` | Zone arrangement: `'around'`, `'before'` (row above the node), `'after'` (row below the node), `'wave'`, `'wave2'` |
 | `dropZoneStart` | `number \| string` | `33` | Where zones start horizontally (number=%, string=CSS value) |
 | `dropZoneMaxWidth` | `number` | `120` | Max width in pixels for wave layouts |
 | `isCopyAllowed` | `boolean` | `false` | Enable Ctrl+drag to copy instead of move |

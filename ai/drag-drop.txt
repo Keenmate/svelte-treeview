@@ -70,8 +70,8 @@ DROP ZONE LAYOUTS (Floating Mode)
 
 Layout options:
 - 'around' - Before on top, After/Child on bottom
-- 'above' - All 3 zones in row above node
-- 'below' - All 3 zones in row below node
+- 'before' - All 3 zones in a row above (before) the node
+- 'after' - All 3 zones in a row below (after) the node
 - 'wave' - Stacked vertically
 - 'wave2' - Diagonal wave pattern
 
@@ -81,7 +81,7 @@ hidden zones auto-expand using CSS :not(:has()) rules:
 - 3 zones visible: normal thirds
 - 2 zones visible: each gets half the space
 - 1 zone visible: full width
-Works in 'around', 'above', and 'below' layouts.
+Works in 'around', 'before', and 'after' layouts.
 
 DROP POSITION RESTRICTIONS
 --------------------------
@@ -355,7 +355,7 @@ Copy operation class:
 
 Drop-zone classes (floating mode):
 - stv__drop-zone (--active --before --after --child) - individual zone
-- stv__drop-zones (--around --above --below --wave --wave2) - zone container
+- stv__drop-zones (--around --before --after --wave --wave2) - zone container
 
 Touch drag ghost:
 - stv__touch-ghost - element that follows the finger

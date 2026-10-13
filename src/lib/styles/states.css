@@ -4,10 +4,10 @@
 
 /* Markers applied automatically by Node.svelte. One visual CHANNEL per state so
    they layer instead of fighting:
-     • highlighted → background-color (soft tint)
-     • focused     → background-IMAGE (a thin left bar painted over the tint) — NOT
-                     box-shadow, so presets that use a box-shadow ring (border/glow)
-                     or the scroll flash can't erase it
+     • highlighted → background-color (soft tint, --base-highlighted-*)
+     • focused     → an INSET OUTLINE ring (--base-focused-*). Outline is its own
+                     paint channel, so presets that use a box-shadow ring
+                     (border/glow) or the scroll flash can't erase it
      • presets     → inset box-shadow hairline rings (no padding/border changes, so
                      the row never shifts and nothing bleeds onto neighbouring rows)
    `--highlighted` / `--focused-default` are FALLBACK looks: Node.svelte only adds
@@ -15,18 +15,26 @@
    pure hook, always present on the focused row. */
 .stv__node-content--highlighted {
 	background-color: var(--stv-highlighted-bg);
+	color: var(--stv-highlighted-text);
+	outline: var(--stv-highlighted-ring);
+	outline-offset: var(--stv-focused-outline-offset);
 }
 
 .stv__node-content--focused {
 	/* intentionally empty — pure hook, always present when focused */
 }
 
-/* Default focus look — set --stv-focus-bar-width: 0 to hide the bar but keep the hook. */
+/* Default focus look — a thin inset ring (matches web-multiselect's focused option).
+   Declared after --highlighted so on a focused + highlighted row the focus ring wins
+   over any selected-border outline, while the highlight tint stays. Set
+   --stv-focused-ring: none to hide the ring but keep the hook. */
 .stv__node-content--focused-default {
-	background-image: linear-gradient(var(--stv-focus-bar-color), var(--stv-focus-bar-color));
-	background-repeat: no-repeat;
-	background-position: left center;
-	background-size: var(--stv-focus-bar-width) 100%;
+	color: var(--stv-focused-text);
+	outline: var(--stv-focused-ring);
+	outline-offset: var(--stv-focused-outline-offset);
+}
+.stv__node-content--focused-default:not(.stv__node-content--highlighted) {
+	background-color: var(--stv-focused-bg);
 }
 
 .stv__node-content--highlight-bold {

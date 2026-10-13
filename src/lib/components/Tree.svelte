@@ -178,7 +178,7 @@
 		// DRAG AND DROP
 		dragDropMode?: DragDropMode;
 		dropZoneMode?: 'floating' | 'glow'; // 'floating' = original floating zones, 'glow' = border glow indicators
-		dropZoneLayout?: 'around' | 'above' | 'below' | 'wave' | 'wave2';
+		dropZoneLayout?: 'around' | 'before' | 'after' | 'wave' | 'wave2';
 		dropZoneStart?: number | string; // number = percentage (0-100), string = any CSS value ("33%", "50px", "3rem")
 		dropZoneMaxWidth?: number; // max width in pixels for wave layouts
 		/**
