@@ -199,6 +199,9 @@
 	   real clickable control; same #8f8f8f in both themes. */
 	--stv-checkbox-border-color: var(--base-checkbox-border-color, #8f8f8f);
 	--stv-checkbox-border-radius: calc(0.3 * var(--stv-rem));
+	/* Space between the checkbox and the node pill, so a highlight tint / focus bar /
+	   ring on .stv__node-content never butts against the box. */
+	--stv-checkbox-gap: calc(0.6 * var(--stv-rem));
 	--stv-checkbox-bg: var(--base-input-bg, light-dark(#ffffff, #1a1a1a));
 	--stv-checkbox-checked-bg: var(--stv-accent-color);
 	--stv-checkbox-checked-border-color: var(--stv-accent-color);
@@ -211,11 +214,21 @@
 
 	/* -------------------------------------------------------------------------
 	   SELECTION & HIGHLIGHT STATES
+
+	   One visual channel per state so they compose instead of fighting:
+	     • hover + selection-highlight → BACKGROUND (selection wins; hover suppressed
+	       under a highlighted row)
+	     • cursor-focus → BORDER EDGE: a thin INSET left accent bar (--focus-bar-*),
+	       painted inside the pill so it never spills onto neighbours / the scroll edge
+	     • checked → the CHECKBOX only; style checked rows via `selectedNodeClass`
 	   ------------------------------------------------------------------------- */
+	--stv-highlighted-bg: color-mix(in srgb, var(--stv-primary) 12%, transparent);
+	--stv-focus-bar-width: 2px;
+	--stv-focus-bar-color: var(--stv-primary);
 	--stv-highlight-bg: color-mix(in srgb, var(--stv-primary) 30%, transparent);
 	--stv-highlight-color: inherit;
-	--stv-multi-selected-bg: color-mix(in srgb, var(--stv-primary) 8%, transparent);
-	--stv-multi-selected-outline: color-mix(in srgb, var(--stv-primary) 25%, transparent);
+	/* Hairline ring used by the --highlight-border / --highlight-glow presets. */
+	--stv-highlight-ring-color: color-mix(in srgb, var(--stv-primary) 45%, transparent);
 
 	/* -------------------------------------------------------------------------
 	   DRAG / DROP — placeholder + dragover + ghost
@@ -230,7 +243,11 @@
 	--stv-drop-placeholder-hover-bg: color-mix(in srgb, var(--stv-primary) 28%, transparent);
 	--stv-drop-placeholder-hover-border-color: var(--stv-primary);
 	--stv-drop-placeholder-hover-shadow: 0 0 0 4px color-mix(in srgb, var(--stv-primary) 30%, transparent);
-	--stv-drop-placeholder-hover-scale: 1.015;
+	/* Defaults to 1 — a scale() on a container-width placeholder spills past both
+	   edges (~1.5% of the width) and surfaces as a horizontal scrollbar on any
+	   ancestor with overflow-x other than visible. The glow + solid border + bg
+	   already signal "engaged"; opt into a pop only if you control the overflow. */
+	--stv-drop-placeholder-hover-scale: 1;
 
 	/* Dragged source row (the dimmed node left in place while its ghost follows the pointer).
 	   Scale is anchored to the left edge (transform-origin in drag-drop.css) so a shrink

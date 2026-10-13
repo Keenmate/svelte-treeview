@@ -21,7 +21,7 @@
 	box-sizing: border-box;
 	flex-shrink: 0;
 	position: relative;
-	margin: 0 4px 0 0;
+	margin: 0;
 	cursor: pointer;
 	/* Box, border AND radius scaled via calc (shared --base-checkbox-scale
 	   contract) — NOT a CSS transform. calc keeps all three proportional without
@@ -33,6 +33,13 @@
 	border-radius: calc(var(--stv-checkbox-border-radius) * var(--stv-checkbox-scale));
 	background: var(--stv-checkbox-bg);
 	transition: background-color var(--stv-transition-fast) var(--stv-ease-standard), border-color var(--stv-transition-fast) var(--stv-ease-standard);
+}
+
+/* Gap between the box and the node pill lives on the PILL, not the <input>: input
+   margins get zeroed by common unlayered resets (Bootstrap reboot `input { margin: 0 }`,
+   Tailwind preflight), which beat this @layer component rule. A div margin survives. */
+.stv__checkbox ~ .stv__node-content {
+	margin-left: var(--stv-checkbox-gap, 6px);
 }
 
 /* Checkmark / dash — a currentColor-tinted mask following --stv-icon-check →

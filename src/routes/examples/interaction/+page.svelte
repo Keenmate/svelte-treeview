@@ -84,8 +84,10 @@
 		// Default this demo to multi so Ctrl/Shift+click work out of the box —
 		// the library default is 'single'.
 		selectionMode: 'multi',
-		highlightedNodeClass: 'stv__node-content--highlight-bold',
-		focusedNodeClass: 'demo-focused-outline',
+		// Empty → the built-in defaults show (soft background tint for selection,
+		// an inset left accent bar for focus). Pick a style below to swap them out.
+		highlightedNodeClass: '',
+		focusedNodeClass: '',
 		shouldShowCheckboxes: false,
 		checkboxMode: 'independent',
 		shouldClickToggleCheckbox: false,
@@ -121,6 +123,7 @@
 	}
 
 	const highlightedNodeClassOptions = [
+		{ value: '', label: 'Default (soft tint)' },
 		{ value: 'stv__node-content--highlight-bold', label: 'Bold' },
 		{ value: 'stv__node-content--highlight-border', label: 'Border' },
 		{ value: 'stv__node-content--highlight-brackets', label: 'Brackets' },
@@ -128,15 +131,15 @@
 		{ value: 'stv__node-content--highlight-glow', label: 'Glow (soft ring)' }
 	];
 
-	// Focused-style options are page-scoped demo classes (see the style block below).
-	// In production you'd define your own .my-focused class and pass it via the
-	// focusedNodeClass prop — there's no built-in default focus styling.
+	// Empty ('') = the built-in default focus look (an inset left accent bar). The
+	// rest are page-scoped demo classes (see the style block below) you'd define
+	// yourself and pass via focusedNodeClass to override the default.
 	const focusedNodeClassOptions = [
-		{ value: '', label: 'None (invisible focus)' },
-		{ value: 'demo-focused-outline', label: 'Outline (left-border)' },
+		{ value: '', label: 'Default (left bar)' },
 		{ value: 'demo-focused-underline', label: 'Underline' },
 		{ value: 'demo-focused-bg', label: 'Background tint' },
-		{ value: 'demo-focused-ring', label: 'Ring (full outline)' }
+		{ value: 'demo-focused-ring', label: 'Ring (inset)' },
+		{ value: 'demo-focus-none', label: 'None' }
 	];
 
 	// ── Click Behavior demo ──────────────────────────────────────────
@@ -149,6 +152,7 @@
 	let shouldClickToggleCheckbox = $state(saved.shouldClickToggleCheckbox);
 
 	// Three-level state
+	let clickTreeRef: Tree<Item>;
 	let focusedNode1 = $state<LTreeNode<Item> | null>(null);
 	let highlightedPaths1 = $state(new Set<string>());
 	let selectedPaths1 = $state(new Set<string>());
@@ -167,11 +171,8 @@
 
 	function onClickDemoNodeClick(_ctx: NodeRef<Item>) {}
 
-	// ── Multi-select demo ────────────────────────────────────────────
+	// ── Multi-select range mode (shared by the merged IN01 tree) ──────
 	let rangeSelectionMode = $state<'visual' | 'logical'>(saved.rangeSelectionMode);
-	let focusedNode2 = $state<LTreeNode<Item> | null>(null);
-	let highlightedPaths2 = $state(new Set<string>());
-	let selectedPaths2 = $state(new Set<string>());
 
 	// ── Cascade Checkboxes & Value Policy demo ───────────────────────
 	// Two orthogonal knobs: checkboxMode controls how checking a branch BEHAVES;
@@ -254,12 +255,17 @@
 		<RenderModeSwitch />
 	</header>
 
-	<!-- Click Behavior -->
+	<!-- Click Behavior & Multi-Select -->
 	<div class="card">
-		<h2>IN01 · Click Behavior</h2>
+		<h2>IN01 · Click Behavior &amp; Multi-Select</h2>
 		<p class="description">
-			The <code>clickBehavior</code> prop controls what happens when you click a node. Try switching
-			between modes and clicking nodes to see the difference.
+			The <code>clickBehavior</code> prop controls what happens when you click a node;
+			<code>selectionMode</code> decides whether Ctrl/Shift+click can extend the set. With
+			<code>selectionMode="multi"</code>, hold <kbd>Ctrl</kbd> (or <kbd>Cmd</kbd>) and click to toggle
+			individual nodes, hold <kbd>Shift</kbd> and click to select a range, and
+			<kbd>Shift+ArrowUp/Down</kbd> extends from the focused node. <code>rangeSelectionMode</code> controls
+			whether a range includes collapsed children. Pick a <strong>Highlighted Style</strong> below and
+			build up a set to see it on every row.
 		</p>
 
 		<div class="controls">
@@ -311,11 +317,24 @@
 					Click row toggles checkbox
 				</label>
 			{/if}
+			<label>
+				Range Selection Mode:
+				<select bind:value={rangeSelectionMode}>
+					<option value="visual">visual (only visible/expanded nodes)</option>
+					<option value="logical">logical (all nodes in tree order)</option>
+				</select>
+			</label>
+			<button
+				class="btn"
+				onclick={() => clickTreeRef?.setHighlightedPaths(['1.1.1', '1.1.3', '1.2.1'])}
+				>Highlight 1.1.1, 1.1.3, 1.2.1</button
+			>
 			<button
 				class="btn btn-secondary"
 				onclick={() => {
-					highlightedPaths1 = new Set();
-					selectedPaths1 = new Set();
+					clickTreeRef?.clearHighlight();
+					clickTreeRef?.clearSelection();
+					clickTreeRef?.clearFocus();
 				}}>Clear All</button
 			>
 		</div>
@@ -332,21 +351,28 @@
 				focused. After <kbd>Ctrl</kbd>+click (or Arrow over an unselectable row) the focused row can
 				have no highlight at all — that's when Focused Style alone shows.
 			</p>
+			<p>
+				<strong>Visual vs logical range</strong> — in <strong>visual</strong> mode, Shift+click selects
+				only the nodes you can see between the anchor and the clicked node. In <strong>logical</strong>
+				mode it selects all nodes in depth-first order, including children inside collapsed parents.
+			</p>
 		</div>
 
 		<div class="grid-2">
 			<div class="tree-container tree-container-tall">
 				<Tree
+					bind:this={clickTreeRef}
 					data={sampleData}
 					idMember="id"
 					pathMember="path"
 					sortCallback={sortByName}
 					isSorted={true}
-					expandLevel={2}
+					expandLevel={3}
 					{highlightedNodeClass}
 					{focusedNodeClass}
 					{clickBehavior}
 					{selectionMode}
+					{rangeSelectionMode}
 					{shouldShowCheckboxes}
 					{checkboxMode}
 					{shouldClickToggleCheckbox}
@@ -357,7 +383,7 @@
 					{...getTreeProps()}
 				>
 					{#snippet nodeTemplate(node: any)}
-						<span>{node.data?.icon} {node.data?.name}</span>
+						<span>{node.data?.icon} <span class="demo-node-name">{node.data?.name}</span></span>
 					{/snippet}
 				</Tree>
 			</div>
@@ -447,106 +473,9 @@
 		</div>
 	</div>
 
-	<!-- Multi-Select -->
-	<div class="card">
-		<h2>IN02 · Multi-Select</h2>
-		<p class="description">
-			Requires <code>selectionMode="multi"</code> (set above). Then hold <code>Ctrl</code> (or
-			<code>Cmd</code>) and click to toggle individual nodes, or hold <code>Shift</code> and click
-			to select a range. <code>Shift+ArrowUp/Down</code> extends the range from the focused node.
-			<code>Enter</code>
-			toggles the focused node in/out of the highlight set. Enable checkboxes for a click-friendly
-			variant. The <code>rangeSelectionMode</code>
-			prop controls whether range selection includes collapsed children.
-		</p>
-
-		<div class="controls">
-			<label>
-				Range Selection Mode:
-				<select bind:value={rangeSelectionMode}>
-					<option value="visual">visual (only visible/expanded nodes)</option>
-					<option value="logical">logical (all nodes in tree order)</option>
-				</select>
-			</label>
-			<button
-				class="btn btn-secondary"
-				onclick={() => {
-					highlightedPaths2 = new Set();
-					selectedPaths2 = new Set();
-				}}>Clear All</button
-			>
-		</div>
-
-		<div class="grid-2">
-			<div class="tree-container tree-container-tall">
-				<Tree
-					data={sampleData}
-					idMember="id"
-					pathMember="path"
-					sortCallback={sortByName}
-					isSorted={true}
-					expandLevel={3}
-					{highlightedNodeClass}
-					{focusedNodeClass}
-					{selectionMode}
-					{shouldShowCheckboxes}
-					{checkboxMode}
-					{rangeSelectionMode}
-					bind:focusedNode={focusedNode2}
-					bind:highlightedPaths={highlightedPaths2}
-					bind:selectedPaths={selectedPaths2}
-					{...getTreeProps()}
-				>
-					{#snippet nodeTemplate(node: any)}
-						<span>{node.data?.icon} {node.data?.name}</span>
-					{/snippet}
-				</Tree>
-			</div>
-			<div>
-				<div class="output">
-					<p class="output-label">Focused Node</p>
-					<pre>{focusedNode2
-							? `${focusedNode2.data?.icon} ${focusedNode2.data?.name} (${focusedNode2.path})`
-							: '(none)'}</pre>
-				</div>
-				<div class="output">
-					<p class="output-label">Highlighted ({highlightedPaths2.size})</p>
-					<pre>{highlightedPaths2.size > 0
-							? [...highlightedPaths2].join(', ')
-							: '(none — try Ctrl+click or Shift+click)'}</pre>
-				</div>
-				<div class="output">
-					<p class="output-label">Selected / Checked ({selectedPaths2.size})</p>
-					<pre>{selectedPaths2.size > 0
-							? [...selectedPaths2].join(', ')
-							: '(none — use checkboxes)'}</pre>
-				</div>
-			</div>
-		</div>
-
-		<div class="note">
-			<p class="note-title">Visual vs Logical</p>
-			<p>
-				In <strong>visual</strong> mode, Shift+click selects only the nodes you can see between the
-				anchor and the clicked node. In <strong>logical</strong> mode, it selects all nodes in depth-first
-				order — including children inside collapsed parents.
-			</p>
-		</div>
-
-		<div class="code-block">
-			<pre>{`<Tree
-  shouldShowCheckboxes={true}
-  rangeSelectionMode="${rangeSelectionMode}"
-  bind:highlightedPaths={selectedPaths}
-  onSelectionChange={({ paths, nodes }) => { ... }}
-  ...
-/>`}</pre>
-		</div>
-	</div>
-
 	<!-- Keyboard Navigation -->
 	<div class="card">
-		<h2>IN03 · Keyboard Navigation</h2>
+		<h2>IN02 · Keyboard Navigation</h2>
 		<p class="description">
 			Click a node to focus the tree, then use arrow keys to navigate. The tree supports full
 			keyboard control out of the box.
@@ -623,7 +552,7 @@ End    Go to last visible node
 
 	<!-- Cascade Checkboxes & Value Policy -->
 	<div class="card">
-		<h2>IN04 · Cascade Checkboxes &amp; Value Policy</h2>
+		<h2>IN03 · Cascade Checkboxes &amp; Value Policy</h2>
 		<p class="description">
 			Two orthogonal knobs. <code>checkboxMode</code> controls how checking a branch
 			<em>behaves</em>; <code>cascadeSelectPolicy</code> controls which paths the selection
@@ -708,7 +637,7 @@ End    Go to last visible node
 
 	<!-- Silent State Restore -->
 	<div class="card">
-		<h2>IN05 · Silent State Restore</h2>
+		<h2>IN04 · Silent State Restore</h2>
 		<p class="description">
 			Restore tree state from URL parameters <em>without</em> firing selection callbacks. You share a
 			link like <code>?nodePath=1.2.3</code>. The page loads form data from the URL, and the tree just
@@ -806,23 +735,25 @@ function restoreFromUrl(nodePath: string) {
 </div>
 
 <style>
-	/* Demo focus styles. The component itself ships no default for the focused
-	   row — applications define their own and pass via `focusedNodeClass`.
-	   These are :global so they apply to nodes rendered inside <Tree>. */
-	:global(.demo-focused-outline) {
-		box-shadow: inset 3px 0 0 0 var(--stv-primary, #0d6efd);
-	}
-	:global(.demo-focused-underline) {
+	/* Demo focus styles. The component ships a DEFAULT focus look (an inset left
+	   accent bar, shown when no focusedNodeClass is set); these are opt-in FLAVORS
+	   an app defines itself and passes via `focusedNodeClass` to override it.
+	   :global so they apply to nodes rendered inside <Tree>. */
+	/* .demo-focus-none needs no rule — passing ANY focusedNodeClass already
+	   suppresses the built-in focus bar. */
+	/* Underline the LABEL only (not the icon / emoji), dropped well clear of the
+	   descenders so it reads as a marker rather than a text link. */
+	:global(.demo-focused-underline .demo-node-name) {
 		text-decoration: underline;
 		text-decoration-color: var(--stv-primary, #0d6efd);
 		text-decoration-thickness: 2px;
-		text-underline-offset: 3px;
+		text-underline-offset: 0.4em;
+		text-decoration-skip-ink: none;
 	}
 	:global(.demo-focused-bg) {
 		background-color: color-mix(in srgb, var(--stv-primary, #0d6efd) 12%, transparent);
 	}
 	:global(.demo-focused-ring) {
-		box-shadow: 0 0 0 2px var(--stv-primary, #0d6efd);
-		border-radius: 4px;
+		box-shadow: inset 0 0 0 1px var(--stv-primary, #0d6efd);
 	}
 </style>

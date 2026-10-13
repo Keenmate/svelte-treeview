@@ -158,6 +158,70 @@ h1 {
     font-size: 0.875rem;
 }
 
+.controls-label {
+    font-weight: 600;
+    color: #4a5568;
+    margin-right: 0.25rem;
+}
+
+/* Labelled slider grid — a column of (name, range, value) rows for live CSS-var demos */
+.display-sliders {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.4rem 0.75rem;
+    margin: 0.5rem 0 0.75rem;
+    max-width: 480px;
+}
+
+.display-sliders label {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.8rem;
+    color: #4a5568;
+}
+
+.display-sliders input[type="range"] {
+    width: 100%;
+}
+
+.display-sliders output {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #2b6cb0;
+    min-width: 3.4em;
+    text-align: right;
+}
+
+/* CSS-variable readout chips — labelled name:value pills, with an is-gap accent */
+.css-readout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.75rem 0 1rem;
+}
+
+.css-readout code {
+    font-size: 0.8em;
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 0.15rem 0.5rem;
+}
+
+.css-readout-name {
+    color: #718096;
+}
+
+.css-readout-value {
+    color: #2b6cb0;
+    font-weight: 600;
+}
+
+.css-readout code.is-gap .css-readout-value {
+    color: #b7791f;
+}
+
 /* Demo areas */
 .demo-area {
     margin-bottom: 1.5rem;

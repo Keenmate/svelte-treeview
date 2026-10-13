@@ -2,6 +2,11 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
+		<!-- Pin cascade-layer order BEFORE any stylesheet loads: layer order is set by first
+		     declaration, and the library's main.css (JS import) otherwise registers its layers
+		     before examples-shared.css's `reset` — putting the `* { margin: 0 }` reset ABOVE
+		     the library and zeroing its margins. -->
+		<style>@layer reset, variables, component, overrides;</style>
 		<link rel="icon" href="%sveltekit.assets%/favicon.svg" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>Svelte Treeview v4 Showcase</title>

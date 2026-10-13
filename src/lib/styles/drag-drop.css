@@ -55,6 +55,10 @@
 
 /* Drop placeholder for empty trees */
 .stv__drop-placeholder {
+	/* border-box so the 2px dashed border is drawn INSIDE the width — otherwise a
+	   full-width placeholder + border overruns the container and can trigger a
+	   horizontal scrollbar on any ancestor with overflow-x other than visible. */
+	box-sizing: border-box;
 	border: 2px dashed var(--stv-primary) !important;
 	background-color: var(--stv-drop-placeholder-bg) !important;
 	border-radius: var(--stv-drop-placeholder-border-radius);

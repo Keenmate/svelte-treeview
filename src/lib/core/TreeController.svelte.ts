@@ -346,6 +346,7 @@ export interface NodeConfig {
 	shouldAlignNodeIcons: boolean;
 	highlightedNodeClass: string | null | undefined;
 	focusedNodeClass: string | null | undefined;
+	selectedNodeClass: string | null | undefined;
 	dragOverNodeClass: string | null | undefined;
 	draggedNodeClass: string | null | undefined;
 	// Every traveling path in the active drag. Each Node tests its own membership so the
@@ -594,6 +595,7 @@ export interface TreeControllerProps<T> {
 	bodyClass?: string | null | undefined;
 	highlightedNodeClass?: string | null | undefined;
 	focusedNodeClass?: string | null | undefined;
+	selectedNodeClass?: string | null | undefined;
 	nodeClass?: (node: LTreeNode<T>) => string | null | undefined;
 	nodeContentClass?: (node: LTreeNode<T>) => string | null | undefined;
 	dragOverNodeClass?: string | null | undefined;
@@ -647,6 +649,7 @@ export class TreeController<T> {
 		leafIconClass: 'stv__toggle-icon--leaf',
 		highlightedNodeClass: undefined,
 		focusedNodeClass: undefined,
+		selectedNodeClass: undefined,
 		nodeClass: undefined,
 		nodeContentClass: undefined,
 		dragOverNodeClass: undefined,
@@ -837,6 +840,7 @@ export class TreeController<T> {
 	shouldAlignNodeIcons = $state<boolean>(false);
 	highlightedNodeClass = $state<string | null | undefined>(undefined);
 	focusedNodeClass = $state<string | null | undefined>(undefined);
+	selectedNodeClass = $state<string | null | undefined>(undefined);
 	nodeClass = $state<((node: LTreeNode<any>) => string | null | undefined) | undefined>(undefined);
 	nodeContentClass = $state<((node: LTreeNode<any>) => string | null | undefined) | undefined>(
 		undefined
@@ -1074,6 +1078,7 @@ export class TreeController<T> {
 		this.shouldAlignNodeIcons = props.shouldAlignNodeIcons ?? false;
 		this.highlightedNodeClass = props.highlightedNodeClass;
 		this.focusedNodeClass = props.focusedNodeClass;
+		this.selectedNodeClass = props.selectedNodeClass;
 		this.nodeClass = props.nodeClass;
 		this.nodeContentClass = props.nodeContentClass;
 		this.dragOverNodeClass = props.dragOverNodeClass;
@@ -1217,6 +1222,7 @@ export class TreeController<T> {
 			shouldAlignNodeIcons: this.shouldAlignNodeIcons,
 			highlightedNodeClass: this.highlightedNodeClass,
 			focusedNodeClass: this.focusedNodeClass,
+			selectedNodeClass: this.selectedNodeClass,
 			nodeClass: this.nodeClass,
 			nodeContentClass: this.nodeContentClass,
 			dragOverNodeClass: this.dragOverNodeClass,
@@ -1267,6 +1273,7 @@ export class TreeController<T> {
 				shouldAlignNodeIcons: this.shouldAlignNodeIcons,
 				highlightedNodeClass: this.highlightedNodeClass,
 				focusedNodeClass: this.focusedNodeClass,
+				selectedNodeClass: this.selectedNodeClass,
 				nodeClass: this.nodeClass,
 				nodeContentClass: this.nodeContentClass,
 				dragOverNodeClass: this.dragOverNodeClass,
@@ -3273,6 +3280,7 @@ export class TreeController<T> {
 		if (updates.highlightedNodeClass !== undefined)
 			this.highlightedNodeClass = updates.highlightedNodeClass;
 		if (updates.focusedNodeClass !== undefined) this.focusedNodeClass = updates.focusedNodeClass;
+		if (updates.selectedNodeClass !== undefined) this.selectedNodeClass = updates.selectedNodeClass;
 		if (updates.nodeClass !== undefined) this.nodeClass = updates.nodeClass;
 		if (updates.nodeContentClass !== undefined) this.nodeContentClass = updates.nodeContentClass;
 		if (updates.dragOverNodeClass !== undefined) this.dragOverNodeClass = updates.dragOverNodeClass;

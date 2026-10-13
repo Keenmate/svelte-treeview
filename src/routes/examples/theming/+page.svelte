@@ -655,8 +655,11 @@
 				<tr class="section-row"><td colspan="3">Selection &amp; highlight states</td></tr>
 				<tr><td><code>--stv-highlight-bg</code></td><td><code>#cce8ff</code></td><td>Explorer-style highlight background</td></tr>
 				<tr><td><code>--stv-highlight-color</code></td><td><code>inherit</code></td><td>Highlight text color</td></tr>
-				<tr><td><code>--stv-multi-selected-bg</code></td><td><code>color-mix(primary 8%, transparent)</code></td><td>Multi-select tint</td></tr>
-				<tr><td><code>--stv-multi-selected-outline</code></td><td><code>color-mix(primary 25%, transparent)</code></td><td>Multi-select outline</td></tr>
+				<tr><td><code>--stv-highlighted-bg</code></td><td><code>color-mix(primary 12%, transparent)</code></td><td>Default highlight tint (multi-select)</td></tr>
+				<tr><td><code>--stv-highlight-ring-color</code></td><td><code>color-mix(primary 45%, transparent)</code></td><td>Hairline ring of the border / glow presets</td></tr>
+				<tr><td><code>--stv-focus-bar-width</code></td><td><code>2px</code></td><td>Default focus bar thickness (0 hides it)</td></tr>
+				<tr><td><code>--stv-focus-bar-color</code></td><td><code>var(--stv-primary)</code></td><td>Default focus bar color</td></tr>
+				<tr><td><code>--stv-checkbox-gap</code></td><td><code>calc(0.6 * rem)</code></td><td>Space between checkbox and node row</td></tr>
 
 				<tr class="section-row"><td colspan="3">Drag / drop states</td></tr>
 				<tr><td><code>--stv-dragover-bg</code></td><td><code>color-mix(primary 10%, transparent)</code></td><td>Drag-over background tint</td></tr>
@@ -1026,18 +1029,16 @@ wrapper.className = 'brand-${dynamicBrand}';
 
 	   The border uses var(--stv-primary) so the active brand theme is visible
 	   at rest (the library's accent normally only shows in interaction states).
-	   We also bump --stv-multi-selected-bg / outline locally so the pre-
-	   highlighted "Work" node reads strongly against either surface — the
-	   library defaults (8% bg, 25% outline) are intentionally subtle and don't
-	   make a great demo. */
+	   We also bump --stv-highlighted-bg locally so the pre-highlighted "Work"
+	   node reads strongly against either surface — the library default (12%)
+	   is intentionally subtle and doesn't make a great demo. */
 	.playground-tree {
 		border-radius: 6px;
 		padding: 0.5rem;
 		background: light-dark(#ffffff, #1a1a1a);
 		border: 2px solid var(--stv-primary);
 		transition: background 0.15s ease;
-		--stv-multi-selected-bg: color-mix(in srgb, var(--stv-primary) 18%, transparent);
-		--stv-multi-selected-outline: color-mix(in srgb, var(--stv-primary) 50%, transparent);
+		--stv-highlighted-bg: color-mix(in srgb, var(--stv-primary) 18%, transparent);
 	}
 	@media (prefers-color-scheme: dark) {
 		.playground-tree { background: #1a1a1a; }

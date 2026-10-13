@@ -2,25 +2,31 @@
    SELECTION / HIGHLIGHT / SCROLL STATES
    ============================================================================= */
 
-/* Markers applied automatically by Node.svelte from isHighlighted / isFocused.
-   `--highlighted` is a FALLBACK look: Node.svelte only adds this class when
-   `highlightedNodeClass` is NOT set, so it produces visible feedback out of the
-   box (e.g. selectionMode='multi') yet never fights a configured highlight class
-   — the moment you pass `highlightedNodeClass`, this marker is not applied at all.
-   `--focused` is a PURE HOOK (no default styles) — the demo's "Focused Style: None"
-   option promised no visual, but rc12 shipped a default outline anyway; the fix is
-   to honor the promise. Apps that want a built-in focus ring write their own rule
-   and pass the class via `focusedNodeClass` (see `/examples/interaction` source
-   for the `demo-focused-outline` recipe). */
+/* Markers applied automatically by Node.svelte. One visual CHANNEL per state so
+   they layer instead of fighting:
+     • highlighted → background-color (soft tint)
+     • focused     → background-IMAGE (a thin left bar painted over the tint) — NOT
+                     box-shadow, so presets that use a box-shadow ring (border/glow)
+                     or the scroll flash can't erase it
+     • presets     → inset box-shadow hairline rings (no padding/border changes, so
+                     the row never shifts and nothing bleeds onto neighbouring rows)
+   `--highlighted` / `--focused-default` are FALLBACK looks: Node.svelte only adds
+   them when highlightedNodeClass / focusedNodeClass is NOT set. `--focused` is a
+   pure hook, always present on the focused row. */
 .stv__node-content--highlighted {
-	background-color: var(--stv-highlighted-bg, color-mix(in srgb, var(--stv-primary) 10%, transparent));
-	outline: 1px solid var(--stv-highlighted-outline, color-mix(in srgb, var(--stv-primary) 25%, transparent));
-	outline-offset: -1px;
-	border-radius: var(--stv-node-content-border-radius);
+	background-color: var(--stv-highlighted-bg);
 }
 
 .stv__node-content--focused {
-	/* intentionally empty — pure CSS hook */
+	/* intentionally empty — pure hook, always present when focused */
+}
+
+/* Default focus look — set --stv-focus-bar-width: 0 to hide the bar but keep the hook. */
+.stv__node-content--focused-default {
+	background-image: linear-gradient(var(--stv-focus-bar-color), var(--stv-focus-bar-color));
+	background-repeat: no-repeat;
+	background-position: left center;
+	background-size: var(--stv-focus-bar-width) 100%;
 }
 
 .stv__node-content--highlight-bold {
@@ -28,11 +34,10 @@
 	color: var(--stv-primary) !important;
 }
 
+/* Hairline inset ring + soft tint. Inset box-shadow (not border) → no layout shift. */
 .stv__node-content--highlight-border {
-	border: 2px solid var(--stv-primary) !important;
-	border-radius: 4px !important;
-	background-color: color-mix(in srgb, var(--stv-primary) 10%, transparent) !important;
-	padding: 6px 10px !important;
+	background-color: var(--stv-highlighted-bg) !important;
+	box-shadow: inset 0 0 0 1px var(--stv-highlight-ring-color) !important;
 }
 
 .stv__node-content--highlight-fill {
@@ -40,21 +45,13 @@
 	color: var(--stv-highlight-color) !important;
 }
 
-/* Soft glow ring — a tinted background plus a primary-colored outer glow.
-   Reads as "active" without the hard edges of --highlight-border. */
+/* Soft ring — tint + an inset hairline + a faint INNER glow. Kept inside the pill so
+   it never spills onto neighbouring rows or clips at the scroll edge. */
 .stv__node-content--highlight-glow {
-	background-color: color-mix(in srgb, var(--stv-primary) 12%, transparent) !important;
+	background-color: var(--stv-highlighted-bg) !important;
 	box-shadow:
-		0 0 0 1px color-mix(in srgb, var(--stv-primary) 40%, transparent),
-		0 0 8px 1px color-mix(in srgb, var(--stv-primary) 35%, transparent) !important;
-	border-radius: 6px !important;
-}
-
-/* Multi-select: subtle highlight for all selected nodes (works with any highlightedNodeClass) */
-.stv__node-content--multi-selected {
-	background-color: var(--stv-multi-selected-bg) !important;
-	outline: 1px solid var(--stv-multi-selected-outline);
-	outline-offset: -1px;
+		inset 0 0 0 1px var(--stv-highlight-ring-color),
+		inset 0 0 6px 0 color-mix(in srgb, var(--stv-primary) 20%, transparent) !important;
 }
 
 .stv__node-content--highlight-brackets {
@@ -73,18 +70,6 @@
 	margin-left: 6px;
 	color: var(--stv-primary);
 	font-weight: bold;
-}
-
-/* Suppress brackets when checkboxes are shown (checkbox already indicates selection) */
-.stv__checkbox ~ .stv__node-content--highlight-brackets::before,
-.stv__checkbox ~ .stv__node-content--highlight-brackets::after {
-	content: none;
-}
-
-/* Fallback visual when brackets are suppressed — without this the highlight is invisible */
-.stv__checkbox ~ .stv__node-content--highlight-brackets {
-	font-weight: bold;
-	color: var(--stv-primary);
 }
 
 /* Scroll highlight (post-scrollToPath flash) */

@@ -75,6 +75,8 @@
 	const isCustomGlyph = $derived(expandIconClass !== 'stv__toggle-icon--expand');
 	const highlightedNodeClass = $derived(config.highlightedNodeClass);
 	const focusedNodeClass = $derived(config.focusedNodeClass);
+	// Opt-in class for checked (isSelected) rows — the checkbox is the default signal.
+	const selectedNodeClass = $derived(config.selectedNodeClass);
 	// When set, replaces the built-in .stv__node-content--dragged visual on the dimmed
 	// source row (see template). Mirrors highlightedNodeClass / focusedNodeClass.
 	const draggedNodeClass = $derived(config.draggedNodeClass);
@@ -479,9 +481,10 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
-			class="stv__node-content {node.isHighlighted ? highlightedNodeClass : ''} {node.isFocused && focusedNodeClass ? focusedNodeClass : ''} {isDraggedNode && draggedNodeClass ? draggedNodeClass : ''} {customNodeContentClass}"
+			class="stv__node-content {node.isHighlighted ? highlightedNodeClass : ''} {node.isFocused && focusedNodeClass ? focusedNodeClass : ''} {node.isSelected && selectedNodeClass ? selectedNodeClass : ''} {isDraggedNode && draggedNodeClass ? draggedNodeClass : ''} {customNodeContentClass}"
 			class:stv__node-content--highlighted={node.isHighlighted && !highlightedNodeClass}
 			class:stv__node-content--focused={node.isFocused}
+			class:stv__node-content--focused-default={node.isFocused && !focusedNodeClass}
 			class:stv__clickable={node.isSelectable}
 			class:stv__node-content--dragged={isDraggedNode && !draggedNodeClass}
 			class:stv__node-content--draggable={node?.isDraggable}

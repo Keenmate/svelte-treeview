@@ -121,8 +121,23 @@ export function tooltip(trigger: HTMLElement, initial: TooltipParams) {
 
 	const onMouseMove = (e: MouseEvent): void => {
 		cursorRect = new DOMRect(e.clientX, e.clientY, 0, 0);
-		position();
+		if (visible) position();
 	};
+
+	// Begin following the pointer the moment it ENTERS the trigger — seed the rect
+	// from the enter event and attach the move listener NOW, not in show(). show()
+	// runs after the show-delay (default 400ms); if the pointer is stationary during
+	// that window (the normal "hover to read" case) no mousemove fires, so cursorRect
+	// would still be undefined at show time and the virtual element falls back to the
+	// trigger's full-row rect → tooltip pins to the row's top-left (the "random"
+	// placement bug). Seeding here guarantees a cursor rect before the first position().
+	function startTrackingCursor(e: MouseEvent): void {
+		cursorRect = new DOMRect(e.clientX, e.clientY, 0, 0);
+		trigger.addEventListener('mousemove', onMouseMove);
+	}
+	function stopTrackingCursor(): void {
+		trigger.removeEventListener('mousemove', onMouseMove);
+	}
 
 	function clearTimers(): void {
 		if (showTimer) clearTimeout(showTimer);
@@ -144,7 +159,9 @@ export function tooltip(trigger: HTMLElement, initial: TooltipParams) {
 		// Mirrors web-multiselect portaling into its shadow root for the same reason.
 		const container = trigger.closest<HTMLElement>('.stv__container') ?? document.body;
 		container.appendChild(root);
-		if (params.followCursor) trigger.addEventListener('mousemove', onMouseMove);
+		// mousemove is already attached from the mouseenter handler for a pointer show;
+		// for a focus-triggered show there's no cursor, so follow-cursor correctly
+		// falls back to the trigger rect. (addEventListener is idempotent on same ref.)
 		const reference = params.followCursor ? cursorReference : trigger;
 		stopAutoUpdate = autoUpdate(reference as Element, root, position);
 		// Next frame so the transition (if any) runs from the hidden state.
@@ -153,9 +170,11 @@ export function tooltip(trigger: HTMLElement, initial: TooltipParams) {
 
 	function hide(): void {
 		clearTimers();
+		// Always detach cursor tracking — the listener may have been attached on
+		// mouseenter while the show-delay was still pending (never became visible).
+		stopTrackingCursor();
 		if (!visible) return;
 		visible = false;
-		if (params.followCursor) trigger.removeEventListener('mousemove', onMouseMove);
 		stopAutoUpdate?.();
 		stopAutoUpdate = undefined;
 		if (el) {
@@ -178,7 +197,12 @@ export function tooltip(trigger: HTMLElement, initial: TooltipParams) {
 		else hide();
 	}
 
-	trigger.addEventListener('mouseenter', scheduleShow);
+	const onMouseEnter = (e: MouseEvent): void => {
+		if (params.followCursor) startTrackingCursor(e);
+		scheduleShow();
+	};
+
+	trigger.addEventListener('mouseenter', onMouseEnter);
 	trigger.addEventListener('mouseleave', scheduleHide);
 	trigger.addEventListener('focusin', scheduleShow);
 	trigger.addEventListener('focusout', scheduleHide);
@@ -195,7 +219,7 @@ export function tooltip(trigger: HTMLElement, initial: TooltipParams) {
 			}
 		},
 		destroy() {
-			trigger.removeEventListener('mouseenter', scheduleShow);
+			trigger.removeEventListener('mouseenter', onMouseEnter);
 			trigger.removeEventListener('mouseleave', scheduleHide);
 			trigger.removeEventListener('focusin', scheduleShow);
 			trigger.removeEventListener('focusout', scheduleHide);

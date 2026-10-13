@@ -313,6 +313,9 @@
 		bodyClass?: string | null | undefined;
 		highlightedNodeClass?: string | null | undefined;
 		focusedNodeClass?: string | null | undefined;
+		/** CSS class applied to every checked (isSelected) node — opt-in extra styling;
+		 *  the checkbox is the default signal. */
+		selectedNodeClass?: string | null | undefined;
 		/** Data-driven per-row class hook. Return extra class(es) for `.stv__node`. */
 		nodeClass?: (node: LTreeNode<T>) => string | null | undefined;
 		/** Data-driven per-row class hook. Return extra class(es) for `.stv__node-content`. */
@@ -553,6 +556,7 @@
 		icon,
 		highlightedNodeClass,
 		focusedNodeClass,
+		selectedNodeClass,
 		nodeClass,
 		nodeContentClass,
 		dragOverNodeClass,
@@ -673,6 +677,7 @@
 		bodyClass,
 		highlightedNodeClass,
 		focusedNodeClass,
+		selectedNodeClass,
 		nodeClass,
 		nodeContentClass,
 		dragOverNodeClass,
@@ -983,6 +988,9 @@
 	});
 	$effect(() => {
 		controller.focusedNodeClass = focusedNodeClass;
+	});
+	$effect(() => {
+		controller.selectedNodeClass = selectedNodeClass;
 	});
 	$effect(() => {
 		controller.dragOverNodeClass = dragOverNodeClass;
@@ -1504,6 +1512,7 @@
 				| 'nodeClass'
 				| 'nodeContentClass'
 				| 'focusedNodeClass'
+				| 'selectedNodeClass'
 				| 'dragOverNodeClass'
 				| 'draggedNodeClass'
 				| 'scrollHighlightTimeout'
@@ -1655,6 +1664,7 @@
 		if (updates.nodeClass !== undefined) nodeClass = updates.nodeClass;
 		if (updates.nodeContentClass !== undefined) nodeContentClass = updates.nodeContentClass;
 		if (updates.focusedNodeClass !== undefined) focusedNodeClass = updates.focusedNodeClass;
+		if (updates.selectedNodeClass !== undefined) selectedNodeClass = updates.selectedNodeClass;
 		if (updates.dragOverNodeClass !== undefined) dragOverNodeClass = updates.dragOverNodeClass;
 		if (updates.draggedNodeClass !== undefined) draggedNodeClass = updates.draggedNodeClass;
 		if (updates.scrollHighlightTimeout !== undefined)

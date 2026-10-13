@@ -39,6 +39,11 @@
 .stv__node-content:hover {
 	background-color: var(--stv-node-hover-bg);
 }
+/* Hover and selection share the BACKGROUND channel — a highlighted row keeps its
+   stronger selection tint on hover so the two never stack. */
+.stv__node-content--highlighted:hover {
+	background-color: var(--stv-highlighted-bg);
+}
 
 .stv__clickable {
 	cursor: pointer;
