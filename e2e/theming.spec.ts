@@ -5,8 +5,8 @@ import { test, expect, Page, Locator } from '@playwright/test';
  * the scenarios differ only in WHICH dark-mode signal is applied. The Debug
  * theme's colors are stark on purpose:
  *
- *   Light: --base-main-bg = #dc2626 (red),  --base-accent-color = #fbbf24 (yellow)
- *   Dark:  --base-main-bg = #16a34a (green), --base-accent-color = #06b6d4 (cyan)
+ *   Light: --base-main-bg = #dc2626 (red),  --base-primary-color = #fbbf24 (yellow)
+ *   Dark:  --base-main-bg = #16a34a (green), --base-primary-color = #06b6d4 (cyan)
  *
  * A green tree surface under a dark-signal scenario proves the brand theme's
  * dark variant reaches the tree's --stv-bg. A red surface proves the light

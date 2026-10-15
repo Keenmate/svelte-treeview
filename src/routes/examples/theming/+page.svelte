@@ -604,7 +604,7 @@
 				<tr><td><code>--stv-rem</code></td><td><code>10px</code></td><td>Base unit multiplied into every size/spacing value. Set to <code>12px</code> for 20% scale, or to <code>1rem</code> to follow document font-size.</td></tr>
 
 				<tr class="section-row"><td colspan="3">Colors</td></tr>
-				<tr><td><code>--stv-primary</code></td><td><code>var(--base-accent-color, #0d6efd)</code></td><td>Primary color (selection, highlights). Tints derived via <code>color-mix()</code>.</td></tr>
+				<tr><td><code>--stv-primary</code></td><td><code>var(--base-primary-color, #0d6efd)</code></td><td>Primary color (selection, highlights). Tints derived via <code>color-mix()</code>.</td></tr>
 				<tr><td><code>--stv-success</code></td><td><code>var(--base-success-color, #198754)</code></td><td>Success color (valid drop targets)</td></tr>
 				<tr><td><code>--stv-danger</code></td><td><code>var(--base-danger-color, #dc3545)</code></td><td>Danger color (invalid drops)</td></tr>
 				<tr><td><code>--stv-light</code></td><td><code>var(--base-main-bg, #f8f9fa)</code></td><td>Light background</td></tr>
@@ -647,7 +647,7 @@
 				<tr><td><code>--stv-checkbox-bg</code></td><td><code>var(--base-input-bg, #fff)</code></td><td>Unchecked background</td></tr>
 				<tr><td><code>--stv-checkbox-checked-bg</code></td><td><code>var(--stv-primary)</code></td><td>Checked / indeterminate background</td></tr>
 				<tr><td><code>--stv-checkbox-checked-border-color</code></td><td><code>var(--stv-primary)</code></td><td>Checked / indeterminate border</td></tr>
-				<tr><td><code>--stv-checkbox-checkmark-color</code></td><td><code>var(--base-text-color-on-accent, #fff)</code></td><td>Tick / dash color</td></tr>
+				<tr><td><code>--stv-checkbox-checkmark-color</code></td><td><code>var(--base-on-primary-text-color, #fff)</code></td><td>Tick / dash color</td></tr>
 				<tr><td><code>--stv-checkbox-focus-ring-width</code></td><td><code>2px</code></td><td>Focus-visible ring thickness</td></tr>
 				<tr><td><code>--stv-checkbox-focus-ring-color</code></td><td><code>color-mix(primary 25%, transparent)</code></td><td>Focus-visible ring color</td></tr>
 				<tr><td><code>--stv-checkbox-focus-ring</code></td><td><code>0 0 0 [ring-width] [ring-color]</code></td><td>Composed box-shadow; override directly for full control, or tune the two parts above</td></tr>
@@ -658,7 +658,7 @@
 				<tr><td><code>--stv-highlighted-bg</code></td><td><code>var(--base-highlighted-bg) → primary 10%</code></td><td>Default highlight tint (multi-select)</td></tr>
 				<tr><td><code>--stv-highlight-ring-color</code></td><td><code>color-mix(primary 45%, transparent)</code></td><td>Hairline ring of the border / glow presets</td></tr>
 				<tr><td><code>--stv-highlighted-bg-hover</code> / <code>-color</code> / <code>-border</code></td><td><code>var(--base-highlighted-bg-hover / -text / -ring)</code></td><td>Highlighted row on hover, its text color, optional ring (outline shorthand)</td></tr>
-				<tr><td><code>--stv-focused-ring</code></td><td><code>var(--base-focused-ring) → 1px solid primary</code></td><td>Default focus ring, drawn inset (<code>none</code> hides it)</td></tr>
+				<tr><td><code>--stv-focused-ring</code></td><td><code>var(--base-focused-outline) → 1px solid primary</code></td><td>Default focus ring, drawn inset (<code>none</code> hides it)</td></tr>
 				<tr><td><code>--stv-focused-bg</code> / <code>-color</code></td><td><code>var(--base-focused-bg / -text)</code></td><td>Focused row background (transparent) and text color</td></tr>
 				<tr><td><code>--stv-checkbox-gap</code></td><td><code>calc(0.6 * rem)</code></td><td>Space between checkbox and node row</td></tr>
 
@@ -759,7 +759,7 @@
    that the component multiplies by its own --*-rem unit. */
 :root {
   /* Colors — direct values; tints derived via color-mix() */
-  --base-accent-color: #10b981;
+  --base-primary-color: #10b981;
   --base-text-color-1: #111827;
   --base-text-color-3: #6b7280;
   --base-text-color-4: #9ca3af;
@@ -899,17 +899,17 @@ wrapper.className = 'brand-${dynamicBrand}';
 </div>
 
 <style>
-	/* Purple theme — sets --base-accent-color on the wrapper. The tree's
+	/* Purple theme — sets --base-primary-color on the wrapper. The tree's
 	   .stv__container inherits it and re-substitutes --stv-primary on its
 	   own scope; every primary-derived tint (hover, multi-select, dragover,
 	   focus ring) follows via color-mix(). */
 	.purple-theme {
-		--base-accent-color: #667eea;
+		--base-primary-color: #667eea;
 	}
 
 	/* Green theme */
 	.green-theme {
-		--base-accent-color: #10b981;
+		--base-primary-color: #10b981;
 	}
 
 	/* Dark theme card — the tree flips via theme="dark"; the card just paints a
@@ -1071,7 +1071,7 @@ wrapper.className = 'brand-${dynamicBrand}';
 	   web-multiselect's examples-theming.html — each theme is a full visual
 	   identity, not just an accent swap. */
 
-	/* === Default — no overrides; relies on --base-accent-color default (#0d6efd). */
+	/* === Default — no overrides; relies on --base-primary-color default (#0d6efd). */
 
 	/* === Material — soft shadows, calm blue accent.
 	   Light: light blue + lavender gradient, dark slate text.
@@ -1088,7 +1088,7 @@ wrapper.className = 'brand-${dynamicBrand}';
 	   can't sit inside light-dark()). The explicit attribute / :has() selectors
 	   catch framework class on the wrapper and per-instance theme on the tree. */
 	:global(.playground-wrapper.brand-material) {
-		--base-accent-color: light-dark(#1976d2, #64b5f6);
+		--base-primary-color: light-dark(#1976d2, #64b5f6);
 		--base-border-radius-sm: 0.4;
 		--base-text-color-1: light-dark(#212121, #e3f2fd);
 		--base-text-color-3: light-dark(#757575, #90caf9);
@@ -1128,7 +1128,7 @@ wrapper.className = 'brand-${dynamicBrand}';
 	:global(.playground-wrapper.brand-material[data-bs-theme="dark"]),
 	:global(.playground-wrapper.brand-material.dark),
 	:global(.playground-wrapper.brand-material:has(.stv__container[data-theme="dark"])) {
-		--base-accent-color: #64b5f6;
+		--base-primary-color: #64b5f6;
 		--base-text-color-1: #e3f2fd;
 		--base-text-color-3: #90caf9;
 		--base-border-color: #3949ab;
@@ -1149,7 +1149,7 @@ wrapper.className = 'brand-${dynamicBrand}';
 	   glowing borders. Intrinsically dark in both modes — its identity is dark.
 	   :global() escapes Svelte's CSS scoper (matches the other themes). */
 	:global(.playground-wrapper.brand-neon) {
-		--base-accent-color: #ff00ff;
+		--base-primary-color: #ff00ff;
 		--base-main-bg: #1a0a1a;
 		--base-elevated-bg: #2a1a2a;
 		--base-input-bg: #1a0a1a;
@@ -1173,7 +1173,7 @@ wrapper.className = 'brand-${dynamicBrand}';
 	   Light: black-on-white.
 	   Dark: white-on-black (full inversion — same brutalist DNA, opposite ink). */
 	:global(.playground-wrapper.brand-sharp) {
-		--base-accent-color: light-dark(#000000, #ffffff);
+		--base-primary-color: light-dark(#000000, #ffffff);
 		--base-text-color-1: light-dark(#000000, #ffffff);
 		--base-text-color-3: light-dark(#333333, #cccccc);
 		--base-border-color: light-dark(#000000, #ffffff);
@@ -1207,7 +1207,7 @@ wrapper.className = 'brand-${dynamicBrand}';
 	:global(.playground-wrapper.brand-sharp[data-bs-theme="dark"]),
 	:global(.playground-wrapper.brand-sharp.dark),
 	:global(.playground-wrapper.brand-sharp:has(.stv__container[data-theme="dark"])) {
-		--base-accent-color: #ffffff;
+		--base-primary-color: #ffffff;
 		--base-text-color-1: #ffffff;
 		--base-text-color-3: #cccccc;
 		--base-main-bg: #000000;
@@ -1229,7 +1229,7 @@ wrapper.className = 'brand-${dynamicBrand}';
 	   Light: peach + apricot gradient, pink accent, earth-tone text.
 	   Dark: deep wine/burgundy gradient, dusty rose accent, pale rose text. */
 	:global(.playground-wrapper.brand-soft) {
-		--base-accent-color: light-dark(#ff6b9d, #e88aa8);
+		--base-primary-color: light-dark(#ff6b9d, #e88aa8);
 		--base-text-color-1: light-dark(#5a3e36, #f5d4dc);
 		--base-text-color-3: light-dark(#8a6f6a, #c8a0ad);
 		--base-border-color: light-dark(#f0d0c0, #5a3a45);
@@ -1261,7 +1261,7 @@ wrapper.className = 'brand-${dynamicBrand}';
 	:global(.playground-wrapper.brand-soft[data-bs-theme="dark"]),
 	:global(.playground-wrapper.brand-soft.dark),
 	:global(.playground-wrapper.brand-soft:has(.stv__container[data-theme="dark"])) {
-		--base-accent-color: #e88aa8;
+		--base-primary-color: #e88aa8;
 		--base-text-color-1: #f5d4dc;
 		--base-text-color-3: #c8a0ad;
 		--base-border-color: #5a3a45;
@@ -1283,7 +1283,7 @@ wrapper.className = 'brand-${dynamicBrand}';
 	   Light: warm cream surface, deep forest text, dark green accent.
 	   Dark: deep forest surface, pale mint text, brighter green accent. */
 	:global(.playground-wrapper.brand-forest) {
-		--base-accent-color: light-dark(#2d6a4f, #74c69d);
+		--base-primary-color: light-dark(#2d6a4f, #74c69d);
 		--base-main-bg: light-dark(#f0ebe0, #1b2e23);
 		--base-elevated-bg: light-dark(#e8e1d0, #2d4a3a);
 		--base-text-color-1: light-dark(#1b4332, #d8f3dc);
@@ -1315,7 +1315,7 @@ wrapper.className = 'brand-${dynamicBrand}';
 	:global(.playground-wrapper.brand-forest[data-bs-theme="dark"]),
 	:global(.playground-wrapper.brand-forest.dark),
 	:global(.playground-wrapper.brand-forest:has(.stv__container[data-theme="dark"])) {
-		--base-accent-color: #74c69d;
+		--base-primary-color: #74c69d;
 		--base-main-bg: #1b2e23;
 		--base-elevated-bg: #2d4a3a;
 		--base-text-color-1: #d8f3dc;
@@ -1339,7 +1339,7 @@ wrapper.className = 'brand-${dynamicBrand}';
 	   Dark: deep midnight gradient with the same translucent palette — same
 	   glass feel, dramatically deeper backdrop. */
 	:global(.playground-wrapper.brand-glass) {
-		--base-accent-color: #ffffff;
+		--base-primary-color: #ffffff;
 		--base-main-bg: rgba(255, 255, 255, 0.15);
 		--base-elevated-bg: rgba(255, 255, 255, 0.2);
 		--base-input-bg: rgba(255, 255, 255, 0.15);

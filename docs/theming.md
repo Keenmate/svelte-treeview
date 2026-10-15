@@ -7,7 +7,7 @@
 
 ## Where variables live
 
-All `--stv-*` declarations are scoped to **`.stv__container`** (the tree's root element), not `:root`. This mirrors web-multiselect's `:host`-scoped pattern: `var()` substitution happens AT the tree's own element, so an ancestor that sets a `--base-*` token actually re-tints the tree. A wrapper around the tree that sets `--base-accent-color: red` re-tints **that** tree (multiple trees on the same page can be themed independently via wrapper-scoped `--base-*` overrides).
+All `--stv-*` declarations are scoped to **`.stv__container`** (the tree's root element), not `:root`. This mirrors web-multiselect's `:host`-scoped pattern: `var()` substitution happens AT the tree's own element, so an ancestor that sets a `--base-*` token actually re-tints the tree. A wrapper around the tree that sets `--base-primary-color: red` re-tints **that** tree (multiple trees on the same page can be themed independently via wrapper-scoped `--base-*` overrides).
 
 Setting `--stv-*` directly on a wrapper does NOT cascade (because `.stv__container` has its own direct rule for every `--stv-*` token). To theme a subtree, prefer `--base-*` on the wrapper, or write `.wrapper .stv__container { --stv-* }`.
 
@@ -16,7 +16,7 @@ Setting `--stv-*` directly on a wrapper does NOT cascade (because `.stv__contain
 ```css
 /* Override --base-* tokens to re-tint every @keenmate/* component on the page */
 :root {
-  --base-accent-color: #6366f1;
+  --base-primary-color: #6366f1;
   --base-font-family: 'Inter', system-ui, sans-serif;
   --base-border-radius-sm: 0.4;  /* unitless multiplier (× --stv-rem) */
 }

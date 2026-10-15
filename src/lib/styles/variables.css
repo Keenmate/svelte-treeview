@@ -7,7 +7,7 @@
    IMPORTANT: declarations are on .stv__container (the tree's root element),
    NOT on :root. This mirrors web-multiselect's :host-scoped pattern: var()
    substitution happens AT the tree's own element, so an ancestor that sets
-   --base-accent-color (or any --base-*) actually re-tints the tree. Declaring
+   --base-primary-color (or any --base-*) actually re-tints the tree. Declaring
    at :root would freeze the substituted value at the document root and ignore
    any wrapper overrides.
 
@@ -15,7 +15,7 @@
      1. Consumer rule targeting .stv__container directly:
           .my-wrap .stv__container { --stv-primary: red; }
      2. Consumer's --base-* set on any ancestor (including :root or a wrapper):
-          .my-wrap { --base-accent-color: red; }
+          .my-wrap { --base-primary-color: red; }
      3. Hardcoded fallback inside the var() chain below.
 
    Setting --stv-* on a wrapper (not on .stv__container itself) no longer
@@ -54,10 +54,10 @@
 	   soft gray wash; the accent is reserved for SELECTION (highlight / checked /
 	   drop) so the two never read the same.
 
-	   ACCENT — brand hue + hover/active steps (--base-accent-color contract). */
-	--stv-accent-color: var(--base-accent-color, #3b82f6);
-	--stv-accent-color-hover: var(--base-accent-color-hover, #2563eb);
-	--stv-accent-color-active: var(--base-accent-color-active, #1d4ed8);
+	   ACCENT — brand hue + hover/active steps (--base-primary-color contract). */
+	--stv-accent-color: var(--base-primary-color, #3b82f6);
+	--stv-accent-color-hover: var(--base-primary-color-hover, #2563eb);
+	--stv-accent-color-active: var(--base-primary-color-active, #1d4ed8);
 
 	/* TEXT HIERARCHY (FluentUI-style) — fallbacks match ms exactly so
 	   heading/body/secondary/muted keep the same relative contrast steps. */
@@ -65,7 +65,7 @@
 	--stv-text-color-2: var(--base-text-color-2, light-dark(#353b47, #d4d4d4));
 	--stv-text-color-3: var(--base-text-color-3, light-dark(#6b7280, #a3a3a3));
 	--stv-text-color-4: var(--base-text-color-4, light-dark(#a0a3a9, #737373));
-	--stv-text-color-on-accent: var(--base-text-color-on-accent, #ffffff);
+	--stv-text-color-on-accent: var(--base-on-primary-text-color, #ffffff);
 
 	/* STATUS — the hue itself (pure-admin canonical: `base-*-color` = the status
 	   colour; `base-text-on-*` is the on-surface text). */
@@ -228,14 +228,14 @@
 	   ------------------------------------------------------------------------- */
 	--stv-highlighted-bg: var(--base-highlighted-bg, color-mix(in srgb, var(--stv-primary) 10%, transparent));
 	--stv-highlighted-bg-hover: var(--base-highlighted-bg-hover, var(--stv-highlighted-bg));
-	--stv-highlighted-text: var(--base-highlighted-text, currentColor);
-	--stv-highlighted-ring: var(--base-highlighted-ring, none);
+	--stv-highlighted-text: var(--base-highlighted-text-color, currentColor);
+	--stv-highlighted-ring: var(--base-highlighted-outline, none);
 	--stv-focused-bg: var(--base-focused-bg, transparent);
-	--stv-focused-text: var(--base-focused-text, currentColor);
-	--stv-focused-ring: var(--base-focused-ring, var(--base-ring-width, 1px) solid var(--stv-primary));
+	--stv-focused-text: var(--base-focused-text-color, currentColor);
+	--stv-focused-ring: var(--base-focused-outline, var(--base-outline-width, 1px) solid var(--stv-primary));
 	/* Keep = −(ring width) so the ring stays inside the row. Follows
-	   --base-ring-width; thicken the ring there, not inside the shorthand. */
-	--stv-focused-outline-offset: calc(-1 * var(--base-ring-width, 1px));
+	   --base-outline-width; thicken the ring there, not inside the shorthand. */
+	--stv-focused-outline-offset: calc(-1 * var(--base-outline-width, 1px));
 	--stv-highlight-bg: color-mix(in srgb, var(--stv-primary) 30%, transparent);
 	--stv-highlight-color: inherit;
 	/* Hairline ring used by the --highlight-border / --highlight-glow presets. */
@@ -316,7 +316,7 @@
 	   Same --base-tooltip-* chain + defaults as web-multiselect's option tooltip,
 	   so one shared theme renders both components' tooltips identically.
 	   ------------------------------------------------------------------------- */
-	--stv-tooltip-bg: var(--base-tooltip-bg, var(--base-inverse-bg, light-dark(#333333, #f5f5f5)));
+	--stv-tooltip-bg: var(--base-tooltip-bg, light-dark(#333333, #f5f5f5));
 	--stv-tooltip-color: var(--base-tooltip-text-color, light-dark(#ffffff, #1a1a1a));
 	--stv-tooltip-padding: calc(0.8 * var(--stv-rem)) calc(1.2 * var(--stv-rem));
 	--stv-tooltip-border-radius: calc(var(--base-border-radius-lg, 0.8) * var(--stv-rem));

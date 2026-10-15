@@ -253,7 +253,7 @@
 
 	:global(.wrapper.brand-debug) {
 		/* Approach (1): light-dark() — catches signals #1 (OS) and #3 (page scheme). */
-		--base-accent-color: light-dark(#fbbf24, #06b6d4);
+		--base-primary-color: light-dark(#fbbf24, #06b6d4);
 		--base-main-bg: light-dark(#dc2626, #16a34a);
 		--base-elevated-bg: light-dark(#ef4444, #22c55e);
 		--base-input-bg: light-dark(#dc2626, #16a34a);
@@ -269,7 +269,7 @@
 	   so this @media block forces the dark palette when the OS prefers dark. */
 	@media (prefers-color-scheme: dark) {
 		:global(.wrapper.brand-debug) {
-			--base-accent-color: #06b6d4;
+			--base-primary-color: #06b6d4;
 			--base-main-bg: #16a34a;
 			--base-elevated-bg: #22c55e;
 			--base-input-bg: #16a34a;
@@ -292,7 +292,7 @@
 	:global([data-bs-theme="dark"] .wrapper.brand-debug),
 	:global(.dark .wrapper.brand-debug),
 	:global(.wrapper.brand-debug:has(.stv__container[data-theme="dark"])) {
-		--base-accent-color: #06b6d4;
+		--base-primary-color: #06b6d4;
 		--base-main-bg: #16a34a;
 		--base-elevated-bg: #22c55e;
 		--base-input-bg: #16a34a;

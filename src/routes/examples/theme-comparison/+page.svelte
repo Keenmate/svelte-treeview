@@ -459,8 +459,8 @@
 		font-size: 0.7rem;
 		padding: 0.1rem 0.45rem;
 		border-radius: 999px;
-		color: var(--base-text-color-on-accent, #fff);
-		background: var(--base-accent-color, #3b82f6);
+		color: var(--base-on-primary-text-color, #fff);
+		background: var(--base-primary-color, #3b82f6);
 	}
 
 	.panel-body {
@@ -487,7 +487,7 @@
 	}
 
 	/* Custom nodeTemplate row: icon + label + themed folder-count badge. The badge
-	   reads --base-accent-color(-light) so it retints with the selected theme. */
+	   reads --base-primary-color(-light) so it retints with the selected theme. */
 	.demo-node {
 		display: inline-flex;
 		align-items: center;
@@ -510,10 +510,10 @@
 		line-height: 1.4;
 		padding: 0 0.45rem;
 		border-radius: 999px;
-		color: var(--base-accent-color, #3b82f6);
+		color: var(--base-primary-color, #3b82f6);
 		background: var(
-			--base-accent-color-light,
-			color-mix(in srgb, var(--base-accent-color, #3b82f6) 15%, transparent)
+			--base-primary-bg-subtle,
+			color-mix(in srgb, var(--base-primary-color, #3b82f6) 15%, transparent)
 		);
 	}
 

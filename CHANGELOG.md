@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **Reads `--base-primary-*` (was `--base-accent-*`)**, following `@keenmate/base-css-variables`
+  2.0.0, which drops the `accent` names: `--base-primary-color[-hover|-active]`,
+  `--base-primary-bg-subtle[-hover]` (was `-color-light[-hover]`) and `--base-on-primary-text-color`
+  (was `--base-text-color-on-accent`). The component's own `--*-accent-*` tokens keep their names.
+  Docs, examples and manifest updated.
+- **Tooltip background no longer falls back through `--base-inverse-bg`** (removed in
+  `@keenmate/base-css-variables` 2.0.0): it reads `--base-tooltip-bg` directly, then the
+  component's own default. No visual change — `--base-tooltip-bg` is always defined by the contract.
+- **Reads the 2.0.0 type-stating names:** `--base-outline-width` / `--base-focused-outline` /
+  `--base-highlighted-outline` (were `-ring`), `--base-*-text-color` (was `-text`),
+  `--base-on-<role>-text-color` (was `--base-text-on-<role>`), `--base-input-text-color` (was
+  `--base-input-color`), `--base-input-icon-color` / `-icon-bg-hover` (were `--base-input-clear-*`),
+  `--base-tooltip-text-color` (the `--base-tooltip-color` duplicate is gone) — whichever of these
+  the component uses.
+
 ## [5.0.0] - 2026-10-13 [PUBLISHED]
 
 ### Added
