@@ -32,6 +32,7 @@
 		{ "name": "base-checkbox-scale", "required": false, "usage": "Shared checkbox BOX scale (default 1). Applied to the box via calc (NOT a CSS transform) so the masked tick/dash stays crisp. See base-css-variables 'Checkbox render method'." },
 		{ "name": "base-dropdown-bg", "required": false, "usage": "Context-menu and submenu background." },
 		{ "name": "base-dropdown-box-shadow", "required": false, "usage": "Context-menu shadow." },
+		{ "name": "base-shadow-color", "required": false, "usage": "Shadow colour for the tooltip, info reveal and drag ghost (one tone with pure-admin)." },
 		{ "name": "base-font-family", "required": false, "usage": "All text in component." },
 		{ "name": "base-font-size-xs", "required": false, "usage": "Small text — node path, context-menu shortcut, icon font-size (multiplier × --stv-rem)." },
 		{ "name": "base-font-size-sm", "required": false, "usage": "Default node text and context-menu items (multiplier × --stv-rem)." },

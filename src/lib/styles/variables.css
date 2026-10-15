@@ -269,7 +269,7 @@
 	/* Touch drag ghost */
 	--tree-ghost-bg: color-mix(in srgb, var(--stv-primary) 90%, transparent);
 	--tree-ghost-color: #fff;
-	--tree-ghost-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+	--tree-ghost-shadow: 0 4px 12px var(--base-shadow-color, rgba(0, 0, 0, 0.3));
 
 	/* -------------------------------------------------------------------------
 	   DROP ZONES (before / after / child) — pastel mode
@@ -327,7 +327,7 @@
 	--stv-tooltip-width: auto;
 	--stv-tooltip-min-width: 0;
 	--stv-tooltip-max-width: calc(32 * var(--stv-rem));
-	--stv-tooltip-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+	--stv-tooltip-shadow: 0 2px 8px var(--base-shadow-color, rgba(0, 0, 0, 0.15));
 	--stv-tooltip-z-index: 10000;
 
 	/* -------------------------------------------------------------------------
@@ -340,7 +340,7 @@
 			var(--base-main-bg, light-dark(#ffffff, #2b2b2b))));
 	--stv-context-menu-border-color: var(--stv-border);
 	--stv-context-menu-border-radius: calc(var(--base-border-radius-sm, 0.4) * var(--stv-rem));
-	--stv-context-menu-shadow: var(--base-dropdown-box-shadow, 0 2px 10px rgba(0, 0, 0, 0.15));
+	--stv-context-menu-shadow: var(--base-dropdown-box-shadow, 0 2px 10px var(--base-shadow-color, rgba(0, 0, 0, 0.15)));
 	--stv-context-menu-min-width: calc(15 * var(--stv-rem));
 	--stv-context-menu-padding: calc(0.4 * var(--stv-rem)) 0;
 	--stv-context-menu-item-padding: calc(0.8 * var(--stv-rem)) calc(1.6 * var(--stv-rem));

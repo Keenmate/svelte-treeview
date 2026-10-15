@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Shadows share one tone with pure-admin: `--base-shadow-color`.** Tooltip, node info reveal,
+  drag ghost and the context-menu fallback keep their sizes but take their colour from
+  `--base-shadow-color` (falls back to the previous black without the base layer).
+- **Theme-comparison example regenerated** by the new `npm run extract-theme-tokens`
+  (`scripts/extract-theme-tokens.mjs`) from the compiled pure-admin themes — contract names only.
+  The old copies were stale (Corporate "light" carried dark-mode text colours; dead
+  `--base-hover-overlay` / `-focus-ring-*` / `-palette-1-bg`). The vendored web-multiselect on that
+  page is now the 2.0-contract build (it read the 1.x `--base-accent-*` names).
 - **Reads `--base-primary-*` (was `--base-accent-*`)**, following `@keenmate/base-css-variables`
   2.0.0, which drops the `accent` names: `--base-primary-color[-hover|-active]`,
   `--base-primary-bg-subtle[-hover]` (was `-color-light[-hover]`) and `--base-on-primary-text-color`

@@ -152,7 +152,7 @@
 	background: var(--stv-node-info-reveal-bg, light-dark(#ffffff, #1f2937));
 	border: 1px solid var(--stv-node-info-reveal-border, light-dark(#d1d5db, #30363d));
 	border-radius: 6px;
-	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+	box-shadow: 0 6px 18px var(--base-shadow-color, rgba(0, 0, 0, 0.18));
 	white-space: normal;
 	overflow-wrap: anywhere;
 }

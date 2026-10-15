@@ -34,7 +34,7 @@
 	max-width: var(--stv-tooltip-max-width, 32rem);
 	word-wrap: break-word;
 	white-space: pre-wrap;
-	box-shadow: var(--stv-tooltip-shadow, 0 2px 8px rgba(0, 0, 0, 0.15));
+	box-shadow: var(--stv-tooltip-shadow, 0 2px 8px var(--base-shadow-color, rgba(0, 0, 0, 0.15)));
 	pointer-events: none; /* never intercept the pointer */
 }
 
