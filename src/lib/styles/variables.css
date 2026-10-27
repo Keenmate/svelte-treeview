@@ -250,7 +250,7 @@
 	--stv-drop-placeholder-color: var(--stv-primary);
 	--stv-drop-placeholder-border-radius: calc(0.8 * var(--stv-rem));
 	--stv-drop-placeholder-min-height: calc(6.0 * var(--stv-rem));
-	/* Hover state for a permanently-shown empty drop zone (shouldShowDropPlaceholderWhenEmpty) */
+	/* Hover state for a permanently-shown empty drop zone (isEmptyDropPlaceholderShown) */
 	--stv-drop-placeholder-hover-bg: color-mix(in srgb, var(--stv-primary) 28%, transparent);
 	--stv-drop-placeholder-hover-border-color: var(--stv-primary);
 	--stv-drop-placeholder-hover-shadow: 0 0 0 4px color-mix(in srgb, var(--stv-primary) 30%, transparent);

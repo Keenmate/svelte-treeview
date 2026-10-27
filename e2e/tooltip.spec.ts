@@ -1,7 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
 
 /**
- * Coverage for the node tooltip API (shouldShowNodeTooltips + getNodeTooltipCallback
+ * Coverage for the node tooltip API (isNodeTooltipsShown + getNodeTooltipCallback
  * + the `tooltip` snippet) at /test/tooltip. Two trees: callback (plain text) and
  * snippet (rich content). tooltipDelay=0 so hover shows immediately.
  */
@@ -57,7 +57,7 @@ test.describe('node tooltip', () => {
 		await expect(tip).toContainText('Crisp orchard fruit');
 	});
 
-	test('disabled: no tooltip when shouldShowNodeTooltips is off', async ({ page }) => {
+	test('disabled: no tooltip when isNodeTooltipsShown is off', async ({ page }) => {
 		await page.getByTestId('toggle').click(); // off
 		await row(page, 'tree-callback', '1').hover();
 		await page.waitForTimeout(100);

@@ -24,10 +24,10 @@ The tree is fully navigable from the keyboard. Focus the tree (`Tab` into it), t
 
 | Key | Action |
 |-----|--------|
-| `Space` | Toggle expand/collapse of the focused node. If `shouldShowCheckboxes={true}` and the node is selectable, toggle its checkbox instead. |
-| `Enter` | In `selectionMode='multi'`: toggle selection on the focused node. In `'single'` mode: no-op (handled by the consumer's `onNodeClicked`). |
+| `Space` | Toggle expand/collapse of the focused node. If `isCheckboxesShown={true}` and the node is selectable, toggle its checkbox instead. |
+| `Enter` | In `selectionMode='multiple'`: toggle selection on the focused node. In `'single'` mode: no-op (handled by the consumer's `onNodeClicked`). |
 
-### Range selection (`selectionMode='multi'`)
+### Range selection (`selectionMode='multiple'`)
 
 Hold `Shift` together with any movement key to extend the highlight range from the anchor (last clicked/focused node) to the new position. In `'single'` mode these are no-ops.
 
@@ -40,7 +40,7 @@ Hold `Shift` together with any movement key to extend the highlight range from t
 | `Shift+PageDown` | Extend selection forward ~10 visible nodes |
 | `Shift+PageUp` | Extend selection back ~10 visible nodes |
 
-### Pointer modifiers (`selectionMode='multi'`)
+### Pointer modifiers (`selectionMode='multiple'`)
 
 | Gesture | Action |
 |---------|--------|
@@ -89,9 +89,9 @@ The tree exposes a three-level selection model — see [`docs/examples.md`](./ex
 
 - **Focus** (`focusedNode`) — the single node with keyboard cursor on it
 - **Selection** (`selectedPaths: Set<string>`) — multi-selection set (Ctrl/Shift+click, Shift+Arrow)
-- **Selection** (`checkedPaths: Set<string>`) — checkbox state when `shouldShowCheckboxes={true}`
+- **Selection** (`checkedPaths: Set<string>`) — checkbox state when `isCheckboxesShown={true}`
 
-When `shouldShowCheckboxes={false}`, the selection is mirrored into `checkedPaths` automatically — consumers always have a single "what's selected" set to read regardless of UI style.
+When `isCheckboxesShown={false}`, the selection is mirrored into `checkedPaths` automatically — consumers always have a single "what's selected" set to read regardless of UI style.
 
 ## Screen reader semantics
 

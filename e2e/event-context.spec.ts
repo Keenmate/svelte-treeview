@@ -6,7 +6,7 @@ import { test, expect, Page, Locator } from '@playwright/test';
  *   - NodeRef (onNodeClick/onNodeDoubleClick): path, node, parent, siblings.
  *   - NodeDragContext (onNodeDragStart/onNodeDragOver): NodeRef + event + dragged[].
  *   - NodeDropContext (onNodeDrop): source, target, dragged[], dropped[]|null, position, operation.
- *   - ClipboardEventContext (onCopy/onCut/onDelete) + SelectionChangeContext (onHighlight/Selection).
+ *   - ClipboardEventContext (onNodeCopy/onNodeCut/onNodeDelete) + SelectionChangeContext (onHighlight/Selection).
  *   - single-fire semantics: a drag fires once; `dragged` carries the full multi-set.
  *   - `dropped` is populated for auto-handled same-tree ops, null cross-tree.
  */
@@ -107,7 +107,7 @@ test.describe('Event contexts', () => {
 		expect(sel[sel.length - 1]).toEqual({ paths: ['1.1'], nodes: ['1.1'] });
 	});
 
-	test('onCopy / onCut carry { operation, paths, nodes }', async ({ page }) => {
+	test('onNodeCopy / onNodeCut carry { operation, paths, nodes }', async ({ page }) => {
 		await clickA(page, 'A1');
 		await page.keyboard.press('Control+c');
 		expect((await readLog(page, 'copy-ctx'))[0]).toEqual({
@@ -125,7 +125,7 @@ test.describe('Event contexts', () => {
 		});
 	});
 
-	test('onDelete carries { paths, nodes } (pre-removal snapshot, no operation)', async ({ page }) => {
+	test('onNodeDelete carries { paths, nodes } (pre-removal snapshot, no operation)', async ({ page }) => {
 		await clickA(page, 'A2'); // highlight 1.2
 		await page.keyboard.press('Delete');
 		const del = await readLog(page, 'delete-ctx');

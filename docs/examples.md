@@ -44,11 +44,11 @@ For live demos, see [svelte-treeview.keenmate.dev](https://svelte-treeview.keenm
 <script lang="ts">
   import { Tree } from '@keenmate/svelte-treeview';
 
-  let searchText = $state('');
+  let searchTerm = $state('');
   const data = [/* your data */];
 </script>
 
-<input type="text" placeholder="Search..." bind:value={searchText} />
+<input type="text" placeholder="Search..." bind:value={searchTerm} />
 
 <Tree
   {data}
@@ -56,7 +56,7 @@ For live demos, see [svelte-treeview.keenmate.dev](https://svelte-treeview.keenm
   pathMember="path"
   shouldUseInternalSearchIndex={true}
   searchValueMember="name"
-  bind:searchText
+  bind:searchTerm
 />
 ```
 

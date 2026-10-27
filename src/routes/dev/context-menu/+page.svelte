@@ -18,7 +18,7 @@
 
 	// Tree configuration
 	let selectedNode = $state(null);
-	let searchText = $state('');
+	let searchTerm = $state('');
 	let contextMenuXOffset = $state(8);
 	let contextMenuYOffset = $state(0);
 
@@ -308,7 +308,7 @@
 						expandLevel={3}
 						treePathSeparator="."
 						bind:focusedNode={selectedNode}
-						bind:searchText
+						bind:searchTerm
 						shouldUseInternalSearchIndex={true}
 						clickBehavior="expand-and-focus"
 						{onNodeClick}
@@ -405,7 +405,7 @@
 					<input
 						type="text"
 						class="form-control form-control-sm"
-						bind:value={searchText}
+						bind:value={searchTerm}
 						placeholder="Search nodes..."
 					>
 				</div>
@@ -486,7 +486,7 @@
 						expandLevel={3}
 						treePathSeparator="."
 						bind:focusedNode={selectedNode2}
-						bind:searchText={searchText2}
+						bind:searchTerm={searchText2}
 						shouldUseInternalSearchIndex={true}
 						clickBehavior="expand-and-focus"
 						{onNodeClick}

@@ -130,7 +130,7 @@ test.describe('Windows File Explorer demo', () => {
 		await rowContent(page, 'System32').click();
 		await expect(row(page, 'System32').locator('.stv__node-content')).toHaveClass(/stv__node-content--selected/);
 		await expect(page.locator('.winx__status-sel')).toHaveText(/1 item selected/);
-		// Ctrl+click extends (selectionMode="multi").
+		// Ctrl+click extends (selectionMode="multiple").
 		await rowContent(page, 'Fonts').click({ modifiers: ['Control'] });
 		await expect(page.locator('.winx__status-sel')).toHaveText(/2 items selected/);
 	});

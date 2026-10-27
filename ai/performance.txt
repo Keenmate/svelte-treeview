@@ -93,8 +93,8 @@ visible rows + overscan, keeping DOM size at ~50 nodes:
 
 <Tree
   isVirtualScrollEnabled={true}
-  virtualContainerHeight="500px"   <!-- CSS height (auto-detected if not set) -->
-  virtualOverscan={5}              <!-- Extra rows above/below viewport -->
+  virtualScrollContainerHeight="500px"   <!-- CSS height (auto-detected if not set) -->
+  virtualScrollOverscan={5}              <!-- Extra rows above/below viewport -->
 />
 
 How it works:
@@ -227,7 +227,7 @@ let data = $state.raw<Item[]>([]);
 <Tree expandLevel={1} />
 
 4. Use virtual scrolling for 10K+ nodes:
-<Tree isVirtualScrollEnabled={true} virtualContainerHeight="500px" />
+<Tree isVirtualScrollEnabled={true} virtualScrollContainerHeight="500px" />
 
 AVOID O(n²) PATTERNS
 --------------------
@@ -273,14 +273,14 @@ SEARCH OPTIMIZATION
 Debounce search input:
 
 let inputValue = $state('');
-let searchText = $state('');
+let searchTerm = $state('');
 let timer;
 
 function handleInput(e) {
   inputValue = e.target.value;
   clearTimeout(timer);
   timer = setTimeout(() => {
-    searchText = inputValue;
+    searchTerm = inputValue;
   }, 300);
 }
 

@@ -15,6 +15,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BREAKING: remaining API names aligned with `@keenmate/web-treeview` and the shared naming
+  rulebook** (no aliases):
+  - events: `onNodeDragDenied` / `onNodeDropDenied` → `onNodeDragReject` / `onNodeDropReject`;
+    `onCopy` / `onCut` / `onPaste` / `onDelete` → `onNodeCopy` / `onNodeCut` / `onNodePaste` /
+    `onNodeDelete`.
+  - remove vs delete: `deleteBranch` → `removeBranch` (`DeleteBranchResult` → `RemoveBranchResult`);
+    the controller's `deleteNodes(paths?)` (the user Delete command: `beforeDeleteCallback` veto +
+    `onNodeDelete`) → `runDeleteCommand(paths?)`; new `removeNodes(paths)` = programmatic removal
+    (no veto, no event), also on `<Tree>`.
+  - search text is `term`: `searchText` (bindable prop / option) → `searchTerm`;
+    `filterNodes(term, opts?)` / `searchNodes(term, opts?)`.
+  - `selectionMode: 'multi'` → `'multiple'` (`SelectionMode = 'single' | 'multiple'`).
+  - virtual scrolling is one `virtualScroll*` family: `virtualRowHeight` → `virtualScrollItemHeight`,
+    `virtualOverscan` → `virtualScrollOverscan`, `virtualContainerHeight` →
+    `virtualScrollContainerHeight`.
+  - boolean prefixes: `shouldShowCheckboxes` → `isCheckboxesShown`, `shouldShowNodeTooltips` →
+    `isNodeTooltipsShown`, `shouldShowDropPlaceholderWhenEmpty` → `isEmptyDropPlaceholderShown`,
+    `shouldEnableTreeDropZone` → `isTreeDropZoneEnabled`, `tooltipFollowCursor` →
+    `shouldTooltipFollowCursor`.
 - **BREAKING: context-menu items use `@keenmate/web-components-core`'s `ActionItem` / `MenuItem`
   field names** — `label` → `text`, `onclick` → `onClick`, `className` → `cssClass`; dividers
   `{ divider: true, label }` → `{ divider: true, text }`. Same on the snippet components

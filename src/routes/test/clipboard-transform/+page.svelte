@@ -155,7 +155,7 @@
 			isSorted={true}
 			expandLevel={3}
 			clickBehavior="select"
-			selectionMode="multi"
+			selectionMode="multiple"
 			dragDropMode="both"
 			getAllowedDropPositionsCallback={({ node }): DropPosition[] | undefined =>
 				canHaveChildren(node) ? undefined : ['before', 'after']}

@@ -5,7 +5,7 @@
 	//   - onNodeDragStart / onNodeDragOver (NodeDragContext: NodeRef + event + dragged)
 	//   - onNodeDrop (NodeDropContext: source, target, dragged, dropped, position, operation)
 	//   - onSelectionChange / onCheckedChange ({ paths, nodes })
-	//   - onCopy / onCut / onDelete ({ operation?, paths, nodes })
+	//   - onNodeCopy / onNodeCut / onNodeDelete ({ operation?, paths, nodes })
 	// Two trees (treeA source / treeB target) exercise same-tree vs cross-tree drops.
 	// Targeted by e2e/event-context.spec.ts.
 	import { Tree } from '$lib/index.js';
@@ -161,8 +161,8 @@
 				isSorted={true}
 				expandLevel={3}
 				clickBehavior="select"
-				selectionMode="multi"
-				shouldShowCheckboxes={true}
+				selectionMode="multiple"
+				isCheckboxesShown={true}
 				dragDropMode="both"
 				isFlatRenderingEnabled={true}
 				getIsDraggableCallback={() => true}
@@ -177,9 +177,9 @@
 				onNodeDrop={logDrop}
 				onSelectionChange={logSelection}
 				onCheckedChange={logChecked}
-				onCopy={logCopy}
-				onCut={logCut}
-				onDelete={logDelete}
+				onNodeCopy={logCopy}
+				onNodeCut={logCut}
+				onNodeDelete={logDelete}
 			>
 				{#snippet nodeTemplate(node: LTreeNode<Item>)}
 					<span data-name={node.data?.name} data-path={node.path}>{node.data?.name}</span>
@@ -197,7 +197,7 @@
 				isSorted={true}
 				expandLevel={3}
 				clickBehavior="select"
-				selectionMode="multi"
+				selectionMode="multiple"
 				dragDropMode="both"
 				isFlatRenderingEnabled={true}
 				getIsDraggableCallback={() => true}

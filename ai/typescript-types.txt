@@ -46,7 +46,7 @@ import type {
   ToggleIconMode,      // 'rotate' | 'swap'
   ClickBehavior,       // 'select' | 'expand' | 'expand-and-focus'
   CheckboxMode,        // 'independent' | 'cascade'
-  SelectionMode,       // 'single' | 'multi'
+  SelectionMode,       // 'single' | 'multiple'
   SelectMode,       // 'replace' | 'toggle' | 'range'
   TreeMutationOptions, // { silent? } — passed to selection/checked/focus mutators
 
@@ -61,7 +61,7 @@ import type {
   NodeEventContext,        // = NodeRef<T> (onNodeClick / onNodeDoubleClick)
   NodeDragContext,         // NodeRef + { event, dragged }
   NodeDropContext,         // { source, target, dragged, dropped, position, operation, event }
-  ClipboardEventContext,   // { operation?, paths, nodes } (onCopy/onCut/onDelete)
+  ClipboardEventContext,   // { operation?, paths, nodes } (onNodeCopy/onNodeCut/onNodeDelete)
   SelectionChangeContext,  // { paths: Set<string>, nodes }
 
   // Clipboard / transform callback context types
@@ -69,7 +69,7 @@ import type {
   BeforeCopyContext,       // { operation, paths, nodes }
   BeforeDeleteContext,     // { paths, nodes }
   BeforePasteContext,      // { operation, target: { path, node }, entries }
-  PasteResult,             // pasteNodes() / onPaste result
+  PasteResult,             // pasteNodes() / onNodePaste result
 
   // Navigation (pluggable keyboard nav)
   TreeNavigation,          // Interface for pluggable keyboard nav
@@ -81,7 +81,7 @@ import type {
   // Results / incremental updates
   InsertArrayResult,       // insertArray() result
   InsertBranchResult,      // insertBranch()/replaceBranch() result
-  DeleteBranchResult,      // deleteBranch() result
+  RemoveBranchResult,      // removeBranch() result
   TreeChange,              // incremental change descriptor
   ApplyChangesResult,      // applyChanges() result
 
@@ -236,8 +236,8 @@ interface Ltree<T> {
   collapseNodes(path: string): Ltree<T>;
   expandAll(path?: string): void;
   collapseAll(path?: string): void;
-  filterNodes(searchText: string): void;
-  searchNodes(searchText: string): LTreeNode<T>[];
+  filterNodes(searchTerm: string): void;
+  searchNodes(searchTerm: string): LTreeNode<T>[];
 
   // Callbacks
   getNodeAllowedDropPositions(node: LTreeNode<T>): DropPosition[] | null;
@@ -255,10 +255,10 @@ onNodeDragOver?: (ctx: NodeDragContext<T>) => void;      // hovered node + event
 onNodeDrop?: (ctx: NodeDropContext<T>) => void;          // source/target/dragged/dropped/...
 onSelectionChange?: (ctx: SelectionChangeContext<T>) => void;  // UI multi-select (selectedPaths)
 onCheckedChange?: (ctx: SelectionChangeContext<T>) => void;  // checkbox set (checkedPaths)
-onCopy?: (ctx: ClipboardEventContext<T>) => void;
-onCut?: (ctx: ClipboardEventContext<T>) => void;
-onDelete?: (ctx: ClipboardEventContext<T>) => void;      // ctx.operation omitted for delete
-onPaste?: (result: PasteResult<T>) => void;
+onNodeCopy?: (ctx: ClipboardEventContext<T>) => void;
+onNodeCut?: (ctx: ClipboardEventContext<T>) => void;
+onNodeDelete?: (ctx: ClipboardEventContext<T>) => void;      // ctx.operation omitted for delete
+onNodePaste?: (result: PasteResult<T>) => void;
 
 // Interceptor: return false to suppress (synchronous) default + built-in shortcuts.
 beforeKeydownCallback?: (ctx: {
@@ -335,7 +335,7 @@ interface NodeDropContext<T> {
   event: DragEvent | TouchEvent;
 }
 
-// onCopy / onCut / onDelete. operation omitted for delete. For cut/delete,
+// onNodeCopy / onNodeCut / onNodeDelete. operation omitted for delete. For cut/delete,
 // nodes are PRE-REMOVAL snapshots (the tree no longer holds them at fire time).
 interface ClipboardEventContext<T> {
   operation?: 'copy' | 'cut';

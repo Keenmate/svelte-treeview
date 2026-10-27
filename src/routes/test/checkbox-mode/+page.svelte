@@ -51,7 +51,7 @@
 			sortCallback={sortByName}
 			isSorted={true}
 			expandLevel={3}
-			shouldShowCheckboxes={true}
+			isCheckboxesShown={true}
 			{checkboxMode}
 			bind:checkedPaths
 		>

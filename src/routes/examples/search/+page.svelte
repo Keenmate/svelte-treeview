@@ -203,7 +203,7 @@
 	type SearchMode = 'filter' | 'search';
 	let searchMode = $state<SearchMode>('filter');
 	let searchInputValue = $state('');
-	let searchText = $state('');
+	let searchTerm = $state('');
 	let treeRef: Tree<LocationItem>;
 	let searchResults = $state<LTreeNode<LocationItem>[]>([]);
 	let currentResultIndex = $state(-1);
@@ -217,9 +217,9 @@
 		searchMode = searchMode === 'filter' ? 'search' : 'filter';
 		// Keep the typed query when switching modes — just re-apply it in the new
 		// mode. Search mode doesn't filter the tree, so drop any filter text first;
-		// onSearchInput() then re-runs the query (and in filter mode re-sets searchText).
+		// onSearchInput() then re-runs the query (and in filter mode re-sets searchTerm).
 		if (searchMode === 'search') {
-			searchText = '';
+			searchTerm = '';
 		}
 		onSearchInput();
 	}
@@ -240,7 +240,7 @@
 
 	function onSearchInput() {
 		if (searchMode === 'filter') {
-			searchText = searchInputValue;
+			searchTerm = searchInputValue;
 		}
 		const results = treeRef?.searchNodes(searchInputValue.trim()) ?? [];
 		searchResults = results;
@@ -266,7 +266,7 @@
 
 	function clearSearch() {
 		searchInputValue = '';
-		searchText = '';
+		searchTerm = '';
 		searchResults = [];
 		currentResultIndex = -1;
 	}
@@ -374,7 +374,7 @@
 						expandLevel={3}
 						shouldUseInternalSearchIndex={true}
 						searchValueMember="name"
-						bind:searchText={searchText}
+						bind:searchTerm={searchTerm}
 						{...getTreeProps()}
 					>
 						{#snippet nodeTemplate(node: any)}
@@ -411,7 +411,7 @@
 						</ul>
 					{:else}
 						<p class="empty-state">
-							{searchText.trim() ? 'No results found' : 'Type to search'}
+							{searchTerm.trim() ? 'No results found' : 'Type to search'}
 						</p>
 					{/if}
 				</div>
@@ -426,14 +426,14 @@
 		<div class="code-block">
 			<pre>{`${"<"}script>
   let searchInputValue = $state('');
-  let searchText = $state('');
+  let searchTerm = $state('');
   let searchMode = $state('filter'); // 'filter' | 'search'
   let treeRef;
   let results = $state([]);
   let currentIndex = $state(-1);
 
   function onSearchInput() {
-    if (searchMode === 'filter') searchText = searchInputValue;
+    if (searchMode === 'filter') searchTerm = searchInputValue;
     results = treeRef?.searchNodes(searchInputValue.trim()) ?? [];
     if (results.length > 0) {
       currentIndex = 0;
@@ -458,7 +458,7 @@ ${"<"}/script>
 
 <Tree
   bind:this={treeRef}
-  bind:searchText
+  bind:searchTerm
   shouldUseInternalSearchIndex={true}
   searchValueMember="name"
   ...
@@ -496,7 +496,7 @@ ${"<"}/script>
 					<td>Custom function to extract search value from node</td>
 				</tr>
 				<tr>
-					<td><code>searchText</code></td>
+					<td><code>searchTerm</code></td>
 					<td><code>string</code></td>
 					<td>Bindable prop for filtering the tree visually</td>
 				</tr>

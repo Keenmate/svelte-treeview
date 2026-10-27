@@ -91,7 +91,7 @@
 	// dragOverNodeClass is applied to the DOM directly by the controller
 	// (see hoveredNodeForDrop $effect in TreeController) — no per-Node binding.
 	const clickBehavior = $derived(config.clickBehavior);
-	const shouldShowCheckboxes = $derived(config.shouldShowCheckboxes);
+	const isCheckboxesShown = $derived(config.isCheckboxesShown);
 	const checkboxMode = $derived(config.checkboxMode);
 	const shouldClickToggleCheckbox = $derived(config.shouldClickToggleCheckbox);
 
@@ -136,7 +136,7 @@
 		nodeTooltipSnippet ? (tooltipHostEl ?? null) : tooltipText
 	)
 	const tooltipEnabled = $derived(
-		!!config.shouldShowNodeTooltips &&
+		!!config.isNodeTooltipsShown &&
 			(nodeTooltipSnippet ? !!tooltipHostEl : !!(tooltipText && tooltipText.trim()))
 	)
 
@@ -396,7 +396,7 @@
 		// Plain click on a selectable node with checkboxes shown → toggle the checkbox
 		// instead of focusing/highlighting. Expand still happens if clickBehavior asks for it.
 		// Modified clicks (Ctrl/Shift) fall through to the normal multi-highlight path.
-		if (shouldClickToggleCheckbox && shouldShowCheckboxes && node.isSelectable && !hasModifiers) {
+		if (shouldClickToggleCheckbox && isCheckboxesShown && node.isSelectable && !hasModifiers) {
 			callbacks.onCheckboxToggle(node, { skipFocus: true });
 			if (clickBehavior !== 'select') toggleExpanded();
 			return;
@@ -450,7 +450,7 @@
 			<span class="stv__toggle-icon {leafIconClass}"></span>
 		{/if}
 
-		{#if shouldShowCheckboxes && node.isSelectable}
+		{#if isCheckboxesShown && node.isSelectable}
 			<!-- Canonical single-<input> checkbox — the shared KeenMate render
 			     contract (same DOM as web-multiselect / web-treeview): the input IS
 			     the box, indeterminate is a modifier class + aria-checked="mixed"
@@ -511,7 +511,7 @@
 				placement: config.tooltipPlacement,
 				offset: config.tooltipOffset,
 				delay: config.tooltipDelay,
-				followCursor: config.tooltipFollowCursor
+				followCursor: config.shouldTooltipFollowCursor
 			}}
 		>
 			{#if children}

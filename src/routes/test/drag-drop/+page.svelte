@@ -215,7 +215,7 @@
 
 	let copyDrop: DropState = $state(emptyDropState());
 
-	function onCopyDrop({ source, target, position, operation }: NodeDropContext<Item>) {
+	function handleCopyDrop({ source, target, position, operation }: NodeDropContext<Item>) {
 		copyDrop = {
 			count: copyDrop.count + 1,
 			dragged: source.node?.data?.name ?? '',
@@ -226,7 +226,7 @@
 		};
 	}
 
-	// ── Section 6: multi-drag (selectionMode='multi') ──────────────────────
+	// ── Section 6: multi-drag (selectionMode='multiple') ──────────────────────
 
 	function initialMultiData(): Item[] {
 		return [
@@ -939,7 +939,7 @@
 				getIsDraggableCallback={() => true}
 				getIsDropAllowedCallback={() => true}
 				isCopyAllowed={true}
-				onNodeDrop={onCopyDrop}
+				onNodeDrop={handleCopyDrop}
 			>
 				{#snippet nodeTemplate(node: LTreeNode<Item>)}
 					<span data-testid="copy-node-{node.path}">{node.data?.name}</span>
@@ -949,7 +949,7 @@
 	</section>
 
 	<section data-testid="section-multi">
-		<h2>Multi-Drag (selectionMode='multi')</h2>
+		<h2>Multi-Drag (selectionMode='multiple')</h2>
 		<button data-testid="multi-reset" onclick={resetMulti}>Reset</button>
 		<div class="drop-state">
 			<span>count: <b data-testid="multi-drop-count">{multiDrop.count}</b></span>
@@ -974,7 +974,7 @@
 				getIsDraggableCallback={() => true}
 				getIsDropAllowedCallback={() => true}
 				clickBehavior="select"
-				selectionMode="multi"
+				selectionMode="multiple"
 				selectedNodeClass="stv__node-content--selected-bold"
 				bind:focusedNode={multiFocused}
 				bind:selectedPaths={multiHighlighted}
@@ -1009,7 +1009,7 @@
 				getIsDraggableCallback={({ node }) => node.data?.draggable !== false}
 				getIsDropAllowedCallback={() => true}
 				clickBehavior="select"
-				selectionMode="multi"
+				selectionMode="multiple"
 				selectedNodeClass="stv__node-content--selected-bold"
 				bind:focusedNode={lockedFocused}
 				bind:selectedPaths={lockedHighlighted}
@@ -1076,7 +1076,7 @@
 				getIsDraggableCallback={() => true}
 				getIsDropAllowedCallback={() => true}
 				clickBehavior="select"
-				selectionMode="multi"
+				selectionMode="multiple"
 				selectedNodeClass="stv__node-content--selected-bold"
 				bind:focusedNode={bdFocused}
 				bind:selectedPaths={bdHighlighted}
@@ -1110,11 +1110,11 @@
 				isSorted={true}
 				expandLevel={10}
 				dragDropMode="self"
-				shouldEnableTreeDropZone={true}
+				isTreeDropZoneEnabled={true}
 				getIsDraggableCallback={({ node }) => node.data?.kind !== 'category'}
 				getIsDropAllowedCallback={() => false}
 				clickBehavior="select"
-				selectionMode="multi"
+				selectionMode="multiple"
 				selectedNodeClass="stv__node-content--selected-bold"
 				bind:focusedNode={produceFocused}
 				bind:selectedPaths={produceHighlighted}
@@ -1185,7 +1185,7 @@
 				getIsDraggableCallback={() => true}
 				getIsDropAllowedCallback={() => true}
 				clickBehavior="select"
-				selectionMode="multi"
+				selectionMode="multiple"
 				beforeDragStartCallback={beforeDhDragStart}
 				onNodeDrop={onDhDrop}
 			>

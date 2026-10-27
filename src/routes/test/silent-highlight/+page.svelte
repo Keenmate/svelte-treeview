@@ -108,7 +108,7 @@
 			sortCallback={sortByName}
 			isSorted={true}
 			expandLevel={3}
-			shouldShowCheckboxes={true}
+			isCheckboxesShown={true}
 			selectedNodeClass="test-highlighted"
 			bind:selectedPaths
 			bind:checkedPaths

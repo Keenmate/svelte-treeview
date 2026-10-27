@@ -2,7 +2,7 @@
 	import Tree from '$lib/components/Tree.svelte';
 	import type { LTreeNode } from '$lib/ltree/types.js';
 
-	// Fixture for the node tooltip API (shouldShowNodeTooltips + getNodeTooltipCallback
+	// Fixture for the node tooltip API (isNodeTooltipsShown + getNodeTooltipCallback
 	// + `tooltip` snippet). Targeted by e2e/tooltip.spec.ts. Two trees: one callback
 	// (plain text), one snippet (rich content). delay 0 so hover shows immediately.
 
@@ -38,7 +38,7 @@
 		isSorted={true}
 		displayValueMember="name"
 		expandLevel={2}
-		shouldShowNodeTooltips={enabled}
+		isNodeTooltipsShown={enabled}
 		getNodeTooltipCallback={tip}
 		tooltipDelay={0}
 	/>
@@ -54,7 +54,7 @@
 		isSorted={true}
 		displayValueMember="name"
 		expandLevel={2}
-		shouldShowNodeTooltips={enabled}
+		isNodeTooltipsShown={enabled}
 		tooltipDelay={0}
 	>
 		{#snippet tooltip(node: LTreeNode<Item>)}

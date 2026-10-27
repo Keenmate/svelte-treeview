@@ -192,7 +192,7 @@
 					isSorted={true}
 					expandLevel={3}
 					theme={treeTheme}
-					selectionMode="multi"
+					selectionMode="multiple"
 					bind:selectedPaths={playgroundHighlight}
 					{...getTreeProps()}
 				>
@@ -807,7 +807,7 @@
 					isSorted={true}
 					expandLevel={3}
 					theme={dynamicTreeTheme}
-					selectionMode="multi"
+					selectionMode="multiple"
 					bind:selectedPaths={dynamicHighlight}
 					{...getTreeProps()}
 				>

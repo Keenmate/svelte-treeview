@@ -6,7 +6,7 @@ import { test, expect, Page, Locator } from '@playwright/test';
  *
  * Single tree (~8 countries+cities) with a search bar above it. The page
  * supports two modes:
- *   - 'filter' (default): typing hides non-matching nodes via bind:searchText.
+ *   - 'filter' (default): typing hides non-matching nodes via bind:searchTerm.
  *   - 'search':           tree stays whole; typing finds matches and the user
  *                         navigates between them (scrollToPath).
  *

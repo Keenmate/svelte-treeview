@@ -82,27 +82,27 @@ Suppressed by { silent: true } mutations.
 
 CLIPBOARD EVENTS
 ----------------
-Fire after clipboard/delete operations. onCopy/onCut/onDelete take
+Fire after clipboard/delete operations. onNodeCopy/onNodeCut/onNodeDelete take
 ClipboardEventContext { operation?: 'copy'|'cut', paths, nodes }
-(operation omitted for delete). onPaste takes the PasteResult.
+(operation omitted for delete). onNodePaste takes the PasteResult.
 
 <Tree
-  onCopy={(ctx) => {
+  onNodeCopy={(ctx) => {
     // ctx = { operation: 'copy', paths, nodes } — nodes live
     console.log('Copied:', ctx.paths);
   }}
 
-  onCut={(ctx) => {
+  onNodeCut={(ctx) => {
     // ctx = { operation: 'cut', paths, nodes } — nodes still live (dimmed until paste)
     console.log('Cut:', ctx.paths);
   }}
 
-  onDelete={(ctx) => {
+  onNodeDelete={(ctx) => {
     // ctx = { paths, nodes } (no operation) — nodes are PRE-REMOVAL snapshots
     console.log('Deleted:', ctx.nodes.map((n) => n.data.name));
   }}
 
-  onPaste={(result) => {
+  onNodePaste={(result) => {
     // result = PasteResult { success, count, skipped, error? }
     console.log('Pasted:', result.count, 'skipped:', result.skipped);
   }}
@@ -275,7 +275,7 @@ Custom FlexSearch index configuration:
 BINDING VS CALLBACK
 -------------------
 Bindable props (two-way):
-- searchText
+- searchTerm
 - focusedNode (single focused node)
 - selectedPaths (Set<string>, Ctrl/Shift+click selection)
 - checkedPaths (Set<string>, checkbox data state)
@@ -289,7 +289,7 @@ Callback props (one-way notification):
 - onNodeDragOver
 - onSelectionChange
 - onCheckedChange
-- onCopy / onCut / onPaste / onDelete
+- onNodeCopy / onNodeCut / onNodePaste / onNodeDelete
 - beforeKeydownCallback (interceptor)
 
 Example combining both:
@@ -338,12 +338,12 @@ onSelectionChange / onCheckedChange:
 (ctx: SelectionChangeContext<T>) => void
   // SelectionChangeContext = { paths: Set<string>, nodes: LTreeNode<T>[] }
 
-onCopy / onCut / onDelete:
+onNodeCopy / onNodeCut / onNodeDelete:
 (ctx: ClipboardEventContext<T>) => void
   // ClipboardEventContext = { operation?: 'copy' | 'cut', paths: string[], nodes: LTreeNode<T>[] }
-  // operation omitted for onDelete
+  // operation omitted for onNodeDelete
 
-onPaste:
+onNodePaste:
 (result: PasteResult<T>) => void
   // PasteResult = { success, count, skipped, error? }
 

@@ -3,11 +3,11 @@
 	import type {
 		LTreeNode,
 		InsertBranchResult,
-		DeleteBranchResult
+		RemoveBranchResult
 	} from '$lib/ltree/types.js';
 
 	// Deterministic e2e fixture for bulk subtree operations: insertBranch,
-	// replaceBranch, deleteBranch, plus a minimal cut/paste flow and failure
+	// replaceBranch, removeBranch, plus a minimal cut/paste flow and failure
 	// cases. Targeted by e2e/branch-operations.spec.ts.
 	//
 	// Each operation routes through invokeOp() which captures the return value
@@ -79,7 +79,7 @@
 		};
 	}
 
-	function recordDeleteResult(name: string, result: DeleteBranchResult<Item>) {
+	function recordDeleteResult(name: string, result: RemoveBranchResult<Item>) {
 		opCallCount++;
 		lastOp = {
 			name,
@@ -139,8 +139,8 @@
 	}
 
 	function doDelete(path: string, keepParent = false) {
-		const result = treeRef.deleteBranch(path, keepParent);
-		recordDeleteResult(keepParent ? 'deleteBranch(keepParent)' : 'deleteBranch', result);
+		const result = treeRef.removeBranch(path, keepParent);
+		recordDeleteResult(keepParent ? 'removeBranch(keepParent)' : 'removeBranch', result);
 	}
 
 	function resetTree() {
@@ -240,7 +240,7 @@
 			return { ...n, id: nextId++, path: newPath };
 		});
 
-		const delResult = treeRef.deleteBranch(sourcePath);
+		const delResult = treeRef.removeBranch(sourcePath);
 		recordDeleteResult('paste:delete', delResult);
 		const insResult = treeRef.insertBranch(targetParentPath, rewritten);
 		recordInsertResult('paste:insert', insResult);
@@ -278,8 +278,8 @@
 	}
 
 	function failDeleteInvalidPath() {
-		const result = treeRef.deleteBranch('999.999');
-		recordDeleteResult('deleteBranch(invalid-path)', result);
+		const result = treeRef.removeBranch('999.999');
+		recordDeleteResult('removeBranch(invalid-path)', result);
 	}
 
 	function failReplaceInvalidParent() {
@@ -341,7 +341,7 @@
 			>
 		</div>
 		<div class="btn-row">
-			<strong>deleteBranch:</strong>
+			<strong>removeBranch:</strong>
 			<button data-testid="btn-delete-2.1" onclick={() => doDelete('2.1')}
 				>Delete '2.1' (incl. self)</button
 			>
@@ -373,7 +373,7 @@
 				>replaceBranch invalid parent</button
 			>
 			<button data-testid="btn-fail-delete-path" onclick={failDeleteInvalidPath}
-				>deleteBranch invalid path</button
+				>removeBranch invalid path</button
 			>
 		</div>
 	</section>

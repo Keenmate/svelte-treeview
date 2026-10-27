@@ -30,8 +30,8 @@
   let maxBatchSize = $state(savedConfig.maxBatchSize ?? 500);
   let indexerBatchSize = $state(savedConfig.indexerBatchSize ?? 25);
   let shouldUseInternalSearchIndex = $state(savedConfig.shouldUseInternalSearchIndex ?? true);
-  let virtualContainerHeight = $state(savedConfig.virtualContainerHeight ?? '500px');
-  let virtualOverscan = $state(savedConfig.virtualOverscan ?? 5);
+  let virtualScrollContainerHeight = $state(savedConfig.virtualScrollContainerHeight ?? '500px');
+  let virtualScrollOverscan = $state(savedConfig.virtualScrollOverscan ?? 5);
   let perfLoggingEnabled = $state(isPerfLoggingEnabled());
 
   // Data generation config
@@ -48,8 +48,8 @@
       maxBatchSize,
       indexerBatchSize,
       shouldUseInternalSearchIndex,
-      virtualContainerHeight,
-      virtualOverscan,
+      virtualScrollContainerHeight,
+      virtualScrollOverscan,
       nodeCountTarget
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
@@ -65,8 +65,8 @@
     maxBatchSize = 500;
     indexerBatchSize = 25;
     shouldUseInternalSearchIndex = true;
-    virtualContainerHeight = '500px';
-    virtualOverscan = 5;
+    virtualScrollContainerHeight = '500px';
+    virtualScrollOverscan = 5;
     nodeCountTarget = 5000;
   }
 
@@ -361,7 +361,7 @@
   }
 
   // Search/filter
-  let searchText = $state('');
+  let searchTerm = $state('');
   let lastSearchTime = $state<number | null>(null);
 
   // Search mode: 'filter' filters the tree, 'search' navigates between matches
@@ -416,7 +416,7 @@
 
   function clearSearch() {
     searchInputValue = '';
-    searchText = '';
+    searchTerm = '';
     searchResults = [];
     currentSearchIdx = -1;
     lastSearchTime = null;
@@ -424,7 +424,7 @@
 
   function onSearchInput() {
     if (searchMode === 'filter') {
-      searchText = searchInputValue;
+      searchTerm = searchInputValue;
       const start = performance.now();
       // Also collect matching nodes for navigation
       const results = treeRef?.searchNodes(searchInputValue.trim()) ?? [];
@@ -583,11 +583,11 @@
       <div class="mode-options">
         <label>
           Container Height:
-          <input type="text" bind:value={virtualContainerHeight} style="width: 80px" />
+          <input type="text" bind:value={virtualScrollContainerHeight} style="width: 80px" />
         </label>
         <label title="Extra rows rendered above and below the viewport to prevent flicker during fast scrolling">
           Overscan:
-          <input type="number" bind:value={virtualOverscan} min="0" max="50" step="1" />
+          <input type="number" bind:value={virtualScrollOverscan} min="0" max="50" step="1" />
         </label>
       </div>
     {/if}
@@ -796,11 +796,11 @@
             {indexerBatchSize}
             {shouldUseInternalSearchIndex}
             searchValueMember="name"
-            bind:searchText
+            bind:searchTerm
             {isFlatRenderingEnabled}
             {isVirtualScrollEnabled}
-            {virtualContainerHeight}
-            {virtualOverscan}
+            {virtualScrollContainerHeight}
+            {virtualScrollOverscan}
             bind:insertResult
             bind:isRendering
             onRenderStart={() => {

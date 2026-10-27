@@ -10,7 +10,7 @@ import {
 	getRelativePath
 } from '../helpers/ltree-helpers.js';
 
-import type { Ltree, InsertArrayResult, InsertBranchResult, DeleteBranchResult, NodeContext, SortContext } from './types.js';
+import type { Ltree, InsertArrayResult, InsertBranchResult, RemoveBranchResult, NodeContext, SortContext } from './types.js';
 import { createSearchIndex } from './flex.js';
 import { Indexer } from './indexer.js';
 import { perfStart, perfEnd, perfSummary } from '../perf-logger.js';
@@ -524,15 +524,15 @@ export function createLTree<T>(
 			return null;
 		},
 
-		filterNodes(_searchText: string | null | undefined, _searchOptions?: SearchOptions): void {
+		filterNodes(_searchTerm: string | null | undefined, _searchOptions?: SearchOptions): void {
 			// Remember the active query so the indexer's onComplete callback can
 			// re-apply it once the FlexSearch index has finished warming up —
 			// otherwise a filter typed while indexing is still in flight hides
 			// the entire tree and never recovers.
-			_lastFilterSearchText = _searchText;
+			_lastFilterSearchText = _searchTerm;
 			_lastFilterSearchOptions = _searchOptions;
 
-			if (isEmptyString(_searchText)) {
+			if (isEmptyString(_searchTerm)) {
 				// Clear filter when search is empty
 				filteredRoot.children = {};
 				this.isFiltered = false;
@@ -545,7 +545,7 @@ export function createLTree<T>(
 			}
 
 			perfStart(`[${_treeId}] filterNodes:search`);
-			const resultIndices = searchIndex!.search(_searchText!, _searchOptions);
+			const resultIndices = searchIndex!.search(_searchTerm!, _searchOptions);
 			const foundPaths = resultIndices.map((row) => flatTreeNodes[row as number].path);
 			perfEnd(`[${_treeId}] filterNodes:search`, resultIndices.length);
 
@@ -553,10 +553,10 @@ export function createLTree<T>(
 		},
 
 		searchNodes(
-			_searchText: string | null | undefined,
+			_searchTerm: string | null | undefined,
 			_searchOptions?: SearchOptions
 		): LTreeNode<T>[] {
-			if (isEmptyString(_searchText)) {
+			if (isEmptyString(_searchTerm)) {
 				return [];
 			}
 
@@ -564,7 +564,7 @@ export function createLTree<T>(
 				return [];
 			}
 
-			const resultIndices = searchIndex!.search(_searchText!, _searchOptions);
+			const resultIndices = searchIndex!.search(_searchTerm!, _searchOptions);
 			const foundNodes = resultIndices.map((row) => flatTreeNodes[row as number]);
 
 			return foundNodes;
@@ -1899,7 +1899,7 @@ export function createLTree<T>(
 			return this.insertBranch(parentPath, data);
 		},
 
-		deleteBranch(path: string, keepParent: boolean = false): DeleteBranchResult<T> {
+		removeBranch(path: string, keepParent: boolean = false): RemoveBranchResult<T> {
 			const countDescendants = (n: LTreeNode<T>): number => {
 				let count = 0;
 				for (const child of Object.values(n.children)) {

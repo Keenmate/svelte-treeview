@@ -58,7 +58,7 @@
 	<div class="card">
 		<h2>TT01 · Plain-text tooltips</h2>
 		<p class="description">
-			Set <code>shouldShowNodeTooltips</code> and a <code>getNodeTooltipCallback</code> that
+			Set <code>isNodeTooltipsShown</code> and a <code>getNodeTooltipCallback</code> that
 			returns a <strong>string</strong>. The tooltip is portaled out of the row, Floating-UI
 			positioned, and shows on hover <em>and</em> keyboard focus. A row whose callback returns an
 			empty string (here, <em>Lemon</em>) gets no tooltip.
@@ -86,10 +86,10 @@
 				sortCallback={sortByPath}
 				isSorted={true}
 				expandLevel={3}
-				shouldShowNodeTooltips
+				isNodeTooltipsShown
 				getNodeTooltipCallback={({ node }) => node.data?.desc ?? null}
 				tooltipPlacement={placement}
-				tooltipFollowCursor={followCursor}
+				shouldTooltipFollowCursor={followCursor}
 				tooltipDelay={{ show: delay, hide: 100 }}
 				{...getTreeProps()}
 			>
@@ -103,7 +103,7 @@
 			<code>getNodeTooltipCallback(node) =&gt; string | null</code>. Knobs:
 			<code>tooltipPlacement</code> (<code>'top-start'</code>), <code>tooltipDelay</code>
 			(<code>{'{ show: 400, hide: 100 }'}</code>), <code>tooltipOffset</code> (<code>8</code>),
-			<code>tooltipFollowCursor</code>.
+			<code>shouldTooltipFollowCursor</code>.
 		</p>
 	</div>
 
@@ -125,7 +125,7 @@
 				sortCallback={sortByPath}
 				isSorted={true}
 				expandLevel={3}
-				shouldShowNodeTooltips
+				isNodeTooltipsShown
 				tooltipPlacement="right-start"
 				{...getTreeProps()}
 			>
@@ -170,7 +170,7 @@
 				sortCallback={sortByPath}
 				isSorted={true}
 				expandLevel={3}
-				shouldShowNodeTooltips
+				isNodeTooltipsShown
 				getNodeTooltipCallback={({ node }) => node.data?.desc || node.data?.name || null}
 				{...getTreeProps()}
 			>

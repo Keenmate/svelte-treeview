@@ -4,7 +4,7 @@ import { test, expect, Page, Locator } from '@playwright/test';
  * E2E coverage for /test/interaction (minimal fixture page; /examples/interaction
  * is the tutorial demo with the same logic plus persistence and styling controls).
  *
- * Three trees live on this page, sharing the shouldShowCheckboxes/checkboxMode
+ * Three trees live on this page, sharing the isCheckboxesShown/checkboxMode
  * settings but each binding its own focusedNode / selectedPaths /
  * checkedPaths Set. Locators are scoped by the card heading so the trees
  * don't collide.

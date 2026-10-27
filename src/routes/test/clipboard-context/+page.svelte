@@ -178,7 +178,7 @@
 			}
 			if (event.key === 'Delete') {
 				const p = clipPaths(controller, focused);
-				if (p.length) controller.deleteNodes(p);
+				if (p.length) controller.runDeleteCommand(p);
 				return false;
 			}
 			return;
@@ -220,7 +220,7 @@
 				isSorted={true}
 				expandLevel={3}
 				clickBehavior="select"
-				selectionMode="multi"
+				selectionMode="multiple"
 				bind:focusedNode={focusedA}
 				bind:selectedPaths={highlightedA}
 				beforeKeydownCallback={onKeydownA}
@@ -247,7 +247,7 @@
 				isSorted={true}
 				expandLevel={3}
 				clickBehavior="select"
-				selectionMode="multi"
+				selectionMode="multiple"
 				bind:focusedNode={focusedB}
 				bind:selectedPaths={highlightedB}
 				beforeKeydownCallback={onKeydownB}

@@ -26,7 +26,7 @@
 
 	// ── Click Behavior card ─────────────────────────────────────────────
 	let clickBehavior = $state<ClickBehavior>('expand-and-focus');
-	let shouldShowCheckboxes = $state(false);
+	let isCheckboxesShown = $state(false);
 	let checkboxMode = $state<CheckboxMode>('independent');
 	let shouldClickToggleCheckbox = $state(false);
 	let focusedNode1 = $state<LTreeNode<Item> | null>(null);
@@ -66,10 +66,10 @@
 				</select>
 			</label>
 			<label>
-				<input type="checkbox" bind:checked={shouldShowCheckboxes} />
+				<input type="checkbox" bind:checked={isCheckboxesShown} />
 				Show Checkboxes
 			</label>
-			{#if shouldShowCheckboxes}
+			{#if isCheckboxesShown}
 				<label>
 					Checkbox Mode:
 					<select bind:value={checkboxMode}>
@@ -93,9 +93,9 @@
 				sortCallback={sortByName}
 				isSorted={true}
 				expandLevel={2}
-				selectionMode="multi"
+				selectionMode="multiple"
 				{clickBehavior}
-				{shouldShowCheckboxes}
+				{isCheckboxesShown}
 				{checkboxMode}
 				{shouldClickToggleCheckbox}
 				bind:focusedNode={focusedNode1}
@@ -136,7 +136,7 @@
 				sortCallback={sortByName}
 				isSorted={true}
 				expandLevel={3}
-				selectionMode="multi"
+				selectionMode="multiple"
 				bind:focusedNode={focusedNode2}
 				bind:selectedPaths={highlightedPaths2}
 				bind:checkedPaths={selectedPaths2}

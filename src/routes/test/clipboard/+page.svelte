@@ -82,7 +82,7 @@
 		const mod = event.ctrlKey || event.metaKey;
 		const key = event.key.toLowerCase();
 
-		// Success logging is driven by the onCopy / onCut / onPaste callbacks below.
+		// Success logging is driven by the onNodeCopy / onNodeCut / onNodePaste callbacks below.
 		if (mod && key === 'c') {
 			const paths = clipboardPaths(controller);
 			if (!paths.length) return false;
@@ -137,13 +137,13 @@
 			isSorted={true}
 			expandLevel={3}
 			clickBehavior="select"
-			selectionMode="multi"
+			selectionMode="multiple"
 			bind:focusedNode
 			bind:selectedPaths
 			{beforeKeydownCallback}
-			onCopy={({ paths }) => (lastLog = `copied ${paths.length}`)}
-			onCut={({ paths }) => (lastLog = `cut ${paths.length}`)}
-			onPaste={(result) => (lastLog = result.success ? `pasted ${result.count}` : `paste-failed ${result.error}`)}
+			onNodeCopy={({ paths }) => (lastLog = `copied ${paths.length}`)}
+			onNodeCut={({ paths }) => (lastLog = `cut ${paths.length}`)}
+			onNodePaste={(result) => (lastLog = result.success ? `pasted ${result.count}` : `paste-failed ${result.error}`)}
 			beforePasteCallback={beforePaste}
 		>
 			{#snippet nodeTemplate(node: LTreeNode<Item>)}

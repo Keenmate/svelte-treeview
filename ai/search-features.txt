@@ -9,16 +9,16 @@ CRITICAL: Search requires explicit configuration
 BASIC SEARCH SETUP
 ------------------
 <script>
-  let searchText = $state('');
+  let searchTerm = $state('');
 </script>
 
-<input bind:value={searchText} placeholder="Search..." />
+<input bind:value={searchTerm} placeholder="Search..." />
 
 <Tree
   {data}
   idMember="id"
   pathMember="path"
-  bind:searchText
+  bind:searchTerm
   shouldUseInternalSearchIndex={true}
   searchValueMember="name"
 />
@@ -71,8 +71,8 @@ FILTER VS SEARCH
 ----------------
 filterNodes() - Hides non-matching nodes in tree display
 
-searchText binding uses filterNodes internally:
-<Tree bind:searchText ... />
+searchTerm binding uses filterNodes internally:
+<Tree bind:searchTerm ... />
 
 searchNodes() - Returns matching nodes without filtering
 
@@ -105,14 +105,14 @@ treeRef.filterNodes('query', {
 SEARCH RESULTS NAVIGATION
 -------------------------
 <script>
-  let searchText = $state('');
+  let searchTerm = $state('');
   let results = $state([]);
   let currentIndex = $state(0);
   let treeRef;
 
   $effect(() => {
-    if (searchText) {
-      results = treeRef.searchNodes(searchText);
+    if (searchTerm) {
+      results = treeRef.searchNodes(searchTerm);
       currentIndex = 0;
       if (results.length > 0) {
         goToResult(0);
@@ -140,7 +140,7 @@ SEARCH RESULTS NAVIGATION
   }
 </script>
 
-<input bind:value={searchText} />
+<input bind:value={searchTerm} />
 <span>{currentIndex + 1} of {results.length}</span>
 <button onclick={prev}>Prev</button>
 <button onclick={next}>Next</button>
@@ -148,7 +148,7 @@ SEARCH RESULTS NAVIGATION
 CLEAR SEARCH
 ------------
 // Clear search text (shows all nodes)
-searchText = '';
+searchTerm = '';
 
 // Or programmatically
 treeRef.filterNodes('');
@@ -182,12 +182,12 @@ Handle search externally:
 <script>
   let data = $state.raw([...]);
   let filteredData = $state.raw([...]);
-  let searchText = $state('');
+  let searchTerm = $state('');
 
   $effect(() => {
-    if (searchText) {
+    if (searchTerm) {
       filteredData = data.filter(item =>
-        item.name.toLowerCase().includes(searchText.toLowerCase())
+        item.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     } else {
       filteredData = data;
@@ -195,7 +195,7 @@ Handle search externally:
   });
 </script>
 
-<input bind:value={searchText} />
+<input bind:value={searchTerm} />
 <Tree data={filteredData} ... />
 
 Note: This approach loses the tree hierarchy when filtering
@@ -204,9 +204,9 @@ SEARCH HIGHLIGHT
 ----------------
 Highlight matching text in node template:
 
-<Tree {data} bind:searchText>
+<Tree {data} bind:searchTerm>
   {#snippet nodeTemplate(node)}
-    {@html highlightMatch(node.data.name, searchText)}
+    {@html highlightMatch(node.data.name, searchTerm)}
   {/snippet}
 </Tree>
 
@@ -228,20 +228,20 @@ Debounce search input for better performance:
 
 <script>
   let inputValue = $state('');
-  let searchText = $state('');
+  let searchTerm = $state('');
   let debounceTimer;
 
   function handleInput(e) {
     inputValue = e.target.value;
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
-      searchText = inputValue;
+      searchTerm = inputValue;
     }, 300);
   }
 </script>
 
 <input value={inputValue} oninput={handleInput} />
-<Tree bind:searchText ... />
+<Tree bind:searchTerm ... />
 
 SEARCH STATISTICS
 -----------------
@@ -253,7 +253,7 @@ console.log('Filtered visible:', stats.filteredNodeCount);
 
 // After search
 $effect(() => {
-  if (searchText) {
+  if (searchTerm) {
     console.log(`Showing ${stats.filteredNodeCount} of ${stats.nodeCount}`);
   }
 });
@@ -278,10 +278,10 @@ SEARCH WITH EMPTY TREE
 ----------------------
 Handle no results state:
 
-<Tree {data} bind:searchText>
+<Tree {data} bind:searchTerm>
   {#snippet noData()}
-    {#if searchText}
-      <p>No results for "{searchText}"</p>
+    {#if searchTerm}
+      <p>No results for "{searchTerm}"</p>
     {:else}
       <p>No items available</p>
     {/if}

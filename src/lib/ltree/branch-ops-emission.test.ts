@@ -4,7 +4,7 @@ import { createLTree } from './ltree.svelte.js';
 /**
  * Verifies the single-emission guarantee for bulk subtree operations.
  *
- * insertBranch / replaceBranch / deleteBranch each mutate many nodes but must
+ * insertBranch / replaceBranch / removeBranch each mutate many nodes but must
  * fire _emitTreeChanged exactly once per public call. Counting per-call
  * emissions is impossible from outside the lib (there is no public hook), so
  * this is verified by spying on the internal method at the unit level.
@@ -98,27 +98,27 @@ describe('branch operations — single-emission guarantee', () => {
 		expect(spy).toHaveBeenCalledTimes(1);
 	});
 
-	it('deleteBranch fires _emitTreeChanged exactly once for a multi-descendant subtree', () => {
+	it('removeBranch fires _emitTreeChanged exactly once for a multi-descendant subtree', () => {
 		const tree = createTree();
 		tree.insertArray(seed);
 
 		const spy = vi.spyOn(tree, '_emitTreeChanged');
 
 		// '2.1' has itself + 2 grandchildren = 3 nodes removed.
-		const result = tree.deleteBranch('2.1');
+		const result = tree.removeBranch('2.1');
 
 		expect(result.success).toBe(true);
 		expect(result.removedCount).toBe(3);
 		expect(spy).toHaveBeenCalledTimes(1);
 	});
 
-	it('deleteBranch with keepParent=true still fires exactly once', () => {
+	it('removeBranch with keepParent=true still fires exactly once', () => {
 		const tree = createTree();
 		tree.insertArray(seed);
 
 		const spy = vi.spyOn(tree, '_emitTreeChanged');
 
-		const result = tree.deleteBranch('2.1', true);
+		const result = tree.removeBranch('2.1', true);
 
 		expect(result.success).toBe(true);
 		expect(result.removedCount).toBe(2);
@@ -137,7 +137,7 @@ describe('branch operations — single-emission guarantee', () => {
 		const repRes = tree.replaceBranch('999.999', [
 			{ id: 301, path: '999.999.1', name: 'Y' }
 		]);
-		const delRes = tree.deleteBranch('999.999');
+		const delRes = tree.removeBranch('999.999');
 
 		expect(insRes.success).toBe(false);
 		expect(repRes.success).toBe(false);

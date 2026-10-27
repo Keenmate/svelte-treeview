@@ -58,7 +58,7 @@
 	}
 
 	// ── Branch Operations demo ─────────────────────────────────────────
-	// insertBranch(parentPath, nodes) and deleteBranch(path[, childrenOnly]) mutate a
+	// insertBranch(parentPath, nodes) and removeBranch(path[, childrenOnly]) mutate a
 	// whole subtree in one call, each emitting a single change. This org-chart demo
 	// wires them to a context-menu cut/paste with a simulated server round-trip that
 	// recalculates paths + IDs before the branch lands at its new home.
@@ -231,7 +231,7 @@
 			processingMessage = `Server responded (${serverTime}ms). Applying changes...`;
 
 			// 2. Delete old branch
-			const deleteResult = treeRef.deleteBranch(sourcePath);
+			const deleteResult = treeRef.removeBranch(sourcePath);
 			if (!deleteResult.success) {
 				addLog(`Failed to remove source: ${deleteResult.error}`);
 				isProcessing = false;
@@ -324,8 +324,8 @@
 			isDanger: true,
 			isDisabled: isProcessing,
 			onClick: () => {
-				const result = treeRef.deleteBranch(node.path);
-				addLog(`deleteBranch: Removed "${node.data?.name}" (${result.removedCount} nodes)`);
+				const result = treeRef.removeBranch(node.path);
+				addLog(`removeBranch: Removed "${node.data?.name}" (${result.removedCount} nodes)`);
 				selectedNode = null;
 				close();
 			}
@@ -337,7 +337,7 @@
 				text: 'Clear children only',
 				isDisabled: isProcessing,
 				onClick: () => {
-					const result = treeRef.deleteBranch(node.path, true);
+					const result = treeRef.removeBranch(node.path, true);
 					addLog(`Cleared ${result.removedCount} children from "${node.data?.name}"`);
 					close();
 				}
@@ -640,7 +640,7 @@ ${"<"}/script>
 	<div class="card">
 		<h2>DS05 · Branch Operations</h2>
 		<p class="description">
-			<code>insertBranch</code> and <code>deleteBranch</code> bulk-mutate a whole subtree in one
+			<code>insertBranch</code> and <code>removeBranch</code> bulk-mutate a whole subtree in one
 			call, each emitting a single change notification (<code>replaceBranch</code> swaps a subtree's
 			contents in place). Ideal for server-driven moves: snapshot a branch, send it to the server for
 			path/ID recalculation, then delete the old branch and insert the recalculated one.
@@ -671,7 +671,7 @@ ${"<"}/script>
 			<div class="step">
 				<span class="step-num">4</span>
 				<div>
-					<strong>Tree updates</strong>: <code>deleteBranch(sourcePath)</code> removes the old branch,
+					<strong>Tree updates</strong>: <code>removeBranch(sourcePath)</code> removes the old branch,
 					<code>insertBranch(targetPath, serverData)</code> inserts the recalculated result.
 				</div>
 			</div>
@@ -679,7 +679,7 @@ ${"<"}/script>
 
 		<div class="code-block">
 			<pre>{`// insertBranch(parentPath, nodes)  → { success, count }
-// deleteBranch(path, childrenOnly?) → { success, removedCount }
+// removeBranch(path, childrenOnly?) → { success, removedCount }
 // replaceBranch(path, nodes)        → swap a subtree's contents in place
 
 // 1. User cuts a branch via context menu
@@ -689,7 +689,7 @@ const branchData = collectBranchData(node);
 const serverResult = await api.moveBranch(branchData, targetPath);
 
 // 3. Apply server response to tree (two ops, two emits)
-treeRef.deleteBranch(sourcePath);
+treeRef.removeBranch(sourcePath);
 treeRef.insertBranch(targetPath, serverResult);`}</pre>
 		</div>
 	</div>

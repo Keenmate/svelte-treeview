@@ -341,17 +341,17 @@
 						pathMember="path"
 						displayValueMember="name"
 						sortCallback={sortByPath}
-						shouldShowCheckboxes
+						isCheckboxesShown
 						checkboxMode="cascade"
 						bind:checkedPaths
 						iconSet={treeIconSet}
 						expandLevel={5}
 						getContextMenuItemsCallback={contextMenuItems}
-						shouldShowNodeTooltips
+						isNodeTooltipsShown
 					>
 						{#snippet nodeTemplate(node: LTreeNode<Item>)}
 							<!-- Custom row: icon + label + folder count badge. Hover shows the
-							     themed tooltip below (shouldShowNodeTooltips + the `tooltip` snippet),
+							     themed tooltip below (isNodeTooltipsShown + the `tooltip` snippet),
 							     the direct analog of the multiselect's option tooltips. -->
 							<span class="demo-node">
 								<span class="demo-node__icon">{node.data?.icon}</span>
@@ -405,7 +405,7 @@
 			<p>
 				<strong>Rich rows + tooltips:</strong> the tree uses a <code>nodeTemplate</code> snippet
 				(icon + label + a themed folder-count badge). <strong>Hover any row</strong> for the
-				tooltip — enabled with <code>shouldShowNodeTooltips</code> and a <code>tooltip</code>
+				tooltip — enabled with <code>isNodeTooltipsShown</code> and a <code>tooltip</code>
 				snippet (rich content: name, description, path). It's portaled and Floating-UI
 				positioned by the library, and themed through the shared <code>--base-tooltip-*</code>
 				tokens, so it renders identically to the multiselect's option tooltips under every theme.

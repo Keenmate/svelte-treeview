@@ -28,8 +28,8 @@
 		sortCallback={sortByPath}
 		isSorted={true}
 		expandLevel={3}
-		selectionMode="multi"
-		shouldShowCheckboxes
+		selectionMode="multiple"
+		isCheckboxesShown
 		getIconCallback={() => 'dot'}
 	>
 		{#snippet icon(_node: LTreeNode<Item>, _value: string | null | undefined, ctx: NodeRenderContext)}

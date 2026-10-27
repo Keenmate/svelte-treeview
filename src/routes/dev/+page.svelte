@@ -87,7 +87,7 @@
 	let pathMember = $state('path');
 	let displayValueMember = $state('name');
 	let expandLevel = $state(2);
-	let searchText = $state('');
+	let searchTerm = $state('');
 	let selectedNode = $state(null);
 	let treePathSeparator = $state('.');
 
@@ -136,7 +136,7 @@
 	function switchExample(example: string) {
 		currentExample = example;
 		selectedNode = null;
-		searchText = '';
+		searchTerm = '';
 
 		if (example === 'filesystem') {
 			treePathSeparator = '\\';        // Set separator FIRST
@@ -198,7 +198,7 @@
 						{treePathSeparator}
 						isSorted={false}
 						bind:focusedNode={selectedNode}
-						bind:searchText
+						bind:searchTerm
 						shouldUseInternalSearchIndex={true}
 						clickBehavior="expand-and-focus"
 						{onNodeClick}
@@ -273,7 +273,7 @@
 							id="dev-search"
 							type="text"
 							class="form-control form-control-sm"
-							bind:value={searchText}
+							bind:value={searchTerm}
 							placeholder="Search nodes..."
 						>
 					</div>

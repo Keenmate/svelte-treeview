@@ -5,7 +5,7 @@ import {
 	type Ltree,
 	type InsertArrayResult,
 	type InsertBranchResult,
-	type DeleteBranchResult,
+	type RemoveBranchResult,
 	type ContextMenuEntry,
 	type ContextMenuContext,
 	type DropPosition,
@@ -256,9 +256,9 @@ export interface NodeDropContext<T> {
 }
 
 /**
- * Context for the set-oriented clipboard/delete events (onCopy / onCut / onDelete), mirroring
+ * Context for the set-oriented clipboard/delete events (onNodeCopy / onNodeCut / onNodeDelete), mirroring
  * the BeforeCopyContext/BeforeDeleteContext shape of their before* twins. `nodes` are the
- * resolved live nodes for `paths`; for onCut/onDelete they are pre-removal snapshots captured
+ * resolved live nodes for `paths`; for onNodeCut/onNodeDelete they are pre-removal snapshots captured
  * before the nodes left the tree (the tree no longer holds them by the time the event fires).
  */
 export interface ClipboardEventContext<T> {
@@ -346,7 +346,7 @@ export interface NodeCallbacks<T> {
 
 export interface NodeConfig {
 	clickBehavior: ClickBehavior;
-	shouldShowCheckboxes: boolean;
+	isCheckboxesShown: boolean;
 	checkboxMode: CheckboxMode;
 	shouldClickToggleCheckbox: boolean;
 	expandIconClass: string;
@@ -357,12 +357,12 @@ export interface NodeConfig {
 	// Hover/focus tooltip per node. The `tooltip` SNIPPET (rich content) travels via
 	// the 'NodeTooltip' context, not here; these are the plain-config knobs. A string
 	// from getNodeTooltipCallback is the fallback when no snippet is given.
-	shouldShowNodeTooltips: boolean;
+	isNodeTooltipsShown: boolean;
 	getNodeTooltipCallback: ((ctx: NodeContext<any>) => string | null | undefined) | undefined;
 	tooltipPlacement: TooltipPlacement;
 	tooltipDelay: TooltipDelay;
 	tooltipOffset: number;
-	tooltipFollowCursor: boolean;
+	shouldTooltipFollowCursor: boolean;
 	// Per-node icon rendered as a dedicated .stv__node-icon element on ALL nodes (branch
 	// + leaf), independent of nodeTemplate. VALUE from iconMember/getIconCallback; default
 	// render is `<i class="stv__node-icon {value}">` (FA-friendly), overridable via the
@@ -445,11 +445,11 @@ export interface TreeControllerProps<T> {
 	clickBehavior?: ClickBehavior | null | undefined;
 	/**
 	 * `'single'` (default): Ctrl/Shift+click act as plain click, Shift+Arrow is no-op,
-	 * Enter is no-op. `'multi'`: Ctrl-toggle, Shift-range, Shift+Arrow extends, Enter
+	 * Enter is no-op. `'multiple'`: Ctrl-toggle, Shift-range, Shift+Arrow extends, Enter
 	 * toggles highlight on the focused node.
 	 */
 	selectionMode?: SelectionMode | null | undefined;
-	shouldShowCheckboxes?: boolean | null | undefined;
+	isCheckboxesShown?: boolean | null | undefined;
 	checkboxMode?: CheckboxMode | null | undefined;
 	/**
 	 * Which paths `checkedPaths` / `onCheckedChange` EMIT in cascade mode
@@ -458,7 +458,7 @@ export interface TreeControllerProps<T> {
 	 */
 	cascadeCheckPolicy?: CascadeCheckPolicy | null | undefined;
 	/**
-	 * When true AND `shouldShowCheckboxes` is on, a plain click on a selectable node's label
+	 * When true AND `isCheckboxesShown` is on, a plain click on a selectable node's label
 	 * toggles the checkbox instead of running the normal click flow — `focusedNode` and
 	 * `selectedPaths` are NOT updated. Expand-on-click still happens if `clickBehavior`
 	 * is `'expand'` or `'expand-and-focus'`. Modified clicks (Ctrl/Shift) fall through to
@@ -479,7 +479,7 @@ export interface TreeControllerProps<T> {
 	 */
 	rangeSelectionMode?: 'visual' | 'logical';
 	initializeIndexCallback?: () => Index;
-	searchText?: string | null | undefined;
+	searchTerm?: string | null | undefined;
 	shouldUseInternalSearchIndex?: boolean | null | undefined;
 	indexerBatchSize?: number | null | undefined;
 	indexerTimeout?: number | null | undefined;
@@ -500,11 +500,11 @@ export interface TreeControllerProps<T> {
 	/** Enable virtual scrolling in flat mode. Only visible nodes + overscan are rendered. */
 	isVirtualScrollEnabled?: boolean;
 	/** Explicit row height in px. Auto-measured from first row if not set. */
-	virtualRowHeight?: number;
+	virtualScrollItemHeight?: number;
 	/** Extra rows above/below viewport (default: 5) */
-	virtualOverscan?: number;
+	virtualScrollOverscan?: number;
 	/** CSS height for scroll container. Auto-detected from parent if not set, fallback 400px. */
-	virtualContainerHeight?: string;
+	virtualScrollContainerHeight?: string;
 
 	// DRAG AND DROP
 	dragDropMode?: DragDropMode;
@@ -529,22 +529,22 @@ export interface TreeControllerProps<T> {
 	/** Fired when a long-press (touch) engages on a NON-draggable node — the user tried to
 	 *  move something locked. Fire-and-forget; carries the locked node's NodeRef. The source-side
 	 *  twin of a drop rejection; use it for a toast/snackbar/custom haptic. */
-	onNodeDragDenied?: (ctx: NodeEventContext<T>) => void;
+	onNodeDragReject?: (ctx: NodeEventContext<T>) => void;
 	/** Fired when a drop is REJECTED because the target node refuses it (`isDropAllowed` false /
-	 *  getIsDropAllowedCallback). The target-side twin of onNodeDragDenied; carries the refusing
+	 *  getIsDropAllowedCallback). The target-side twin of onNodeDragReject; carries the refusing
 	 *  node's NodeRef. Not fired when a tree-drop-zone catches the forwarded drop instead. */
-	onNodeDropDenied?: (ctx: NodeEventContext<T>) => void;
+	onNodeDropReject?: (ctx: NodeEventContext<T>) => void;
 	onSelectionChange?: (ctx: SelectionChangeContext<T>) => void;
 	onCheckedChange?: (ctx: SelectionChangeContext<T>) => void;
 	// Post-operation clipboard notifications (fired AFTER the op succeeds). Symmetric
-	// with the before*Callback interceptors: onCopy/onCut/onDelete carry the final paths
-	// plus resolved nodes (pre-removal snapshots for cut/delete); onPaste the PasteResult.
-	onCopy?: (ctx: ClipboardEventContext<T>) => void;
-	onCut?: (ctx: ClipboardEventContext<T>) => void;
-	onPaste?: (result: PasteResult<T>) => void;
-	/** Fired after `deleteNodes` removes nodes (built-in Delete key or the public method),
+	// with the before*Callback interceptors: onNodeCopy/onNodeCut/onNodeDelete carry the final paths
+	// plus resolved nodes (pre-removal snapshots for cut/delete); onNodePaste the PasteResult.
+	onNodeCopy?: (ctx: ClipboardEventContext<T>) => void;
+	onNodeCut?: (ctx: ClipboardEventContext<T>) => void;
+	onNodePaste?: (result: PasteResult<T>) => void;
+	/** Fired after `runDeleteCommand` removes nodes (built-in Delete key or the public method),
 	 *  with the top-level paths that were actually removed plus their pre-removal nodes. */
-	onDelete?: (ctx: ClipboardEventContext<T>) => void;
+	onNodeDelete?: (ctx: ClipboardEventContext<T>) => void;
 
 	/**
 	 * Opt into built-in keyboard shortcuts (default false): Ctrl/Cmd+C/X/V (copy/cut/paste),
@@ -628,12 +628,12 @@ export interface TreeControllerProps<T> {
 	leafIconClass?: string | null | undefined;
 	toggleIconMode?: ToggleIconMode;
 	nodeTitleOverflow?: NodeTitleOverflow;
-	shouldShowNodeTooltips?: boolean;
+	isNodeTooltipsShown?: boolean;
 	getNodeTooltipCallback?: (ctx: NodeContext<T>) => string | null | undefined;
 	tooltipPlacement?: TooltipPlacement;
 	tooltipDelay?: TooltipDelay;
 	tooltipOffset?: number;
-	tooltipFollowCursor?: boolean;
+	shouldTooltipFollowCursor?: boolean;
 	iconMember?: string | null | undefined;
 	getIconCallback?: (ctx: NodeContext<T>) => string | null | undefined;
 	iconColorMember?: string | null | undefined;
@@ -660,7 +660,7 @@ export class TreeController<T> {
 	nodeCallbacks!: NodeCallbacks<T>;
 	nodeConfig = $state<NodeConfig>({
 		clickBehavior: 'expand-and-focus',
-		shouldShowCheckboxes: false,
+		isCheckboxesShown: false,
 		checkboxMode: 'independent',
 		shouldClickToggleCheckbox: false,
 		expandIconClass: 'stv__toggle-icon--expand',
@@ -679,12 +679,12 @@ export class TreeController<T> {
 		dropZoneStart: 33,
 		toggleIconMode: 'rotate',
 		nodeTitleOverflow: 'wrap',
-		shouldShowNodeTooltips: false,
+		isNodeTooltipsShown: false,
 		getNodeTooltipCallback: undefined,
 		tooltipPlacement: 'top-start',
 		tooltipDelay: { show: 400, hide: 100 },
 		tooltipOffset: 8,
-		tooltipFollowCursor: false,
+		shouldTooltipFollowCursor: false,
 		iconMember: undefined,
 		getIconCallback: undefined,
 		iconColorMember: undefined,
@@ -752,7 +752,7 @@ export class TreeController<T> {
 		return this.#emittedPaths;
 	}
 	insertResult = $state.raw<InsertArrayResult<T> | null | undefined>(null);
-	searchText = $state<string | null | undefined>(undefined);
+	searchTerm = $state<string | null | undefined>(undefined);
 	isRendering = $state(false);
 
 	// BEHAVIOUR
@@ -781,12 +781,12 @@ export class TreeController<T> {
 	onNodeDragStartHandler: TreeControllerProps<T>['onNodeDragStart'];
 	onNodeDragOverHandler: TreeControllerProps<T>['onNodeDragOver'];
 	onNodeDropHandler: TreeControllerProps<T>['onNodeDrop'];
-	onNodeDragDeniedHandler: TreeControllerProps<T>['onNodeDragDenied'];
-	onNodeDropDeniedHandler: TreeControllerProps<T>['onNodeDropDenied'];
-	onCopyHandler: TreeControllerProps<T>['onCopy'];
-	onCutHandler: TreeControllerProps<T>['onCut'];
-	onPasteHandler: ((result: PasteResult<T>) => void) | undefined;
-	onDeleteHandler: TreeControllerProps<T>['onDelete'];
+	onNodeDragRejectHandler: TreeControllerProps<T>['onNodeDragReject'];
+	onNodeDropRejectHandler: TreeControllerProps<T>['onNodeDropReject'];
+	onNodeCopyHandler: TreeControllerProps<T>['onNodeCopy'];
+	onNodeCutHandler: TreeControllerProps<T>['onNodeCut'];
+	onNodePasteHandler: ((result: PasteResult<T>) => void) | undefined;
+	onNodeDeleteHandler: TreeControllerProps<T>['onNodeDelete'];
 	onRenderStartHandler: (() => void) | undefined;
 	onRenderProgressHandler: ((stats: RenderStats) => void) | undefined;
 	onRenderCompleteHandler: ((stats: RenderStats) => void) | undefined;
@@ -808,7 +808,7 @@ export class TreeController<T> {
 	// Visual config (for nodeConfig updates)
 	clickBehavior = $state<ClickBehavior>('expand-and-focus');
 	selectionMode = $state<SelectionMode>('single');
-	shouldShowCheckboxes = $state(false);
+	isCheckboxesShown = $state(false);
 	#checkboxMode = $state<CheckboxMode>('independent');
 	get checkboxMode(): CheckboxMode {
 		return this.#checkboxMode;
@@ -838,14 +838,14 @@ export class TreeController<T> {
 	leafIconClass = $state('stv__toggle-icon--leaf');
 	toggleIconMode = $state<ToggleIconMode>('rotate');
 	nodeTitleOverflow = $state<NodeTitleOverflow>('wrap');
-	shouldShowNodeTooltips = $state<boolean>(false);
+	isNodeTooltipsShown = $state<boolean>(false);
 	getNodeTooltipCallback = $state<((ctx: NodeContext<any>) => string | null | undefined) | undefined>(
 		undefined
 	);
 	tooltipPlacement = $state<TooltipPlacement>('top-start');
 	tooltipDelay = $state<TooltipDelay>({ show: 400, hide: 100 });
 	tooltipOffset = $state<number>(8);
-	tooltipFollowCursor = $state<boolean>(false);
+	shouldTooltipFollowCursor = $state<boolean>(false);
 	iconMember = $state<string | null | undefined>(undefined);
 	getIconCallback = $state<((ctx: NodeContext<any>) => string | null | undefined) | undefined>(
 		undefined
@@ -878,16 +878,16 @@ export class TreeController<T> {
 
 	/** Show the built-in blocked-action indicator (haptic buzz + no-entry icon) — held while a
 	 *  locked node is long-pressed, and flashed on a target that refuses a drop. The
-	 *  onNodeDragDenied / onNodeDropDenied events fire regardless of this flag. */
+	 *  onNodeDragReject / onNodeDropReject events fire regardless of this flag. */
 	shouldIndicateUndraggable = $state(true);
 
 	hasContextMenuSnippet = $state(false);
 
 	// Virtual scrolling
 	isVirtualScrollEnabled = $state(false);
-	virtualRowHeight = $state<number | undefined>(undefined);
-	virtualOverscan = $state(5);
-	virtualContainerHeight = $state<string | undefined>(undefined);
+	virtualScrollItemHeight = $state<number | undefined>(undefined);
+	virtualScrollOverscan = $state(5);
+	virtualScrollContainerHeight = $state<string | undefined>(undefined);
 
 	// ── Navigation strategy ────────────────────────────────────────────
 	navigation!: TreeNavigation<T>;
@@ -979,10 +979,10 @@ export class TreeController<T> {
 	// Drop placeholder
 	isDropPlaceholderActive = $state(false);
 
-	// Whole-tree drop zone (Tree.svelte `shouldEnableTreeDropZone`). When on, a node that
+	// Whole-tree drop zone (Tree.svelte `isTreeDropZoneEnabled`). When on, a node that
 	// REJECTS a drop must NOT tear down the drag — the same drop event bubbles up to the
 	// container's tree-zone handler, which needs `draggedNode` still live to route it.
-	shouldEnableTreeDropZone = false;
+	isTreeDropZoneEnabled = false;
 
 	// Clipboard — paths dimmed during cut operation
 	cutPaths = $state.raw<Set<string>>(new Set());
@@ -999,15 +999,15 @@ export class TreeController<T> {
 	// ── Derived ─────────────────────────────────────────────────────────
 
 	// Virtual scroll derived computations
-	vsRowHeight = $derived(this.virtualRowHeight ?? this.vsMeasuredRowHeight ?? 32);
+	vsRowHeight = $derived(this.virtualScrollItemHeight ?? this.vsMeasuredRowHeight ?? 32);
 	vsActive = $derived(this.isVirtualScrollEnabled && this.isFlatRenderingEnabled);
-	vsContainerStyle = $derived(this.virtualContainerHeight ?? this.vsDetectedHeight ?? '400px');
+	vsContainerStyle = $derived(this.virtualScrollContainerHeight ?? this.vsDetectedHeight ?? '400px');
 	allFlatNodes = $derived(this.tree?.visibleFlatNodes ?? []);
 	vsTotalCount = $derived(this.allFlatNodes.length);
 	vsTotalHeight = $derived(this.vsTotalCount * this.vsRowHeight);
 	vsStartIndex = $derived(
 		this.vsActive
-			? Math.max(0, Math.floor(this.vsScrollTop / this.vsRowHeight) - this.virtualOverscan)
+			? Math.max(0, Math.floor(this.vsScrollTop / this.vsRowHeight) - this.virtualScrollOverscan)
 			: 0
 	);
 	vsEndIndex = $derived(
@@ -1016,7 +1016,7 @@ export class TreeController<T> {
 					this.vsTotalCount,
 					Math.ceil(
 						(this.vsScrollTop + (this.vsContainerRef?.clientHeight ?? 0)) / this.vsRowHeight
-					) + this.virtualOverscan
+					) + this.virtualScrollOverscan
 				)
 			: this.vsTotalCount
 	);
@@ -1049,7 +1049,7 @@ export class TreeController<T> {
 		this.focusedNode = props.focusedNode ?? null;
 		this.selectedPaths = props.selectedPaths ?? new Set();
 		this.checkedPaths = props.checkedPaths ?? new Set();
-		this.searchText = props.searchText;
+		this.searchTerm = props.searchTerm;
 
 		this.rangeSelectionMode = props.rangeSelectionMode ?? 'visual';
 		this.isLoading = props.isLoading ?? false;
@@ -1069,7 +1069,7 @@ export class TreeController<T> {
 
 		this.clickBehavior = props.clickBehavior ?? 'expand-and-focus';
 		this.selectionMode = props.selectionMode ?? 'single';
-		this.shouldShowCheckboxes = props.shouldShowCheckboxes ?? false;
+		this.isCheckboxesShown = props.isCheckboxesShown ?? false;
 		this.checkboxMode = props.checkboxMode ?? 'independent';
 		this.cascadeCheckPolicy = props.cascadeCheckPolicy ?? 'rolled-up';
 		this.shouldClickToggleCheckbox = props.shouldClickToggleCheckbox ?? false;
@@ -1079,12 +1079,12 @@ export class TreeController<T> {
 		this.leafIconClass = props.leafIconClass ?? 'stv__toggle-icon--leaf';
 		this.toggleIconMode = props.toggleIconMode ?? 'rotate';
 		this.nodeTitleOverflow = props.nodeTitleOverflow ?? 'wrap';
-		this.shouldShowNodeTooltips = props.shouldShowNodeTooltips ?? false;
+		this.isNodeTooltipsShown = props.isNodeTooltipsShown ?? false;
 		this.getNodeTooltipCallback = props.getNodeTooltipCallback;
 		this.tooltipPlacement = props.tooltipPlacement ?? 'top-start';
 		this.tooltipDelay = props.tooltipDelay ?? { show: 400, hide: 100 };
 		this.tooltipOffset = props.tooltipOffset ?? 8;
-		this.tooltipFollowCursor = props.tooltipFollowCursor ?? false;
+		this.shouldTooltipFollowCursor = props.shouldTooltipFollowCursor ?? false;
 		this.iconMember = props.iconMember;
 		this.getIconCallback = props.getIconCallback;
 		this.iconColorMember = props.iconColorMember;
@@ -1111,9 +1111,9 @@ export class TreeController<T> {
 
 		// Virtual scrolling
 		this.isVirtualScrollEnabled = props.isVirtualScrollEnabled ?? false;
-		this.virtualRowHeight = props.virtualRowHeight;
-		this.virtualOverscan = props.virtualOverscan ?? 5;
-		this.virtualContainerHeight = props.virtualContainerHeight;
+		this.virtualScrollItemHeight = props.virtualScrollItemHeight;
+		this.virtualScrollOverscan = props.virtualScrollOverscan ?? 5;
+		this.virtualScrollContainerHeight = props.virtualScrollContainerHeight;
 
 		// Store callbacks
 		this.onNodeClickHandler = props.onNodeClick;
@@ -1123,12 +1123,12 @@ export class TreeController<T> {
 		this.onNodeDragStartHandler = props.onNodeDragStart;
 		this.onNodeDragOverHandler = props.onNodeDragOver;
 		this.onNodeDropHandler = props.onNodeDrop;
-		this.onNodeDragDeniedHandler = props.onNodeDragDenied;
-		this.onNodeDropDeniedHandler = props.onNodeDropDenied;
-		this.onCopyHandler = props.onCopy;
-		this.onCutHandler = props.onCut;
-		this.onPasteHandler = props.onPaste;
-		this.onDeleteHandler = props.onDelete;
+		this.onNodeDragRejectHandler = props.onNodeDragReject;
+		this.onNodeDropRejectHandler = props.onNodeDropReject;
+		this.onNodeCopyHandler = props.onNodeCopy;
+		this.onNodeCutHandler = props.onNodeCut;
+		this.onNodePasteHandler = props.onNodePaste;
+		this.onNodeDeleteHandler = props.onNodeDelete;
 		this.beforeDragStartHandler = props.beforeDragStartCallback;
 		this.beforeDropHandler = props.beforeDropCallback;
 		this.beforeCopyHandler = props.beforeCopyCallback;
@@ -1214,7 +1214,7 @@ export class TreeController<T> {
 		// ── Initial nodeConfig ──────────────────────────────────────────
 		this.nodeConfig = {
 			clickBehavior: this.clickBehavior,
-			shouldShowCheckboxes: this.shouldShowCheckboxes,
+			isCheckboxesShown: this.isCheckboxesShown,
 			checkboxMode: this.checkboxMode,
 			shouldClickToggleCheckbox: this.shouldClickToggleCheckbox,
 			expandIconClass: this.expandIconClass,
@@ -1222,12 +1222,12 @@ export class TreeController<T> {
 			leafIconClass: this.leafIconClass,
 			toggleIconMode: this.toggleIconMode,
 			nodeTitleOverflow: this.nodeTitleOverflow,
-			shouldShowNodeTooltips: this.shouldShowNodeTooltips,
+			isNodeTooltipsShown: this.isNodeTooltipsShown,
 			getNodeTooltipCallback: this.getNodeTooltipCallback,
 			tooltipPlacement: this.tooltipPlacement,
 			tooltipDelay: this.tooltipDelay,
 			tooltipOffset: this.tooltipOffset,
-			tooltipFollowCursor: this.tooltipFollowCursor,
+			shouldTooltipFollowCursor: this.shouldTooltipFollowCursor,
 			iconMember: this.iconMember,
 			getIconCallback: this.getIconCallback,
 			iconColorMember: this.iconColorMember,
@@ -1266,19 +1266,19 @@ export class TreeController<T> {
 		$effect(() => {
 			Object.assign(this.nodeConfig, {
 				clickBehavior: this.clickBehavior,
-				shouldShowCheckboxes: this.shouldShowCheckboxes,
+				isCheckboxesShown: this.isCheckboxesShown,
 				shouldClickToggleCheckbox: this.shouldClickToggleCheckbox,
 				expandIconClass: this.expandIconClass,
 				collapseIconClass: this.collapseIconClass,
 				leafIconClass: this.leafIconClass,
 				toggleIconMode: this.toggleIconMode,
 				nodeTitleOverflow: this.nodeTitleOverflow,
-				shouldShowNodeTooltips: this.shouldShowNodeTooltips,
+				isNodeTooltipsShown: this.isNodeTooltipsShown,
 				getNodeTooltipCallback: this.getNodeTooltipCallback,
 				tooltipPlacement: this.tooltipPlacement,
 				tooltipDelay: this.tooltipDelay,
 				tooltipOffset: this.tooltipOffset,
-				tooltipFollowCursor: this.tooltipFollowCursor,
+				shouldTooltipFollowCursor: this.shouldTooltipFollowCursor,
 				iconMember: this.iconMember,
 				getIconCallback: this.getIconCallback,
 				iconColorMember: this.iconColorMember,
@@ -1301,9 +1301,9 @@ export class TreeController<T> {
 			});
 		});
 
-		// Filter when searchText changes
+		// Filter when searchTerm changes
 		$effect(() => {
-			this.tree.filterNodes(this.searchText as string);
+			this.tree.filterNodes(this.searchTerm as string);
 		});
 
 		// InsertArray when data changes
@@ -1406,7 +1406,7 @@ export class TreeController<T> {
 		// inter-row margin in virtual mode (flatGap is forced off — see Tree.svelte),
 		// so getBoundingClientRect().height is the exact, sub-pixel-accurate stride.
 		$effect(() => {
-			if (!this.vsActive || this.virtualRowHeight || this.vsMeasuredRowHeight) return;
+			if (!this.vsActive || this.virtualScrollItemHeight || this.vsMeasuredRowHeight) return;
 			if (this.allFlatNodes.length === 0) return;
 			tick().then(() => {
 				if (this.vsContainerRef) {
@@ -1421,7 +1421,7 @@ export class TreeController<T> {
 
 		// Virtual scroll: auto-detect container height from parent element
 		$effect(() => {
-			if (!this.vsActive || this.virtualContainerHeight || this.vsDetectedHeight) return;
+			if (!this.vsActive || this.virtualScrollContainerHeight || this.vsDetectedHeight) return;
 			tick().then(() => {
 				if (this.vsContainerRef?.parentElement) {
 					const parentHeight = this.vsContainerRef.parentElement.clientHeight;
@@ -1537,15 +1537,15 @@ export class TreeController<T> {
 		this.tree?.collapseAll(nodePath, options);
 	}
 
-	filterNodes(searchTextVal: string, searchOptions?: SearchOptions): void {
-		this.tree?.filterNodes(searchTextVal, searchOptions);
+	filterNodes(term: string, searchOptions?: SearchOptions): void {
+		this.tree?.filterNodes(term, searchOptions);
 	}
 
 	searchNodes(
-		searchTextVal: string | null | undefined,
+		term: string | null | undefined,
 		searchOptions?: SearchOptions
 	): LTreeNode<T>[] {
-		return this.tree?.searchNodes(searchTextVal, searchOptions) || [];
+		return this.tree?.searchNodes(term, searchOptions) || [];
 	}
 
 	getChildren(parentPath: string): LTreeNode<T>[] {
@@ -2157,9 +2157,9 @@ export class TreeController<T> {
 		return result;
 	}
 
-	deleteBranch(path: string, keepParent?: boolean): DeleteBranchResult<T> {
+	removeBranch(path: string, keepParent?: boolean): RemoveBranchResult<T> {
 		this._skipInsertArray = true;
-		const result = this.tree?.deleteBranch(path, keepParent) || {
+		const result = this.tree?.removeBranch(path, keepParent) || {
 			success: false,
 			removedCount: 0,
 			error: 'Tree not initialized'
@@ -2261,7 +2261,7 @@ export class TreeController<T> {
 			sourceTreeId: this.treeId
 		});
 		uiLogger.debug(`[clipboard] Copied ${entries.length} node(s)`);
-		this.onCopyHandler?.({
+		this.onNodeCopyHandler?.({
 			operation: 'copy',
 			paths: pathsToUse,
 			nodes: pathsToUse
@@ -2316,7 +2316,7 @@ export class TreeController<T> {
 		this.cutPaths = cutSet;
 		uiLogger.debug(`[clipboard] Cut ${entries.length} node(s), dimming ${cutSet.size} paths`);
 		// Cut only dims — nodes aren't removed until paste — so they're still live here.
-		this.onCutHandler?.({
+		this.onNodeCutHandler?.({
 			operation: 'cut',
 			paths: pathsToUse,
 			nodes: pathsToUse
@@ -2390,7 +2390,7 @@ export class TreeController<T> {
 					skipped: 0,
 					error: 'Paste blocked by beforePasteCallback'
 				};
-				this.onPasteHandler?.(blocked);
+				this.onNodePasteHandler?.(blocked);
 				return blocked;
 			}
 			if (result && typeof result === 'object') {
@@ -2409,7 +2409,7 @@ export class TreeController<T> {
 				skipped: 0,
 				error: `Target node not found: ${targetPath}`
 			};
-			this.onPasteHandler?.(notFound);
+			this.onNodePasteHandler?.(notFound);
 			return notFound;
 		}
 
@@ -2442,7 +2442,7 @@ export class TreeController<T> {
 			uiLogger.debug(
 				`[clipboard] shouldAutoHandlePaste=false — forwarding ${workEntries.length} entries to consumer`
 			);
-			this.onPasteHandler?.(result);
+			this.onNodePasteHandler?.(result);
 			return result;
 		}
 
@@ -2587,7 +2587,7 @@ export class TreeController<T> {
 					: undefined
 		};
 		uiLogger.debug(`[clipboard] Pasted ${totalCount} node(s), skipped ${skipped}`);
-		this.onPasteHandler?.(result);
+		this.onNodePasteHandler?.(result);
 		return result;
 	}
 
@@ -2633,13 +2633,33 @@ export class TreeController<T> {
 	}
 
 	/**
-	 * Remove nodes (and their descendants) from the tree. Defaults to the current
-	 * selection (highlight set, else focused node). Runs `beforeDeleteCallback` first
-	 * (narrow or block), removes only top-level subtrees, clears highlight + focus of
-	 * anything removed, and fires `onDelete`. Deletion is a data mutation, so this is
-	 * the single place both the built-in Delete key and consumer code go through.
+	 * Programmatic removal of nodes (and their descendants): top-level subtrees only,
+	 * selection + focus are cleared when anything was removed. No `beforeDeleteCallback`,
+	 * no `onNodeDelete` — that is the user Delete command, {@link runDeleteCommand}.
 	 */
-	deleteNodes(paths?: string[]): { removed: number; blocked: number } {
+	removeNodes(paths: string[]): { removed: number; failed: number } {
+		const targets = this._topLevelOf(paths ?? []);
+		let removed = 0;
+		let failed = 0;
+		for (const p of targets) {
+			if (this.removeNode(p, true).success) removed++;
+			else failed++;
+		}
+		if (removed > 0) {
+			this.clearSelection();
+			this.clearFocus();
+		}
+		return { removed, failed };
+	}
+
+	/**
+	 * The user **Delete command** (built-in Delete key, a menu "Delete" item): defaults to
+	 * the current selection (selected set, else focused node). Runs `beforeDeleteCallback`
+	 * first (narrow or block), removes only top-level subtrees, clears selection + focus of
+	 * anything removed, and fires `onNodeDelete` with pre-removal node snapshots.
+	 * Programmatic removal is {@link removeNodes} (no veto, no event).
+	 */
+	runDeleteCommand(paths?: string[]): { removed: number; blocked: number } {
 		let targets = this._topLevelOf(paths ?? this._shortcutSelectionPaths());
 		if (targets.length === 0) return { removed: 0, blocked: 0 };
 
@@ -2652,7 +2672,7 @@ export class TreeController<T> {
 			if (Array.isArray(result)) targets = this._topLevelOf(result);
 		}
 
-		// Snapshot the target nodes BEFORE removal so onDelete can hand back resolved nodes
+		// Snapshot the target nodes BEFORE removal so onNodeDelete can hand back resolved nodes
 		// (the tree no longer holds them once removeNode runs).
 		const preRemoval = new Map(targets.map((p) => [p, this.tree.getNodeByPath(p)]));
 
@@ -2666,7 +2686,7 @@ export class TreeController<T> {
 			this.clearSelection();
 			this.clearFocus();
 			const removedPaths = targets.slice(0, removed);
-			this.onDeleteHandler?.({
+			this.onNodeDeleteHandler?.({
 				paths: removedPaths,
 				nodes: removedPaths
 					.map((p) => preRemoval.get(p))
@@ -2718,7 +2738,7 @@ export class TreeController<T> {
 		// Delete selection — plain Delete only (Shift+Delete was cut, handled above).
 		if (event.key === 'Delete' && !event.shiftKey) {
 			if (!this._shortcutSelectionPaths().length) return false;
-			this.deleteNodes();
+			this.runDeleteCommand();
 			return true;
 		}
 		if (event.key === 'Escape' && getClipboardOp() === 'cut') {
@@ -3230,7 +3250,7 @@ export class TreeController<T> {
 			this.setCheckedPaths([...(updates.checkedPaths ?? new Set<string>())], { silent: true });
 		if (updates.cascadeCheckPolicy !== undefined)
 			this.cascadeCheckPolicy = updates.cascadeCheckPolicy ?? 'rolled-up';
-		if (updates.searchText !== undefined) this.searchText = updates.searchText;
+		if (updates.searchTerm !== undefined) this.searchTerm = updates.searchTerm;
 		if (updates.rangeSelectionMode !== undefined)
 			this.rangeSelectionMode = updates.rangeSelectionMode ?? 'visual';
 		if (updates.isLoading !== undefined) this.isLoading = updates.isLoading ?? false;
@@ -3238,16 +3258,16 @@ export class TreeController<T> {
 
 		if (updates.isVirtualScrollEnabled !== undefined)
 			this.isVirtualScrollEnabled = updates.isVirtualScrollEnabled ?? false;
-		if (updates.virtualRowHeight !== undefined) this.virtualRowHeight = updates.virtualRowHeight;
-		if (updates.virtualOverscan !== undefined) this.virtualOverscan = updates.virtualOverscan ?? 5;
-		if (updates.virtualContainerHeight !== undefined)
-			this.virtualContainerHeight = updates.virtualContainerHeight;
+		if (updates.virtualScrollItemHeight !== undefined) this.virtualScrollItemHeight = updates.virtualScrollItemHeight;
+		if (updates.virtualScrollOverscan !== undefined) this.virtualScrollOverscan = updates.virtualScrollOverscan ?? 5;
+		if (updates.virtualScrollContainerHeight !== undefined)
+			this.virtualScrollContainerHeight = updates.virtualScrollContainerHeight;
 
 		if (updates.clickBehavior !== undefined)
 			this.clickBehavior = updates.clickBehavior ?? 'expand-and-focus';
 		if (updates.selectionMode !== undefined) this.selectionMode = updates.selectionMode ?? 'single';
-		if (updates.shouldShowCheckboxes !== undefined)
-			this.shouldShowCheckboxes = updates.shouldShowCheckboxes ?? false;
+		if (updates.isCheckboxesShown !== undefined)
+			this.isCheckboxesShown = updates.isCheckboxesShown ?? false;
 		if (updates.checkboxMode !== undefined)
 			this.checkboxMode = updates.checkboxMode ?? 'independent';
 		if (updates.shouldClickToggleCheckbox !== undefined)
@@ -3268,8 +3288,8 @@ export class TreeController<T> {
 		if (updates.getNodeContentClassCallback !== undefined) this.getNodeContentClassCallback = updates.getNodeContentClassCallback;
 		if (updates.dragOverNodeClass !== undefined) this.dragOverNodeClass = updates.dragOverNodeClass;
 		if (updates.draggedNodeClass !== undefined) this.draggedNodeClass = updates.draggedNodeClass;
-		if (updates.shouldShowNodeTooltips !== undefined)
-			this.shouldShowNodeTooltips = updates.shouldShowNodeTooltips ?? false;
+		if (updates.isNodeTooltipsShown !== undefined)
+			this.isNodeTooltipsShown = updates.isNodeTooltipsShown ?? false;
 		if (updates.getNodeTooltipCallback !== undefined)
 			this.getNodeTooltipCallback = updates.getNodeTooltipCallback;
 		if (updates.tooltipPlacement !== undefined)
@@ -3277,8 +3297,8 @@ export class TreeController<T> {
 		if (updates.tooltipDelay !== undefined)
 			this.tooltipDelay = updates.tooltipDelay ?? { show: 400, hide: 100 };
 		if (updates.tooltipOffset !== undefined) this.tooltipOffset = updates.tooltipOffset ?? 8;
-		if (updates.tooltipFollowCursor !== undefined)
-			this.tooltipFollowCursor = updates.tooltipFollowCursor ?? false;
+		if (updates.shouldTooltipFollowCursor !== undefined)
+			this.shouldTooltipFollowCursor = updates.shouldTooltipFollowCursor ?? false;
 		if (updates.iconMember !== undefined) this.iconMember = updates.iconMember;
 		if (updates.getIconCallback !== undefined) this.getIconCallback = updates.getIconCallback;
 		if (updates.iconColorMember !== undefined) this.iconColorMember = updates.iconColorMember;
@@ -3341,14 +3361,14 @@ export class TreeController<T> {
 		if (updates.nodeInputTransformationCallback !== undefined)
 			this.inputTransformHandler = updates.nodeInputTransformationCallback;
 		if (updates.onNodeDrop !== undefined) this.onNodeDropHandler = updates.onNodeDrop;
-		if (updates.onNodeDragDenied !== undefined)
-			this.onNodeDragDeniedHandler = updates.onNodeDragDenied;
-		if (updates.onNodeDropDenied !== undefined)
-			this.onNodeDropDeniedHandler = updates.onNodeDropDenied;
-		if (updates.onCopy !== undefined) this.onCopyHandler = updates.onCopy;
-		if (updates.onCut !== undefined) this.onCutHandler = updates.onCut;
-		if (updates.onPaste !== undefined) this.onPasteHandler = updates.onPaste;
-		if (updates.onDelete !== undefined) this.onDeleteHandler = updates.onDelete;
+		if (updates.onNodeDragReject !== undefined)
+			this.onNodeDragRejectHandler = updates.onNodeDragReject;
+		if (updates.onNodeDropReject !== undefined)
+			this.onNodeDropRejectHandler = updates.onNodeDropReject;
+		if (updates.onNodeCopy !== undefined) this.onNodeCopyHandler = updates.onNodeCopy;
+		if (updates.onNodeCut !== undefined) this.onNodeCutHandler = updates.onNodeCut;
+		if (updates.onNodePaste !== undefined) this.onNodePasteHandler = updates.onNodePaste;
+		if (updates.onNodeDelete !== undefined) this.onNodeDeleteHandler = updates.onNodeDelete;
 		if (updates.getContextMenuItemsCallback !== undefined)
 			this.getContextMenuItemsHandler = updates.getContextMenuItemsCallback;
 		if (updates.onSelectionChange !== undefined)
@@ -3404,7 +3424,7 @@ export class TreeController<T> {
 		// In single mode, mouse Ctrl/Shift+click degrade to plain click. Programmatic
 		// callers (selectNode with mode='toggle'/'range') pass forceMultiSemantics
 		// to opt out of the gate — the API contract should not depend on selectionMode.
-		const isMulti = options?.forceMultiSemantics || this.selectionMode === 'multi';
+		const isMulti = options?.forceMultiSemantics || this.selectionMode === 'multiple';
 		const ctrl = isMulti && (modifiers?.ctrl ?? false);
 		const shift = isMulti && (modifiers?.shift ?? false);
 		const silent = options?.silent ?? false;
@@ -3798,7 +3818,7 @@ export class TreeController<T> {
 	 * to checkedPaths and fire onCheckedChange alongside onSelectionChange.
 	 */
 	private _mirrorSelectedToChecked() {
-		if (this.shouldShowCheckboxes) return;
+		if (this.isCheckboxesShown) return;
 		// Take a snapshot to avoid identity-loop on parent rebinding
 		const next = new Set(this.selectedPaths);
 		// Sync the per-node isChecked flag with the mirrored set.
@@ -4084,7 +4104,7 @@ export class TreeController<T> {
 
 	/** Toggle the focused node in/out of the highlight set. Multi-mode only. */
 	toggleFocusedSelect(): void {
-		if (this.selectionMode !== 'multi') return;
+		if (this.selectionMode !== 'multiple') return;
 		const node = this.focusedNode;
 		if (!node || !node.isSelectable) return;
 		this._onNodeClicked(node, { ctrl: true, shift: false }, { forceMultiSemantics: true });
@@ -5070,7 +5090,7 @@ export class TreeController<T> {
 					? targetCtrl.calculateDropPositionFromEvent(event, rowEl, positions)
 					: 'child';
 				await targetCtrl._handleDrop(dropNode, dragged, position, event);
-			} else if (targetCtrl.shouldEnableTreeDropZone && inTargetContainer && modeOk) {
+			} else if (targetCtrl.isTreeDropZoneEnabled && inTargetContainer && modeOk) {
 				// Whole-tree drop zone: ANY release inside the container that didn't land as a valid
 				// node drop — empty area, or a node whose getIsDropAllowedCallback rejected it —
 				// lands with target=null so beforeDrop can fan it out via DropGroup[].
@@ -5178,7 +5198,7 @@ export class TreeController<T> {
 
 	/**
 	 * "Can't move this" feedback for a long-press on a NON-draggable node. Fires the
-	 * onNodeDragDenied consumer hook always; the built-in indicator (haptic double-buzz +
+	 * onNodeDragReject consumer hook always; the built-in indicator (haptic double-buzz +
 	 * a no-entry icon that STAYS on the row while the finger is held) only when
 	 * shouldIndicateUndraggable is on. Purely imperative DOM (mirrors the touch drop-target
 	 * highlight) — no per-node render state. Torn down by _clearDragDenied on release.
@@ -5186,7 +5206,7 @@ export class TreeController<T> {
 	private _indicateDragDenied(node: LTreeNode<any>) {
 		dragLogger.debug('[drag-denied] locked node long-pressed', { path: node?.path });
 
-		this.onNodeDragDeniedHandler?.(this.nodeRef(node));
+		this.onNodeDragRejectHandler?.(this.nodeRef(node));
 
 		if (!this.shouldIndicateUndraggable) return;
 
@@ -5232,14 +5252,14 @@ export class TreeController<T> {
 
 	/**
 	 * "Can't drop here" feedback — the target-side twin of _indicateDragDenied. Fires the
-	 * onNodeDropDenied consumer hook always; the built-in indicator (haptic + a brief no-entry
+	 * onNodeDropReject consumer hook always; the built-in indicator (haptic + a brief no-entry
 	 * flash on the refusing target) only when shouldIndicateUndraggable is on. Transient (a drop
 	 * is a discrete moment, not a held gesture), so it auto-clears after a short beat.
 	 */
 	private _indicateDropDenied(node: LTreeNode<any>) {
 		dragLogger.debug('[drop-denied] target refused drop', { path: node?.path });
 
-		this.onNodeDropDeniedHandler?.(this.nodeRef(node));
+		this.onNodeDropRejectHandler?.(this.nodeRef(node));
 
 		if (!this.shouldIndicateUndraggable) return;
 
@@ -5618,7 +5638,7 @@ export class TreeController<T> {
 	/** Extend highlight to target path (Shift+nav) — uses range from the shift cursor
 	 *  (or current focus if no cursor yet), moves focus. No-op in single mode. */
 	private _navSelectTo(path: string) {
-		if (this.selectionMode !== 'multi') return;
+		if (this.selectionMode !== 'multiple') return;
 		// Seed the shift cursor from the focused node on the first Shift+Arrow
 		if (!this._shiftCursor && this.focusedNode) {
 			const anchorNode = this.focusedNode;

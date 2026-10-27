@@ -4,7 +4,7 @@ TREE EDITING
 CRITICAL: Built-in methods for programmatic tree editing
 - addNode: Add new nodes
 - moveNode: Move nodes with subtrees
-- removeNode: Delete nodes
+- removeNode / removeNodes: remove nodes programmatically (controller.runDeleteCommand = the user Delete command: beforeDeleteCallback + onNodeDelete)
 - Automatic path management
 
 ADD NODE
@@ -357,7 +357,7 @@ replaceBranch(parentPath: string, data: T[]): InsertBranchResult<T>
 - Useful for server-driven updates where a subtree is replaced wholesale
 - Returns { success, count, failed, parentNode }
 
-deleteBranch(path: string, keepParent?: boolean): DeleteBranchResult<T>
+removeBranch(path: string, keepParent?: boolean): RemoveBranchResult<T>
 - Removes the node at path and all its descendants in one operation
 - keepParent: keep the node itself, remove only its descendants
 - Returns { success, removedCount, error? }
@@ -367,7 +367,7 @@ Example: server-driven cut/paste
   async function handlePaste(targetPath) {
     const response = await api.paste(clipboardData, targetPath);
     // Server returns the updated subtree
-    treeRef.deleteBranch(clipboardData.sourcePath);
+    treeRef.removeBranch(clipboardData.sourcePath);
     treeRef.insertBranch(targetPath, response.newNodes);
   }
 </script>
@@ -392,8 +392,8 @@ controller.pasteNodes('2.1');           // paste as children of 2.1 (default)
 controller.pasteNodes('2.1', null, 'after');  // paste as siblings after 2.1
 
 // Delete nodes (selectedPaths, or specific paths; honors beforeDeleteCallback)
-controller.deleteNodes();               // returns { removed, blocked }
-controller.deleteNodes(['1.2']);
+controller.runDeleteCommand();               // returns { removed, blocked }
+controller.runDeleteCommand(['1.2']);
 
 // Cancel cut (removes dimming)
 controller.cancelCut();

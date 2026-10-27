@@ -12,16 +12,16 @@ const treeElement = document.querySelector('#my-tree');
 
 // Update multiple props
 treeElement.update({
-  searchText: 'query',
+  searchTerm: 'query',
   expandLevel: 3,
   data: newData
 });
 
 // Update single prop
-treeElement.update({ searchText: '' });
+treeElement.update({ searchTerm: '' });
 
 All props updatable except snippets:
-- data, searchText, focusedNode, selectedPaths, checkedPaths, expandLevel
+- data, searchTerm, focusedNode, selectedPaths, checkedPaths, expandLevel
 - Members: idMember, pathMember, displayValueMember
 - Callbacks: sortCallback, onNodeClick, etc.
 - Visual: selectedNodeClass, focusedNodeClass, etc.
@@ -108,7 +108,7 @@ Three independent state tracks:
   bind:selectedPaths
   bind:checkedPaths
   selectedNodeClass="stv__node-content--selected"
-  shouldShowCheckboxes={true}
+  isCheckboxesShown={true}
   checkboxMode="cascade"
   rangeSelectionMode="visual"
   onSelectionChange={(ctx) => console.log(`${ctx.paths.size} selected`)}

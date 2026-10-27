@@ -359,7 +359,7 @@ test.describe('Ctrl-drag copy (isCopyAllowed=true)', () => {
 	});
 });
 
-// ── Section 6: multi-drag (selectionMode='multi') ──────────────────────────
+// ── Section 6: multi-drag (selectionMode='multiple') ──────────────────────────
 
 test.describe('multi-drag (selectionMode=multi)', () => {
 	// Resolve all root-level node names in sorted DOM order. The library

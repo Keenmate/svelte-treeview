@@ -65,7 +65,7 @@ RECOMMENDED PROPS
 | expandLevel | number | 2 | Auto-expand nodes to this depth |
 | treeId | string | auto | Stable id (needed for cross-tree clipboard/drag) |
 | clickBehavior | string | 'expand-and-focus' | 'select' \| 'expand' \| 'expand-and-focus' |
-| shouldShowCheckboxes | boolean | false | Render a selection checkbox per node |
+| isCheckboxesShown | boolean | false | Render a selection checkbox per node |
 | checkboxMode | string | 'independent' | 'independent' \| 'cascade' |
 
 PATH STRUCTURE
@@ -111,16 +111,16 @@ Other bindable selection state:
 BINDING SEARCH TEXT
 -------------------
 <script>
-  let searchText = $state('');
+  let searchTerm = $state('');
 </script>
 
-<input bind:value={searchText} placeholder="Search..." />
+<input bind:value={searchTerm} placeholder="Search..." />
 
 <Tree
   {data}
   idMember="id"
   pathMember="path"
-  bind:searchText
+  bind:searchTerm
   shouldUseInternalSearchIndex={true}
   searchValueMember="name"
 />
@@ -308,7 +308,7 @@ With search and drag-drop:
   {data}
   idMember="id"
   pathMember="path"
-  bind:searchText
+  bind:searchTerm
   shouldUseInternalSearchIndex={true}
   searchValueMember="name"
   dragDropMode="both"

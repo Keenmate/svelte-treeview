@@ -7,7 +7,7 @@
 	import {
 		type InsertArrayResult,
 		type InsertBranchResult,
-		type DeleteBranchResult,
+		type RemoveBranchResult,
 		type ContextMenuEntry,
 		type ContextMenuContext,
 		type DropPosition,
@@ -104,7 +104,7 @@
 		 *  (device + container + live node state) so the template can adapt to device. */
 		nodeTemplate?: Snippet<[LTreeNode<T>, NodeRenderContext]>;
 		/** Rich tooltip content for a node's row. Receives (node, ctx); wins over
-		 *  getNodeTooltipCallback when both are given. Shown only if shouldShowNodeTooltips. */
+		 *  getNodeTooltipCallback when both are given. Shown only if isNodeTooltipsShown. */
 		tooltip?: Snippet<[LTreeNode<T>, NodeRenderContext]>;
 		/** Custom icon render for a node. Receives (node, value, ctx) where value is the resolved
 		 *  icon from iconMember/getIconCallback. Wins over the default `<i class={value}>`. */
@@ -126,11 +126,11 @@
 		/**
 		 * `'single'` (default): plain click selects one node; Ctrl/Shift+click
 		 * degrade to plain click; Shift+Arrow / Enter are no-ops.
-		 * `'multi'`: Ctrl-toggle, Shift-range, Shift+Arrow extend, Enter toggles
+		 * `'multiple'`: Ctrl-toggle, Shift-range, Shift+Arrow extend, Enter toggles
 		 * selection on the focused node.
 		 */
 		selectionMode?: SelectionMode | null | undefined;
-		shouldShowCheckboxes?: boolean | null | undefined;
+		isCheckboxesShown?: boolean | null | undefined;
 		checkboxMode?: CheckboxMode | null | undefined;
 		/**
 		 * Which paths `checkedPaths` / `onCheckedChange` EMIT in cascade mode:
@@ -143,7 +143,7 @@
 		beforeCheckboxToggleCallback?: (ctx: BeforeCheckboxToggleContext<T>) => string[] | false | void;
 		rangeSelectionMode?: 'visual' | 'logical';
 		initializeIndexCallback?: () => Index;
-		searchText?: string | null | undefined;
+		searchTerm?: string | null | undefined;
 		shouldUseInternalSearchIndex?: boolean | null | undefined;
 		indexerBatchSize?: number | null | undefined;
 		indexerTimeout?: number | null | undefined;
@@ -171,11 +171,11 @@
 		/** Enable virtual scrolling in flat mode. Only visible nodes + overscan are rendered. */
 		isVirtualScrollEnabled?: boolean;
 		/** Explicit row height in px. Auto-measured from first row if not set. */
-		virtualRowHeight?: number;
+		virtualScrollItemHeight?: number;
 		/** Extra rows above/below viewport (default: 5) */
-		virtualOverscan?: number;
+		virtualScrollOverscan?: number;
 		/** CSS height for scroll container. Auto-detected from parent if not set, fallback 400px. */
-		virtualContainerHeight?: string;
+		virtualScrollContainerHeight?: string;
 
 		// DRAG AND DROP
 		dragDropMode?: DragDropMode;
@@ -189,7 +189,7 @@
 		 * focus on hover, so a clipboard paste (Ctrl/Cmd+V routed through `beforeKeydownCallback`)
 		 * lands on this tree without needing a node to click first. Default: false.
 		 */
-		shouldShowDropPlaceholderWhenEmpty?: boolean;
+		isEmptyDropPlaceholderShown?: boolean;
 		/**
 		 * Render a single drop zone covering the WHOLE populated tree (default false). While a drag
 		 * is in progress an overlay accepts a drop anywhere over the tree — the drop lands with
@@ -197,7 +197,7 @@
 		 * from `beforeDropCallback` (return a `DropGroup[]`) instead of by where it was dropped. Use
 		 * for "drop a basket, auto-sort into category nodes" flows.
 		 */
-		shouldEnableTreeDropZone?: boolean;
+		isTreeDropZoneEnabled?: boolean;
 		isCopyAllowed?: boolean; // Enable Ctrl+drag to copy instead of move (default: false)
 		shouldAutoHandleCopy?: boolean; // Auto-handle same-tree copy operations (default: true). Set to false for external DB/API handling.
 		shouldAutoHandleMove?: boolean; // Auto-handle same-tree move operations (default: true). Set to false for database-first workflow.
@@ -221,17 +221,17 @@
 		onNodeDragOver?: (ctx: NodeDragContext<T>) => void;
 		onNodeDrop?: (ctx: NodeDropContext<T>) => void;
 		/** Fired when a long-press engages on a non-draggable node (touch). Fire-and-forget. */
-		onNodeDragDenied?: (ctx: NodeEventContext<T>) => void;
+		onNodeDragReject?: (ctx: NodeEventContext<T>) => void;
 		/** Fired when a drop is rejected because the target node refuses it. Fire-and-forget. */
-		onNodeDropDenied?: (ctx: NodeEventContext<T>) => void;
-		// Post-operation clipboard notifications (fired AFTER the op). onCopy/onCut/onDelete
-		// carry paths + resolved nodes (pre-removal snapshots for delete); onPaste the PasteResult.
-		onCopy?: (ctx: ClipboardEventContext<T>) => void;
-		onCut?: (ctx: ClipboardEventContext<T>) => void;
-		onPaste?: (result: import('../core/TreeController.svelte.js').PasteResult<T>) => void;
-		/** Fired after the built-in Delete (or `deleteNodes`) removes nodes, with the removed
+		onNodeDropReject?: (ctx: NodeEventContext<T>) => void;
+		// Post-operation clipboard notifications (fired AFTER the op). onNodeCopy/onNodeCut/onNodeDelete
+		// carry paths + resolved nodes (pre-removal snapshots for delete); onNodePaste the PasteResult.
+		onNodeCopy?: (ctx: ClipboardEventContext<T>) => void;
+		onNodeCut?: (ctx: ClipboardEventContext<T>) => void;
+		onNodePaste?: (result: import('../core/TreeController.svelte.js').PasteResult<T>) => void;
+		/** Fired after the built-in Delete (or `runDeleteCommand`) removes nodes, with the removed
 		 *  top-level paths plus their pre-removal nodes. */
-		onDelete?: (ctx: ClipboardEventContext<T>) => void;
+		onNodeDelete?: (ctx: ClipboardEventContext<T>) => void;
 
 		// RESPONSIVE (signal only — the tree renders inline, it does not change its own
 		// behaviour; these surface the container-box signal so a consumer adapts settings
@@ -339,7 +339,7 @@
 		nodeTitleOverflow?: NodeTitleOverflow;
 		/** Enable hover/focus tooltips on node rows. Content comes from the `tooltip`
 		 *  snippet (preferred) or `getNodeTooltipCallback`; no content ⇒ no tooltip. */
-		shouldShowNodeTooltips?: boolean;
+		isNodeTooltipsShown?: boolean;
 		/** Plain-text tooltip for a node (fallback when no `tooltip` snippet is given). */
 		getNodeTooltipCallback?: (ctx: NodeContext<T>) => string | null | undefined;
 		/** Tooltip placement relative to the row. Default `'top-start'`. */
@@ -349,7 +349,7 @@
 		/** Gap from the row (or cursor), px. Default `8`. */
 		tooltipOffset?: number;
 		/** Anchor the tooltip to the pointer instead of the row. Default `false`. */
-		tooltipFollowCursor?: boolean;
+		shouldTooltipFollowCursor?: boolean;
 		/** Per-node icon VALUE from a data key — rendered as a dedicated `.stv__node-icon`
 		 *  element on every node (default `<i class="stv__node-icon {value}">`, FA-friendly). */
 		iconMember?: string | null | undefined;
@@ -371,7 +371,7 @@
 
 		/** Show the built-in blocked-action indicator (haptic buzz + no-entry icon) — held while a
 		 *  locked node is long-pressed, and flashed on a target that refuses a drop. Default true.
-		 *  The onNodeDragDenied / onNodeDropDenied events fire regardless. */
+		 *  The onNodeDragReject / onNodeDropReject events fire regardless. */
 		shouldIndicateUndraggable?: boolean;
 
 		/** Keydown interceptor (SYNCHRONOUS — a key's default can only be prevented in the
@@ -444,7 +444,7 @@
 
 		clickBehavior = 'expand-and-focus',
 		selectionMode = 'single',
-		shouldShowCheckboxes = false,
+		isCheckboxesShown = false,
 		checkboxMode = 'independent',
 		cascadeCheckPolicy = 'rolled-up',
 		shouldClickToggleCheckbox = false,
@@ -452,7 +452,7 @@
 		rangeSelectionMode = 'visual',
 		shouldUseInternalSearchIndex = true,
 		initializeIndexCallback,
-		searchText = $bindable(),
+		searchTerm = $bindable(),
 		indexerBatchSize = 25,
 		indexerTimeout = 50,
 		isLoading = false,
@@ -471,9 +471,9 @@
 
 		// Virtual scrolling (flat mode only)
 		isVirtualScrollEnabled = false,
-		virtualRowHeight = undefined,
-		virtualOverscan = 5,
-		virtualContainerHeight = undefined,
+		virtualScrollItemHeight = undefined,
+		virtualScrollOverscan = 5,
+		virtualScrollContainerHeight = undefined,
 
 		// DRAG AND DROP
 		dragDropMode = 'none',
@@ -481,8 +481,8 @@
 		dropZoneLayout = 'around',
 		dropZoneStart = 33,
 		dropZoneMaxWidth = 120,
-		shouldShowDropPlaceholderWhenEmpty = false,
-		shouldEnableTreeDropZone = false,
+		isEmptyDropPlaceholderShown = false,
+		isTreeDropZoneEnabled = false,
 		isCopyAllowed = false,
 		shouldAutoHandleCopy = true,
 		shouldAutoHandleMove = true,
@@ -498,12 +498,12 @@
 		onNodeDragStart,
 		onNodeDragOver,
 		onNodeDrop,
-		onNodeDragDenied,
-		onNodeDropDenied,
-		onCopy,
-		onCut,
-		onPaste,
-		onDelete,
+		onNodeDragReject,
+		onNodeDropReject,
+		onNodeCopy,
+		onNodeCut,
+		onNodePaste,
+		onNodeDelete,
 		onContainerResize,
 		containerSize = $bindable(),
 		// INTERCEPTORS
@@ -527,12 +527,12 @@
 		leafIconClass = 'stv__toggle-icon--leaf',
 		toggleIconMode = 'rotate',
 		nodeTitleOverflow = 'wrap',
-		shouldShowNodeTooltips = false,
+		isNodeTooltipsShown = false,
 		getNodeTooltipCallback,
 		tooltipPlacement = 'top-start',
 		tooltipDelay,
 		tooltipOffset = 8,
-		tooltipFollowCursor = false,
+		shouldTooltipFollowCursor = false,
 		tooltip,
 		iconMember,
 		getIconCallback,
@@ -601,7 +601,7 @@
 		expandLevel,
 		clickBehavior,
 		selectionMode,
-		shouldShowCheckboxes,
+		isCheckboxesShown,
 		checkboxMode,
 		cascadeCheckPolicy,
 		shouldClickToggleCheckbox,
@@ -609,7 +609,7 @@
 		rangeSelectionMode,
 		shouldUseInternalSearchIndex,
 		initializeIndexCallback,
-		searchText,
+		searchTerm,
 		indexerBatchSize,
 		indexerTimeout,
 		isLoading,
@@ -621,9 +621,9 @@
 		onRenderComplete,
 		isFlatRenderingEnabled,
 		isVirtualScrollEnabled,
-		virtualRowHeight,
-		virtualOverscan,
-		virtualContainerHeight,
+		virtualScrollItemHeight,
+		virtualScrollOverscan,
+		virtualScrollContainerHeight,
 		dragDropMode,
 		dropZoneMode,
 		dropZoneLayout,
@@ -642,12 +642,12 @@
 		onNodeDragStart,
 		onNodeDragOver,
 		onNodeDrop,
-		onNodeDragDenied,
-		onNodeDropDenied,
-		onCopy,
-		onCut,
-		onPaste,
-		onDelete,
+		onNodeDragReject,
+		onNodeDropReject,
+		onNodeCopy,
+		onNodeCut,
+		onNodePaste,
+		onNodeDelete,
 		beforeDragStartCallback,
 		beforeDropCallback,
 		beforeCopyCallback,
@@ -671,12 +671,12 @@
 		leafIconClass,
 		toggleIconMode,
 		nodeTitleOverflow,
-		shouldShowNodeTooltips,
+		isNodeTooltipsShown,
 		getNodeTooltipCallback,
 		tooltipPlacement,
 		tooltipDelay,
 		tooltipOffset,
-		tooltipFollowCursor,
+		shouldTooltipFollowCursor,
 		iconMember,
 		getIconCallback,
 		iconColorMember,
@@ -816,7 +816,7 @@
 		controller.data = data;
 	});
 	$effect(() => {
-		controller.searchText = searchText;
+		controller.searchTerm = searchTerm;
 	});
 	$effect(() => {
 		if (treeId) controller.treeId = treeId;
@@ -831,7 +831,7 @@
 		controller.bodyClass = bodyClass;
 	});
 	$effect(() => {
-		controller.shouldEnableTreeDropZone = shouldEnableTreeDropZone;
+		controller.isTreeDropZoneEnabled = isTreeDropZoneEnabled;
 	});
 	$effect(() => {
 		controller.isFlatRenderingEnabled = isFlatRenderingEnabled ?? true;
@@ -840,13 +840,13 @@
 		controller.isVirtualScrollEnabled = isVirtualScrollEnabled ?? false;
 	});
 	$effect(() => {
-		controller.virtualRowHeight = virtualRowHeight;
+		controller.virtualScrollItemHeight = virtualScrollItemHeight;
 	});
 	$effect(() => {
-		controller.virtualOverscan = virtualOverscan ?? 5;
+		controller.virtualScrollOverscan = virtualScrollOverscan ?? 5;
 	});
 	$effect(() => {
-		controller.virtualContainerHeight = virtualContainerHeight;
+		controller.virtualScrollContainerHeight = virtualScrollContainerHeight;
 	});
 	$effect(() => {
 		controller.isProgressiveRender = isProgressiveRender ?? true;
@@ -890,7 +890,7 @@
 		controller.selectionMode = selectionMode ?? 'single';
 	});
 	$effect(() => {
-		controller.shouldShowCheckboxes = shouldShowCheckboxes ?? false;
+		controller.isCheckboxesShown = isCheckboxesShown ?? false;
 	});
 	$effect(() => {
 		controller.checkboxMode = checkboxMode ?? 'independent';
@@ -923,7 +923,7 @@
 		controller.nodeTitleOverflow = nodeTitleOverflow ?? 'wrap';
 	});
 	$effect(() => {
-		controller.shouldShowNodeTooltips = shouldShowNodeTooltips ?? false;
+		controller.isNodeTooltipsShown = isNodeTooltipsShown ?? false;
 	});
 	$effect(() => {
 		controller.getNodeTooltipCallback = getNodeTooltipCallback;
@@ -938,7 +938,7 @@
 		controller.tooltipOffset = tooltipOffset ?? 8;
 	});
 	$effect(() => {
-		controller.tooltipFollowCursor = tooltipFollowCursor ?? false;
+		controller.shouldTooltipFollowCursor = shouldTooltipFollowCursor ?? false;
 	});
 	$effect(() => {
 		controller.iconMember = iconMember;
@@ -1033,22 +1033,22 @@
 		controller.onNodeDropHandler = onNodeDrop;
 	});
 	$effect(() => {
-		controller.onNodeDragDeniedHandler = onNodeDragDenied;
+		controller.onNodeDragRejectHandler = onNodeDragReject;
 	});
 	$effect(() => {
-		controller.onNodeDropDeniedHandler = onNodeDropDenied;
+		controller.onNodeDropRejectHandler = onNodeDropReject;
 	});
 	$effect(() => {
-		controller.onCopyHandler = onCopy;
+		controller.onNodeCopyHandler = onNodeCopy;
 	});
 	$effect(() => {
-		controller.onCutHandler = onCut;
+		controller.onNodeCutHandler = onNodeCut;
 	});
 	$effect(() => {
-		controller.onPasteHandler = onPaste;
+		controller.onNodePasteHandler = onNodePaste;
 	});
 	$effect(() => {
-		controller.onDeleteHandler = onDelete;
+		controller.onNodeDeleteHandler = onNodeDelete;
 	});
 	$effect(() => {
 		controller.beforeDragStartHandler = beforeDragStartCallback;
@@ -1136,16 +1136,16 @@
 	);
 
 	// Show the drop placeholder either mid-drag (isDropPlaceholderActive) or, when
-	// shouldShowDropPlaceholderWhenEmpty is set, permanently while the tree is empty.
+	// isEmptyDropPlaceholderShown is set, permanently while the tree is empty.
 	const showEmptyDropPlaceholder = $derived(
-		controller.isDropPlaceholderActive || shouldShowDropPlaceholderWhenEmpty
+		controller.isDropPlaceholderActive || isEmptyDropPlaceholderShown
 	);
 
 	// Focus-on-hover for the permanent empty drop zone: gives the tabbable container
 	// keyboard focus so a Ctrl/Cmd+V (routed through beforeKeydownCallback) pastes into this
 	// tree without a node to click first. No-op unless the permanent placeholder is on.
 	function focusEmptyDropZone() {
-		if (shouldShowDropPlaceholderWhenEmpty) treeContainerRef?.focus();
+		if (isEmptyDropPlaceholderShown) treeContainerRef?.focus();
 	}
 
 	// ── Export public methods (thin proxies) ────────────────────────────
@@ -1174,15 +1174,15 @@
 		controller.collapseAll(nodePath, options);
 	}
 
-	export function filterNodes(searchTextVal: string, searchOptions?: SearchOptions): void {
-		controller.filterNodes(searchTextVal, searchOptions);
+	export function filterNodes(term: string, searchOptions?: SearchOptions): void {
+		controller.filterNodes(term, searchOptions);
 	}
 
 	export function searchNodes(
-		searchTextVal: string | null | undefined,
+		term: string | null | undefined,
 		searchOptions?: SearchOptions
 	): LTreeNode<T>[] {
-		return controller.searchNodes(searchTextVal, searchOptions);
+		return controller.searchNodes(term, searchOptions);
 	}
 
 	export function getChildren(parentPath: string): LTreeNode<T>[] {
@@ -1237,6 +1237,11 @@
 		return controller.removeNode(path, includeDescendants);
 	}
 
+	/** Programmatic removal of several subtrees (no beforeDeleteCallback, no onNodeDelete). */
+	export function removeNodes(paths: string[]): { removed: number; failed: number } {
+		return controller.removeNodes(paths);
+	}
+
 	export function addNode(
 		parentPath: string,
 		nodeData: T,
@@ -1264,8 +1269,8 @@
 		return controller.replaceBranch(parentPath, data);
 	}
 
-	export function deleteBranch(path: string, keepParent?: boolean): DeleteBranchResult<T> {
-		return controller.deleteBranch(path, keepParent);
+	export function removeBranch(path: string, keepParent?: boolean): RemoveBranchResult<T> {
+		return controller.removeBranch(path, keepParent);
 	}
 
 	export function copyNodeWithDescendants(
@@ -1423,7 +1428,7 @@
 				| 'expandLevel'
 				| 'clickBehavior'
 				| 'selectionMode'
-				| 'shouldShowCheckboxes'
+				| 'isCheckboxesShown'
 				| 'checkboxMode'
 				| 'cascadeCheckPolicy'
 				| 'shouldClickToggleCheckbox'
@@ -1431,7 +1436,7 @@
 				| 'rangeSelectionMode'
 				| 'shouldUseInternalSearchIndex'
 				| 'initializeIndexCallback'
-				| 'searchText'
+				| 'searchTerm'
 				| 'indexerBatchSize'
 				| 'indexerTimeout'
 				| 'onNodeClick'
@@ -1441,12 +1446,12 @@
 				| 'onNodeDragStart'
 				| 'onNodeDragOver'
 				| 'onNodeDrop'
-				| 'onNodeDragDenied'
-				| 'onNodeDropDenied'
-				| 'onCopy'
-				| 'onCut'
-				| 'onPaste'
-				| 'onDelete'
+				| 'onNodeDragReject'
+				| 'onNodeDropReject'
+				| 'onNodeCopy'
+				| 'onNodeCut'
+				| 'onNodePaste'
+				| 'onNodeDelete'
 				| 'onContainerResize'
 				| 'beforeDragStartCallback'
 				| 'beforeDropCallback'
@@ -1459,13 +1464,13 @@
 				| 'nodeInputTransformationCallback'
 				| 'getContextMenuItemsCallback'
 				| 'isVirtualScrollEnabled'
-				| 'virtualRowHeight'
-				| 'virtualOverscan'
-				| 'virtualContainerHeight'
+				| 'virtualScrollItemHeight'
+				| 'virtualScrollOverscan'
+				| 'virtualScrollContainerHeight'
 				| 'dragDropMode'
 				| 'dropZoneMode'
-				| 'shouldShowDropPlaceholderWhenEmpty'
-				| 'shouldEnableTreeDropZone'
+				| 'isEmptyDropPlaceholderShown'
+				| 'isTreeDropZoneEnabled'
 				| 'noDataText'
 				| 'bodyClass'
 				| 'iconSet'
@@ -1474,12 +1479,12 @@
 				| 'leafIconClass'
 				| 'toggleIconMode'
 				| 'nodeTitleOverflow'
-				| 'shouldShowNodeTooltips'
+				| 'isNodeTooltipsShown'
 				| 'getNodeTooltipCallback'
 				| 'tooltipPlacement'
 				| 'tooltipDelay'
 				| 'tooltipOffset'
-				| 'tooltipFollowCursor'
+				| 'shouldTooltipFollowCursor'
 				| 'iconMember'
 				| 'getIconCallback'
 				| 'iconColorMember'
@@ -1548,8 +1553,8 @@
 		if (updates.expandLevel !== undefined) expandLevel = updates.expandLevel;
 		if (updates.clickBehavior !== undefined) clickBehavior = updates.clickBehavior;
 		if (updates.selectionMode !== undefined) selectionMode = updates.selectionMode;
-		if (updates.shouldShowCheckboxes !== undefined)
-			shouldShowCheckboxes = updates.shouldShowCheckboxes;
+		if (updates.isCheckboxesShown !== undefined)
+			isCheckboxesShown = updates.isCheckboxesShown;
 		if (updates.checkboxMode !== undefined) checkboxMode = updates.checkboxMode;
 		if (updates.cascadeCheckPolicy !== undefined)
 			cascadeCheckPolicy = updates.cascadeCheckPolicy;
@@ -1562,7 +1567,7 @@
 			shouldUseInternalSearchIndex = updates.shouldUseInternalSearchIndex;
 		if (updates.initializeIndexCallback !== undefined)
 			initializeIndexCallback = updates.initializeIndexCallback;
-		if (updates.searchText !== undefined) searchText = updates.searchText;
+		if (updates.searchTerm !== undefined) searchTerm = updates.searchTerm;
 		if (updates.indexerBatchSize !== undefined) indexerBatchSize = updates.indexerBatchSize;
 		if (updates.indexerTimeout !== undefined) indexerTimeout = updates.indexerTimeout;
 		if (updates.onNodeClick !== undefined) onNodeClick = updates.onNodeClick;
@@ -1572,12 +1577,12 @@
 		if (updates.onNodeDragStart !== undefined) onNodeDragStart = updates.onNodeDragStart;
 		if (updates.onNodeDragOver !== undefined) onNodeDragOver = updates.onNodeDragOver;
 		if (updates.onNodeDrop !== undefined) onNodeDrop = updates.onNodeDrop;
-		if (updates.onNodeDragDenied !== undefined) onNodeDragDenied = updates.onNodeDragDenied;
-		if (updates.onNodeDropDenied !== undefined) onNodeDropDenied = updates.onNodeDropDenied;
-		if (updates.onCopy !== undefined) onCopy = updates.onCopy;
-		if (updates.onCut !== undefined) onCut = updates.onCut;
-		if (updates.onPaste !== undefined) onPaste = updates.onPaste;
-		if (updates.onDelete !== undefined) onDelete = updates.onDelete;
+		if (updates.onNodeDragReject !== undefined) onNodeDragReject = updates.onNodeDragReject;
+		if (updates.onNodeDropReject !== undefined) onNodeDropReject = updates.onNodeDropReject;
+		if (updates.onNodeCopy !== undefined) onNodeCopy = updates.onNodeCopy;
+		if (updates.onNodeCut !== undefined) onNodeCut = updates.onNodeCut;
+		if (updates.onNodePaste !== undefined) onNodePaste = updates.onNodePaste;
+		if (updates.onNodeDelete !== undefined) onNodeDelete = updates.onNodeDelete;
 		if (updates.onContainerResize !== undefined) onContainerResize = updates.onContainerResize;
 		if (updates.beforeDragStartCallback !== undefined)
 			beforeDragStartCallback = updates.beforeDragStartCallback;
@@ -1598,16 +1603,16 @@
 			getContextMenuItemsCallback = updates.getContextMenuItemsCallback;
 		if (updates.isVirtualScrollEnabled !== undefined)
 			isVirtualScrollEnabled = updates.isVirtualScrollEnabled;
-		if (updates.virtualRowHeight !== undefined) virtualRowHeight = updates.virtualRowHeight;
-		if (updates.virtualOverscan !== undefined) virtualOverscan = updates.virtualOverscan;
-		if (updates.virtualContainerHeight !== undefined)
-			virtualContainerHeight = updates.virtualContainerHeight;
+		if (updates.virtualScrollItemHeight !== undefined) virtualScrollItemHeight = updates.virtualScrollItemHeight;
+		if (updates.virtualScrollOverscan !== undefined) virtualScrollOverscan = updates.virtualScrollOverscan;
+		if (updates.virtualScrollContainerHeight !== undefined)
+			virtualScrollContainerHeight = updates.virtualScrollContainerHeight;
 		if (updates.dragDropMode !== undefined) dragDropMode = updates.dragDropMode;
 		if (updates.dropZoneMode !== undefined) dropZoneMode = updates.dropZoneMode;
-		if (updates.shouldShowDropPlaceholderWhenEmpty !== undefined)
-			shouldShowDropPlaceholderWhenEmpty = updates.shouldShowDropPlaceholderWhenEmpty;
-		if (updates.shouldEnableTreeDropZone !== undefined)
-			shouldEnableTreeDropZone = updates.shouldEnableTreeDropZone;
+		if (updates.isEmptyDropPlaceholderShown !== undefined)
+			isEmptyDropPlaceholderShown = updates.isEmptyDropPlaceholderShown;
+		if (updates.isTreeDropZoneEnabled !== undefined)
+			isTreeDropZoneEnabled = updates.isTreeDropZoneEnabled;
 		if (updates.noDataText !== undefined) noDataText = updates.noDataText;
 		if (updates.bodyClass !== undefined) bodyClass = updates.bodyClass;
 		if (updates.iconSet !== undefined) iconSet = updates.iconSet;
@@ -1616,15 +1621,15 @@
 		if (updates.leafIconClass !== undefined) leafIconClass = updates.leafIconClass;
 		if (updates.toggleIconMode !== undefined) toggleIconMode = updates.toggleIconMode;
 		if (updates.nodeTitleOverflow !== undefined) nodeTitleOverflow = updates.nodeTitleOverflow;
-		if (updates.shouldShowNodeTooltips !== undefined)
-			shouldShowNodeTooltips = updates.shouldShowNodeTooltips;
+		if (updates.isNodeTooltipsShown !== undefined)
+			isNodeTooltipsShown = updates.isNodeTooltipsShown;
 		if (updates.getNodeTooltipCallback !== undefined)
 			getNodeTooltipCallback = updates.getNodeTooltipCallback;
 		if (updates.tooltipPlacement !== undefined) tooltipPlacement = updates.tooltipPlacement;
 		if (updates.tooltipDelay !== undefined) tooltipDelay = updates.tooltipDelay;
 		if (updates.tooltipOffset !== undefined) tooltipOffset = updates.tooltipOffset;
-		if (updates.tooltipFollowCursor !== undefined)
-			tooltipFollowCursor = updates.tooltipFollowCursor;
+		if (updates.shouldTooltipFollowCursor !== undefined)
+			shouldTooltipFollowCursor = updates.shouldTooltipFollowCursor;
 		if (updates.iconMember !== undefined) iconMember = updates.iconMember;
 		if (updates.getIconCallback !== undefined) getIconCallback = updates.getIconCallback;
 		if (updates.iconColorMember !== undefined) iconColorMember = updates.iconColorMember;
@@ -1724,13 +1729,13 @@
 				break;
 			case 'Enter':
 				// single: no-op (per spec); multi: toggle selection on focused node.
-				if (controller.selectionMode === 'multi') controller.toggleFocusedSelect();
+				if (controller.selectionMode === 'multiple') controller.toggleFocusedSelect();
 				else handled = false;
 				break;
 			case ' ':
 				// With checkboxes: toggle the focused node's checkbox.
 				// Without: keep the legacy expand/collapse behaviour as a useful fallback.
-				if (controller.shouldShowCheckboxes && controller.focusedNode?.isSelectable) {
+				if (controller.isCheckboxesShown && controller.focusedNode?.isSelectable) {
 					controller.nodeCallbacks.onCheckboxToggle(controller.focusedNode);
 				} else {
 					controller.navToggle();
@@ -1841,7 +1846,7 @@
 
 <!-- Empty-tree drop zone. Shared by all render modes (virtual / flat / recursive)
      and the no-container fallback. Shows the drop placeholder mid-drag, or
-     permanently when shouldShowDropPlaceholderWhenEmpty is set; focus-on-hover
+     permanently when isEmptyDropPlaceholderShown is set; focus-on-hover
      then arms this tree for a keyboard paste. -->
 {#snippet emptyDropState()}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -1870,7 +1875,7 @@
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
 	class="stv__container"
-	class:stv__tree-drop-zone--active={shouldEnableTreeDropZone && controller.isDropPlaceholderActive}
+	class:stv__tree-drop-zone--active={isTreeDropZoneEnabled && controller.isDropPlaceholderActive}
 	tabindex="0"
 	data-theme={theme}
 	data-node-title-overflow={nodeTitleOverflow}

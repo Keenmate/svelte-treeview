@@ -71,7 +71,7 @@
 			sortCallback={sortByName}
 			isSorted={true}
 			expandLevel={2}
-			selectionMode="multi"
+			selectionMode="multiple"
 			clickBehavior="select"
 			{selectedNodeClass}
 			{focusedNodeClass}

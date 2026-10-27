@@ -40,7 +40,7 @@ Full Props, Methods, Events, and Snippets reference for `@keenmate/svelte-treevi
 | `getSearchValueCallback` | `({ node }) => string` | `undefined` | Function to get search value |
 | `shouldUseInternalSearchIndex` | `boolean` | `true` | Enable built-in search functionality |
 | `initializeIndexCallback` | `() => Index` | `undefined` | Function to initialize search index |
-| `searchText` | `string` (bindable) | `undefined` | Current search text |
+| `searchTerm` | `string` (bindable) | `undefined` | Current search text |
 
 **Note**: When `shouldUseInternalSearchIndex` is enabled, node indexing is performed asynchronously using `requestIdleCallback` (with fallback to `setTimeout`). This ensures the tree renders immediately while search indexing happens during browser idle time, providing better performance for large datasets.
 
@@ -69,7 +69,7 @@ Without both requirements, no search indexing will occur.
 |------|------|---------|-------------|
 | `expandLevel` | `number \| null` | `2` | Automatically expand nodes up to this level |
 | `clickBehavior` | `ClickBehavior` | `'expand-and-focus'` | Node click behavior: `'select'` (click selects, dblclick expands), `'expand'` (click expands only), `'expand-and-focus'` (click selects + expands) |
-| `shouldShowCheckboxes` | `boolean` | `false` | Show selection checkboxes before each node. Clicking a checkbox toggles the node's selection (same as Ctrl+click). |
+| `isCheckboxesShown` | `boolean` | `false` | Show selection checkboxes before each node. Clicking a checkbox toggles the node's selection (same as Ctrl+click). |
 | `orderMember` | `string \| null` | `null` | Property name for sort order (enables before/after positioning in drag-drop) |
 | `indexerBatchSize` | `number \| null` | `25` | Number of nodes to process per batch during search indexing |
 | `indexerTimeout` | `number \| null` | `50` | Maximum time (ms) to wait for idle callback before forcing indexing |
@@ -84,9 +84,9 @@ Without both requirements, no search indexing will occur.
 | `initialBatchSize` | `number` | `20` | First batch size for progressive rendering |
 | `maxBatchSize` | `number` | `500` | Maximum batch size cap |
 | `isVirtualScrollEnabled` | `boolean` | `false` | Enable virtual scrolling (flat mode only, renders visible + overscan rows) |
-| `virtualRowHeight` | `number` | auto | Explicit row height in px (auto-measured from first row if not set) |
-| `virtualOverscan` | `number` | `5` | Extra rows rendered above/below viewport |
-| `virtualContainerHeight` | `string` | auto/`'400px'` | CSS height for scroll container (auto-detected from parent if not set) |
+| `virtualScrollItemHeight` | `number` | auto | Explicit row height in px (auto-measured from first row if not set) |
+| `virtualScrollOverscan` | `number` | `5` | Extra rows rendered above/below viewport |
+| `virtualScrollContainerHeight` | `string` | auto/`'400px'` | CSS height for scroll container (auto-detected from parent if not set) |
 | `isRendering` | `boolean` (bindable) | `false` | Whether the tree is currently rendering (useful for progress indicators) |
 | `onRenderStart` | `() => void` | `undefined` | Called when progressive rendering begins |
 | `onRenderProgress` | `(rendered: number, total: number) => void` | `undefined` | Called after each batch with progress info |
@@ -126,16 +126,16 @@ Every `on*` event receives a **single context object** mirroring the clipboard c
 | `onNodeDrop` | `(ctx: NodeDropContext<T>) => void` | `undefined` | Drop event. `ctx = { source, target, dragged, dropped, position, operation, event }`. `source` is the lead dragged node's `NodeRef`; `target` is the drop node's `NodeRef` **or `null`** (empty tree/root). `dragged` is the **full top-level dragged set** — a drop fires once even for a multi-drag, so this is how you see the whole set. `dropped` is the nodes the **library** placed (move: the moved nodes; copy: the fresh copies), or **`null`** when the library didn't place them (cross-tree drop, or `shouldAutoHandleMove`/`Copy=false`) and the consumer owns insertion. Position is `'before'`/`'after'`/`'child'`; operation is `'move'`/`'copy'`. Symmetric with `NodeTransformContext`. (Its twin `beforeDropCallback` remains the older 5-arg positional signature.) |
 | `onSelectionChange` | `(ctx: SelectionChangeContext<T>) => void` | `undefined` | UI multi-select set (`selectedPaths`) changed. `ctx = { paths: Set<string>, nodes }`. Suppressed by `{ silent: true }` mutations. |
 | `onCheckedChange` | `(ctx: SelectionChangeContext<T>) => void` | `undefined` | Checkbox set (`checkedPaths`) changed. Same shape as `onSelectionChange`. Suppressed by `{ silent: true }`. |
-| `onCopy` | `(ctx: ClipboardEventContext<T>) => void` | `undefined` | Fired after `controller.copyNodes()` succeeds. `ctx = { operation: 'copy', paths, nodes }` (nodes live). |
-| `onCut` | `(ctx: ClipboardEventContext<T>) => void` | `undefined` | Fired after `controller.cutNodes()` succeeds. `ctx = { operation: 'cut', paths, nodes }` (nodes still live — cut only dims until paste). |
-| `onDelete` | `(ctx: ClipboardEventContext<T>) => void` | `undefined` | Fired after the built-in Delete (or `controller.deleteNodes()`) removes nodes. `ctx = { paths, nodes }` — `nodes` are **pre-removal snapshots** (captured before removal, since the tree no longer holds them). |
-| `onPaste` | `(result: PasteResult) => void` | `undefined` | Fired after `controller.pasteNodes()` runs, with the paste result (`success`, `count`, `skipped`, `error`). |
+| `onNodeCopy` | `(ctx: ClipboardEventContext<T>) => void` | `undefined` | Fired after `controller.copyNodes()` succeeds. `ctx = { operation: 'copy', paths, nodes }` (nodes live). |
+| `onNodeCut` | `(ctx: ClipboardEventContext<T>) => void` | `undefined` | Fired after `controller.cutNodes()` succeeds. `ctx = { operation: 'cut', paths, nodes }` (nodes still live — cut only dims until paste). |
+| `onNodeDelete` | `(ctx: ClipboardEventContext<T>) => void` | `undefined` | Fired after the built-in Delete (or `controller.runDeleteCommand()`) removes nodes. `ctx = { paths, nodes }` — `nodes` are **pre-removal snapshots** (captured before removal, since the tree no longer holds them). |
+| `onNodePaste` | `(result: PasteResult) => void` | `undefined` | Fired after `controller.pasteNodes()` runs, with the paste result (`success`, `count`, `skipped`, `error`). |
 
 ### Clipboard interceptor properties
 
-The clipboard operations live on the `TreeController` (`copyNodes` / `cutNodes` / `pasteNodes` / `cancelCut`). You can opt into built-in key bindings with `shouldHandleKeyboardShortcuts`, or wire your own via `beforeKeydownCallback(ctx)` (ctx = `{ event, focusedNode, selectedNodes, controller }`). The `before*` interceptors can rewrite or block an operation; `onCopy` / `onCut` / `onPaste` above are the post-operation notifications.
+The clipboard operations live on the `TreeController` (`copyNodes` / `cutNodes` / `pasteNodes` / `cancelCut`). You can opt into built-in key bindings with `shouldHandleKeyboardShortcuts`, or wire your own via `beforeKeydownCallback(ctx)` (ctx = `{ event, focusedNode, selectedNodes, controller }`). The `before*` interceptors can rewrite or block an operation; `onNodeCopy` / `onNodeCut` / `onNodePaste` above are the post-operation notifications.
 
-> **Keyboard shortcuts are focus-scoped.** Both the built-in shortcuts and `beforeKeydownCallback` are bound to the tree's `.stv__container` (which is `tabindex="0"`), so they only fire when focus is **inside** the tree — the standard DOM keyboard model for a component-scoped widget (there is no OS-clipboard fallback; it's a synthetic `keydown` handler). If the user touches a control *outside* the tree first (a toolbar button, checkbox, search box, dropdown), or hasn't clicked into the tree yet, a following `Ctrl/Cmd+C/X/V` or `Delete` never reaches the tree and silently does nothing. To make shortcuts work regardless of where the user last clicked, either (1) re-focus the container (`containerEl.focus()`) after your external control's handler, (2) auto-focus on hover/pointer-down — this ships for the empty-tree case via `shouldShowDropPlaceholderWhenEmpty`, or (3) attach your own document/window-level `keydown` and forward to `controller.copyNodes` / `pasteNodes` / `deleteNodes` (you then own deciding whether a given key is meant for the tree).
+> **Keyboard shortcuts are focus-scoped.** Both the built-in shortcuts and `beforeKeydownCallback` are bound to the tree's `.stv__container` (which is `tabindex="0"`), so they only fire when focus is **inside** the tree — the standard DOM keyboard model for a component-scoped widget (there is no OS-clipboard fallback; it's a synthetic `keydown` handler). If the user touches a control *outside* the tree first (a toolbar button, checkbox, search box, dropdown), or hasn't clicked into the tree yet, a following `Ctrl/Cmd+C/X/V` or `Delete` never reaches the tree and silently does nothing. To make shortcuts work regardless of where the user last clicked, either (1) re-focus the container (`containerEl.focus()`) after your external control's handler, (2) auto-focus on hover/pointer-down — this ships for the empty-tree case via `isEmptyDropPlaceholderShown`, or (3) attach your own document/window-level `keydown` and forward to `controller.copyNodes` / `pasteNodes` / `runDeleteCommand` (you then own deciding whether a given key is meant for the tree).
 
 The two per-node transforms are **operation-neutral** and defined by DIRECTION, not by copy/cut: `nodeOutputTransformationCallback` fires as a node LEAVES the source (egress — Ctrl+C/X snapshot and the capture side of a copy-drop), `nodeInputTransformationCallback` fires as a duplicate LANDS in a destination (ingress — Ctrl+V paste and the insert side of a copy-drop, same- or cross-tree). A plain move fires neither. Both share **one** context type, `NodeTransformContext<T>` = `{ operation, phase: 'output'|'input', isRoot, index, position: 'child'|'before'|'after'|null, source: { path, node, parent, siblings }, target: { path, node, parent, siblings } | null }`. `source` and `target` are **symmetric** — the same field means the same thing on each side: `node` is the node in question (source = the node leaving; target = the node you aimed at, `null` at the tree root), `parent` its parent, `siblings` its neighbours. `target` and `position` are `null` during the output phase (no destination chosen yet); `position` (mirroring `DropPosition`) says how the roots land relative to `target.node`. For collision names, the roots' landing neighbours are `target.node`'s children on a `'child'` paste, else `target.siblings` (all LIVE + batch-aware): `const landing = ctx.position === 'child' && ctx.target?.node ? Object.values(ctx.target.node.children) : (ctx.target?.siblings ?? []);`.
 
@@ -183,8 +183,8 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `collapseNodes` | `nodePath: string` | Collapse nodes at specified path |
 | `expandAll` | `nodePath?: string` | Expand all nodes or nodes under path |
 | `collapseAll` | `nodePath?: string` | Collapse all nodes or nodes under path |
-| `filterNodes` | `searchText: string, searchOptions?: SearchOptions` | Filter the tree display using internal search index with optional FlexSearch options |
-| `searchNodes` | `searchText: string \| null \| undefined, searchOptions?: SearchOptions` | Search nodes using internal search index and return matching nodes with optional FlexSearch options |
+| `filterNodes` | `searchTerm: string, searchOptions?: SearchOptions` | Filter the tree display using internal search index with optional FlexSearch options |
+| `searchNodes` | `searchTerm: string \| null \| undefined, searchOptions?: SearchOptions` | Search nodes using internal search index and return matching nodes with optional FlexSearch options |
 | `scrollToPath` | `path: string, options?: ScrollToPathOptions` | Scroll to and highlight a specific node |
 | `update` | `updates: Partial<Props>` | Programmatically update component props from external JavaScript |
 | `addNode` | `parentPath: string, data: T, pathSegment?: string` | Add a new node under the specified parent |
@@ -192,6 +192,7 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `moveNodes` | `paths: string[], targetPath: string, position: DropPosition` | Batch-move a complete manifest; a descendant omitted from the manifest is left behind (re-homed to its moved root's old parent). Returns `{ success, movedNodes, leftBehind }` |
 | `duplicateNodes` | `paths: string[], targetPath: string, position: DropPosition, transform?, sourceTree?` | Batch-copy the copy-side twin of `moveNodes`; an omitted descendant is simply not copied. `sourceTree` copies another tree's nodes in (cross-tree). Returns `{ success, copiedNodes, skipped }` |
 | `removeNode` | `path: string, includeDescendants?: boolean` | Remove a node (and optionally its descendants) |
+| `removeNodes` | `paths: string[]` | Remove several subtrees programmatically (no `beforeDeleteCallback`, no `onNodeDelete`). The user Delete command is `controller.runDeleteCommand(paths?)` (veto + event) |
 | `getNodeByPath` | `path: string` | Get a node by its path |
 | `getChildren` | `parentPath: string` | Get direct children of a node |
 | `getSiblings` | `path: string` | Get siblings of a node (including itself) |
@@ -310,18 +311,18 @@ const treeElement = document.querySelector('#my-tree');
 
 // Update multiple props at once
 treeElement.update({
-  searchText: 'Production',
+  searchTerm: 'Production',
   expandLevel: 3,
   data: newDataArray,
   contextMenuXOffset: 10
 });
 
 // Update single prop
-treeElement.update({ searchText: 'new search' });
+treeElement.update({ searchTerm: 'new search' });
 ```
 
 **Updatable properties** — all Tree props can be updated except snippets/templates, including:
-- Data and state: `data`, `searchText`, `focusedNode`, `expandLevel`
+- Data and state: `data`, `searchTerm`, `focusedNode`, `expandLevel`
 - Members: `idMember`, `pathMember`, `displayValueMember`, `searchValueMember`
 - Callbacks: `sortCallback`, `getDisplayValueCallback`, `onNodeClick`, etc.
 - Visual: `bodyClass`, `focusedNodeClass`, `expandIconClass`, etc.

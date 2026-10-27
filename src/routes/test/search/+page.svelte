@@ -30,7 +30,7 @@
 	type SearchMode = 'filter' | 'search';
 	let searchMode = $state<SearchMode>('filter');
 	let searchInputValue = $state('');
-	let searchText = $state('');
+	let searchTerm = $state('');
 	let treeRef: Tree<LocationItem>;
 	let searchResults = $state<LTreeNode<LocationItem>[]>([]);
 	let currentResultIndex = $state(-1);
@@ -61,7 +61,7 @@
 
 	function onSearchInput() {
 		if (searchMode === 'filter') {
-			searchText = searchInputValue;
+			searchTerm = searchInputValue;
 		}
 		const results = treeRef?.searchNodes(searchInputValue.trim()) ?? [];
 		searchResults = results;
@@ -87,7 +87,7 @@
 
 	function clearSearch() {
 		searchInputValue = '';
-		searchText = '';
+		searchTerm = '';
 		searchResults = [];
 		currentResultIndex = -1;
 	}
@@ -161,7 +161,7 @@
 					expandLevel={3}
 					shouldUseInternalSearchIndex={true}
 					searchValueMember="name"
-					bind:searchText
+					bind:searchTerm
 				>
 					{#snippet nodeTemplate(node: LTreeNode<LocationItem>)}
 						<span class="location-node">

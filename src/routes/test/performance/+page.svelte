@@ -30,7 +30,7 @@
 	let treeRef = $state<Tree<Item> | undefined>(undefined);
 	let treeKey = $state(0);
 
-	let searchText = $state('');
+	let searchTerm = $state('');
 	let searchInputValue = $state('');
 	let searchResults = $state<{ path: string }[]>([]);
 	let currentSearchIdx = $state(-1);
@@ -113,7 +113,7 @@
 	}
 
 	function onSearchInput() {
-		searchText = searchInputValue;
+		searchTerm = searchInputValue;
 		const query = searchInputValue.trim();
 		if (searchPollId) {
 			clearInterval(searchPollId);
@@ -143,7 +143,7 @@
 
 	function clearSearch() {
 		searchInputValue = '';
-		searchText = '';
+		searchTerm = '';
 		searchResults = [];
 		currentSearchIdx = -1;
 	}
@@ -247,11 +247,11 @@
 						{expandLevel}
 						shouldUseInternalSearchIndex={true}
 						searchValueMember="name"
-						bind:searchText
+						bind:searchTerm
 						{isFlatRenderingEnabled}
 						{isVirtualScrollEnabled}
-						virtualContainerHeight="400px"
-						virtualOverscan={5}
+						virtualScrollContainerHeight="400px"
+						virtualScrollOverscan={5}
 					>
 						{#snippet nodeTemplate(node: any)}
 							<span>{node.data?.name ?? node.path}</span>

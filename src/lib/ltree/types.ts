@@ -87,7 +87,7 @@ export type CheckboxMode = 'independent' | 'cascade';
  * - `'all'`: every fully-checked node (branches + leaves).
  */
 export type CascadeCheckPolicy = 'rolled-up' | 'leaves' | 'all';
-export type SelectionMode = 'single' | 'multi';
+export type SelectionMode = 'single' | 'multiple';
 /** Gesture mode for selectNode(): replace = plain click, toggle = Ctrl+click, range = Shift+click. */
 export type SelectMode = 'replace' | 'toggle' | 'range';
 /** Options shared by every imperative selection/checked/focus mutator. */
@@ -178,7 +178,7 @@ export interface InsertBranchResult<T> {
 	parentNode: LTreeNode<T> | null;
 }
 
-export interface DeleteBranchResult<T> {
+export interface RemoveBranchResult<T> {
 	success: boolean;
 	removedCount: number;
 	error?: string;
@@ -256,10 +256,10 @@ export interface Ltree<T> {
 
 	insertTreeNode(parentPath: string, newNode: LTreeNode<T>, noEmitChanges?: boolean): string | null;
 
-	filterNodes(_searchText: string, _searchOptions?: SearchOptions): void;
+	filterNodes(_searchTerm: string, _searchOptions?: SearchOptions): void;
 
 	searchNodes(
-		_searchText: string | null | undefined,
+		_searchTerm: string | null | undefined,
 		_searchOptions?: SearchOptions
 	): LTreeNode<T>[];
 
@@ -327,7 +327,7 @@ export interface Ltree<T> {
 	// Bulk subtree operations (single emission)
 	insertBranch(parentPath: string, data: T[]): InsertBranchResult<T>;
 	replaceBranch(parentPath: string, data: T[]): InsertBranchResult<T>;
-	deleteBranch(path: string, keepParent?: boolean): DeleteBranchResult<T>;
+	removeBranch(path: string, keepParent?: boolean): RemoveBranchResult<T>;
 
 	// Cross-tree copy method
 	copyNodeWithDescendants(

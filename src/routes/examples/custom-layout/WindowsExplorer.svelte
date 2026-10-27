@@ -256,7 +256,7 @@
 		const created = rightTreeData.find((n) => n.path === path);
 		rightSel = created ? new Set([created.treePath]) : new Set();
 	}
-	function deleteNodes(targets: FsNode[]) {
+	function runDeleteCommand(targets: FsNode[]) {
 		if (!targets.length) return;
 		const doomed = new Set<string>();
 		for (const t of targets) {
@@ -301,7 +301,7 @@
 			{ divider: true },
 			{ text: 'Copy path', icon: '📋', onClick: () => copyPath(data) },
 			{ text: 'Rename', icon: '✎', isDisabled: targets.length !== 1, onClick: () => renameNode(targets[0]) },
-			{ text: `Delete${targets.length > 1 ? ` (${targets.length})` : ''}`, icon: '🗑', isDanger: true, onClick: () => deleteNodes(targets) },
+			{ text: `Delete${targets.length > 1 ? ` (${targets.length})` : ''}`, icon: '🗑', isDanger: true, onClick: () => runDeleteCommand(targets) },
 			{ divider: true },
 			{ text: 'New folder', icon: '🗀', onClick: () => newFolder() },
 			{ text: 'Select all', onClick: () => selectAll() }
@@ -359,7 +359,7 @@
 		<button class="winx__action" onclick={newFolder}>🗀 New folder</button>
 		<span class="winx__sep"></span>
 		<button class="winx__action" disabled={selectedCount !== 1} onclick={() => renameNode(selectedNodes[0])}>✎ Rename</button>
-		<button class="winx__action winx__action--danger" disabled={selectedCount === 0} onclick={() => deleteNodes(selectedNodes)}>🗑 Delete</button>
+		<button class="winx__action winx__action--danger" disabled={selectedCount === 0} onclick={() => runDeleteCommand(selectedNodes)}>🗑 Delete</button>
 	</div>
 
 	<!-- Body: nav pane + contents pane -->
@@ -414,7 +414,7 @@
 					isSorted={true}
 					expandLevel={1}
 					clickBehavior="select"
-					selectionMode="multi"
+					selectionMode="multiple"
 					leafIconClass=""
 					getNodeClassCallback={rightNodeClass}
 					bind:selectedPaths={rightSel}

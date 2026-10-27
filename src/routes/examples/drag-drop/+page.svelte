@@ -75,10 +75,10 @@
 	let handleKeyboardShortcuts = $state(true); // Built-in Ctrl/Cmd+C/X/V + Delete + CUA aliases
 	let isCopyAllowed = $state(false); // Enable Ctrl+drag to copy
 
-	// Selection mode for the source tree. Defaulting to 'multi' so the new
+	// Selection mode for the source tree. Defaulting to 'multiple' so the new
 	// multi-drag feature (drag the whole highlighted set with top-level
 	// subtree absorption) is demoable. The library default is 'single'.
-	let selectionMode = $state<'single' | 'multi'>('multi');
+	let selectionMode = $state<'single' | 'multiple'>('multiple');
 
 	// Bindable highlight sets so users can see what they're about to multi-drag
 	// in each tree. The drag/drop logic in TreeController reads the same set
@@ -654,7 +654,7 @@
 		leaveBehindLog = [];
 	}
 
-	// === Sorting Zone Demo — two trees (shouldEnableTreeDropZone + DropGroup routing) ===
+	// === Sorting Zone Demo — two trees (isTreeDropZoneEnabled + DropGroup routing) ===
 	// Left = a Basket of loose produce. Right = a Pantry whose category nodes REJECT direct
 	// drops (getIsDropAllowedCallback => false); instead the WHOLE pantry is one drop zone.
 	// Drop a mixed basket anywhere on the pantry → each item auto-files under Fruits/Vegetables.
@@ -777,7 +777,7 @@
 		<h2>DD01 · Drag Between Trees</h2>
 		<p class="description">
 			<strong>Source tree (left):</strong> Drag to reorganize nodes (move). Enable "Allow Ctrl+drag
-			to copy" then hold Ctrl while dragging to copy nodes. With <code>selectionMode="multi"</code>
+			to copy" then hold Ctrl while dragging to copy nodes. With <code>selectionMode="multiple"</code>
 			(default below), Ctrl/Shift+click multiple nodes and drag any one of them — the whole
 			highlight set moves together (top-level subtrees only; descendants ride along inside).
 			<strong>Target tree (right):</strong> Drag from source to add nodes. Starts empty to demo drop
@@ -788,7 +788,7 @@
 			<strong>Ctrl/Cmd+C</strong> (copy) or <strong>X</strong> (cut), then click the other tree and
 			<strong>Ctrl/Cmd+V</strong>
 			to paste. While the target tree is empty it uses
-			<code>shouldShowDropPlaceholderWhenEmpty</code> — the drop zone stays visible and grabs
+			<code>isEmptyDropPlaceholderShown</code> — the drop zone stays visible and grabs
 			keyboard focus on hover, so you can copy in the left tree, hover the drop zone, and press
 			<strong>Ctrl/Cmd+V</strong> to fill it without clicking first. The clipboard is a shared
 			singleton, so it works across both trees — copy duplicates, cut moves (the source nodes are
@@ -895,7 +895,7 @@
 				Selection mode:
 				<select bind:value={selectionMode}>
 					<option value="single">single (one highlight; one node per drag)</option>
-					<option value="multi">multi (Ctrl/Shift+click; drag the whole highlight set)</option>
+					<option value="multiple">multiple (Ctrl/Shift+click; drag the whole highlight set)</option>
 				</select>
 			</label>
 		</div>
@@ -925,13 +925,13 @@
 						shouldHandleKeyboardShortcuts={handleKeyboardShortcuts}
 						nodeInputTransformationCallback={transformPasted}
 						beforePasteCallback={selfPasteRedirect}
-						onCopy={(c) => addLog(`Copied ${c.paths.length} from source-tree`)}
-						onCut={(c) => addLog(`Cut ${c.paths.length} from source-tree`)}
-						onPaste={(r) =>
+						onNodeCopy={(c) => addLog(`Copied ${c.paths.length} from source-tree`)}
+						onNodeCut={(c) => addLog(`Cut ${c.paths.length} from source-tree`)}
+						onNodePaste={(r) =>
 							addLog(
 								`Pasted ${r.count} into source-tree${r.skipped ? ` (skipped ${r.skipped})` : ''}`
 							)}
-						onDelete={(c) => addLog(`Deleted ${c.paths.length} node(s) from source-tree`)}
+						onNodeDelete={(c) => addLog(`Deleted ${c.paths.length} node(s) from source-tree`)}
 						onNodeDragStart={handleSourceDragStart}
 						onNodeDrop={handleSourceDrop}
 						draggedNodeClass="dd-source-dragging"
@@ -975,15 +975,15 @@
 						shouldHandleKeyboardShortcuts={handleKeyboardShortcuts}
 						nodeInputTransformationCallback={transformPasted}
 						beforePasteCallback={selfPasteRedirect}
-						onCopy={(c) => addLog(`Copied ${c.paths.length} from target-tree`)}
-						onCut={(c) => addLog(`Cut ${c.paths.length} from target-tree`)}
-						onPaste={(r) =>
+						onNodeCopy={(c) => addLog(`Copied ${c.paths.length} from target-tree`)}
+						onNodeCut={(c) => addLog(`Cut ${c.paths.length} from target-tree`)}
+						onNodePaste={(r) =>
 							addLog(
 								`Pasted ${r.count} into target-tree${r.skipped ? ` (skipped ${r.skipped})` : ''}`
 							)}
-						onDelete={(c) => addLog(`Deleted ${c.paths.length} node(s) from target-tree`)}
+						onNodeDelete={(c) => addLog(`Deleted ${c.paths.length} node(s) from target-tree`)}
 						onNodeDrop={handleTargetDrop}
-						shouldShowDropPlaceholderWhenEmpty={showDropZoneWhenEmpty}
+						isEmptyDropPlaceholderShown={showDropZoneWhenEmpty}
 						{isCopyAllowed}
 						{dropZoneMode}
 						{dropZoneLayout}
@@ -1044,7 +1044,7 @@
 		<h2>DD02 · Restricted Drop Positions</h2>
 		<p class="description">
 			Control which drop positions are valid per node using <code>allowedDropPositions</code>. Try
-			dragging items to different targets. With <code>selectionMode="multi"</code>, Ctrl/Shift+click
+			dragging items to different targets. With <code>selectionMode="multiple"</code>, Ctrl/Shift+click
 			several items first and drag any one of them to move the whole set — per-node
 			<code>allowedDropPositions</code> are still enforced on the drop target.
 		</p>
@@ -1193,7 +1193,7 @@ const data = [
 						isSorted={true}
 						expandLevel={3}
 						dragDropMode="both"
-						selectionMode="multi"
+						selectionMode="multiple"
 						selectedNodeClass="stv__node-content--selected-bold"
 						bind:selectedPaths={guardHighlighted}
 						getIsDraggableCallback={({ node }) => (node.data as GuardItem)?.locked !== true}
@@ -1291,7 +1291,7 @@ beforeDragStartCallback={(ctx) => {
 				isSorted={true}
 				expandLevel={3}
 				dragDropMode="self"
-				selectionMode="multi"
+				selectionMode="multiple"
 				selectedNodeClass="stv__node-content--selected-bold"
 				bind:selectedPaths={leaveBehindHighlighted}
 				getIsDraggableCallback={() => true}
@@ -1325,13 +1325,13 @@ beforeDragStartCallback={(ctx) => {
 
 	<!-- Sorting Zone (whole-tree drop zone + DropGroup routing) -->
 	<div class="card">
-		<h2>DD05 · Sorting Zone (<code>shouldEnableTreeDropZone</code> + <code>DropGroup[]</code>)</h2>
+		<h2>DD05 · Sorting Zone (<code>isTreeDropZoneEnabled</code> + <code>DropGroup[]</code>)</h2>
 		<p class="description">
 			The <strong>Pantry</strong> category nodes reject direct drops (<code
 				>getIsDropAllowedCallback</code
 			>
 			returns <code>false</code>). Instead the
-			<strong>whole pantry is one drop zone</strong> (<code>shouldEnableTreeDropZone</code>) — a
+			<strong>whole pantry is one drop zone</strong> (<code>isTreeDropZoneEnabled</code>) — a
 			drop anywhere lands with <code>target=null</code>. Ctrl/Shift+click a mixed basket of produce
 			on the left and drop it <em>anywhere</em> on the pantry: each item auto-files under 🍎&nbsp;Fruits
 			or 🥕&nbsp;Vegetables.
@@ -1371,7 +1371,7 @@ beforeDragStartCallback={(ctx) => {
 						isSorted={true}
 						expandLevel={3}
 						dragDropMode="both"
-						selectionMode="multi"
+						selectionMode="multiple"
 						selectedNodeClass="stv__node-content--selected-bold"
 						bind:selectedPaths={basketHighlighted}
 						getIsDraggableCallback={() => true}
@@ -1400,13 +1400,13 @@ beforeDragStartCallback={(ctx) => {
 						isSorted={true}
 						expandLevel={3}
 						dragDropMode="both"
-						selectionMode="multi"
+						selectionMode="multiple"
 						selectedNodeClass="stv__node-content--selected-bold"
 						bind:selectedPaths={pantryHighlighted}
 						getIsDraggableCallback={({ node }: { node: LTreeNode<ProduceItem> }) =>
 							node.data?.kind !== 'category'}
 						getIsDropAllowedCallback={() => false}
-						shouldEnableTreeDropZone={true}
+						isTreeDropZoneEnabled={true}
 						beforeDropCallback={beforePantryDrop}
 						onNodeDrop={onProduceDrop}
 						{...getTreeProps()}
@@ -1433,7 +1433,7 @@ beforeDragStartCallback={(ctx) => {
 
 		<div class="code-block">
 			<pre>{`<Tree
-  shouldEnableTreeDropZone={true}        // whole tree = one drop target
+  isTreeDropZoneEnabled={true}        // whole tree = one drop target
   getIsDropAllowedCallback={() => false} // nodes reject direct drops
   beforeDropCallback={(ctx) => {
     // SAME-TREE re-sort: fan ONE drop out to many targets by content

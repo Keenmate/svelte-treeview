@@ -73,7 +73,7 @@
 		selectionMode: SelectionMode;
 		selectedNodeClass: string;
 		focusedNodeClass: string;
-		shouldShowCheckboxes: boolean;
+		isCheckboxesShown: boolean;
 		checkboxMode: CheckboxMode;
 		shouldClickToggleCheckbox: boolean;
 		rangeSelectionMode: 'visual' | 'logical';
@@ -83,12 +83,12 @@
 		clickBehavior: 'expand-and-focus',
 		// Default this demo to multi so Ctrl/Shift+click work out of the box —
 		// the library default is 'single'.
-		selectionMode: 'multi',
+		selectionMode: 'multiple',
 		// Empty → the built-in defaults show (soft background tint for selection,
 		// an inset left accent bar for focus). Pick a style below to swap them out.
 		selectedNodeClass: '',
 		focusedNodeClass: '',
-		shouldShowCheckboxes: false,
+		isCheckboxesShown: false,
 		checkboxMode: 'independent',
 		shouldClickToggleCheckbox: false,
 		rangeSelectionMode: 'visual'
@@ -113,7 +113,7 @@
 					selectionMode,
 					selectedNodeClass,
 					focusedNodeClass,
-					shouldShowCheckboxes,
+					isCheckboxesShown,
 					checkboxMode,
 					shouldClickToggleCheckbox,
 					rangeSelectionMode
@@ -147,7 +147,7 @@
 	let selectionMode = $state<SelectionMode>(saved.selectionMode);
 	let selectedNodeClass = $state(saved.selectedNodeClass);
 	let focusedNodeClass = $state(saved.focusedNodeClass);
-	let shouldShowCheckboxes = $state(saved.shouldShowCheckboxes);
+	let isCheckboxesShown = $state(saved.isCheckboxesShown);
 	let checkboxMode = $state<CheckboxMode>(saved.checkboxMode);
 	let shouldClickToggleCheckbox = $state(saved.shouldClickToggleCheckbox);
 
@@ -162,7 +162,7 @@
 		selectionMode;
 		selectedNodeClass;
 		focusedNodeClass;
-		shouldShowCheckboxes;
+		isCheckboxesShown;
 		checkboxMode;
 		shouldClickToggleCheckbox;
 		rangeSelectionMode;
@@ -261,7 +261,7 @@
 		<p class="description">
 			The <code>clickBehavior</code> prop controls what happens when you click a node;
 			<code>selectionMode</code> decides whether Ctrl/Shift+click can extend the set. With
-			<code>selectionMode="multi"</code>, hold <kbd>Ctrl</kbd> (or <kbd>Cmd</kbd>) and click to toggle
+			<code>selectionMode="multiple"</code>, hold <kbd>Ctrl</kbd> (or <kbd>Cmd</kbd>) and click to toggle
 			individual nodes, hold <kbd>Shift</kbd> and click to select a range, and
 			<kbd>Shift+ArrowUp/Down</kbd> extends from the focused node. <code>rangeSelectionMode</code> controls
 			whether a range includes collapsed children. Pick a <strong>Highlighted Style</strong> below and
@@ -281,7 +281,7 @@
 				Selection Mode:
 				<select bind:value={selectionMode}>
 					<option value="single">single (Ctrl/Shift+click = plain click)</option>
-					<option value="multi">multi (Ctrl-toggle, Shift-range, Shift+Arrow)</option>
+					<option value="multiple">multiple (Ctrl-toggle, Shift-range, Shift+Arrow)</option>
 				</select>
 			</label>
 			<label>
@@ -301,10 +301,10 @@
 				</select>
 			</label>
 			<label>
-				<input type="checkbox" bind:checked={shouldShowCheckboxes} />
+				<input type="checkbox" bind:checked={isCheckboxesShown} />
 				Show Checkboxes
 			</label>
-			{#if shouldShowCheckboxes}
+			{#if isCheckboxesShown}
 				<label>
 					Checkbox Mode:
 					<select bind:value={checkboxMode}>
@@ -373,7 +373,7 @@
 					{clickBehavior}
 					{selectionMode}
 					{rangeSelectionMode}
-					{shouldShowCheckboxes}
+					{isCheckboxesShown}
 					{checkboxMode}
 					{shouldClickToggleCheckbox}
 					bind:focusedNode={focusedNode1}
@@ -414,7 +414,7 @@
   clickBehavior="${clickBehavior}"
   selectionMode="${selectionMode}"
   selectedNodeClass="${selectedNodeClass}"${focusedNodeClass ? `\n  focusedNodeClass="${focusedNodeClass}"` : ''}
-  shouldShowCheckboxes={${shouldShowCheckboxes}}${shouldShowCheckboxes ? `\n  checkboxMode="${checkboxMode}"` : ''}${shouldShowCheckboxes && shouldClickToggleCheckbox ? `\n  shouldClickToggleCheckbox` : ''}
+  isCheckboxesShown={${isCheckboxesShown}}${isCheckboxesShown ? `\n  checkboxMode="${checkboxMode}"` : ''}${isCheckboxesShown && shouldClickToggleCheckbox ? `\n  shouldClickToggleCheckbox` : ''}
   ...
 />
 
@@ -425,7 +425,7 @@
 
 <!-- selectionMode options:
   'single' — plain click only; Ctrl/Shift+click degrade to plain click (default)
-  'multi'  — Ctrl-toggle, Shift-range, Shift+Arrow extends, Enter toggles
+  'multiple' — Ctrl-toggle, Shift-range, Shift+Arrow extends, Enter toggles
 
 <!-- checkboxMode options:
   'independent' — each checkbox standalone (default)
@@ -603,7 +603,7 @@ End    Go to last visible node
 					sortCallback={sortByName}
 					isSorted={true}
 					expandLevel={3}
-					shouldShowCheckboxes={true}
+					isCheckboxesShown={true}
 					checkboxMode={policyCheckboxMode}
 					{cascadeCheckPolicy}
 					bind:checkedPaths={policyChecked}
@@ -626,7 +626,7 @@ End    Go to last visible node
 
 		<div class="code-block">
 			<pre>{`<Tree
-  shouldShowCheckboxes={true}
+  isCheckboxesShown={true}
   checkboxMode="${policyCheckboxMode}"${policyCheckboxMode === 'cascade' ? `\n  cascadeCheckPolicy="${cascadeCheckPolicy}"` : ''}
   bind:checkedPaths={selected}
   onCheckedChange={({ paths }) => { /* projected set */ }}

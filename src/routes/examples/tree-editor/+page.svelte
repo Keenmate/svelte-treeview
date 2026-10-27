@@ -1072,7 +1072,7 @@
 						isSorted={true}
 						expandLevel={3}
 						clickBehavior="select"
-						selectionMode="multi"
+						selectionMode="multiple"
 						dragDropMode="both"
 						getIsDraggableCallback={() => true}
 						getIsDropAllowedCallback={() => true}
@@ -1081,9 +1081,9 @@
 						bind:focusedNode={selectedNode}
 						bind:selectedPaths={selectedPaths}
 						beforeKeydownCallback={handleTreeKeydown}
-						onCopy={({ paths }) => { if (!suppressClipboardLog) addLog(`Copied ${paths.length} node(s) to clipboard`); }}
-						onCut={({ paths }) => addLog(`Cut ${paths.length} node(s) — paste to move`)}
-						onPaste={(result) => { if (!suppressClipboardLog) addLog(result.success ? `Pasted ${result.count} node(s)` : `Paste failed: ${result.error}`); }}
+						onNodeCopy={({ paths }) => { if (!suppressClipboardLog) addLog(`Copied ${paths.length} node(s) to clipboard`); }}
+						onNodeCut={({ paths }) => addLog(`Cut ${paths.length} node(s) — paste to move`)}
+						onNodePaste={(result) => { if (!suppressClipboardLog) addLog(result.success ? `Pasted ${result.count} node(s)` : `Paste failed: ${result.error}`); }}
 						beforePasteCallback={beforePaste}
 						nodeOutputTransformationCallback={cleanOnCopy}
 						nodeInputTransformationCallback={pasteTransform}
@@ -1452,7 +1452,7 @@
 			Per-node paste derivation (fresh ids, values, "Copy N" naming, per-entry skip)
 			lives in <code>nodeInputTransformationCallback</code>; <code>beforePasteCallback</code>
 			is policy only (redirect/block) and gets <strong>readonly</strong> entries.
-			Enable multi-select with <code>selectionMode="multi"</code>.
+			Enable multi-select with <code>selectionMode="multiple"</code>.
 		</p>
 
 		<div class="code-block">
