@@ -359,7 +359,7 @@ export function createLTree<T>(
 
 			perfStart(`[${_treeId}] insertArray:sort`);
 			if (!this.isSorted) {
-				if (this.sortCallback) mappedData = this.sortCallback({ items: mappedData });
+				if (this.sortCallback) mappedData = this.sortCallback({ nodes: mappedData });
 				else mappedData = this._defaultSort(this, mappedData);
 			}
 
@@ -1025,7 +1025,7 @@ export function createLTree<T>(
 			// Sort using sortCallback or default sort
 			let sorted: LTreeNode<T>[];
 			if (this.sortCallback) {
-				sorted = this.sortCallback({ items: children });
+				sorted = this.sortCallback({ nodes: children });
 			} else {
 				// Use a simplified sort for siblings only (all same level/parent)
 				sorted = [...children].sort((a, b) => {
@@ -1456,7 +1456,7 @@ export function createLTree<T>(
 		applyChanges(
 			changes: import('./types.js').TreeChange<T>[]
 		): import('./types.js').ApplyChangesResult {
-			const failures: Array<{ index: number; operation: string; path: string; error: string }> = [];
+			const failures: Array<{ changeIndex: number; operation: string; path: string; error: string }> = [];
 			let successCount = 0;
 
 			for (let i = 0; i < changes.length; i++) {
@@ -1470,7 +1470,7 @@ export function createLTree<T>(
 							successCount++;
 						} else {
 							failures.push({
-								index: i,
+								changeIndex: i,
 								operation: change.operation,
 								path: change.parentPath,
 								error: result.error || 'Unknown error'
@@ -1483,7 +1483,7 @@ export function createLTree<T>(
 							successCount++;
 						} else {
 							failures.push({
-								index: i,
+								changeIndex: i,
 								operation: change.operation,
 								path: change.path,
 								error: result.error || 'Unknown error'
@@ -1496,7 +1496,7 @@ export function createLTree<T>(
 							successCount++;
 						} else {
 							failures.push({
-								index: i,
+								changeIndex: i,
 								operation: change.operation,
 								path: change.path,
 								error: result.error || 'Unknown error'
@@ -1765,7 +1765,7 @@ export function createLTree<T>(
 
 			// Sort to ensure parents come before children
 			if (!this.isSorted) {
-				if (this.sortCallback) mappedData = this.sortCallback({ items: mappedData });
+				if (this.sortCallback) mappedData = this.sortCallback({ nodes: mappedData });
 				else mappedData = this._defaultSort(this, mappedData);
 			}
 
@@ -1797,7 +1797,7 @@ export function createLTree<T>(
 
 				let sorted: LTreeNode<T>[];
 				if (this.sortCallback) {
-					sorted = this.sortCallback({ items: children });
+					sorted = this.sortCallback({ nodes: children });
 				} else {
 					sorted = [...children].sort((a, b) => {
 						if (this.orderMember && a.data && b.data) {

@@ -31,19 +31,19 @@
 
 	type Item = (typeof sampleData)[0];
 
-	function sortByName({ items }: { items: LTreeNode<Item>[] }) {
+	function sortByName({ nodes: items }: { nodes: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) =>
 			(a.data?.name || '').localeCompare(b.data?.name || '')
 		);
 	}
 
-	function sortFilesByName({ items }: { items: LTreeNode<FileItem>[] }) {
+	function sortFilesByName({ nodes: items }: { nodes: LTreeNode<FileItem>[] }) {
 		return [...items].sort((a, b) =>
 			(a.data?.name || '').localeCompare(b.data?.name || '')
 		);
 	}
 
-	function sortByOrder({ items }: { items: LTreeNode<Item>[] }) {
+	function sortByOrder({ nodes: items }: { nodes: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) =>
 			(a.data?.order ?? 0) - (b.data?.order ?? 0)
 		);

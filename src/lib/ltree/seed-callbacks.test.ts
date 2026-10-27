@@ -29,7 +29,7 @@ type Row = {
 	isDropAllowed?: boolean;
 };
 
-function sortByPath({ items }: { items: LTreeNode<Row>[] }) {
+function sortByPath({ nodes: items }: { nodes: LTreeNode<Row>[] }) {
 	return [...items].sort((a, b) => a.path.localeCompare(b.path));
 }
 

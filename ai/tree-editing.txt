@@ -459,7 +459,7 @@ input, back-to-back.
 NodeTransformContext<T> = {
   operation: 'copy' | 'cut';
   phase: 'output' | 'input';
-  isRoot; index;
+  isRoot; rootIndex;
   position: 'child' | 'before' | 'after' | null;   // null during output phase
   source: { path, node, parent, siblings };
   target: { path, node, parent, siblings } | null; // null during output phase / at root

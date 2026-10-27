@@ -24,7 +24,7 @@
 		{ id: 6, path: '2.2', name: 'Potato' }
 	];
 
-	function sortByName({ items }: { items: LTreeNode<Item>[] }) {
+	function sortByName({ nodes: items }: { nodes: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
 	}
 

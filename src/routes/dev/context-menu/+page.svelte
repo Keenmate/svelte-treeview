@@ -38,7 +38,7 @@
 
 
 	// Sort callback
-	const sortCallback = ({ items }: { items: any[] }) => {
+	const sortCallback = ({ nodes: items }: { nodes: any[] }) => {
 		return items.sort((a, b) => {
 			// First, sort by level
 			const aLevel = a.path ? a.path.split('.').length : 0;

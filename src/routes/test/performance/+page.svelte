@@ -86,7 +86,7 @@
 		treeKey++;
 	}
 
-	function sortCallback({ items }: { items: LTreeNode<Item>[] }) {
+	function sortCallback({ nodes: items }: { nodes: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => (a.data?.name ?? '').localeCompare(b.data?.name ?? ''));
 	}
 

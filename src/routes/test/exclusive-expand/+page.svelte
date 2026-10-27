@@ -26,7 +26,7 @@
 
 	let treeRef: Tree<Item>;
 
-	function sortByName({ items }: { items: LTreeNode<Item>[] }) {
+	function sortByName({ nodes: items }: { nodes: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
 	}
 

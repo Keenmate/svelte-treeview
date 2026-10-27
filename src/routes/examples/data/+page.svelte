@@ -53,7 +53,7 @@
 	// falls back to this text for every node label (also what the touch-drag ghost shows).
 	let displayValueFallbackText = $state('(no name)');
 
-	function sortByName({ items }: { items: LTreeNode<FileItem>[] }) {
+	function sortByName({ nodes: items }: { nodes: LTreeNode<FileItem>[] }) {
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
 	}
 
@@ -124,7 +124,7 @@
 	}
 	let cutClipboard = $state<CutClipboard | null>(null);
 
-	function sortByOrder({ items }: { items: LTreeNode<DemoNode>[] }) {
+	function sortByOrder({ nodes: items }: { nodes: LTreeNode<DemoNode>[] }) {
 		return [...items].sort((a, b) => {
 			if (a.parentPath !== b.parentPath) {
 				return (a.parentPath || '').localeCompare(b.parentPath || '');
@@ -811,7 +811,7 @@ treeRef.insertBranch(targetPath, serverResult);`}</pre>
   data={myData}
   idMember="id"
   pathMember="path"
-  sortCallback={({ items }) => [...items].sort((a, b) =>
+  sortCallback={({ nodes: items }) => [...items].sort((a, b) =>
     (a.data?.name || '').localeCompare(b.data?.name || '')
   )}
 />`}</pre>

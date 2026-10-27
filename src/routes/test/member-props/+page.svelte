@@ -26,7 +26,7 @@
 		{ id: 6, path: '2.1', name: 'Playlists', selectable: true, selected: false }
 	];
 
-	function sortByPath({ items }: { items: LTreeNode<Item>[] }) {
+	function sortByPath({ nodes: items }: { nodes: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => a.path.localeCompare(b.path));
 	}
 

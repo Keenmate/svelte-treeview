@@ -12,7 +12,7 @@
 		{ id: 3, path: '1.1.1', name: 'Employee', icon: 'fa-user' },
 		{ id: 4, path: '1.2', name: 'Branch', icon: 'fa-building' }
 	];
-	function sortByPath({ items }: { items: LTreeNode<Item>[] }) {
+	function sortByPath({ nodes: items }: { nodes: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => a.path.localeCompare(b.path));
 	}
 

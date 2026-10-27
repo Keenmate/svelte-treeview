@@ -42,7 +42,7 @@
 	let treeRef: Tree<Item>;
 	let nextId = 1000;
 
-	function sortByOrder({ items }: { items: LTreeNode<Item>[] }) {
+	function sortByOrder({ nodes: items }: { nodes: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => {
 			if (a.parentPath !== b.parentPath) {
 				return (a.parentPath || '').localeCompare(b.parentPath || '');

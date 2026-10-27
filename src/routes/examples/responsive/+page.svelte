@@ -17,7 +17,7 @@
 	const iscoData = iscoRaw as Isco[];
 
 	// Siblings at every level share a fixed digit-count, so a plain path compare sorts correctly.
-	function sortByPath({ items }: { items: LTreeNode<Isco>[] }) {
+	function sortByPath({ nodes: items }: { nodes: LTreeNode<Isco>[] }) {
 		return [...items].sort((a, b) => a.path.localeCompare(b.path));
 	}
 

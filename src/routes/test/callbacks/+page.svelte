@@ -20,7 +20,7 @@
 		allowedDropPositions?: DropPosition[];
 	};
 
-	function sortByOrder({ items }: { items: LTreeNode<Item>[] }) {
+	function sortByOrder({ nodes: items }: { nodes: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => {
 			if (a.parentPath !== b.parentPath) {
 				return (a.parentPath || '').localeCompare(b.parentPath || '');

@@ -64,7 +64,7 @@
 		keydownLog = [];
 	}
 
-	function sortByName({ items }: { items: LTreeNode<Item>[] }) {
+	function sortByName({ nodes: items }: { nodes: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
 	}
 
@@ -85,7 +85,7 @@
 			operation: ctx.operation,
 			phase: ctx.phase,
 			isRoot: ctx.isRoot,
-			index: ctx.index,
+			rootIndex: ctx.rootIndex,
 			position: ctx.position,
 			dataName: data.name,
 			source: side(ctx.source),

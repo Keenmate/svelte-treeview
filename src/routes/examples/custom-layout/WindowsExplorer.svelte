@@ -169,7 +169,7 @@
 	type RightItem = FsNode & { treePath: string };
 	const rightTreeData = $derived<RightItem[]>(rightItems.map((n, i) => ({ ...n, treePath: String(i + 1) })));
 	// Preserve our sort order in the tree (its sortCallback would otherwise reorder).
-	const keepRightOrder = ({ items }: { items: LTreeNode<RightItem>[] }) =>
+	const keepRightOrder = ({ nodes: items }: { nodes: LTreeNode<RightItem>[] }) =>
 		[...items].sort((a, b) => Number(a.data?.treePath ?? 0) - Number(b.data?.treePath ?? 0));
 	// Per-row class from data — dogfoods the getNodeClassCallback hook.
 	const rightNodeClass = ({ node }: { node: LTreeNode<RightItem> }) =>
@@ -308,7 +308,7 @@
 		];
 	}
 
-	function navSort({ items }: { items: LTreeNode<FsNode>[] }) {
+	function navSort({ nodes: items }: { nodes: LTreeNode<FsNode>[] }) {
 		return [...items].sort((a, b) => collator.compare(a.data?.name ?? '', b.data?.name ?? ''));
 	}
 

@@ -122,11 +122,11 @@
 		localStorage.setItem('dropZoneConfig', JSON.stringify(config));
 	});
 
-	function sortByName({ items }: { items: LTreeNode<FileItem>[] }) {
+	function sortByName({ nodes: items }: { nodes: LTreeNode<FileItem>[] }) {
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
 	}
 
-	function sortByOrder({ items }: { items: LTreeNode<FileItem>[] }) {
+	function sortByOrder({ nodes: items }: { nodes: LTreeNode<FileItem>[] }) {
 		return [...items].sort((a, b) => {
 			// Sort by parent path first
 			if (a.parentPath !== b.parentPath) {

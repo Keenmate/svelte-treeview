@@ -12,7 +12,7 @@ export interface NodeContext<T> {
 
 /** ctx of `sortCallback`: the children of ONE parent (siblings); return them in the new order. */
 export interface SortContext<T> {
-	items: LTreeNode<T>[];
+	nodes: LTreeNode<T>[];
 }
 
 export type DragDropMode = 'none' | 'self' | 'cross' | 'both';
@@ -107,7 +107,7 @@ export type TreeChange<T> =
 
 export interface ApplyChangesResult {
 	successful: number;
-	failed: Array<{ index: number; operation: string; path: string; error: string }>;
+	failed: Array<{ changeIndex: number; operation: string; path: string; error: string }>;
 }
 
 // ── Context Menu Types ──────────────────────────────────────────────────

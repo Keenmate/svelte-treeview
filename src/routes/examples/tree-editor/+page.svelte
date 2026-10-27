@@ -16,7 +16,7 @@
 	import { getTreeProps } from '../render-mode.svelte.js';
 
 	// One order-aware sort shared by every tree on this page (editor + scenarios).
-	function sortByOrder<T extends { sortOrder?: number }>({ items }: { items: LTreeNode<T>[] }): LTreeNode<T>[] {
+	function sortByOrder<T extends { sortOrder?: number }>({ nodes: items }: { nodes: LTreeNode<T>[] }): LTreeNode<T>[] {
 		return [...items].sort((a, b) => {
 			if (a.parentPath !== b.parentPath) {
 				return (a.parentPath || '').localeCompare(b.parentPath || '');

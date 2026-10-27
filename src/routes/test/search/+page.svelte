@@ -36,7 +36,7 @@
 	let currentResultIndex = $state(-1);
 	let useContainerScroll = $state(true);
 
-	function sortByName({ items }: { items: LTreeNode<LocationItem>[] }) {
+	function sortByName({ nodes: items }: { nodes: LTreeNode<LocationItem>[] }) {
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
 	}
 

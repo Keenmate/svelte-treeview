@@ -358,7 +358,7 @@ interface NodeTransformContext<T> {
   operation: 'copy' | 'cut';
   phase: 'output' | 'input';                     // egress (node leaves) vs. ingress (duplicate lands)
   isRoot: boolean;                               // top-level node vs. descendant riding along
-  index: number;                                 // index of the root entry in this batch
+  rootIndex: number;                               // index of the root entry in this batch
   position: 'child' | 'before' | 'after' | null; // how roots land relative to target.node
   source: NodeRef<T>;                            // origin side (live same-tree, null/[] cross-tree/cut)
   target: NodeRef<T> | null;                     // destination side (null during output phase)

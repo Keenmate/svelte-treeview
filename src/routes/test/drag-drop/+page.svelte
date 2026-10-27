@@ -21,7 +21,7 @@
 
 	type RestrictedItem = Item & { allowedDropPositions?: DropPosition[] };
 
-	function sortByOrder<T extends { sortOrder: number }>({ items }: { items: LTreeNode<T>[] }) {
+	function sortByOrder<T extends { sortOrder: number }>({ nodes: items }: { nodes: LTreeNode<T>[] }) {
 		return [...items].sort((a, b) => {
 			if (a.parentPath !== b.parentPath) {
 				return (a.parentPath || '').localeCompare(b.parentPath || '');

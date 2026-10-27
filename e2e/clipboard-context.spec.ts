@@ -63,7 +63,7 @@ test.describe('Clipboard callback contexts', () => {
 		expect(c.operation).toBe('copy');
 		expect(c.phase).toBe('output');
 		expect(c.isRoot).toBe(true);
-		expect(c.index).toBe(0);
+		expect(c.rootIndex).toBe(0);
 		expect(c.position).toBeNull();
 		expect(c.target).toBeNull();
 		expect(c.source.path).toBe('1.1');
@@ -103,7 +103,7 @@ test.describe('Clipboard callback contexts', () => {
 		const p = paste[0];
 		expect(p.phase).toBe('input');
 		expect(p.isRoot).toBe(true);
-		expect(p.index).toBe(0);
+		expect(p.rootIndex).toBe(0);
 		expect(p.position).toBe('child');
 		// source still live (same tree)
 		expect(p.source.node).toBe('1.1');
@@ -161,7 +161,7 @@ test.describe('Clipboard callback contexts', () => {
 		// output phase snapshots root + both descendants, all phase output, index 0
 		const copy = await readLog(page, 'copy-ctx');
 		expect(copy).toHaveLength(3);
-		expect(copy.every((e) => e.phase === 'output' && e.index === 0)).toBe(true);
+		expect(copy.every((e) => e.phase === 'output' && e.rootIndex === 0)).toBe(true);
 		expect(copy.filter((e) => e.isRoot).map((e) => e.dataName)).toEqual(['A']);
 		expect(sorted(copy.filter((e) => !e.isRoot).map((e) => e.dataName))).toEqual(['A1', 'A2']);
 
@@ -177,7 +177,7 @@ test.describe('Clipboard callback contexts', () => {
 		// descendants nest as children of the freshly-created root copy, sharing its index
 		const descs = paste.filter((e) => !e.isRoot);
 		expect(sorted(descs.map((e) => e.dataName))).toEqual(['A1', 'A2']);
-		expect(descs.every((e) => e.position === 'child' && e.index === 0)).toBe(true);
+		expect(descs.every((e) => e.position === 'child' && e.rootIndex === 0)).toBe(true);
 		// their target.node is the new root copy (same for both), not the original folder
 		const anchors = new Set(descs.map((e) => e.target.node));
 		expect(anchors.size).toBe(1);

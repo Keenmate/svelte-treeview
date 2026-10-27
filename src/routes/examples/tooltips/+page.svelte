@@ -18,7 +18,7 @@
 		{ id: 9, path: '2.2', name: 'Potato', icon: '🥔', desc: 'Starchy tuber, endlessly versatile' }
 	];
 
-	function sortByPath({ items }: { items: LTreeNode<FileItem>[] }) {
+	function sortByPath({ nodes: items }: { nodes: LTreeNode<FileItem>[] }) {
 		return [...items].sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
 	}
 

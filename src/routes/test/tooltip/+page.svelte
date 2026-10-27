@@ -12,7 +12,7 @@
 		{ id: 2, path: '1.1', name: 'Apple', desc: 'Crisp orchard fruit' },
 		{ id: 3, path: '1.2', name: 'Plain', desc: '' }
 	];
-	function sortByPath({ items }: { items: LTreeNode<Item>[] }) {
+	function sortByPath({ nodes: items }: { nodes: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => a.path.localeCompare(b.path));
 	}
 

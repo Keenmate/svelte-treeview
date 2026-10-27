@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BREAKING: ctx nouns (no bare `index`, `item` reserved for action items)** — same as
+  `@keenmate/web-treeview`: `sortCallback({ items })` → `sortCallback({ nodes })`; the node-transform
+  ctx `index` → `rootIndex`; `applyChanges()` `failed[].index` → `failed[].changeIndex`.
 - **BREAKING: remaining API names aligned with `@keenmate/web-treeview` and the shared naming
   rulebook** (no aliases):
   - events: `onNodeDragDenied` / `onNodeDropDenied` → `onNodeDragReject` / `onNodeDropReject`;
@@ -53,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `getSearchValueCallback`, `getNodeTooltipCallback`, `getIconCallback`, `getIconColorCallback`
   (`(node) => …` → `({ node }) => …`). `nodeClass` / `nodeContentClass` are renamed
   `getNodeClassCallback` / `getNodeContentClassCallback` and take `{ node }`. `sortCallback(items)` →
-  `sortCallback({ items })` (`SortContext<T>`). `beforeCheckboxToggleCallback(node, checked,
+  `sortCallback({ nodes })` (`SortContext<T>`). `beforeCheckboxToggleCallback(node, checked,
   affectedPaths)` → `({ node, isChecked, affectedPaths })` returning `false` / `string[]` / nothing.
   Node transforms `(data, ctx)` → `(ctx)` with `ctx.data` added to `NodeTransformContext`
   (`NodeTransformCallbackContext<T>` / `NodeTransformCallback<T>`) — `nodeOutputTransformationCallback`,

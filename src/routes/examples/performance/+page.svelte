@@ -287,7 +287,7 @@
     treeKey++;
   }
 
-  function sortCallback({ items }: { items: any[] }) {
+  function sortCallback({ nodes: items }: { nodes: any[] }) {
     if (!isSorted) return items;
     return [...items].sort((a, b) => {
       const aVal = a.data?.name ?? '';

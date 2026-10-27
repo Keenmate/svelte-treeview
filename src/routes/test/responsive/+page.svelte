@@ -16,7 +16,7 @@
 		{ id: 2, path: '1.1', name: 'Child A' },
 		{ id: 3, path: '1.2', name: 'Child B' }
 	];
-	function sortByPath({ items }: { items: LTreeNode<Item>[] }) {
+	function sortByPath({ nodes: items }: { nodes: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => a.path.localeCompare(b.path));
 	}
 

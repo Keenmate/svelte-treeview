@@ -25,7 +25,7 @@
 		{ id: 'kale', name: 'Kale', path: '2.3.2', icon: '🥬', desc: 'Hardy superfood green' }
 	];
 
-	const sortByPath = ({ items }: { items: LTreeNode<Item>[] }) =>
+	const sortByPath = ({ nodes: items }: { nodes: LTreeNode<Item>[] }) =>
 		[...items].sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
 
 	// Direct-child count for a folder node (shown as a themed badge in the template).

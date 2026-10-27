@@ -20,7 +20,7 @@
 		{ id: 6, path: '2.1', name: 'Software', icon: '💿' }
 	];
 
-	function sortByName({ items }: { items: LTreeNode<FileItem>[] }) {
+	function sortByName({ nodes: items }: { nodes: LTreeNode<FileItem>[] }) {
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
 	}
 

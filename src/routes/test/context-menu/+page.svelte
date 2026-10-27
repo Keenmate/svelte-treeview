@@ -34,7 +34,7 @@
 	let snippetLog = $state<string[]>([]);
 	let pinClicks = $state(0);
 
-	function sortByName({ items }: { items: LTreeNode<FileItem>[] }) {
+	function sortByName({ nodes: items }: { nodes: LTreeNode<FileItem>[] }) {
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
 	}
 

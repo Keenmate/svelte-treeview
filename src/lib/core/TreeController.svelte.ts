@@ -133,7 +133,7 @@ export interface NodeTransformContext<T> {
 	/** True for a top-level node, false for a descendant riding along inside it. */
 	isRoot: boolean;
 	/** Index of the root entry within this batch (descendants share their root's index). */
-	index: number;
+	rootIndex: number;
 	/** How the roots land relative to `target.node` — null during the 'output' phase
 	 * (no destination chosen yet). Mirrors the DropPosition vocabulary of onNodeDrop. */
 	position: 'child' | 'before' | 'after' | null;
@@ -1973,7 +1973,7 @@ export class TreeController<T> {
 				operation: 'copy',
 				phase: 'input',
 				isRoot,
-				index: idx,
+				rootIndex: idx,
 				position,
 				source: {
 					path: srcNode.path,
@@ -2199,7 +2199,7 @@ export class TreeController<T> {
 				operation,
 				phase: 'output',
 				isRoot,
-				index: rootIndex,
+				rootIndex,
 				position: null,
 				source: this.nodeRef(n),
 				target: null
@@ -2472,7 +2472,7 @@ export class TreeController<T> {
 				operation,
 				phase: 'input',
 				isRoot,
-				index: idx,
+				rootIndex: idx,
 				position: pos,
 				source: {
 					path: srcPath,
