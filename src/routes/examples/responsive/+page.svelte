@@ -17,7 +17,7 @@
 	const iscoData = iscoRaw as Isco[];
 
 	// Siblings at every level share a fixed digit-count, so a plain path compare sorts correctly.
-	function sortByPath(items: LTreeNode<Isco>[]) {
+	function sortByPath({ items }: { items: LTreeNode<Isco>[] }) {
 		return [...items].sort((a, b) => a.path.localeCompare(b.path));
 	}
 
@@ -44,7 +44,7 @@
 	let overflowMode = $state<NodeTitleOverflow>('info');
 	const overflowModes: NodeTitleOverflow[] = ['wrap', 'ellipsis', 'info'];
 
-	function onContainerResize(size: ElementSize, deviceClass: DeviceClass) {
+	function onContainerResize({ size, deviceClass }: { size: ElementSize; deviceClass: DeviceClass }) {
 		cbWidth = Math.round(size.width);
 		device = deviceClass;
 		// Pick depth by BOTH the device class (capability) and the live box width —
@@ -192,7 +192,7 @@ isNarrow = {isNarrow}   →   {isNarrow ? 'compact rows (title only)' : 'comfort
 
 let expandLevel = $state(2);
 
-function onContainerResize(size: ElementSize, deviceClass: DeviceClass) {
+function onContainerResize({ size, deviceClass }: { size: ElementSize; deviceClass: DeviceClass }) {
   // capability first, then width — same decision shape as AB10
   if (deviceClass === 'mobile' || size.width < 380) expandLevel = 1; // major groups
   else if (size.width < 560)                        expandLevel = 2; // + sub-major

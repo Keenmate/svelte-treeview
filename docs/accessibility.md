@@ -66,17 +66,17 @@ Ctrl/Shift+Click does **not** auto-toggle expand/collapse — modifier clicks ar
 
 ## Custom keydown handler
 
-Override or augment the default keymap with `onTreeKeydown` — return `true` to suppress the built-in handling:
+Override or augment the default keymap with `beforeKeydownCallback` — return `false` to suppress the built-in handling (synchronous):
 
 ```svelte
 <Tree
   {data}
   idMember="path"
   pathMember="path"
-  onTreeKeydown={(event, controller) => {
+  beforeKeydownCallback={({ event, controller }) => {
     if (event.key === 'Delete' && controller.focusedNode) {
       controller.removeNode(controller.focusedNode.path);
-      return true;  // suppress default
+      return false;  // suppress default
     }
     return false;  // let the tree handle it
   }}

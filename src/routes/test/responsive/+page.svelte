@@ -16,7 +16,7 @@
 		{ id: 2, path: '1.1', name: 'Child A' },
 		{ id: 3, path: '1.2', name: 'Child B' }
 	];
-	function sortByPath(items: LTreeNode<Item>[]) {
+	function sortByPath({ items }: { items: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => a.path.localeCompare(b.path));
 	}
 
@@ -32,7 +32,7 @@
 
 	let width = $state(500);
 
-	function onContainerResize(size: ElementSize, deviceClass: DeviceClass) {
+	function onContainerResize({ size, deviceClass }: { size: ElementSize; deviceClass: DeviceClass }) {
 		cbSize = size;
 		cbDevice = deviceClass;
 		cbCount++;

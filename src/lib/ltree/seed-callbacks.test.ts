@@ -29,7 +29,7 @@ type Row = {
 	isDropAllowed?: boolean;
 };
 
-function sortByPath(items: LTreeNode<Row>[]) {
+function sortByPath({ items }: { items: LTreeNode<Row>[] }) {
 	return [...items].sort((a, b) => a.path.localeCompare(b.path));
 }
 
@@ -51,15 +51,15 @@ function buildTree(opts: {
 		undefined,     // _levelMember
 		undefined,     // _hasChildrenMember
 		undefined,     // _isExpandedMember
-		cb ? (n) => n.data?.isExpanded !== false : undefined,
+		cb ? ({ node: n }) => n.data?.isExpanded !== false : undefined,
 		undefined,     // _isSelectableMember
-		cb ? (n) => n.data?.isSelectable !== false : undefined,
+		cb ? ({ node: n }) => n.data?.isSelectable !== false : undefined,
 		undefined,     // _isCheckedMember
-		cb ? (n) => n.data?.isChecked === true : undefined,
+		cb ? ({ node: n }) => n.data?.isChecked === true : undefined,
 		undefined,     // _isDraggableMember
-		cb ? (n) => n.data?.isDraggable !== false : undefined,
+		cb ? ({ node: n }) => n.data?.isDraggable !== false : undefined,
 		undefined,     // _isDropAllowedMember
-		cb ? (n) => n.data?.isDropAllowed !== false : undefined,
+		cb ? ({ node: n }) => n.data?.isDropAllowed !== false : undefined,
 		undefined,     // _allowedDropPositionsMember
 		'name',        // _displayValueMember
 		undefined,     // _getDisplayValueCallback
@@ -179,7 +179,7 @@ describe('copyNodeWithDescendants seeds flags on the copies', () => {
 	// cross-tree copy). Root copy id = copy100, its child = copy101.
 	let nid = 100;
 	const src = ltree.getNodeByPath('1')!;
-	ltree.copyNodeWithDescendants(src, '', (d) => ({ ...d, id: `copy${nid++}`, path: '' }));
+	ltree.copyNodeWithDescendants(src, '', ({ data: d }) => ({ ...d, id: `copy${nid++}`, path: '' }));
 
 	it('the copied root is draggable + drop-allowed (was false pre-fix)', () => {
 		const rootCopy = ltree.getNodeByPath('copy100');

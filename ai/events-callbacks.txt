@@ -110,15 +110,15 @@ ClipboardEventContext { operation?: 'copy'|'cut', paths, nodes }
 
 TREE KEYDOWN (INTERCEPTOR)
 --------------------------
-Not fire-and-forget: onTreeKeydown intercepts keydown before default + built-in
-shortcuts. Return true to suppress them. Focus-scoped to .stv__container.
+Not fire-and-forget: beforeKeydownCallback intercepts keydown before default + built-in
+shortcuts. Return false to suppress them (synchronous). Focus-scoped to .stv__container.
 ctx = { event, focusedNode, selectedNodes, controller }.
 
 <Tree
-  onTreeKeydown={(ctx) => {
+  beforeKeydownCallback={(ctx) => {
     if (ctx.event.key === 'Enter' && ctx.focusedNode) {
       openItem(ctx.focusedNode.data);
-      return true;  // suppress default handling
+      return false;  // suppress default handling
     }
     // ctx.controller for imperative actions (copyNodes, pasteNodes, ...)
   }}
@@ -169,7 +169,7 @@ DISPLAY VALUE CALLBACK
 Compute display text dynamically:
 
 <Tree
-  getDisplayValueCallback={(node) => {
+  getDisplayValueCallback={({ node }) => {
     const item = node.data;
     return `${item.firstName} ${item.lastName}`;
   }}
@@ -177,7 +177,7 @@ Compute display text dynamically:
 
 Complex example:
 <Tree
-  getDisplayValueCallback={(node) => {
+  getDisplayValueCallback={({ node }) => {
     const item = node.data;
     const count = item.children?.length || 0;
     const suffix = count > 0 ? ` (${count})` : '';
@@ -190,7 +190,7 @@ SEARCH VALUE CALLBACK
 Control what text gets indexed for search:
 
 <Tree
-  getSearchValueCallback={(node) => {
+  getSearchValueCallback={({ node }) => {
     const item = node.data;
     return `${item.name} ${item.email} ${item.tags.join(' ')}`;
   }}
@@ -201,7 +201,7 @@ ALLOWED DROP POSITIONS CALLBACK
 Control which drop positions are allowed per node:
 
 <Tree
-  getAllowedDropPositionsCallback={(node) => {
+  getAllowedDropPositionsCallback={({ node }) => {
     if (node.data.type === 'file') return ['before', 'after'];
     if (node.data.type === 'trash') return ['child'];
     return undefined;  // all positions
@@ -290,7 +290,7 @@ Callback props (one-way notification):
 - onSelectionChange
 - onCheckedChange
 - onCopy / onCut / onPaste / onDelete
-- onTreeKeydown (interceptor)
+- beforeKeydownCallback (interceptor)
 
 Example combining both:
 
@@ -311,7 +311,7 @@ Example combining both:
 
 CALLBACK SIGNATURES
 -------------------
-All on* events take ONE ctx object (fire-and-forget), except onTreeKeydown.
+All on* events take ONE ctx object (fire-and-forget), except beforeKeydownCallback.
 
 NodeRef<T> = { path, node, parent, siblings }  // node/parent/siblings null/[] cross-tree
 
@@ -347,7 +347,7 @@ onPaste:
 (result: PasteResult<T>) => void
   // PasteResult = { success, count, skipped, error? }
 
-onTreeKeydown (interceptor — return true to suppress default + built-in shortcuts):
+beforeKeydownCallback (interceptor — return false to suppress default + built-in shortcuts):
 (ctx: { event, focusedNode, selectedNodes, controller }) => boolean | void
 
 beforeDropCallback (deliberately still 5-arg positional):
@@ -360,13 +360,13 @@ beforeDropCallback (deliberately still 5-arg positional):
 ) => boolean | { position?, operation? } | Promise<...>
 
 getDisplayValueCallback:
-(node: LTreeNode<T>) => string
+(ctx: NodeContext<T>) => string
 
 getSearchValueCallback:
-(node: LTreeNode<T>) => string
+(ctx: NodeContext<T>) => string
 
 getAllowedDropPositionsCallback:
-(node: LTreeNode<T>) => DropPosition[] | null | undefined
+(ctx: NodeContext<T>) => DropPosition[] | null | undefined
 
 getContextMenuItemsCallback:
 (node: LTreeNode<T>, closeMenu: () => void, selectedNodes?: LTreeNode<T>[]) => ContextMenuEntry[]

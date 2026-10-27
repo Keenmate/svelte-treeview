@@ -125,11 +125,11 @@
 		tick().then(() => applyVars());
 	});
 
-	function sortByName(items: LTreeNode<Item>[]) {
+	function sortByName({ items }: { items: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
 	}
 
-	function sortByPath(items: LTreeNode<Item>[]) {
+	function sortByPath({ items }: { items: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => a.path.localeCompare(b.path));
 	}
 

@@ -7,7 +7,7 @@ import { test, expect, Page } from '@playwright/test';
  *     position, and the symmetric source/target groups ({ path, node, parent, siblings }).
  *   - BeforeCopyContext / BeforeDeleteContext ({ paths, nodes }), BeforePasteContext
  *     ({ operation, target: { path, node }, entries }).
- *   - onTreeKeydown ({ event, focusedNode, selectedNodes, controller }).
+ *   - beforeKeydownCallback ({ event, focusedNode, selectedNodes, controller }).
  *   - same-tree source refs are LIVE; cross-tree source refs are null/[].
  */
 
@@ -193,7 +193,7 @@ test.describe('Clipboard callback contexts', () => {
 		expect(bd).toEqual([{ paths: ['1.2'], nodes: ['1.2'] }]);
 	});
 
-	test('onTreeKeydown carries the resolved focusedNode + selectedNodes', async ({ page }) => {
+	test('beforeKeydownCallback carries the resolved focusedNode + selectedNodes', async ({ page }) => {
 		await clickA(page, 'A1'); // highlight {1.1}, focus 1.1
 		await ctrlClickA(page, 'A2'); // highlight {1.1,1.2}, focus 1.2
 		await page.keyboard.press('Control+c');

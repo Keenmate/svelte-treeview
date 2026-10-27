@@ -86,8 +86,8 @@
 	const isDraggedNode = $derived(config.draggedPaths?.has(node.path) ?? false);
 	// Data-driven per-row classes. The callbacks read node data; recompute when the
 	// node's _rev bumps (same trigger the rest of the render uses).
-	const customNodeClass = $derived(config.nodeClass ? (config.nodeClass(node) ?? '') : '');
-	const customNodeContentClass = $derived(config.nodeContentClass ? (config.nodeContentClass(node) ?? '') : '');
+	const customNodeClass = $derived(config.getNodeClassCallback ? (config.getNodeClassCallback({ node }) ?? '') : '');
+	const customNodeContentClass = $derived(config.getNodeContentClassCallback ? (config.getNodeContentClassCallback({ node }) ?? '') : '');
 	// dragOverNodeClass is applied to the DOM directly by the controller
 	// (see hoveredNodeForDrop $effect in TreeController) — no per-Node binding.
 	const clickBehavior = $derived(config.clickBehavior);
@@ -129,7 +129,7 @@
 	// the KeenMate core createTooltip `content: HTMLElement` path).
 	const nodeTooltipSnippet = getContext<Snippet<[LTreeNode<T>, NodeRenderContext]> | undefined>('NodeTooltip')
 	const tooltipText = $derived(
-		config.getNodeTooltipCallback ? (config.getNodeTooltipCallback(node) ?? null) : null
+		config.getNodeTooltipCallback ? (config.getNodeTooltipCallback({ node }) ?? null) : null
 	)
 	let tooltipHostEl: HTMLElement | undefined = $state()
 	const tooltipContent = $derived(
@@ -148,7 +148,7 @@
 	const nodeIconSnippet = getContext<Snippet<[LTreeNode<T>, string | null | undefined, NodeRenderContext]> | undefined>('NodeIcon')
 	const hasIconSupport = $derived(!!(config.iconMember || config.getIconCallback || nodeIconSnippet))
 	const iconValue = $derived.by(() => {
-		if (config.getIconCallback) return config.getIconCallback(node) ?? null
+		if (config.getIconCallback) return config.getIconCallback({ node }) ?? null
 		if (config.iconMember && node.data) {
 			const v = (node.data as any)[config.iconMember]
 			return v != null ? String(v) : null
@@ -159,7 +159,7 @@
 	// else (emoji, symbol, text) is rendered as the element's text.
 	const iconIsClassList = $derived(!iconValue || /^\s*-?[A-Za-z_][\w-]*(\s+-?[A-Za-z_][\w-]*)*\s*$/.test(iconValue))
 	const iconColor = $derived.by(() => {
-		if (config.getIconColorCallback) return config.getIconColorCallback(node) ?? null
+		if (config.getIconColorCallback) return config.getIconColorCallback({ node }) ?? null
 		if (config.iconColorMember && node.data) {
 			const v = (node.data as any)[config.iconColorMember]
 			return v != null ? String(v) : null

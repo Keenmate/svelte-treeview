@@ -10,7 +10,7 @@ import {
 	getRelativePath
 } from '../helpers/ltree-helpers.js';
 
-import type { Ltree, InsertArrayResult, InsertBranchResult, DeleteBranchResult } from './types.js';
+import type { Ltree, InsertArrayResult, InsertBranchResult, DeleteBranchResult, NodeContext, SortContext } from './types.js';
 import { createSearchIndex } from './flex.js';
 import { Indexer } from './indexer.js';
 import { perfStart, perfEnd, perfSummary } from '../perf-logger.js';
@@ -28,28 +28,28 @@ export function createLTree<T>(
 	_levelMember?: string | null | undefined,
 	_hasChildrenMember?: string | null | undefined,
 	_isExpandedMember?: string | null | undefined,
-	_getIsExpandedCallback?: (node: LTreeNode<T>) => boolean,
+	_getIsExpandedCallback?: (ctx: NodeContext<T>) => boolean,
 	_isSelectableMember?: string | null | undefined,
-	_getIsSelectableCallback?: (node: LTreeNode<T>) => boolean,
+	_getIsSelectableCallback?: (ctx: NodeContext<T>) => boolean,
 	_isCheckedMember?: string | null | undefined,
-	_getIsCheckedCallback?: (node: LTreeNode<T>) => boolean,
+	_getIsCheckedCallback?: (ctx: NodeContext<T>) => boolean,
 	_isDraggableMember?: string | null | undefined,
-	_getIsDraggableCallback?: (node: LTreeNode<T>) => boolean,
+	_getIsDraggableCallback?: (ctx: NodeContext<T>) => boolean,
 	_isDropAllowedMember?: string | null | undefined,
-	_getIsDropAllowedCallback?: (node: LTreeNode<T>) => boolean,
+	_getIsDropAllowedCallback?: (ctx: NodeContext<T>) => boolean,
 	_allowedDropPositionsMember?: string | null | undefined,
 	_displayValueMember?: string | null | undefined,
-	_getDisplayValueCallback?: (node: LTreeNode<T>) => string,
+	_getDisplayValueCallback?: (ctx: NodeContext<T>) => string,
 
 	_searchValueMember?: string | null | undefined,
-	_getSearchValueCallback?: (node: LTreeNode<T>) => string,
+	_getSearchValueCallback?: (ctx: NodeContext<T>) => string,
 
 	_getAllowedDropPositionsCallback?: (
-		node: LTreeNode<T>
+		ctx: NodeContext<T>
 	) => import('./types.js').DropPosition[] | null | undefined,
 
 	_isCollapsibleMember?: string | null | undefined,
-	_getIsCollapsibleCallback?: (node: LTreeNode<T>) => boolean,
+	_getIsCollapsibleCallback?: (ctx: NodeContext<T>) => boolean,
 
 	_orderMember?: string | null | undefined,
 
@@ -313,25 +313,25 @@ export function createLTree<T>(
 					node.data = row;
 
 					// isExpanded: callback > member > expandLevel
-					if (_getIsExpandedCallback) node.isExpanded = _getIsExpandedCallback(node);
+					if (_getIsExpandedCallback) node.isExpanded = _getIsExpandedCallback({ node });
 					else if (!shouldCalculateIsExpanded) node.isExpanded = getField(row, _isExpandedMember!);
 					else if (_expandLevel) node.isExpanded = (node.level ?? 0) <= _expandLevel;
 
 					// isSelectable: callback > member (stored on node so renderers can read directly)
-					if (_getIsSelectableCallback) node.isSelectable = _getIsSelectableCallback(node);
+					if (_getIsSelectableCallback) node.isSelectable = _getIsSelectableCallback({ node });
 					else if (!shouldCalculateIsSelectable)
 						node.isSelectable = getField(row, _isSelectableMember!);
 
 					// isChecked: callback > member
-					if (_getIsCheckedCallback) node.isChecked = _getIsCheckedCallback(node);
+					if (_getIsCheckedCallback) node.isChecked = _getIsCheckedCallback({ node });
 					else if (!shouldCalculateIsChecked) node.isChecked = getField(row, _isCheckedMember!);
 
-					if (_getIsDraggableCallback) node.isDraggable = _getIsDraggableCallback(node);
+					if (_getIsDraggableCallback) node.isDraggable = _getIsDraggableCallback({ node });
 					else if (!shouldCalculateIsDraggable)
 						node.isDraggable = getField(row, _isDraggableMember!);
 					if (!shouldCalculateIsCollapsible)
 						node.isCollapsible = getField(row, _isCollapsibleMember!);
-					if (_getIsDropAllowedCallback) node.isDropAllowed = _getIsDropAllowedCallback(node);
+					if (_getIsDropAllowedCallback) node.isDropAllowed = _getIsDropAllowedCallback({ node });
 					else if (!shouldCalculateIsDropAllowed)
 						node.isDropAllowed = getField(row, _isDropAllowedMember!);
 					if (!shouldCalculateAllowedDropPositions)
@@ -359,7 +359,7 @@ export function createLTree<T>(
 
 			perfStart(`[${_treeId}] insertArray:sort`);
 			if (!this.isSorted) {
-				if (this.sortCallback) mappedData = this.sortCallback(mappedData);
+				if (this.sortCallback) mappedData = this.sortCallback({ items: mappedData });
 				else mappedData = this._defaultSort(this, mappedData);
 			}
 
@@ -928,7 +928,7 @@ export function createLTree<T>(
 			if (!shouldCalculateDisplayValue && node.data)
 				return getField(node.data, _displayValueMember!);
 
-			if (this.getDisplayValueCallback) return this.getDisplayValueCallback(node);
+			if (this.getDisplayValueCallback) return this.getDisplayValueCallback({ node });
 
 			return this.displayValueFallback ?? '[N/A]';
 		},
@@ -936,7 +936,7 @@ export function createLTree<T>(
 		getNodeSearchValue(node: LTreeNode<T>): string {
 			if (!shouldCalculateSearchValue && node.data) return getField(node.data, _searchValueMember!);
 
-			if (this.getSearchValueCallback) return this.getSearchValueCallback(node);
+			if (this.getSearchValueCallback) return this.getSearchValueCallback({ node });
 
 			return '[N/A]';
 		},
@@ -946,7 +946,7 @@ export function createLTree<T>(
 		): import('./types.js').DropPosition[] | null | undefined {
 			// Priority: callback > member > node property
 			if (this.getAllowedDropPositionsCallback) {
-				return this.getAllowedDropPositionsCallback(node);
+				return this.getAllowedDropPositionsCallback({ node });
 			}
 
 			if (!shouldCalculateAllowedDropPositions && node.data) {
@@ -957,20 +957,20 @@ export function createLTree<T>(
 		},
 
 		getNodeIsDraggable(node: LTreeNode<T>): boolean {
-			if (this.getIsDraggableCallback) return this.getIsDraggableCallback(node);
+			if (this.getIsDraggableCallback) return this.getIsDraggableCallback({ node });
 			if (!shouldCalculateIsDraggable && node.data) return getField(node.data, _isDraggableMember!);
 			return node.isDraggable;
 		},
 
 		getNodeIsDropAllowed(node: LTreeNode<T>): boolean {
-			if (this.getIsDropAllowedCallback) return this.getIsDropAllowedCallback(node);
+			if (this.getIsDropAllowedCallback) return this.getIsDropAllowedCallback({ node });
 			if (!shouldCalculateIsDropAllowed && node.data)
 				return getField(node.data, _isDropAllowedMember!);
 			return node.isDropAllowed;
 		},
 
 		getNodeIsCollapsible(node: LTreeNode<T>): boolean {
-			if (this.getIsCollapsibleCallback) return this.getIsCollapsibleCallback(node);
+			if (this.getIsCollapsibleCallback) return this.getIsCollapsibleCallback({ node });
 			if (!shouldCalculateIsCollapsible && node.data)
 				return getField(node.data, _isCollapsibleMember!);
 			return node.isCollapsible;
@@ -1025,7 +1025,7 @@ export function createLTree<T>(
 			// Sort using sortCallback or default sort
 			let sorted: LTreeNode<T>[];
 			if (this.sortCallback) {
-				sorted = this.sortCallback(children);
+				sorted = this.sortCallback({ items: children });
 			} else {
 				// Use a simplified sort for siblings only (all same level/parent)
 				sorted = [...children].sort((a, b) => {
@@ -1348,26 +1348,26 @@ export function createLTree<T>(
 			// (or the equivalent *Member). `data` is already assigned above, so the
 			// callbacks see a populated node.
 			if (data) {
-				if (_getIsSelectableCallback) newNode.isSelectable = _getIsSelectableCallback(newNode);
+				if (_getIsSelectableCallback) newNode.isSelectable = _getIsSelectableCallback({ node: newNode });
 				else if (!shouldCalculateIsSelectable)
 					newNode.isSelectable = getField(data, _isSelectableMember!);
 
-				if (_getIsCheckedCallback) newNode.isChecked = _getIsCheckedCallback(newNode);
+				if (_getIsCheckedCallback) newNode.isChecked = _getIsCheckedCallback({ node: newNode });
 				else if (!shouldCalculateIsChecked)
 					newNode.isChecked = getField(data, _isCheckedMember!);
 
-				if (_getIsExpandedCallback) newNode.isExpanded = _getIsExpandedCallback(newNode);
+				if (_getIsExpandedCallback) newNode.isExpanded = _getIsExpandedCallback({ node: newNode });
 				else if (!shouldCalculateIsExpanded)
 					newNode.isExpanded = getField(data, _isExpandedMember!);
 
-				if (_getIsDraggableCallback) newNode.isDraggable = _getIsDraggableCallback(newNode);
+				if (_getIsDraggableCallback) newNode.isDraggable = _getIsDraggableCallback({ node: newNode });
 				else if (!shouldCalculateIsDraggable)
 					newNode.isDraggable = getField(data, _isDraggableMember!);
 
 				if (!shouldCalculateIsCollapsible)
 					newNode.isCollapsible = getField(data, _isCollapsibleMember!);
 
-				if (_getIsDropAllowedCallback) newNode.isDropAllowed = _getIsDropAllowedCallback(newNode);
+				if (_getIsDropAllowedCallback) newNode.isDropAllowed = _getIsDropAllowedCallback({ node: newNode });
 				else if (!shouldCalculateIsDropAllowed)
 					newNode.isDropAllowed = getField(data, _isDropAllowedMember!);
 
@@ -1527,7 +1527,7 @@ export function createLTree<T>(
 		copyNodeWithDescendants(
 			sourceNode: LTreeNode<T>,
 			targetParentPath: string,
-			transformData: (data: T, node: LTreeNode<T>) => T | null,
+			transformData: (ctx: { data: T; node: LTreeNode<T> }) => T | null,
 			siblingPath?: string,
 			position?: 'before' | 'after'
 		): { success: boolean; rootNode?: LTreeNode<T>; count: number; error?: string } {
@@ -1546,7 +1546,7 @@ export function createLTree<T>(
 				// per-node NodeTransformContext. A null/undefined return SKIPS this node AND its
 				// whole subtree (mirrors the input transform) — the way to "leave a descendant
 				// behind" when copying a subtree from a pruned manifest.
-				const transformedData = transformData(node.data, node);
+				const transformedData = transformData({ data: node.data, node });
 				if (transformedData === null || transformedData === undefined) return null;
 
 				// Add the node
@@ -1733,25 +1733,25 @@ export function createLTree<T>(
 					node.data = row;
 
 					// isExpanded: callback > member > expandLevel
-					if (_getIsExpandedCallback) node.isExpanded = _getIsExpandedCallback(node);
+					if (_getIsExpandedCallback) node.isExpanded = _getIsExpandedCallback({ node });
 					else if (!shouldCalculateIsExpanded) node.isExpanded = getField(row, _isExpandedMember!);
 					else if (_expandLevel) node.isExpanded = (node.level ?? 0) <= _expandLevel;
 
 					// isSelectable: callback > member (stored on node so renderers can read directly)
-					if (_getIsSelectableCallback) node.isSelectable = _getIsSelectableCallback(node);
+					if (_getIsSelectableCallback) node.isSelectable = _getIsSelectableCallback({ node });
 					else if (!shouldCalculateIsSelectable)
 						node.isSelectable = getField(row, _isSelectableMember!);
 
 					// isChecked: callback > member
-					if (_getIsCheckedCallback) node.isChecked = _getIsCheckedCallback(node);
+					if (_getIsCheckedCallback) node.isChecked = _getIsCheckedCallback({ node });
 					else if (!shouldCalculateIsChecked) node.isChecked = getField(row, _isCheckedMember!);
 
-					if (_getIsDraggableCallback) node.isDraggable = _getIsDraggableCallback(node);
+					if (_getIsDraggableCallback) node.isDraggable = _getIsDraggableCallback({ node });
 					else if (!shouldCalculateIsDraggable)
 						node.isDraggable = getField(row, _isDraggableMember!);
 					if (!shouldCalculateIsCollapsible)
 						node.isCollapsible = getField(row, _isCollapsibleMember!);
-					if (_getIsDropAllowedCallback) node.isDropAllowed = _getIsDropAllowedCallback(node);
+					if (_getIsDropAllowedCallback) node.isDropAllowed = _getIsDropAllowedCallback({ node });
 					else if (!shouldCalculateIsDropAllowed)
 						node.isDropAllowed = getField(row, _isDropAllowedMember!);
 					if (!shouldCalculateAllowedDropPositions)
@@ -1765,7 +1765,7 @@ export function createLTree<T>(
 
 			// Sort to ensure parents come before children
 			if (!this.isSorted) {
-				if (this.sortCallback) mappedData = this.sortCallback(mappedData);
+				if (this.sortCallback) mappedData = this.sortCallback({ items: mappedData });
 				else mappedData = this._defaultSort(this, mappedData);
 			}
 
@@ -1797,7 +1797,7 @@ export function createLTree<T>(
 
 				let sorted: LTreeNode<T>[];
 				if (this.sortCallback) {
-					sorted = this.sortCallback(children);
+					sorted = this.sortCallback({ items: children });
 				} else {
 					sorted = [...children].sort((a, b) => {
 						if (this.orderMember && a.data && b.data) {

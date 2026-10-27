@@ -20,7 +20,7 @@
 		allowedDropPositions?: DropPosition[];
 	};
 
-	function sortByOrder(items: LTreeNode<Item>[]) {
+	function sortByOrder({ items }: { items: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => {
 			if (a.parentPath !== b.parentPath) {
 				return (a.parentPath || '').localeCompare(b.parentPath || '');
@@ -50,9 +50,9 @@
 	];
 
 	// Callbacks read node.data — the exact shape that broke in rc10-rc12.
-	const getIsDraggableCallback = (n: LTreeNode<Item>) => n.data?.isDraggable !== false;
-	const getIsDropAllowedCallback = (n: LTreeNode<Item>) => n.data?.isDropAllowed !== false;
-	const getAllowedDropPositionsCallback = (n: LTreeNode<Item>): DropPosition[] | null =>
+	const getIsDraggableCallback = ({ node: n }: { node: LTreeNode<Item> }) => n.data?.isDraggable !== false;
+	const getIsDropAllowedCallback = ({ node: n }: { node: LTreeNode<Item> }) => n.data?.isDropAllowed !== false;
+	const getAllowedDropPositionsCallback = ({ node: n }: { node: LTreeNode<Item> }): DropPosition[] | null =>
 		n.data?.allowedDropPositions ?? null;
 
 	type DropState = {

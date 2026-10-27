@@ -290,11 +290,11 @@ DATA-DRIVEN CLASS HOOKS
 Per-row class hooks recompute when a node changes (node._rev):
 
 <Tree
-  nodeClass={(node) => node.data?.isArchived ? 'archived' : null}
-  nodeContentClass={(node) => node.data?.priority === 'high' ? 'urgent' : null}
+  getNodeClassCallback={({ node }) => node.data?.isArchived ? 'archived' : null}
+  getNodeContentClassCallback={({ node }) => node.data?.priority === 'high' ? 'urgent' : null}
 />
 
-nodeClass applies to .stv__node; nodeContentClass applies to .stv__node-content.
+getNodeClassCallback applies to .stv__node; getNodeContentClassCallback applies to .stv__node-content.
 
 DARK MODE
 ---------

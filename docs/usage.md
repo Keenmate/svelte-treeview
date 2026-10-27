@@ -11,7 +11,7 @@ Full Props, Methods, Events, and Snippets reference for `@keenmate/svelte-treevi
 | `data` | `T[]` | **required** | Array of data objects |
 | `idMember` | `string` | **required** | Property name for unique identifiers |
 | `pathMember` | `string` | **required** | Property name for hierarchical paths |
-| `sortCallback` | `(items: LTreeNode<T>[]) => LTreeNode<T>[]` | `undefined` | Function to sort tree nodes |
+| `sortCallback` | `(ctx: SortContext<T>) => LTreeNode<T>[]` (ctx = `{ items }`) | `undefined` | Function to sort tree nodes |
 
 ### Data mapping properties
 
@@ -25,8 +25,8 @@ Full Props, Methods, Events, and Snippets reference for `@keenmate/svelte-treevi
 | `isDropAllowedMember` | `string \| null` | `null` | Property name for drop allowed state |
 | `allowedDropPositionsMember` | `string \| null` | `null` | Property name for allowed drop positions array |
 | `isCollapsibleMember` | `string \| null` | `null` | Property name for collapsible state |
-| `getIsCollapsibleCallback` | `(node) => boolean` | `undefined` | Callback to determine if a node is collapsible |
-| `getIsDraggableCallback` | `(node) => boolean` | `undefined` | Callback to determine if a node is draggable |
+| `getIsCollapsibleCallback` | `({ node }) => boolean` | `undefined` | Callback to determine if a node is collapsible |
+| `getIsDraggableCallback` | `({ node }) => boolean` | `undefined` | Callback to determine if a node is draggable |
 | `hasChildrenMember` | `string \| null` | `null` | Property name for children existence |
 | `isSorted` | `boolean \| null` | `null` | Whether items should be sorted |
 
@@ -35,9 +35,9 @@ Full Props, Methods, Events, and Snippets reference for `@keenmate/svelte-treevi
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `displayValueMember` | `string \| null` | `null` | Property name for display text |
-| `getDisplayValueCallback` | `(node) => string` | `undefined` | Function to get display value |
+| `getDisplayValueCallback` | `({ node }) => string` | `undefined` | Function to get display value |
 | `searchValueMember` | `string \| null` | `null` | Property name for search indexing |
-| `getSearchValueCallback` | `(node) => string` | `undefined` | Function to get search value |
+| `getSearchValueCallback` | `({ node }) => string` | `undefined` | Function to get search value |
 | `shouldUseInternalSearchIndex` | `boolean` | `true` | Enable built-in search functionality |
 | `initializeIndexCallback` | `() => Index` | `undefined` | Function to initialize search index |
 | `searchText` | `string` (bindable) | `undefined` | Current search text |
@@ -104,7 +104,7 @@ Without both requirements, no search indexing will occur.
 | `isCopyAllowed` | `boolean` | `false` | Enable Ctrl+drag to copy instead of move |
 | `shouldAutoHandleCopy` | `boolean` | `true` | Auto-handle same-tree copies (false for external DB/API) |
 | `allowedDropPositionsMember` | `string \| null` | `null` | Property name for allowed drop positions array |
-| `getAllowedDropPositionsCallback` | `(node) => DropPosition[] \| null` | `undefined` | Callback returning allowed drop positions per node |
+| `getAllowedDropPositionsCallback` | `({ node }) => DropPosition[] \| null` | `undefined` | Callback returning allowed drop positions per node |
 | `beforeDropCallback` | `(dropNode, draggedNode, position, event, operation) => ...` | `undefined` | Async-capable callback to validate/modify drops |
 
 ### Event handler properties
@@ -118,8 +118,8 @@ Every `on*` event receives a **single context object** mirroring the clipboard c
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `onNodeClick` | `(ctx: NodeRef<T>) => void` | `undefined` | Node click. `ctx.node` is the clicked node (`ctx.parent` / `ctx.siblings` also resolved). |
-| `nodeClass` | `(node) => string \| null \| undefined` | `undefined` | Data-driven per-row class hook. Returned class(es) are applied to `.stv__node`. Recomputes when the node's `_rev` changes. |
-| `nodeContentClass` | `(node) => string \| null \| undefined` | `undefined` | Like `nodeClass`, but applied to `.stv__node-content`. |
+| `getNodeClassCallback` | `({ node }) => string \| null \| undefined` | `undefined` | Data-driven per-row class hook. Returned class(es) are applied to `.stv__node`. Recomputes when the node's `_rev` changes. |
+| `getNodeContentClassCallback` | `({ node }) => string \| null \| undefined` | `undefined` | Like `getNodeClassCallback`, but applied to `.stv__node-content`. |
 | `onNodeDoubleClick` | `(ctx: NodeRef<T>) => void` | `undefined` | Node double-click. Fires for every `clickBehavior` (detection is manual on the controller, so it's reliable in flat mode where the native `dblclick` is not — see [FLAT_MODE_PERFORMANCE.md](./FLAT_MODE_PERFORMANCE.md#double-click-detection-and-why-not-native-dblclick)). In `clickBehavior="select"` a double-click also toggles expand/collapse. |
 | `onNodeDragStart` | `(ctx: NodeDragContext<T>) => void` | `undefined` | Drag start. `ctx` is the grabbed node's `NodeRef` + `{ event, dragged }`. `dragged` is the full top-level set in flight (see below). |
 | `onNodeDragOver` | `(ctx: NodeDragContext<T>) => void` | `undefined` | Drag over. `ctx.node` is the **hovered** node; `ctx.dragged` is the in-flight set. |
@@ -133,9 +133,9 @@ Every `on*` event receives a **single context object** mirroring the clipboard c
 
 ### Clipboard interceptor properties
 
-The clipboard operations live on the `TreeController` (`copyNodes` / `cutNodes` / `pasteNodes` / `cancelCut`). You can opt into built-in key bindings with `shouldHandleKeyboardShortcuts`, or wire your own via `onTreeKeydown(ctx)` (ctx = `{ event, focusedNode, selectedNodes, controller }`). The `before*` interceptors can rewrite or block an operation; `onCopy` / `onCut` / `onPaste` above are the post-operation notifications.
+The clipboard operations live on the `TreeController` (`copyNodes` / `cutNodes` / `pasteNodes` / `cancelCut`). You can opt into built-in key bindings with `shouldHandleKeyboardShortcuts`, or wire your own via `beforeKeydownCallback(ctx)` (ctx = `{ event, focusedNode, selectedNodes, controller }`). The `before*` interceptors can rewrite or block an operation; `onCopy` / `onCut` / `onPaste` above are the post-operation notifications.
 
-> **Keyboard shortcuts are focus-scoped.** Both the built-in shortcuts and `onTreeKeydown` are bound to the tree's `.stv__container` (which is `tabindex="0"`), so they only fire when focus is **inside** the tree — the standard DOM keyboard model for a component-scoped widget (there is no OS-clipboard fallback; it's a synthetic `keydown` handler). If the user touches a control *outside* the tree first (a toolbar button, checkbox, search box, dropdown), or hasn't clicked into the tree yet, a following `Ctrl/Cmd+C/X/V` or `Delete` never reaches the tree and silently does nothing. To make shortcuts work regardless of where the user last clicked, either (1) re-focus the container (`containerEl.focus()`) after your external control's handler, (2) auto-focus on hover/pointer-down — this ships for the empty-tree case via `shouldShowDropPlaceholderWhenEmpty`, or (3) attach your own document/window-level `keydown` and forward to `controller.copyNodes` / `pasteNodes` / `deleteNodes` (you then own deciding whether a given key is meant for the tree).
+> **Keyboard shortcuts are focus-scoped.** Both the built-in shortcuts and `beforeKeydownCallback` are bound to the tree's `.stv__container` (which is `tabindex="0"`), so they only fire when focus is **inside** the tree — the standard DOM keyboard model for a component-scoped widget (there is no OS-clipboard fallback; it's a synthetic `keydown` handler). If the user touches a control *outside* the tree first (a toolbar button, checkbox, search box, dropdown), or hasn't clicked into the tree yet, a following `Ctrl/Cmd+C/X/V` or `Delete` never reaches the tree and silently does nothing. To make shortcuts work regardless of where the user last clicked, either (1) re-focus the container (`containerEl.focus()`) after your external control's handler, (2) auto-focus on hover/pointer-down — this ships for the empty-tree case via `shouldShowDropPlaceholderWhenEmpty`, or (3) attach your own document/window-level `keydown` and forward to `controller.copyNodes` / `pasteNodes` / `deleteNodes` (you then own deciding whether a given key is meant for the tree).
 
 The two per-node transforms are **operation-neutral** and defined by DIRECTION, not by copy/cut: `nodeOutputTransformationCallback` fires as a node LEAVES the source (egress — Ctrl+C/X snapshot and the capture side of a copy-drop), `nodeInputTransformationCallback` fires as a duplicate LANDS in a destination (ingress — Ctrl+V paste and the insert side of a copy-drop, same- or cross-tree). A plain move fires neither. Both share **one** context type, `NodeTransformContext<T>` = `{ operation, phase: 'output'|'input', isRoot, index, position: 'child'|'before'|'after'|null, source: { path, node, parent, siblings }, target: { path, node, parent, siblings } | null }`. `source` and `target` are **symmetric** — the same field means the same thing on each side: `node` is the node in question (source = the node leaving; target = the node you aimed at, `null` at the tree root), `parent` its parent, `siblings` its neighbours. `target` and `position` are `null` during the output phase (no destination chosen yet); `position` (mirroring `DropPosition`) says how the roots land relative to `target.node`. For collision names, the roots' landing neighbours are `target.node`'s children on a `'child'` paste, else `target.siblings` (all LIVE + batch-aware): `const landing = ctx.position === 'child' && ctx.target?.node ? Object.values(ctx.target.node.children) : (ctx.target?.siblings ?? []);`.
 
@@ -145,8 +145,8 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `beforeCutCallback` | `(ctx: BeforeCopyContext<T>) => string[] \| false \| void` | `undefined` | Runs before cut. Same shape as `beforeCopyCallback` |
 | `beforePasteCallback` | `(ctx: BeforePasteContext<T>) => { targetPath?, position? } \| false \| void` | `undefined` | Runs before paste. `ctx = { operation, target: { path, node }, entries }` (entries are readonly snapshots). Redirect the target/position or return `false` to block |
 | `beforeDeleteCallback` | `(ctx: BeforeDeleteContext<T>) => string[] \| false \| void` | `undefined` | Runs before the built-in Delete. `ctx = { paths, nodes }`. Return a narrowed path list or `false` to block |
-| `nodeOutputTransformationCallback` | `(data: T, ctx: NodeTransformContext<T>) => T` | `undefined` | OUTPUT/egress — per-node clean/redact as a node leaves the source (phase `'output'`, `target` + `position` null). Fires on Ctrl+C/X and the capture side of a copy-drop |
-| `nodeInputTransformationCallback` | `(data: T, ctx: NodeTransformContext<T>) => T \| null` | `undefined` | INPUT/ingress — per-node derive ids/values/names as a duplicate lands (phase `'input'`); return `null` to skip. Fires on paste and the insert side of a copy-drop |
+| `nodeOutputTransformationCallback` | `({ data, ...ctx }: NodeTransformCallbackContext<T>) => T` | `undefined` | OUTPUT/egress — per-node clean/redact as a node leaves the source (phase `'output'`, `target` + `position` null). Fires on Ctrl+C/X and the capture side of a copy-drop |
+| `nodeInputTransformationCallback` | `({ data, ...ctx }: NodeTransformCallbackContext<T>) => T \| null` | `undefined` | INPUT/ingress — per-node derive ids/values/names as a duplicate lands (phase `'input'`); return `null` to skip. Fires on paste and the insert side of a copy-drop |
 
 ### Visual styling properties
 

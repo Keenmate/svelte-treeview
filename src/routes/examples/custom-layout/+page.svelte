@@ -31,19 +31,19 @@
 
 	type Item = (typeof sampleData)[0];
 
-	function sortByName(items: LTreeNode<Item>[]) {
+	function sortByName({ items }: { items: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) =>
 			(a.data?.name || '').localeCompare(b.data?.name || '')
 		);
 	}
 
-	function sortFilesByName(items: LTreeNode<FileItem>[]) {
+	function sortFilesByName({ items }: { items: LTreeNode<FileItem>[] }) {
 		return [...items].sort((a, b) =>
 			(a.data?.name || '').localeCompare(b.data?.name || '')
 		);
 	}
 
-	function sortByOrder(items: LTreeNode<Item>[]) {
+	function sortByOrder({ items }: { items: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) =>
 			(a.data?.order ?? 0) - (b.data?.order ?? 0)
 		);
@@ -400,7 +400,7 @@
 			grid sharing the header's track template). Selection, keyboard navigation, the
 			right-click context menu (<code>getContextMenuItemsCallback</code>) and
 			double-click-to-open (<code>onNodeDoubleClick</code>) all come from the library; rows are
-			tagged folder/file via the <code>nodeClass</code> hook. Click a folder (either pane) to
+			tagged folder/file via the <code>getNodeClassCallback</code> hook. Click a folder (either pane) to
 			browse, double-click to open, use the breadcrumb / Back / Forward / Up to navigate, sort
 			by any column, search the current folder and its subfolders (results show where each hit
 			lives, with <code>*.dll</code>-style wildcards), and create / rename / delete folders.

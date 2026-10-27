@@ -26,7 +26,7 @@
 	let lastLog = $state('');
 	let nextId = 100;
 
-	function sortByName(items: LTreeNode<Item>[]) {
+	function sortByName({ items }: { items: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
 	}
 
@@ -35,7 +35,7 @@
 		return focusedNode ? [focusedNode.path] : [];
 	}
 
-	function transformPasted(item: Item): Item {
+	function transformPasted({ data: item }: { data: Item }): Item {
 		return { ...item, id: nextId++, path: '' };
 	}
 
@@ -70,7 +70,7 @@
 		return redirect;
 	}
 
-	function onTreeKeydown({
+	function beforeKeydownCallback({
 		event,
 		controller
 	}: {
@@ -78,38 +78,38 @@
 		focusedNode: LTreeNode<Item> | null;
 		selectedNodes: LTreeNode<Item>[];
 		controller: TreeController<Item>;
-	}): boolean {
+	}): false | void {
 		const mod = event.ctrlKey || event.metaKey;
 		const key = event.key.toLowerCase();
 
 		// Success logging is driven by the onCopy / onCut / onPaste callbacks below.
 		if (mod && key === 'c') {
 			const paths = clipboardPaths(controller);
-			if (!paths.length) return true;
+			if (!paths.length) return false;
 			controller.copyNodes(paths);
 			cutPaths = new Set();
-			return true;
+			return false;
 		}
 		if (mod && key === 'x') {
 			const paths = clipboardPaths(controller);
-			if (!paths.length) return true;
+			if (!paths.length) return false;
 			controller.cutNodes(paths);
 			cutPaths = new Set(controller.cutPaths);
-			return true;
+			return false;
 		}
 		if (mod && key === 'v') {
-			if (!controller.hasClipboardContent()) return true;
+			if (!controller.hasClipboardContent()) return false;
 			controller.pasteNodes(focusedNode?.path ?? '', transformPasted, 'child');
 			cutPaths = new Set();
-			return true;
+			return false;
 		}
 		if (event.key === 'Escape' && cutPaths.size > 0) {
 			controller.cancelCut();
 			cutPaths = new Set();
 			lastLog = 'cut-cancelled';
-			return true;
+			return false;
 		}
-		return false;
+		return;
 	}
 
 	const totalNodes = $derived(data.length); // initial only; live count read from DOM in tests
@@ -140,7 +140,7 @@
 			selectionMode="multi"
 			bind:focusedNode
 			bind:selectedPaths
-			{onTreeKeydown}
+			{beforeKeydownCallback}
 			onCopy={({ paths }) => (lastLog = `copied ${paths.length}`)}
 			onCut={({ paths }) => (lastLog = `cut ${paths.length}`)}
 			onPaste={(result) => (lastLog = result.success ? `pasted ${result.count}` : `paste-failed ${result.error}`)}

@@ -32,7 +32,7 @@ What text gets indexed for search:
 
 // Complex: use callback for computed values
 <Tree
-  getSearchValueCallback={(node) => {
+  getSearchValueCallback={({ node }) => {
     const item = node.data;
     return `${item.name} ${item.description} ${item.tags.join(' ')}`;
   }}
@@ -263,7 +263,7 @@ MULTIPLE SEARCH FIELDS
 Index multiple properties:
 
 <Tree
-  getSearchValueCallback={(node) => {
+  getSearchValueCallback={({ node }) => {
     const item = node.data;
     return [
       item.name,
@@ -293,21 +293,21 @@ COMMON SEARCH PATTERNS
 File search:
 <Tree
   searchValueMember="name"
-  getSearchValueCallback={(node) =>
+  getSearchValueCallback={({ node }) =>
     `${node.data.name} ${node.data.path} ${node.data.extension}`
   }
 />
 
 User search:
 <Tree
-  getSearchValueCallback={(node) =>
+  getSearchValueCallback={({ node }) =>
     `${node.data.firstName} ${node.data.lastName} ${node.data.email}`
   }
 />
 
 Product search:
 <Tree
-  getSearchValueCallback={(node) =>
+  getSearchValueCallback={({ node }) =>
     `${node.data.name} ${node.data.sku} ${node.data.category} ${node.data.description}`
   }
 />

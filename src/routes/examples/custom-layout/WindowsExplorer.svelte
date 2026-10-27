@@ -169,10 +169,10 @@
 	type RightItem = FsNode & { treePath: string };
 	const rightTreeData = $derived<RightItem[]>(rightItems.map((n, i) => ({ ...n, treePath: String(i + 1) })));
 	// Preserve our sort order in the tree (its sortCallback would otherwise reorder).
-	const keepRightOrder = (items: LTreeNode<RightItem>[]) =>
+	const keepRightOrder = ({ items }: { items: LTreeNode<RightItem>[] }) =>
 		[...items].sort((a, b) => Number(a.data?.treePath ?? 0) - Number(b.data?.treePath ?? 0));
-	// Per-row class from data — dogfoods the nodeClass hook.
-	const rightNodeClass = (node: LTreeNode<RightItem>) =>
+	// Per-row class from data — dogfoods the getNodeClassCallback hook.
+	const rightNodeClass = ({ node }: { node: LTreeNode<RightItem> }) =>
 		node.data?.kind === 'folder' ? 'winx-folder' : 'winx-file';
 
 	const selectedNodes = $derived(rightTreeData.filter((n) => rightSel.has(n.treePath)));
@@ -311,7 +311,7 @@
 		];
 	}
 
-	function navSort(items: LTreeNode<FsNode>[]) {
+	function navSort({ items }: { items: LTreeNode<FsNode>[] }) {
 		return [...items].sort((a, b) => collator.compare(a.data?.name ?? '', b.data?.name ?? ''));
 	}
 
@@ -419,7 +419,7 @@
 					clickBehavior="select"
 					selectionMode="multi"
 					leafIconClass=""
-					nodeClass={rightNodeClass}
+					getNodeClassCallback={rightNodeClass}
 					bind:selectedPaths={rightSel}
 					onNodeClick={({ node }) => { if (node?.data) statusInfo = previewText(node.data); }}
 					onNodeDoubleClick={({ node }) => { if (node?.data) open(node.data); }}

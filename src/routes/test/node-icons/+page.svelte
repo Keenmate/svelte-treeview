@@ -12,7 +12,7 @@
 		{ id: 3, path: '1.1.1', name: 'Employee', icon: 'fa-user' },
 		{ id: 4, path: '1.2', name: 'Branch', icon: 'fa-building' }
 	];
-	function sortByPath(items: LTreeNode<Item>[]) {
+	function sortByPath({ items }: { items: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => a.path.localeCompare(b.path));
 	}
 
@@ -48,7 +48,7 @@
 		sortCallback={sortByPath}
 		isSorted={true}
 		expandLevel={3}
-		getIconCallback={(node) => (node.path === '1.2' ? 'fa-building' : node.path === '1' ? '🗂️' : '👤')}
+		getIconCallback={({ node }) => (node.path === '1.2' ? 'fa-building' : node.path === '1' ? '🗂️' : '👤')}
 	/>
 </div>
 

@@ -20,7 +20,7 @@
 		{ id: 7, path: '3.1', name: 'Web App', icon: '🌐' }
 	];
 
-	function sortByName(items: LTreeNode<Item>[]) {
+	function sortByName({ items }: { items: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
 	}
 

@@ -40,7 +40,7 @@ test.describe('Windows File Explorer demo', () => {
 		await expect(page.locator('.winx__nav .stv__node').first()).toBeVisible();
 		await expect(page.locator('.winx-right .stv__node').first()).toBeVisible();
 		await expect(row(page, 'Fonts')).toBeVisible();
-		// nodeClass tags each row by kind (data-driven class hook).
+		// getNodeClassCallback tags each row by kind (data-driven class hook).
 		await expect(row(page, 'System32')).toHaveClass(/winx-folder/);
 		await expect(row(page, 'explorer.exe')).toHaveClass(/winx-file/);
 		await expect(row(page, 'explorer.exe').locator('.winx__cell--type')).toContainText('Application');

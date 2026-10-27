@@ -95,7 +95,7 @@ Use case examples:
 Method 1: Callback (dynamic logic)
 
 <Tree
-  getAllowedDropPositionsCallback={(node) => {
+  getAllowedDropPositionsCallback={({ node }) => {
     if (node.data.type === 'file') return ['before', 'after'];
     if (node.data.type === 'trash') return ['child'];
     return undefined;  // all positions allowed
@@ -385,7 +385,7 @@ File manager:
 <Tree
   dragDropMode="self"
   orderMember="sortOrder"
-  getAllowedDropPositionsCallback={(node) =>
+  getAllowedDropPositionsCallback={({ node }) =>
     node.data.type === 'file' ? ['before', 'after'] : undefined
   }
   onNodeDrop={handleDrop}

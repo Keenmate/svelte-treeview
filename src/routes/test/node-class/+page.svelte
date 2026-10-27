@@ -2,14 +2,14 @@
 	import Tree from '$lib/components/Tree.svelte';
 	import type { LTreeNode } from '$lib/ltree/types.js';
 
-	// Test fixture for the data-driven per-node class hooks nodeClass / nodeContentClass
+	// Test fixture for the data-driven per-node class hooks getNodeClassCallback / getNodeContentClassCallback
 	// (added v5.0.0-rc13). Targeted by e2e/node-class.spec.ts. Each callback returns a
-	// class string derived from node data; the library applies nodeClass to .stv__node
-	// and nodeContentClass to .stv__node-content.
+	// class string derived from node data; the library applies getNodeClassCallback to .stv__node
+	// and getNodeContentClassCallback to .stv__node-content.
 
 	type Item = { id: number; path: string; name: string; kind: 'folder' | 'file' };
 
-	function sortByName(items: LTreeNode<Item>[]) {
+	function sortByName({ items }: { items: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => (a.data?.name ?? '').localeCompare(b.data?.name ?? ''));
 	}
 
@@ -20,11 +20,11 @@
 		{ id: 4, path: '1.3', name: 'File-B', kind: 'file' }
 	];
 
-	const nodeClass = (n: LTreeNode<Item>) => `kind-${n.data?.kind ?? 'unknown'}`;
-	const nodeContentClass = (n: LTreeNode<Item>) => (n.data?.kind === 'file' ? 'is-file-content' : '');
+	const getNodeClassCallback = ({ node: n }: { node: LTreeNode<Item> }) => `kind-${n.data?.kind ?? 'unknown'}`;
+	const getNodeContentClassCallback = ({ node: n }: { node: LTreeNode<Item> }) => (n.data?.kind === 'file' ? 'is-file-content' : '');
 </script>
 
-<h1>nodeClass / nodeContentClass test</h1>
+<h1>getNodeClassCallback / getNodeContentClassCallback test</h1>
 
 <Tree
 	{data}
@@ -33,8 +33,8 @@
 	sortCallback={sortByName}
 	isSorted={true}
 	expandLevel={2}
-	{nodeClass}
-	{nodeContentClass}
+	{getNodeClassCallback}
+	{getNodeContentClassCallback}
 />
 
 <style>

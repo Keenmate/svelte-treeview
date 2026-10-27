@@ -173,7 +173,7 @@ interface NodeData {
 **Important:** For proper tree construction, your `sortCallback` must sort by **level first** to ensure parent nodes are inserted before their children:
 
 ```typescript
-const sortCallback = (items: LTreeNode<T>[]) => {
+const sortCallback = (ctx: SortContext<T>) => {
   return items.sort((a, b) => {
     // First, sort by level (shallower levels first)
     const aLevel = a.path.split('.').length;

@@ -15,6 +15,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BREAKING: every callback takes ONE ctx object (no positional arguments)** — same shapes as
+  `@keenmate/web-treeview`, so fields can be added later without breaking anyone. Per-node
+  callbacks get `NodeContext<T> = { node }`: `getIsExpandedCallback`, `getIsSelectableCallback`,
+  `getIsCheckedCallback`, `getIsDraggableCallback`, `getIsDropAllowedCallback`,
+  `getAllowedDropPositionsCallback`, `getIsCollapsibleCallback`, `getDisplayValueCallback`,
+  `getSearchValueCallback`, `getNodeTooltipCallback`, `getIconCallback`, `getIconColorCallback`
+  (`(node) => …` → `({ node }) => …`). `nodeClass` / `nodeContentClass` are renamed
+  `getNodeClassCallback` / `getNodeContentClassCallback` and take `{ node }`. `sortCallback(items)` →
+  `sortCallback({ items })` (`SortContext<T>`). `beforeCheckboxToggleCallback(node, checked,
+  affectedPaths)` → `({ node, isChecked, affectedPaths })` returning `false` / `string[]` / nothing.
+  Node transforms `(data, ctx)` → `(ctx)` with `ctx.data` added to `NodeTransformContext`
+  (`NodeTransformCallbackContext<T>` / `NodeTransformCallback<T>`) — `nodeOutputTransformationCallback`,
+  `nodeInputTransformationCallback` and the `transform` argument of `pasteNodes` / `duplicateNodes`;
+  `copyNodeWithDescendants`' `transformData(data, node)` → `({ data, node })`.
+  `onContainerResize(size, deviceClass)` → `({ size, deviceClass })`.
+- **BREAKING: `onTreeKeydown` → `beforeKeydownCallback`, and the return value is inverted** — it is
+  an interceptor, so it follows the `before*Callback` contract: return `false` to suppress the
+  tree's keyboard handling (navigation + built-in shortcuts; the key is preventDefault-ed), nothing
+  to continue (was: return `true` to suppress). Synchronous — a returned Promise is ignored with a
+  warning. ctx unchanged: `KeydownContext<T> = { event, focusedNode, selectedNodes, controller }`.
 - **BREAKING: selection vocabulary aligned with `@keenmate/web-treeview` and the shared
   `--base-*` item states — the click set is now "selected", the checkbox set "checked".**
   Two-phase rename, no aliases. Phase 1 (checkbox, was "selected" → "checked"): `selectedPaths` →

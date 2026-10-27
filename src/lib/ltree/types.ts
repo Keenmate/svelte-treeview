@@ -4,6 +4,17 @@ import type { LTreeNode, DropPosition } from './ltree-node.svelte.js';
 // Re-export LTreeNode and DropPosition for convenience
 export type { LTreeNode, DropPosition } from './ltree-node.svelte.js';
 
+/** ctx of the per-node callbacks (`getIsDraggableCallback`, `getDisplayValueCallback`,
+ *  `getIconCallback`, `getNodeClassCallback`, …) — one object, so fields can be added. */
+export interface NodeContext<T> {
+	node: LTreeNode<T>;
+}
+
+/** ctx of `sortCallback`: the children of ONE parent (siblings); return them in the new order. */
+export interface SortContext<T> {
+	items: LTreeNode<T>[];
+}
+
 export type DragDropMode = 'none' | 'self' | 'cross' | 'both';
 export type ToggleIconMode = 'rotate' | 'swap';
 /**
@@ -168,39 +179,39 @@ export interface Ltree<T> {
 
 	hasChildrenMember: string | null | undefined;
 	isExpandedMember: string | null | undefined;
-	getIsExpandedCallback?: (node: LTreeNode<T>) => boolean;
+	getIsExpandedCallback?: (ctx: NodeContext<T>) => boolean;
 
 	displayValueMember?: string | null | undefined;
-	getDisplayValueCallback?: (node: LTreeNode<T>) => string;
+	getDisplayValueCallback?: (ctx: NodeContext<T>) => string;
 	/** Text returned by getNodeDisplayValue when neither displayValueMember nor
 	 *  getDisplayValueCallback resolves a value (default '[N/A]'). */
 	displayValueFallback?: string;
 
 	searchValueMember?: string | null | undefined;
-	getSearchValueCallback?: (node: LTreeNode<T>) => string;
+	getSearchValueCallback?: (ctx: NodeContext<T>) => string;
 
 	// For sibling ordering in drag-drop (before/after positioning)
 	orderMember?: string | null | undefined;
 
 	isSorted: boolean | null | undefined;
-	sortCallback?: (items: LTreeNode<T>[]) => LTreeNode<T>[];
+	sortCallback?: (ctx: SortContext<T>) => LTreeNode<T>[];
 
 	// Filtering properties
 	filteredTree: LTreeNode<T>[] | null;
 	isFiltered: boolean;
 
 	isSelectableMember: string | null | undefined;
-	getIsSelectableCallback?: (node: LTreeNode<T>) => boolean;
+	getIsSelectableCallback?: (ctx: NodeContext<T>) => boolean;
 	isCheckedMember: string | null | undefined;
-	getIsCheckedCallback?: (node: LTreeNode<T>) => boolean;
+	getIsCheckedCallback?: (ctx: NodeContext<T>) => boolean;
 	isDraggableMember: string | null | undefined;
-	getIsDraggableCallback?: (node: LTreeNode<T>) => boolean;
+	getIsDraggableCallback?: (ctx: NodeContext<T>) => boolean;
 	isDropAllowedMember: string | null | undefined;
-	getIsDropAllowedCallback?: (node: LTreeNode<T>) => boolean;
+	getIsDropAllowedCallback?: (ctx: NodeContext<T>) => boolean;
 	allowedDropPositionsMember: string | null | undefined;
-	getAllowedDropPositionsCallback?: (node: LTreeNode<T>) => DropPosition[] | null | undefined;
+	getAllowedDropPositionsCallback?: (ctx: NodeContext<T>) => DropPosition[] | null | undefined;
 	isCollapsibleMember: string | null | undefined;
-	getIsCollapsibleCallback?: (node: LTreeNode<T>) => boolean;
+	getIsCollapsibleCallback?: (ctx: NodeContext<T>) => boolean;
 
 	// Method to get allowed drop positions (uses callback or member)
 	getNodeAllowedDropPositions(node: LTreeNode<T>): DropPosition[] | null | undefined;
@@ -301,7 +312,7 @@ export interface Ltree<T> {
 	copyNodeWithDescendants(
 		sourceNode: LTreeNode<T>,
 		targetParentPath: string,
-		transformData: (data: T, node: LTreeNode<T>) => T | null,
+		transformData: (ctx: { data: T; node: LTreeNode<T> }) => T | null,
 		siblingPath?: string,
 		position?: 'before' | 'after'
 	): { success: boolean; rootNode?: LTreeNode<T>; count: number; error?: string };

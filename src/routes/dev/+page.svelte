@@ -92,7 +92,7 @@
 	let treePathSeparator = $state('.');
 
 	// Custom sort callback for basic example
-	const sortCallback = (items: any[]) => {
+	const sortCallback = ({ items }: { items: any[] }) => {
 		return items.sort((a, b) => {
 			// First, sort by level (calculated from path depth)
 			const aLevel = a.path ? a.path.split('.').length : 0;
@@ -111,7 +111,7 @@
 	};
 
 	// File system sort callback
-	const sortCallbackFileSystem = (items: any[]) => {
+	const sortCallbackFileSystem = ({ items }: { items: any[] }) => {
 		return items.sort((a, b) => {
 			// First, sort by level (calculated from path depth with backslash separator)
 			const aLevel = a.path ? a.path.split('\\').length : 0;

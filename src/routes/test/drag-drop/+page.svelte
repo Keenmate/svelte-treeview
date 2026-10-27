@@ -21,7 +21,7 @@
 
 	type RestrictedItem = Item & { allowedDropPositions?: DropPosition[] };
 
-	function sortByOrder<T extends { sortOrder: number }>(items: LTreeNode<T>[]) {
+	function sortByOrder<T extends { sortOrder: number }>({ items }: { items: LTreeNode<T>[] }) {
 		return [...items].sort((a, b) => {
 			if (a.parentPath !== b.parentPath) {
 				return (a.parentPath || '').localeCompare(b.parentPath || '');
@@ -128,7 +128,7 @@
 		targetTreeRef.copyNodeWithDescendants(
 			draggedNode,
 			parentPath,
-			(data: Item) => ({ ...data, id: crossTreeId++, path: '', sortOrder: data.sortOrder || 10 }),
+			({ data }: { data: Item }) => ({ ...data, id: crossTreeId++, path: '', sortOrder: data.sortOrder || 10 }),
 			siblingPath,
 			copyPos
 		);
@@ -183,7 +183,7 @@
 		{ id: 34, path: '4', name: 'Mover-34', sortOrder: 40 }
 	]);
 
-	function callbackAllowed(node: LTreeNode<Item>): DropPosition[] | null {
+	function callbackAllowed({ node }: { node: LTreeNode<Item> }): DropPosition[] | null {
 		if (!node.data) return null;
 		return node.data.id % 2 === 1 ? ['before'] : ['child'];
 	}
@@ -591,7 +591,7 @@
 		const src = csTreeRef.getNodeByPath('1');
 		const dest = csTreeRef.getNodeByPath('2');
 		if (!src || !dest) return;
-		const r = csTreeRef.copyNodeWithDescendants(src, dest.path, (d: CsItem) =>
+		const r = csTreeRef.copyNodeWithDescendants(src, dest.path, ({ data: d }: { data: CsItem }) =>
 			d.locked ? null : { ...d, id: csNextId++, path: '' }
 		);
 		csResult = `success:${r.success},count:${r.count}`;
@@ -636,7 +636,7 @@
 	let dnDestChildren = $state('');
 	let dnSrcChildren = $state('');
 
-	const dnMint = (d: DnItem) => ({ ...d, id: dnNextId++, path: '' });
+	const dnMint = ({ data: d }: { data: DnItem }) => ({ ...d, id: dnNextId++, path: '' });
 
 	function dnChildrenOf(path: string): string {
 		const n = dnTreeRef.getNodeByPath(path);
@@ -714,7 +714,7 @@
 	// Force every drop on the dest into a copy the library auto-handles.
 	const xcForceCopy = () => ({ operation: 'copy' as const });
 	// INPUT transform: mint a fresh id as each copy lands.
-	const xcMint = (d: XcItem) => ({ ...d, id: xcNextId++ });
+	const xcMint = ({ data: d }: { data: XcItem }) => ({ ...d, id: xcNextId++ });
 
 	function onXcDrop({ dropped }: NodeDropContext<XcItem>) {
 		xcDropped = (dropped ?? [])
@@ -1006,7 +1006,7 @@
 				isSorted={true}
 				expandLevel={10}
 				dragDropMode="self"
-				getIsDraggableCallback={(node) => node.data?.draggable !== false}
+				getIsDraggableCallback={({ node }) => node.data?.draggable !== false}
 				getIsDropAllowedCallback={() => true}
 				clickBehavior="select"
 				selectionMode="multi"
@@ -1111,7 +1111,7 @@
 				expandLevel={10}
 				dragDropMode="self"
 				shouldEnableTreeDropZone={true}
-				getIsDraggableCallback={(node) => node.data?.kind !== 'category'}
+				getIsDraggableCallback={({ node }) => node.data?.kind !== 'category'}
 				getIsDropAllowedCallback={() => false}
 				clickBehavior="select"
 				selectionMode="multi"

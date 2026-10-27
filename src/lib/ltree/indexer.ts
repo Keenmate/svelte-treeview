@@ -1,4 +1,5 @@
 import type { Index } from 'flexsearch';
+import type { NodeContext } from './types.js';
 import type { LTreeNode } from './ltree-node.svelte.js';
 import { isNotEmptyString } from '../helpers/string-helpers.js';
 import { indexLogger } from '../logger.js';
@@ -12,7 +13,7 @@ export class Indexer<T> {
 	private shouldCalculateSearchValue: boolean;
 
 	private searchValueMember?: string | null | undefined;
-	private getSearchValueCallback?: (node: LTreeNode<T>) => string;
+	private getSearchValueCallback?: (ctx: NodeContext<T>) => string;
 	private onProgressCallback?: (processed: number, total: number) => void;
 	private onCompleteCallback?: () => void;
 	private totalItemsAdded: number = 0;
@@ -23,7 +24,7 @@ export class Indexer<T> {
 		searchIndex: Index,
 		shouldCalculateSearchValue: boolean,
 		searchValueMember?: string | null | undefined,
-		getSearchValueCallback?: (node: LTreeNode<T>) => string,
+		getSearchValueCallback?: (ctx: NodeContext<T>) => string,
 		batchSize: number = 25,
 		private timeout: number = 50
 	) {
@@ -160,7 +161,7 @@ export class Indexer<T> {
 		// Type-safe indexing - customize based on your item structure
 		const searchValue = !this.shouldCalculateSearchValue
 			? this.searchValueMember && (item.node.data as any)?.[this.searchValueMember]?.toString()
-			: this.getSearchValueCallback && this.getSearchValueCallback(item.node);
+			: this.getSearchValueCallback && this.getSearchValueCallback({ node: item.node });
 
 		if (isNotEmptyString(searchValue)) {
 			const addStart = performance.now();

@@ -4,6 +4,7 @@
 	import type {
 		TreeController,
 		NodeTransformContext,
+		NodeTransformCallbackContext,
 		BeforePasteContext,
 		BeforeDropContext,
 		NodeDropContext
@@ -15,7 +16,7 @@
 	import { getTreeProps } from '../render-mode.svelte.js';
 
 	// One order-aware sort shared by every tree on this page (editor + scenarios).
-	function sortByOrder<T extends { sortOrder?: number }>(items: LTreeNode<T>[]): LTreeNode<T>[] {
+	function sortByOrder<T extends { sortOrder?: number }>({ items }: { items: LTreeNode<T>[] }): LTreeNode<T>[] {
 		return [...items].sort((a, b) => {
 			if (a.parentPath !== b.parentPath) {
 				return (a.parentPath || '').localeCompare(b.parentPath || '');
@@ -93,7 +94,7 @@
 	// The controller implements the clipboard operations (copyNodes / cutNodes /
 	// pasteNodes / cancelCut) and a shared cross-tree clipboard; the key bindings
 	// are left to the consumer because paste needs an app-specific transform
-	// (fresh ids) and a target. We wire them through onTreeKeydown.
+	// (fresh ids) and a target. We wire them through beforeKeydownCallback.
 
 	// Copy/cut operate on the highlight set when present, else the focused node.
 	function clipboardPaths(controller: TreeController<EditorNode>): string[] {
@@ -104,7 +105,7 @@
 	// nodeOutputTransformationCallback: per-node, at snapshot time (copy/cut). Clean data
 	// before it lands on the shared (cross-tree) clipboard — here we redact the internal
 	// `secret`. The original node keeps its secret; any pasted copy shows "🔒 redacted".
-	function cleanOnCopy(data: EditorNode, _ctx: NodeTransformContext<EditorNode>): EditorNode {
+	function cleanOnCopy({ data }: NodeTransformCallbackContext<EditorNode>): EditorNode {
 		return data.secret !== undefined ? { ...data, secret: '🔒 redacted' } : data;
 	}
 
@@ -113,7 +114,7 @@
 	// the resolved destination + the names already taken there. We give each node a fresh
 	// id and, for a root, a collision-free "Copy N" name (uniqueName, library helper) only
 	// when the name already exists in the TARGET parent. Descendants keep their names.
-	function pasteTransform(data: EditorNode, ctx: NodeTransformContext<EditorNode>): EditorNode {
+	function pasteTransform({ data, ...ctx }: NodeTransformCallbackContext<EditorNode>): EditorNode {
 		const landing =
 			ctx.position === 'child' && ctx.target?.node
 				? Object.values(ctx.target.node.children)
@@ -145,31 +146,31 @@
 		focusedNode: LTreeNode<EditorNode> | null;
 		selectedNodes: LTreeNode<EditorNode>[];
 		controller: TreeController<EditorNode>;
-	}): boolean {
+	}): false | void {
 		// Ctrl on Windows/Linux, Cmd (metaKey) on macOS.
 		const mod = event.ctrlKey || event.metaKey;
 		const key = event.key.toLowerCase();
 
 		if (mod && key === 'c') {
 			const paths = clipboardPaths(controller);
-			if (!paths.length) { addLog('Nothing selected to copy'); return true; }
+			if (!paths.length) { addLog('Nothing selected to copy'); return false; }
 			controller.copyNodes(paths);
 			copiedPaths = paths;
 			cutPaths = new Set(); // copying supersedes any pending cut
-			return true;
+			return false;
 		}
 
 		if (mod && key === 'x') {
 			const paths = clipboardPaths(controller);
-			if (!paths.length) { addLog('Nothing selected to cut'); return true; }
+			if (!paths.length) { addLog('Nothing selected to cut'); return false; }
 			controller.cutNodes(paths);
 			copiedPaths = paths;
 			cutPaths = new Set(controller.cutPaths); // mirror dim set for the template
-			return true;
+			return false;
 		}
 
 		if (mod && key === 'v') {
-			if (!controller.hasClipboardContent()) { addLog('Clipboard is empty'); return true; }
+			if (!controller.hasClipboardContent()) { addLog('Clipboard is empty'); return false; }
 			const target = selectedNode?.path ?? '';
 
 			// Duplicate-in-place: Ctrl+V onto one of the copied nodes when several were
@@ -191,21 +192,21 @@
 				suppressClipboardLog = false;
 				addLog(`Duplicated ${pasted} node(s) in place`);
 				cutPaths = new Set();
-				return true;
+				return false;
 			}
 
 			// Pasting onto a file (a node that can't hold children) lands the copies
 			// beside it — handled by the library, driven by getAllowedDropPositionsCallback.
 			controller.pasteNodes(target, undefined, 'child');
 			cutPaths = new Set();
-			return true;
+			return false;
 		}
 
 		// Delete / Backspace remove the selection. Deletion is a data mutation the
 		// library leaves to the consumer, so we wire it here just like copy/cut/paste.
 		if (event.key === 'Delete') {
 			const paths = clipboardPaths(controller);
-			if (!paths.length) { addLog('Nothing selected to delete'); return true; }
+			if (!paths.length) { addLog('Nothing selected to delete'); return false; }
 			// Remove only top-level paths: removing a parent takes its descendants with it.
 			const sep = '.';
 			const topLevel = paths.filter((p) => !paths.some((o) => o !== p && p.startsWith(o + sep)));
@@ -230,7 +231,7 @@
 			} else {
 				addLog(`Deleted ${removed} node(s)`);
 			}
-			return true;
+			return false;
 		}
 
 		// Clear our cut-dimming alongside the library's Escape→cancel-cut.
@@ -238,10 +239,10 @@
 			controller.cancelCut();
 			cutPaths = new Set();
 			addLog('Cut cancelled');
-			return true;
+			return false;
 		}
 
-		return false; // let the tree handle everything else
+		return; // let the tree handle everything else
 	}
 
 	// Form state for adding nodes
@@ -748,7 +749,7 @@
 			}
 
 			let isFirst = true;
-			const result = treeRefB.copyNodeWithDescendants(draggedNode, parentPath, (data) => {
+			const result = treeRefB.copyNodeWithDescendants(draggedNode, parentPath, ({ data }) => {
 				const order = isFirst ? rootSortOrder : data.sortOrder || 10;
 				isFirst = false;
 				return { ...data, id: nextIdB++, path: '', sortOrder: order };
@@ -954,7 +955,7 @@
 		}
 
 		let isFirst = true;
-		const result = treeRefE.copyNodeWithDescendants(draggedNode, parentPath, (data) => {
+		const result = treeRefE.copyNodeWithDescendants(draggedNode, parentPath, ({ data }) => {
 			const order = isFirst ? rootSortOrder : data.sortOrder || 10;
 			isFirst = false;
 			return { ...data, id: nextIdE++, path: '', sortOrder: order };
@@ -1075,11 +1076,11 @@
 						dragDropMode="both"
 						getIsDraggableCallback={() => true}
 						getIsDropAllowedCallback={() => true}
-						getAllowedDropPositionsCallback={(node): DropPosition[] | undefined =>
+						getAllowedDropPositionsCallback={({ node }): DropPosition[] | undefined =>
 							canHaveChildren(node) ? undefined : ['before', 'after']}
 						bind:focusedNode={selectedNode}
 						bind:selectedPaths={selectedPaths}
-						onTreeKeydown={handleTreeKeydown}
+						beforeKeydownCallback={handleTreeKeydown}
 						onCopy={({ paths }) => { if (!suppressClipboardLog) addLog(`Copied ${paths.length} node(s) to clipboard`); }}
 						onCut={({ paths }) => addLog(`Cut ${paths.length} node(s) — paste to move`)}
 						onPaste={(result) => { if (!suppressClipboardLog) addLog(result.success ? `Pasted ${result.count} node(s)` : `Paste failed: ${result.error}`); }}
@@ -1299,7 +1300,7 @@
 
 		<h3 class="subsection">Clipboard API</h3>
 		<p class="description">
-			Controller methods (call via <code>onTreeKeydown</code>'s <code>controller</code> arg or
+			Controller methods (call via <code>beforeKeydownCallback</code>'s <code>controller</code> arg or
 			<code>bind:this</code>) backed by a module-level, cross-tree clipboard.
 		</p>
 		<table>
@@ -1447,7 +1448,7 @@
 		<h2>TE04 · Multi-select &amp; Clipboard (Ctrl/Cmd + C / X / V)</h2>
 		<p class="description">
 			The controller implements the clipboard operations and a shared cross-tree
-			clipboard; the key bindings are left to you via <code>onTreeKeydown</code>.
+			clipboard; the key bindings are left to you via <code>beforeKeydownCallback</code>.
 			Per-node paste derivation (fresh ids, values, "Copy N" naming, per-entry skip)
 			lives in <code>nodeInputTransformationCallback</code>; <code>beforePasteCallback</code>
 			is policy only (redirect/block) and gets <strong>readonly</strong> entries.
@@ -1472,7 +1473,7 @@ function clipboardPaths(controller: TreeController<MyNode>) {
 // THE place for all paste-time data derivation — pure, per node, called by the
 // library with LIVE references. target mirrors source: { path, node, parent, siblings }.
 // Return new data (fresh id/value/name) or null to SKIP this node.
-function pasteTransform(data: MyNode, ctx: NodeTransformContext<MyNode>): MyNode | null {
+function pasteTransform({ data, ...ctx }: NodeTransformCallbackContext<MyNode>): MyNode | null {
   const landing = ctx.position === 'child' && ctx.target?.node
     ? Object.values(ctx.target.node.children)
     : ctx.target?.siblings ?? [];
@@ -1500,25 +1501,25 @@ function handleKeydown({ event, controller }) {
   if (mod && key === 'c') {
     controller.copyNodes(clipboardPaths(controller));
     cutPaths = new Set();                         // copy supersedes a pending cut
-    return true;
+    return false;
   }
   if (mod && key === 'x') {
     controller.cutNodes(clipboardPaths(controller));
     cutPaths = new Set(controller.cutPaths);      // mirror dim set for the template
-    return true;
+    return false;
   }
   if (mod && key === 'v') {
-    if (!controller.hasClipboardContent()) return true;
+    if (!controller.hasClipboardContent()) return false;
     controller.pasteNodes(focusedNode?.path ?? '');  // transform comes from the prop
     cutPaths = new Set();
-    return true;
+    return false;
   }
   if (event.key === 'Escape' && cutPaths.size > 0) {
     controller.cancelCut();
     cutPaths = new Set();
-    return true;
+    return false;
   }
-  return false;  // let the tree handle everything else
+  return;  // let the tree handle everything else
 }`}</pre>
 		</div>
 

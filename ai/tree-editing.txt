@@ -376,7 +376,7 @@ CLIPBOARD API
 -------------
 Built-in clipboard for copy/cut/paste workflows. These methods live on the
 TreeController, NOT on the Tree component ref. Reach the controller via the
-onTreeKeydown interceptor (ctx.controller) or hold your own reference. Below,
+beforeKeydownCallback interceptor (ctx.controller) or hold your own reference. Below,
 `controller` is that TreeController instance.
 
 // Copy selected nodes (or specific paths)
@@ -408,7 +408,7 @@ reduced opacity.
 pasteNodes signature:
 pasteNodes(
   targetPath: string,
-  transform?: (data: T, ctx: NodeTransformContext<T>) => T | null,
+  transform?: ({ data, ...ctx }: NodeTransformCallbackContext<T>) => T | null,
   position: 'child' | 'before' | 'after' = 'child'
 )
 - transform (optional) overrides nodeInputTransformationCallback for this paste;
@@ -443,12 +443,12 @@ beforeDeleteCallback:
 Per-node transforms — operation-neutral, defined by DIRECTION not by copy/cut.
 Both fire for clipboard AND drag; both take NodeTransformContext<T>:
 
-nodeOutputTransformationCallback: (data: T, ctx: NodeTransformContext<T>) => T
+nodeOutputTransformationCallback: ({ data, ...ctx }: NodeTransformCallbackContext<T>) => T
   OUTPUT/egress — a node LEAVES the source. Clean/redact fields before the data
   travels (phase 'output'; target + position null). Fires at Ctrl+C/X snapshot AND
   the capture side of a copy-drop. (was copyNodeTransformationCallback.)
 
-nodeInputTransformationCallback: (data: T, ctx: NodeTransformContext<T>) => T | null
+nodeInputTransformationCallback: ({ data, ...ctx }: NodeTransformCallbackContext<T>) => T | null
   INPUT/ingress — a duplicate LANDS in a destination. Derive ids/values/names at
   insert (phase 'input'); return null to skip. Fires on Ctrl+V paste AND the insert
   side of a copy-drop (same- or cross-tree). (was pasteNodeTransformationCallback.)
@@ -469,7 +469,7 @@ Collision-free names — use the exported uniqueName helper inside the paste
 transform (import from '@keenmate/svelte-treeview'):
 
   import { uniqueName } from '@keenmate/svelte-treeview';
-  nodeInputTransformationCallback={(data, ctx) => {
+  nodeInputTransformationCallback={({ data, ...ctx }) => {
     const landing = ctx.position === 'child' && ctx.target?.node
       ? Object.values(ctx.target.node.children)
       : (ctx.target?.siblings ?? []);
@@ -492,7 +492,7 @@ duplicateNodes(paths, targetPath, position, transform?, sourceTree?)
   BATCH COPY — the copy-side twin of moveNodes (NOT copyNodes, which is the clipboard
   "copy to clipboard" op). Same complete-manifest model, but a hole is simply NOT
   copied (a copy has nothing to re-home). Each node's data flows through `transform`
-  (the INPUT transform, (data, ctx) => T | null). `sourceTree` defaults to this tree;
+  (the INPUT transform, (ctx: { data, ...NodeTransformContext }) => T | null). `sourceTree` defaults to this tree;
   pass another tree's Ltree to copy its live nodes in (cross-tree). Both drag-copy
   branches route through it; a cross-tree copy-drop with shouldAutoHandleCopy (default
   true) is placed BY THE LIBRARY via the clipboard registry — no consumer loop.

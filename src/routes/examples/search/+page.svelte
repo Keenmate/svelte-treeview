@@ -209,7 +209,7 @@
 	let currentResultIndex = $state(-1);
 	let useContainerScroll = $state(true);
 
-	function sortByName(items: LTreeNode<LocationItem>[]) {
+	function sortByName({ items }: { items: LTreeNode<LocationItem>[] }) {
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
 	}
 
@@ -537,7 +537,7 @@ ${"<"}/script>
 // Using getSearchValueCallback (custom - search multiple fields)
 <Tree
   shouldUseInternalSearchIndex={true}
-  getSearchValueCallback={(node) => \`\${node.data?.name} \${node.data?.description}\`}
+  getSearchValueCallback={({ node }) => \`\${node.data?.name} \${node.data?.description}\`}
   ...
 />`}</pre>
 		</div>

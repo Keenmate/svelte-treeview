@@ -3,6 +3,7 @@
 	import Tree from '$lib/components/Tree.svelte';
 	import type {
 		NodeTransformContext,
+		NodeTransformCallbackContext,
 		BeforePasteContext,
 		NodeDropContext,
 		NodeEventContext,
@@ -121,11 +122,11 @@
 		localStorage.setItem('dropZoneConfig', JSON.stringify(config));
 	});
 
-	function sortByName(items: LTreeNode<FileItem>[]) {
+	function sortByName({ items }: { items: LTreeNode<FileItem>[] }) {
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
 	}
 
-	function sortByOrder(items: LTreeNode<FileItem>[]) {
+	function sortByOrder({ items }: { items: LTreeNode<FileItem>[] }) {
 		return [...items].sort((a, b) => {
 			// Sort by parent path first
 			if (a.parentPath !== b.parentPath) {
@@ -159,7 +160,7 @@
 	// children, a 'before'/'after' paste among the anchor's siblings (= target.siblings).
 	// Both are LIVE and batch-aware. Descendants keep their names. Same NodeTransformContext
 	// the output transform would see, but with phase: 'input' and a populated `target`.
-	function transformPasted(data: FileItem, ctx: NodeTransformContext<FileItem>): FileItem {
+	function transformPasted({ data, ...ctx }: NodeTransformCallbackContext<FileItem>): FileItem {
 		const landing =
 			ctx.position === 'child' && ctx.target?.node
 				? Object.values(ctx.target.node.children)
@@ -251,7 +252,7 @@
 			const result = targetTreeRef.copyNodeWithDescendants(
 				srcNode,
 				useParent,
-				(data: FileItem) => ({
+				({ data }: { data: FileItem }) => ({
 					...data,
 					id: nextId++,
 					path: '',
@@ -585,7 +586,7 @@
 	// INPUT transform on the Destination tree: mint a fresh id as each copied node lands. The
 	// guard's pruning (the nested locked file) is handled by the published MANIFEST, not here —
 	// duplicateNodes simply never offers a pruned node to this transform.
-	const guardMintId = (d: GuardItem) => ({ ...d, id: guardNextId++ });
+	const guardMintId = ({ data: d }: { data: GuardItem }) => ({ ...d, id: guardNextId++ });
 
 	function onGuardDrop({ dropped }: NodeDropContext<GuardItem>) {
 		// Nothing imperative: the library already copied the guard-pruned manifest into the
@@ -733,7 +734,7 @@
 			const src = basketRef.getNodeByPath(ref.path);
 			if (!src || src.data?.kind === 'category') continue;
 			const targetPath = categoryPathFor(src.data?.kind);
-			const r = pantryRef.copyNodeWithDescendants(src, targetPath, (d: ProduceItem) => ({
+			const r = pantryRef.copyNodeWithDescendants(src, targetPath, ({ data: d }: { data: ProduceItem }) => ({
 				...d,
 				id: produceNextId++,
 				path: ''
@@ -912,8 +913,8 @@
 						pathMember="path"
 						displayValueMember="name"
 						orderMember="sortOrder"
-						getIsDraggableCallback={(node) => node.data?.isDraggable !== false}
-						getIsDropAllowedCallback={(node) => node.data?.isFolder === true}
+						getIsDraggableCallback={({ node }) => node.data?.isDraggable !== false}
+						getIsDropAllowedCallback={({ node }) => node.data?.isFolder === true}
 						sortCallback={sortByOrder}
 						isSorted={true}
 						expandLevel={3}
@@ -963,8 +964,8 @@
 						pathMember="path"
 						displayValueMember="name"
 						orderMember="sortOrder"
-						getIsDraggableCallback={(node) => node.data?.isDraggable !== false}
-						getIsDropAllowedCallback={(node) => node.data?.isFolder === true}
+						getIsDraggableCallback={({ node }) => node.data?.isDraggable !== false}
+						getIsDropAllowedCallback={({ node }) => node.data?.isFolder === true}
 						sortCallback={sortByOrder}
 						expandLevel={3}
 						dragDropMode="both"
@@ -1072,7 +1073,7 @@
 				pathMember="path"
 				displayValueMember="name"
 				orderMember="sortOrder"
-				getIsDraggableCallback={(node) => node.data?.isDraggable !== false}
+				getIsDraggableCallback={({ node }) => node.data?.isDraggable !== false}
 				getIsDropAllowedCallback={() => true}
 				allowedDropPositionsMember="allowedDropPositions"
 				sortCallback={sortByOrder}
@@ -1195,7 +1196,7 @@ const data = [
 						selectionMode="multi"
 						selectedNodeClass="stv__node-content--selected-bold"
 						bind:selectedPaths={guardHighlighted}
-						getIsDraggableCallback={(node) => (node.data as GuardItem)?.locked !== true}
+						getIsDraggableCallback={({ node }) => (node.data as GuardItem)?.locked !== true}
 						getIsDropAllowedCallback={() => true}
 						beforeDragStartCallback={beforeGuardDragStart}
 						{...getTreeProps()}
@@ -1222,7 +1223,7 @@ const data = [
 						isSorted={true}
 						expandLevel={3}
 						dragDropMode="both"
-						getIsDraggableCallback={(node) => (node.data as GuardItem)?.locked !== true}
+						getIsDraggableCallback={({ node }) => (node.data as GuardItem)?.locked !== true}
 						getIsDropAllowedCallback={() => true}
 						beforeDropCallback={guardForceCopy}
 						nodeInputTransformationCallback={guardMintId}
@@ -1239,7 +1240,7 @@ const data = [
 
 		<div class="code-block">
 			<pre>{`// per-node: a locked file can't be grabbed at all — it never moves
-getIsDraggableCallback={(node) => !node.data?.locked}
+getIsDraggableCallback={({ node }) => !node.data?.locked}
 
 // set-level: sees the whole combination, reshapes or vetoes the drag
 beforeDragStartCallback={(ctx) => {
@@ -1402,7 +1403,7 @@ beforeDragStartCallback={(ctx) => {
 						selectionMode="multi"
 						selectedNodeClass="stv__node-content--selected-bold"
 						bind:selectedPaths={pantryHighlighted}
-						getIsDraggableCallback={(node: LTreeNode<ProduceItem>) =>
+						getIsDraggableCallback={({ node }: { node: LTreeNode<ProduceItem> }) =>
 							node.data?.kind !== 'category'}
 						getIsDropAllowedCallback={() => false}
 						shouldEnableTreeDropZone={true}
@@ -1466,7 +1467,7 @@ beforeDragStartCallback={(ctx) => {
 				pathMember="path"
 				orderMember="sortOrder"
 				displayValueMember="name"
-				getIsDraggableCallback={(node) => node.data?.isDraggable !== false}
+				getIsDraggableCallback={({ node }) => node.data?.isDraggable !== false}
 				getIsDropAllowedCallback={() => true}
 				sortCallback={sortByOrder}
 				isSorted={true}

@@ -31,7 +31,7 @@
 	let xOffset = $state(8);
 	let yOffset = $state(0);
 
-	function sortByName(items: LTreeNode<FileItem>[]) {
+	function sortByName({ items }: { items: LTreeNode<FileItem>[] }) {
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
 	}
 

@@ -10,7 +10,8 @@
 	import { Tree, uniqueName } from '$lib/index.js';
 	import type {
 		TreeController,
-		NodeTransformContext
+		NodeTransformContext,
+		NodeTransformCallbackContext
 	} from '$lib/index.js';
 	import type { LTreeNode, DropPosition } from '$lib/index.js';
 
@@ -39,7 +40,7 @@
 
 	const canHaveChildren = (node: LTreeNode<Item> | null) => node?.data?.type === 'folder';
 
-	function sortByName(items: LTreeNode<Item>[]) {
+	function sortByName({ items }: { items: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
 	}
 
@@ -49,13 +50,13 @@
 	}
 
 	// Clean at snapshot time: redact `secret` before data lands on the shared clipboard.
-	function copyTransform(item: Item, _ctx: NodeTransformContext<Item>): Item {
+	function copyTransform({ data: item }: NodeTransformCallbackContext<Item>): Item {
 		return item.secret !== undefined ? { ...item, secret: 'REDACTED' } : item;
 	}
 
 	// Per-node paste derivation: fresh id, collision-free name on roots, and SKIP
 	// (return null) any node named "locked.txt" to exercise per-entry skipping.
-	function pasteTransform(item: Item, ctx: NodeTransformContext<Item>): Item | null {
+	function pasteTransform({ data: item, ...ctx }: NodeTransformCallbackContext<Item>): Item | null {
 		if (item.name === 'locked.txt') return null;
 		// Landing neighbours = target.node's children for a 'child' paste, else the anchor's
 		// siblings (top-level = target.siblings when there's no anchor node at the root).
@@ -72,7 +73,7 @@
 		};
 	}
 
-	function onTreeKeydown({
+	function beforeKeydownCallback({
 		event,
 		controller
 	}: {
@@ -80,37 +81,37 @@
 		focusedNode: LTreeNode<Item> | null;
 		selectedNodes: LTreeNode<Item>[];
 		controller: TreeController<Item>;
-	}): boolean {
+	}): false | void {
 		const mod = event.ctrlKey || event.metaKey;
 		const key = event.key.toLowerCase();
 
 		if (mod && key === 'c') {
 			const paths = clipboardPaths(controller);
-			if (!paths.length) return true;
+			if (!paths.length) return false;
 			controller.copyNodes(paths);
 			lastLog = `copied ${paths.length}`;
-			return true;
+			return false;
 		}
 		if (mod && key === 'x') {
 			const paths = clipboardPaths(controller);
-			if (!paths.length) return true;
+			if (!paths.length) return false;
 			controller.cutNodes(paths);
 			lastLog = `cut ${paths.length}`;
-			return true;
+			return false;
 		}
 		if (mod && key === 'v') {
-			if (!controller.hasClipboardContent()) return true;
+			if (!controller.hasClipboardContent()) return false;
 			const result = controller.pasteNodes(focusedNode?.path ?? '');
 			pasteCount = result.count;
 			pasteSkipped = result.skipped;
 			lastLog = result.success
 				? `pasted ${result.count} skipped ${result.skipped}`
 				: `paste-failed ${result.error}`;
-			return true;
+			return false;
 		}
 		if (event.key === 'Delete') {
 			const paths = clipboardPaths(controller);
-			if (!paths.length) return true;
+			if (!paths.length) return false;
 			const sep = '.';
 			const topLevel = paths.filter((p) => !paths.some((o) => o !== p && p.startsWith(o + sep)));
 			let removed = 0;
@@ -127,9 +128,9 @@
 			focusedNode = null;
 			deleteWarning = blocked > 0 ? `Cannot delete ${blocked} node(s) with subnodes` : '';
 			lastLog = `deleted ${removed} blocked ${blocked}`;
-			return true;
+			return false;
 		}
-		return false;
+		return;
 	}
 </script>
 
@@ -156,11 +157,11 @@
 			clickBehavior="select"
 			selectionMode="multi"
 			dragDropMode="both"
-			getAllowedDropPositionsCallback={(node): DropPosition[] | undefined =>
+			getAllowedDropPositionsCallback={({ node }): DropPosition[] | undefined =>
 				canHaveChildren(node) ? undefined : ['before', 'after']}
 			bind:focusedNode
 			bind:selectedPaths
-			{onTreeKeydown}
+			{beforeKeydownCallback}
 			nodeOutputTransformationCallback={copyTransform}
 			nodeInputTransformationCallback={pasteTransform}
 		>

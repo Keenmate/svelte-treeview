@@ -18,7 +18,7 @@
 		{ id: 9, path: '2.2', name: 'Potato', icon: '🥔', desc: 'Starchy tuber, endlessly versatile' }
 	];
 
-	function sortByPath(items: LTreeNode<FileItem>[]) {
+	function sortByPath({ items }: { items: LTreeNode<FileItem>[] }) {
 		return [...items].sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
 	}
 
@@ -87,7 +87,7 @@
 				isSorted={true}
 				expandLevel={3}
 				shouldShowNodeTooltips
-				getNodeTooltipCallback={(node) => node.data?.desc ?? null}
+				getNodeTooltipCallback={({ node }) => node.data?.desc ?? null}
 				tooltipPlacement={placement}
 				tooltipFollowCursor={followCursor}
 				tooltipDelay={{ show: delay, hide: 100 }}
@@ -171,7 +171,7 @@
 				isSorted={true}
 				expandLevel={3}
 				shouldShowNodeTooltips
-				getNodeTooltipCallback={(node) => node.data?.desc || node.data?.name || null}
+				getNodeTooltipCallback={({ node }) => node.data?.desc || node.data?.name || null}
 				{...getTreeProps()}
 			>
 				{#snippet nodeTemplate(node: LTreeNode<FileItem>)}

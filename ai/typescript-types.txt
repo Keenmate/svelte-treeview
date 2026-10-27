@@ -237,7 +237,7 @@ interface Ltree<T> {
 EVENT TYPES (on* — fire-and-forget, ONE context object)
 -------------------------------------------------------
 // All on* events take a single context object, NOT positional args.
-// on* = notification (return value ignored, except onTreeKeydown which intercepts).
+// on* = notification (return value ignored, except beforeKeydownCallback which intercepts).
 
 onNodeClick?: (ctx: NodeEventContext<T>) => void;        // ctx.node = clicked node
 onNodeDoubleClick?: (ctx: NodeEventContext<T>) => void;
@@ -251,13 +251,13 @@ onCut?: (ctx: ClipboardEventContext<T>) => void;
 onDelete?: (ctx: ClipboardEventContext<T>) => void;      // ctx.operation omitted for delete
 onPaste?: (result: PasteResult<T>) => void;
 
-// Interceptor: return true to suppress default + built-in shortcuts.
-onTreeKeydown?: (ctx: {
+// Interceptor: return false to suppress (synchronous) default + built-in shortcuts.
+beforeKeydownCallback?: (ctx: {
   event: KeyboardEvent;
   focusedNode: LTreeNode<T> | null;
   selectedNodes: LTreeNode<T>[];
   controller: TreeController<T>;
-}) => boolean | void;
+}) => false | void;
 
 CALLBACK TYPES (before*/get*/*TransformationCallback — intercept / provide data)
 -------------------------------------------------------------------------------
@@ -279,13 +279,13 @@ beforeDeleteCallback?: (ctx: BeforeDeleteContext<T>) => string[] | false | void;
 beforePasteCallback?: (ctx: BeforePasteContext<T>) => { targetPath?: string; position?: DropPosition } | false | void;
 
 // Per-node transforms — operation-neutral, by DIRECTION. Both fire for clipboard AND drag.
-nodeOutputTransformationCallback?: (data: T, ctx: NodeTransformContext<T>) => T;         // egress: node leaves source (phase 'output')
-nodeInputTransformationCallback?: (data: T, ctx: NodeTransformContext<T>) => T | null;   // ingress: duplicate lands (phase 'input'); null skips node/subtree
+nodeOutputTransformationCallback?: ({ data, ...ctx }: NodeTransformCallbackContext<T>) => T;         // egress: node leaves source (phase 'output')
+nodeInputTransformationCallback?: ({ data, ...ctx }: NodeTransformCallbackContext<T>) => T | null;   // ingress: duplicate lands (phase 'input'); null skips node/subtree
 
 // Value getters
-getDisplayValueCallback?: (node: LTreeNode<T>) => string;
-getSearchValueCallback?: (node: LTreeNode<T>) => string;
-getAllowedDropPositionsCallback?: (node: LTreeNode<T>) => DropPosition[] | null | undefined;
+getDisplayValueCallback?: (ctx: NodeContext<T>) => string;
+getSearchValueCallback?: (ctx: NodeContext<T>) => string;
+getAllowedDropPositionsCallback?: (ctx: NodeContext<T>) => DropPosition[] | null | undefined;
 
 // Context menu (label/onclick/divider API). closeMenuCallback closes the menu;
 // selectedNodes is the current selection when the menu opened.
@@ -296,7 +296,7 @@ getContextMenuItemsCallback?: (
 ) => ContextMenuEntry[];
 
 // Sort
-sortCallback?: (items: LTreeNode<T>[]) => LTreeNode<T>[];
+sortCallback?: (ctx: SortContext<T>) => LTreeNode<T>[];
 
 CONTEXT TYPES (shared shapes — exported for consumers)
 ------------------------------------------------------
@@ -461,7 +461,7 @@ function isFolder(item: TreeItem): item is FolderItem {
 // Usage in callbacks
 <Tree
   data={items as TreeItem[]}
-  getDisplayValueCallback={(node) => {
+  getDisplayValueCallback={({ node }) => {
     if (!node.data) return '';
     if (isFile(node.data)) {
       return `${node.data.name} (${node.data.size}KB)`;
@@ -521,7 +521,7 @@ let data: ExtendedItem[] = $state.raw([]);
   {data}
   idMember="id"
   pathMember="path"
-  getDisplayValueCallback={(node) => {
+  getDisplayValueCallback={({ node }) => {
     const item = node.data;
     if (!item) return '';
     return `${item.name} (${item.createdAt.toLocaleDateString()})`;

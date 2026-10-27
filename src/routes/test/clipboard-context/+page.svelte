@@ -4,13 +4,14 @@
 	//   - nodeOutputTransformationCallback / nodeInputTransformationCallback (NodeTransformContext)
 	//   - beforeCopyCallback / beforeCutCallback (BeforeCopyContext)
 	//   - beforePasteCallback (BeforePasteContext) / beforeDeleteCallback (BeforeDeleteContext)
-	//   - onTreeKeydown ({ event, focusedNode, selectedNodes, controller })
+	//   - beforeKeydownCallback ({ event, focusedNode, selectedNodes, controller })
 	// Two trees (treeA source / treeB target) exercise same-tree vs cross-tree source refs.
 	// Targeted by e2e/clipboard-context.spec.ts.
 	import { Tree, uniqueName } from '$lib/index.js';
 	import type {
 		TreeController,
 		NodeTransformContext,
+		NodeTransformCallbackContext,
 		BeforeCopyContext,
 		BeforePasteContext,
 		BeforeDeleteContext,
@@ -63,7 +64,7 @@
 		keydownLog = [];
 	}
 
-	function sortByName(items: LTreeNode<Item>[]) {
+	function sortByName({ items }: { items: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
 	}
 
@@ -92,11 +93,11 @@
 		};
 	}
 
-	function copyTransform(data: Item, ctx: NodeTransformContext<Item>): Item {
+	function copyTransform({ data, ...ctx }: NodeTransformCallbackContext<Item>): Item {
 		copyCtxLog = [...copyCtxLog, serializeCtx(data, ctx)];
 		return data;
 	}
-	function pasteTransform(data: Item, ctx: NodeTransformContext<Item>): Item {
+	function pasteTransform({ data, ...ctx }: NodeTransformCallbackContext<Item>): Item {
 		pasteCtxLog = [...pasteCtxLog, serializeCtx(data, ctx)];
 		const landing =
 			ctx.position === 'child' && ctx.target?.node
@@ -146,7 +147,7 @@
 			focusedNode: LTreeNode<Item> | null;
 			selectedNodes: LTreeNode<Item>[];
 			controller: TreeController<Item>;
-		}): boolean {
+		}): false | void {
 			keydownLog = [
 				...keydownLog,
 				{
@@ -162,25 +163,25 @@
 			if (mod && key === 'c') {
 				const p = clipPaths(controller, focused);
 				if (p.length) controller.copyNodes(p);
-				return true;
+				return false;
 			}
 			if (mod && key === 'x') {
 				const p = clipPaths(controller, focused);
 				if (p.length) controller.cutNodes(p);
-				return true;
+				return false;
 			}
 			if (mod && key === 'v') {
-				if (!controller.hasClipboardContent()) return true;
+				if (!controller.hasClipboardContent()) return false;
 				const targetPath = pasteAtRoot ? '' : focused?.path ?? '';
 				controller.pasteNodes(targetPath, undefined, pastePosition);
-				return true;
+				return false;
 			}
 			if (event.key === 'Delete') {
 				const p = clipPaths(controller, focused);
 				if (p.length) controller.deleteNodes(p);
-				return true;
+				return false;
 			}
-			return false;
+			return;
 		};
 	}
 	const onKeydownA = makeKeydown(() => focusedA);
@@ -222,7 +223,7 @@
 				selectionMode="multi"
 				bind:focusedNode={focusedA}
 				bind:selectedPaths={highlightedA}
-				onTreeKeydown={onKeydownA}
+				beforeKeydownCallback={onKeydownA}
 				beforeCopyCallback={beforeCopy}
 				beforeCutCallback={beforeCut}
 				beforePasteCallback={beforePaste}
@@ -249,7 +250,7 @@
 				selectionMode="multi"
 				bind:focusedNode={focusedB}
 				bind:selectedPaths={highlightedB}
-				onTreeKeydown={onKeydownB}
+				beforeKeydownCallback={onKeydownB}
 				beforeCopyCallback={beforeCopy}
 				beforeCutCallback={beforeCut}
 				beforePasteCallback={beforePaste}

@@ -17,7 +17,7 @@
 		{ id: 6, path: '1.2', name: 'Double R Diner', icon: 'fa-solid fa-store', emoji: '🏬', lucide: 'coffee', color: '#d97706' },
 		{ id: 7, path: '1.2.1', name: 'Norma Jennings', icon: 'fa-solid fa-user', emoji: '👤', lucide: 'user' }
 	];
-	function sortByPath(items: LTreeNode<Item>[]) {
+	function sortByPath({ items }: { items: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
 	}
 
@@ -107,7 +107,7 @@
 				sortCallback={sortByPath}
 				isSorted={true}
 				expandLevel={4}
-				getIconCallback={(node) => node.data?.emoji ?? null}
+				getIconCallback={({ node }) => node.data?.emoji ?? null}
 				{...getTreeProps()}
 			/>
 		</div>
@@ -165,7 +165,7 @@
 				sortCallback={sortByPath}
 				isSorted={true}
 				expandLevel={4}
-				getIconCallback={(node) => node.data?.lucide ?? null}
+				getIconCallback={({ node }) => node.data?.lucide ?? null}
 				iconColorMember="color"
 				shouldAlignNodeIcons
 				{...getTreeProps()}

@@ -287,12 +287,12 @@ function handleInput(e) {
 Simplify search value callback:
 
 // Avoid heavy computation
-❌ getSearchValueCallback={(node) => {
+❌ getSearchValueCallback={({ node }) => {
   return expensiveOperation(node.data);
 }}
 
 // Keep it simple
-✅ getSearchValueCallback={(node) => {
+✅ getSearchValueCallback={({ node }) => {
   return `${node.data.name} ${node.data.email}`;
 }}
 

@@ -22,6 +22,8 @@
 		type SelectionMode,
 		type SelectMode,
 		type TreeMutationOptions,
+		type NodeContext,
+		type SortContext,
 		type TreeChange,
 		type ApplyChangesResult
 	} from '../ltree/types.js';
@@ -33,8 +35,13 @@
 		NodeDragContext,
 		NodeDropContext,
 		ClipboardEventContext,
-		SelectionChangeContext
+		SelectionChangeContext,
+		BeforeCheckboxToggleContext,
+		NodeTransformCallbackContext,
+		NodeTransformCallback,
+		KeydownContext
 	} from '../core/TreeController.svelte.js';
+	import { uiLogger } from '../logger.js';
 	import { createTreeController } from '../core/createTreeController.js';
 	import type { TreeNavigationOverrides } from '../core/navigation.js';
 	import { containerSize as trackContainerSize, environmentState } from '../core/responsive.svelte.js';
@@ -52,37 +59,37 @@
 		parentPathMember?: string | null | undefined;
 		levelMember?: string | null | undefined;
 		isExpandedMember?: string | null | undefined;
-		getIsExpandedCallback?: (node: LTreeNode<T>) => boolean;
+		getIsExpandedCallback?: (ctx: NodeContext<T>) => boolean;
 		isSelectableMember?: string | null | undefined;
-		getIsSelectableCallback?: (node: LTreeNode<T>) => boolean;
+		getIsSelectableCallback?: (ctx: NodeContext<T>) => boolean;
 		isCheckedMember?: string | null | undefined;
-		getIsCheckedCallback?: (node: LTreeNode<T>) => boolean;
+		getIsCheckedCallback?: (ctx: NodeContext<T>) => boolean;
 		isDraggableMember?: string | null | undefined;
-		getIsDraggableCallback?: (node: LTreeNode<T>) => boolean;
+		getIsDraggableCallback?: (ctx: NodeContext<T>) => boolean;
 		isDropAllowedMember?: string | null | undefined;
-		getIsDropAllowedCallback?: (node: LTreeNode<T>) => boolean;
+		getIsDropAllowedCallback?: (ctx: NodeContext<T>) => boolean;
 		allowedDropPositionsMember?: string | null | undefined;
-		getAllowedDropPositionsCallback?: (node: LTreeNode<T>) => DropPosition[] | null | undefined;
+		getAllowedDropPositionsCallback?: (ctx: NodeContext<T>) => DropPosition[] | null | undefined;
 		isCollapsibleMember?: string | null | undefined;
-		getIsCollapsibleCallback?: (node: LTreeNode<T>) => boolean;
+		getIsCollapsibleCallback?: (ctx: NodeContext<T>) => boolean;
 		hasChildrenMember?: string | null | undefined;
 		isSorted?: boolean | null | undefined;
 
 		displayValueMember?: string | null | undefined;
-		getDisplayValueCallback?: (node: LTreeNode<T>) => string;
+		getDisplayValueCallback?: (ctx: NodeContext<T>) => string;
 		/** Text shown for a node with no resolvable display value (no displayValueMember /
 		 *  getDisplayValueCallback match). Default '[N/A]'. Also used by the touch-drag ghost. */
 		displayValueFallback?: string;
 
 		searchValueMember?: string | null | undefined;
-		getSearchValueCallback?: (node: LTreeNode<T>) => string;
+		getSearchValueCallback?: (ctx: NodeContext<T>) => string;
 
 		// For sibling ordering in drag-drop (before/after positioning)
 		orderMember?: string | null | undefined;
 
 		treeId?: string | null | undefined;
 		treePathSeparator?: string | null | undefined;
-		sortCallback?: (items: LTreeNode<T>[]) => LTreeNode<T>[];
+		sortCallback?: (ctx: SortContext<T>) => LTreeNode<T>[];
 
 		// DATA
 		data: T[];
@@ -132,11 +139,7 @@
 		 */
 		cascadeCheckPolicy?: CascadeCheckPolicy | null | undefined;
 		shouldClickToggleCheckbox?: boolean | null | undefined;
-		beforeCheckboxToggleCallback?: (
-			node: LTreeNode<T>,
-			checked: boolean,
-			affectedPaths: string[]
-		) => boolean | string[] | void;
+		beforeCheckboxToggleCallback?: (ctx: BeforeCheckboxToggleContext<T>) => string[] | false | void;
 		rangeSelectionMode?: 'visual' | 'logical';
 		initializeIndexCallback?: () => Index;
 		searchText?: string | null | undefined;
@@ -182,7 +185,7 @@
 		/**
 		 * Keep the `dropPlaceholder` (or default "Drop here") visible whenever the tree
 		 * is empty — not just mid-drag. Also makes the empty drop zone grab keyboard
-		 * focus on hover, so a clipboard paste (Ctrl/Cmd+V routed through `onTreeKeydown`)
+		 * focus on hover, so a clipboard paste (Ctrl/Cmd+V routed through `beforeKeydownCallback`)
 		 * lands on this tree without needing a node to click first. Default: false.
 		 */
 		shouldShowDropPlaceholderWhenEmpty?: boolean;
@@ -200,7 +203,7 @@
 		shouldAutoHandlePaste?: boolean; // Auto-handle paste operations (default: true). Set to false for database-first workflow.
 		/** Opt into built-in keyboard shortcuts (default false): Ctrl/Cmd+C/X/V (copy/cut/paste),
 		 *  Delete (remove selection), Escape (cancel cut), plus classic CUA aliases Ctrl+Insert
-		 *  (copy) / Shift+Insert (paste) / Shift+Delete (cut). A consumer `onTreeKeydown` still runs
+		 *  (copy) / Shift+Insert (paste) / Shift+Delete (cut). A consumer `beforeKeydownCallback` still runs
 		 *  first and can override or suppress any of these. Paste targets the focused node (root
 		 *  when none) and uses `nodeInputTransformationCallback`. */
 		shouldHandleKeyboardShortcuts?: boolean;
@@ -236,7 +239,7 @@
 		/** Fire-and-forget: the tree's own border-box changed (immediate on mount, then on
 		 *  resize, throttled ~30ms). `deviceClass` is the capability+size class of the WINDOW
 		 *  (`classifyDevice`), handy alongside the box for AB10-style adaptation. */
-		onContainerResize?: (size: ElementSize, deviceClass: DeviceClass) => void;
+		onContainerResize?: (ctx: { size: ElementSize; deviceClass: DeviceClass }) => void;
 		/** Bindable: the tree's live border-box size in CSS px. Read it in your own `$derived`
 		 *  to switch settings by space. Updated from the same signal as `onContainerResize`. */
 		containerSize?: ElementSize;
@@ -283,17 +286,11 @@
 		) => string[] | false | void;
 		/** OUTPUT transform (egress) — per node as it LEAVES the source: Ctrl+C/X, or the capture
 		 *  side of a copy-drop. Strip transient/sensitive fields. Fires for copy, never a move. */
-		nodeOutputTransformationCallback?: (
-			data: T,
-			ctx: import('../core/TreeController.svelte').NodeTransformContext<T>
-		) => T;
+		nodeOutputTransformationCallback?: (ctx: NodeTransformCallbackContext<T>) => T;
 		/** INPUT transform (ingress) — per node as a DUPLICATE LANDS in a destination: Ctrl+V
 		 *  paste, or the insert side of a copy-drop (same- or cross-tree). Return new data
 		 *  (fresh ids/names) or null to skip the node. Fires for copy, never a move. */
-		nodeInputTransformationCallback?: (
-			data: T,
-			ctx: import('../core/TreeController.svelte').NodeTransformContext<T>
-		) => T | null;
+		nodeInputTransformationCallback?: NodeTransformCallback<T>;
 
 		// DATA PROVIDERS (get*Callback = returns data the system uses)
 		getContextMenuItemsCallback?: (
@@ -315,9 +312,9 @@
 		 *  the checkbox is the default signal. */
 		checkedNodeClass?: string | null | undefined;
 		/** Data-driven per-row class hook. Return extra class(es) for `.stv__node`. */
-		nodeClass?: (node: LTreeNode<T>) => string | null | undefined;
+		getNodeClassCallback?: (ctx: NodeContext<T>) => string | null | undefined;
 		/** Data-driven per-row class hook. Return extra class(es) for `.stv__node-content`. */
-		nodeContentClass?: (node: LTreeNode<T>) => string | null | undefined;
+		getNodeContentClassCallback?: (ctx: NodeContext<T>) => string | null | undefined;
 		dragOverNodeClass?: string | null | undefined;
 		/** Class for the dragged source row (the dimmed node left in place while its ghost
 		 *  follows the pointer). When set, REPLACES the built-in `.stv__node-content--dragged`
@@ -347,7 +344,7 @@
 		 *  snippet (preferred) or `getNodeTooltipCallback`; no content ⇒ no tooltip. */
 		shouldShowNodeTooltips?: boolean;
 		/** Plain-text tooltip for a node (fallback when no `tooltip` snippet is given). */
-		getNodeTooltipCallback?: (node: LTreeNode<T>) => string | null | undefined;
+		getNodeTooltipCallback?: (ctx: NodeContext<T>) => string | null | undefined;
 		/** Tooltip placement relative to the row. Default `'top-start'`. */
 		tooltipPlacement?: TooltipPlacement;
 		/** Show/hide delay(s), ms. Default `{ show: 400, hide: 100 }`. */
@@ -360,11 +357,11 @@
 		 *  element on every node (default `<i class="stv__node-icon {value}">`, FA-friendly). */
 		iconMember?: string | null | undefined;
 		/** Per-node icon VALUE from a callback (overrides iconMember). */
-		getIconCallback?: (node: LTreeNode<T>) => string | null | undefined;
+		getIconCallback?: (ctx: NodeContext<T>) => string | null | undefined;
 		/** Per-node icon COLOR from a data key (applied to the icon element). */
 		iconColorMember?: string | null | undefined;
 		/** Per-node icon COLOR from a callback (overrides iconColorMember). */
-		getIconColorCallback?: (node: LTreeNode<T>) => string | null | undefined;
+		getIconColorCallback?: (ctx: NodeContext<T>) => string | null | undefined;
 		/** Reserve the icon column so labels align even on rows with no icon. Default `false`. */
 		shouldAlignNodeIcons?: boolean;
 		scrollHighlightTimeout?: number | null | undefined;
@@ -380,18 +377,14 @@
 		 *  The onNodeDragDenied / onNodeDropDenied events fire regardless. */
 		shouldIndicateUndraggable?: boolean;
 
-		/** Custom keydown handler. Return true to prevent default tree keyboard handling
-		 *  (including the built-in shortcuts). Gets a context object mirroring the other
+		/** Keydown interceptor (SYNCHRONOUS — a key's default can only be prevented in the
+		 *  handler). Return `false` to suppress the tree's keyboard handling (navigation and the
+		 *  built-in shortcuts) and preventDefault the key; return nothing to continue. Gets a context object mirroring the other
 		 *  callback families: the resolved `focusedNode` (single) and `selectedNodes`
 		 *  (multi) so you don't reach through the controller for the common case; `controller`
 		 *  remains for imperative actions (addNode, copyNodes, …). A keydown is a tree-level
 		 *  event, so there's no single "the node" — that's why it carries both selections. */
-		onTreeKeydown?: (ctx: {
-			event: KeyboardEvent;
-			focusedNode: LTreeNode<T> | null;
-			selectedNodes: LTreeNode<T>[];
-			controller: TreeController<T>;
-		}) => boolean | void;
+		beforeKeydownCallback?: (ctx: KeydownContext<T>) => false | void;
 
 		/** Override individual navigation methods (e.g. for custom ArrowDown/Up behavior) */
 		navigationOverrides?: TreeNavigationOverrides<T>;
@@ -553,8 +546,8 @@
 		selectedNodeClass,
 		focusedNodeClass,
 		checkedNodeClass,
-		nodeClass,
-		nodeContentClass,
+		getNodeClassCallback,
+		getNodeContentClassCallback,
 		dragOverNodeClass,
 		draggedNodeClass,
 		scrollHighlightTimeout = 4000,
@@ -563,7 +556,7 @@
 		contextMenuYOffset = 0,
 		touchDragDelay = 300,
 		shouldIndicateUndraggable = true,
-		onTreeKeydown,
+		beforeKeydownCallback,
 		navigationOverrides
 	}: Props = $props();
 
@@ -672,8 +665,8 @@
 		selectedNodeClass,
 		focusedNodeClass,
 		checkedNodeClass,
-		nodeClass,
-		nodeContentClass,
+		getNodeClassCallback,
+		getNodeContentClassCallback,
 		dragOverNodeClass,
 		draggedNodeClass,
 		expandIconClass,
@@ -765,7 +758,7 @@
 		const snapshot: ElementSize = { width: w, height: h };
 		_lastEmittedBox = snapshot;
 		containerSize = snapshot;
-		onContainerResize?.(snapshot, classifyDevice(getEnvironment()));
+		onContainerResize?.({ size: snapshot, deviceClass: classifyDevice(getEnvironment()) });
 	});
 
 	// Feed the shared NodeRenderContext env: reactive device class + container box.
@@ -969,10 +962,10 @@
 		controller.selectedNodeClass = selectedNodeClass;
 	});
 	$effect(() => {
-		controller.nodeClass = nodeClass;
+		controller.getNodeClassCallback = getNodeClassCallback;
 	});
 	$effect(() => {
-		controller.nodeContentClass = nodeContentClass;
+		controller.getNodeContentClassCallback = getNodeContentClassCallback;
 	});
 	$effect(() => {
 		controller.focusedNodeClass = focusedNodeClass;
@@ -1152,7 +1145,7 @@
 	);
 
 	// Focus-on-hover for the permanent empty drop zone: gives the tabbable container
-	// keyboard focus so a Ctrl/Cmd+V (routed through onTreeKeydown) pastes into this
+	// keyboard focus so a Ctrl/Cmd+V (routed through beforeKeydownCallback) pastes into this
 	// tree without a node to click first. No-op unless the permanent placeholder is on.
 	function focusEmptyDropZone() {
 		if (shouldShowDropPlaceholderWhenEmpty) treeContainerRef?.focus();
@@ -1235,10 +1228,7 @@
 		paths: string[],
 		targetPath: string,
 		position: 'before' | 'after' | 'child',
-		transform?: (
-			data: T,
-			ctx: import('../core/TreeController.svelte').NodeTransformContext<T>
-		) => T | null
+		transform?: NodeTransformCallback<T> | null
 	): { success: boolean; copiedNodes: LTreeNode<T>[]; skipped: number; error?: string } {
 		return controller.duplicateNodes(paths, targetPath, position, transform);
 	}
@@ -1284,7 +1274,7 @@
 	export function copyNodeWithDescendants(
 		sourceNode: LTreeNode<T>,
 		targetParentPath: string,
-		transformData: (data: T, node: LTreeNode<T>) => T | null,
+		transformData: (ctx: { data: T; node: LTreeNode<T> }) => T | null,
 		siblingPath?: string,
 		position?: 'before' | 'after'
 	): { success: boolean; rootNode?: LTreeNode<T>; count: number; error?: string } {
@@ -1499,8 +1489,8 @@
 				| 'getIconColorCallback'
 				| 'shouldAlignNodeIcons'
 				| 'selectedNodeClass'
-				| 'nodeClass'
-				| 'nodeContentClass'
+				| 'getNodeClassCallback'
+				| 'getNodeContentClassCallback'
 				| 'focusedNodeClass'
 				| 'checkedNodeClass'
 				| 'dragOverNodeClass'
@@ -1647,8 +1637,8 @@
 			shouldAlignNodeIcons = updates.shouldAlignNodeIcons;
 		if (updates.selectedNodeClass !== undefined)
 			selectedNodeClass = updates.selectedNodeClass;
-		if (updates.nodeClass !== undefined) nodeClass = updates.nodeClass;
-		if (updates.nodeContentClass !== undefined) nodeContentClass = updates.nodeContentClass;
+		if (updates.getNodeClassCallback !== undefined) getNodeClassCallback = updates.getNodeClassCallback;
+		if (updates.getNodeContentClassCallback !== undefined) getNodeContentClassCallback = updates.getNodeContentClassCallback;
 		if (updates.focusedNodeClass !== undefined) focusedNodeClass = updates.focusedNodeClass;
 		if (updates.checkedNodeClass !== undefined) checkedNodeClass = updates.checkedNodeClass;
 		if (updates.dragOverNodeClass !== undefined) dragOverNodeClass = updates.dragOverNodeClass;
@@ -1675,18 +1665,19 @@
 
 		// Call custom handler first — return true to suppress default handling. Resolve the
 		// focus + selection sets up front so the consumer gets nodes, not raw paths.
-		if (onTreeKeydown) {
+		if (beforeKeydownCallback) {
 			const selectedNodes = [...controller.selectedPaths]
 				.map((p) => controller.getNodeByPath(p))
 				.filter((n): n is LTreeNode<T> => n !== null);
-			if (
-				onTreeKeydown({
-					event,
-					focusedNode: controller.focusedNode ?? null,
-					selectedNodes,
-					controller
-				}) === true
-			) {
+			const result: unknown = beforeKeydownCallback({
+				event,
+				focusedNode: controller.focusedNode ?? null,
+				selectedNodes,
+				controller
+			});
+			if (result instanceof Promise) {
+				uiLogger.warn('beforeKeydownCallback is synchronous — a returned Promise is ignored');
+			} else if (result === false) {
 				event.preventDefault();
 				return;
 			}

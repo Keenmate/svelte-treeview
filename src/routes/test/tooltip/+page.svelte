@@ -12,12 +12,12 @@
 		{ id: 2, path: '1.1', name: 'Apple', desc: 'Crisp orchard fruit' },
 		{ id: 3, path: '1.2', name: 'Plain', desc: '' }
 	];
-	function sortByPath(items: LTreeNode<Item>[]) {
+	function sortByPath({ items }: { items: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => a.path.localeCompare(b.path));
 	}
 
 	let enabled = $state(true);
-	const tip = (node: LTreeNode<Item>) => node.data?.desc ?? null;
+	const tip = ({ node }: { node: LTreeNode<Item> }) => node.data?.desc ?? null;
 </script>
 
 <h1>tooltip test</h1>

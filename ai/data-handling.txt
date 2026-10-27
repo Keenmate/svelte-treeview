@@ -81,15 +81,15 @@ MEMBER CALLBACKS
 Each *Member has a matching get*Callback that overrides it (callback wins):
 | Callback | Signature |
 |----------|-----------|
-| getDisplayValueCallback | (node) => string |
-| getSearchValueCallback | (node) => string |
-| getIsExpandedCallback | (node) => boolean |
-| getIsCheckedCallback | (node) => boolean |
-| getIsSelectableCallback | (node) => boolean |
-| getIsDraggableCallback | (node) => boolean |
-| getIsDropAllowedCallback | (node) => boolean |
-| getIsCollapsibleCallback | (node) => boolean |
-| getAllowedDropPositionsCallback | (node) => DropPosition[] \| null |
+| getDisplayValueCallback | ({ node }) => string |
+| getSearchValueCallback | ({ node }) => string |
+| getIsExpandedCallback | ({ node }) => boolean |
+| getIsCheckedCallback | ({ node }) => boolean |
+| getIsSelectableCallback | ({ node }) => boolean |
+| getIsDraggableCallback | ({ node }) => boolean |
+| getIsDropAllowedCallback | ({ node }) => boolean |
+| getIsCollapsibleCallback | ({ node }) => boolean |
+| getAllowedDropPositionsCallback | ({ node }) => DropPosition[] \| null |
 
 CUSTOM PATH SEPARATOR
 ---------------------
@@ -117,7 +117,7 @@ For computed display values:
 
 <Tree
   {data}
-  getDisplayValueCallback={(node) => {
+  getDisplayValueCallback={({ node }) => {
     const item = node.data;
     return `${item.name} (${item.count} items)`;
   }}
@@ -125,7 +125,7 @@ For computed display values:
 
 Or combining multiple properties:
 
-getDisplayValueCallback={(node) => {
+getDisplayValueCallback={({ node }) => {
   return `${node.data.firstName} ${node.data.lastName}`;
 }}
 
@@ -138,7 +138,7 @@ What gets indexed for search:
 
 // Complex: use callback
 <Tree
-  getSearchValueCallback={(node) => {
+  getSearchValueCallback={({ node }) => {
     const item = node.data;
     return `${item.name} ${item.description} ${item.tags.join(' ')}`;
   }}
@@ -201,7 +201,7 @@ const data = [
 
 // Using callback
 <Tree
-  getAllowedDropPositionsCallback={(node) => {
+  getAllowedDropPositionsCallback={({ node }) => {
     if (node.data.type === 'file') return ['before', 'after'];
     if (node.data.type === 'trash') return ['child'];
     return undefined;  // all positions
@@ -326,10 +326,10 @@ const employees: Employee[] = [
   pathMember="orgPath"
   displayValueMember="fullName"
   searchValueMember="email"
-  getDisplayValueCallback={(node) =>
+  getDisplayValueCallback={({ node }) =>
     `${node.data.fullName} - ${node.data.title}`
   }
-  getSearchValueCallback={(node) =>
+  getSearchValueCallback={({ node }) =>
     `${node.data.fullName} ${node.data.email} ${node.data.department}`
   }
 />
