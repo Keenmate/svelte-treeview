@@ -9,6 +9,7 @@
 		type InsertBranchResult,
 		type DeleteBranchResult,
 		type ContextMenuEntry,
+		type ContextMenuContext,
 		type DropPosition,
 		type DragDropMode,
 		type DropOperation,
@@ -293,11 +294,7 @@
 		nodeInputTransformationCallback?: NodeTransformCallback<T>;
 
 		// DATA PROVIDERS (get*Callback = returns data the system uses)
-		getContextMenuItemsCallback?: (
-			node: LTreeNode<T>,
-			closeMenuCallback: () => void,
-			selectedNodes?: LTreeNode<T>[]
-		) => ContextMenuEntry[];
+		getContextMenuItemsCallback?: (ctx: ContextMenuContext<T>) => ContextMenuEntry<T>[];
 
 		// VISUALS
 		/** Per-instance theme override. Forwarded to the root `.stv__container`
@@ -1803,6 +1800,16 @@
 		return null;
 	}
 
+	/** The ctx handed to getContextMenuItemsCallback and every item's onClick. */
+	function contextMenuContext(node: LTreeNode<T>): ContextMenuContext<T> {
+		return {
+			node,
+			selectedNodes: controller.getSelectedNodes(),
+			checkedNodes: controller.getCheckedNodes(),
+			closeMenu: controller.closeContextMenu.bind(controller)
+		};
+	}
+
 	async function handleContextMenuKeydown(event: KeyboardEvent) {
 		if (
 			!controller.contextMenuVisible ||
@@ -1816,16 +1823,13 @@
 			return;
 		}
 
-		const entries = getContextMenuItemsCallback(
-			controller.contextMenuNode,
-			controller.closeContextMenu.bind(controller),
-			controller.getCheckedNodes()
-		);
+		const menuCtx = contextMenuContext(controller.contextMenuNode);
+		const entries = getContextMenuItemsCallback(menuCtx);
 		const match = findEntryByShortcut(entries, event);
 		if (match) {
 			event.preventDefault();
 			try {
-				await match.onclick?.();
+				await match.onClick?.(menuCtx);
 			} catch (error) {
 				console.error('Context menu shortcut error:', error);
 			}
@@ -2010,14 +2014,11 @@
 	{#if controller.contextMenuVisible && controller.contextMenuNode}
 		<div bind:this={contextMenuEl} class="stv__context-menu" role="menu">
 			{#if getContextMenuItemsCallback}
-				{@const menuEntries = getContextMenuItemsCallback(
-					controller.contextMenuNode,
-					controller.closeContextMenu.bind(controller),
-					controller.getCheckedNodes()
-				)}
+				{@const menuCtx = contextMenuContext(controller.contextMenuNode)}
+				{@const menuEntries = getContextMenuItemsCallback(menuCtx)}
 				<ContextMenuLevel
 					entries={menuEntries}
-					contextNode={controller.contextMenuNode}
+					{menuCtx}
 					closeContextMenu={controller.closeContextMenu.bind(controller)}
 				/>
 			{:else if contextMenu}

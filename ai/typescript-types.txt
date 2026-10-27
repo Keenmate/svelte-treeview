@@ -52,8 +52,9 @@ import type {
 
   // Context menu (unified types)
   ContextMenuEntry,    // ContextMenuItem | ContextMenuDivider
-  ContextMenuItem,     // { label, icon?, shortcut?, onclick?, children?, ... }
-  ContextMenuDivider,  // { divider: true, label?: string }
+  ContextMenuItem,     // { text, icon?, shortcut?, onClick?, cssClass?, isDanger?, isToggled?, children?, ... }
+  ContextMenuDivider,  // { divider: true, text?: string }
+  ContextMenuContext,  // { node, selectedNodes, checkedNodes, closeMenu }
 
   // Event / callback context types (single-object args)
   NodeRef,                 // { path, node, parent, siblings }
@@ -139,35 +140,43 @@ function getAllowedPositions(node: LTreeNode<MyItem>): DropPosition[] | null {
 
 CONTEXT MENU TYPES
 ------------------
-interface ContextMenuItem {
+interface ContextMenuContext<T> {
+  node: LTreeNode<T>;          // the node the menu opened on
+  selectedNodes: LTreeNode<T>[]; // click selection when the menu opened
+  checkedNodes: LTreeNode<T>[];  // checkbox set when the menu opened
+  closeMenu: () => void;
+}
+
+interface ContextMenuItem<T = any> {
   id?: string;
-  label: string;              // was "title" in old API
+  text: string;               // rc16 (was "label"; core ActionItem name)
+  tooltip?: string;
   icon?: string;
   shortcut?: string;          // e.g. "Ctrl+C", "F2"
   isDisabled?: boolean;
   isVisible?: boolean;
-  className?: string;         // e.g. "danger"
-  onclick?: () => void | Promise<void>;  // was "callback" in old API
+  isDanger?: boolean;         // destructive styling (.stv__context-menu-item--danger)
+  isToggled?: boolean;        // toggle item: role=menuitemcheckbox + aria-checked
+  cssClass?: string;          // extra classes (rc16, was "className")
+  onClick?: (ctx: ContextMenuContext<T>) => void | Promise<void>;  // rc16, was "onclick"
   shouldCloseOnClick?: boolean;   // default true; false keeps menu open (handler closes via close())
   children?: ContextMenuEntry[];  // submenu items
 }
 
 interface ContextMenuDivider {
   divider: true;              // was "isDivider" flag in old API
-  label?: string;             // named divider: ──── [label] ────
+  text?: string;              // named divider: ──── [text] ────
 }
 
 type ContextMenuEntry = ContextMenuItem | ContextMenuDivider;
 
 Usage:
 function createMenu(
-  node: LTreeNode<MyItem>,
-  close: () => void
-): ContextMenuEntry[] {
+  { node, closeMenu: close }: { node: LTreeNode<MyItem>; closeMenu: () => void }): ContextMenuEntry[] {
   return [
-    { label: 'Open', icon: '📂', shortcut: 'Enter', onclick: () => openItem(node.data) },
-    { divider: true, label: 'Edit' },
-    { label: 'Delete', icon: '🗑️', className: 'danger', onclick: () => deleteItem(node.data) }
+    { text: 'Open', icon: '📂', shortcut: 'Enter', onClick: () => openItem(node.data) },
+    { divider: true, text: 'Edit' },
+    { text: 'Delete', icon: '🗑️', isDanger: true, onClick: () => deleteItem(node.data) }
   ];
 }
 
@@ -287,13 +296,8 @@ getDisplayValueCallback?: (ctx: NodeContext<T>) => string;
 getSearchValueCallback?: (ctx: NodeContext<T>) => string;
 getAllowedDropPositionsCallback?: (ctx: NodeContext<T>) => DropPosition[] | null | undefined;
 
-// Context menu (label/onclick/divider API). closeMenuCallback closes the menu;
-// selectedNodes is the current selection when the menu opened.
-getContextMenuItemsCallback?: (
-  node: LTreeNode<T>,
-  closeMenuCallback: () => void,
-  selectedNodes?: LTreeNode<T>[]
-) => ContextMenuEntry[];
+// Context menu (text/onClick/divider API — core ActionItem names). ctx.closeMenu closes the menu.
+getContextMenuItemsCallback?: (ctx: ContextMenuContext<T>) => ContextMenuEntry<T>[];
 
 // Sort
 sortCallback?: (ctx: SortContext<T>) => LTreeNode<T>[];

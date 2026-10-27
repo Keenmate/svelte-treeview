@@ -37,11 +37,13 @@
 	cursor: not-allowed;
 }
 
-.stv__context-menu-item.danger {
+.stv__context-menu-item.danger,
+.stv__context-menu-item--danger {
 	color: var(--stv-danger);
 }
 
-.stv__context-menu-item.danger:hover {
+.stv__context-menu-item.danger:hover,
+.stv__context-menu-item--danger:hover {
 	background-color: color-mix(in srgb, var(--stv-danger) 10%, transparent);
 }
 

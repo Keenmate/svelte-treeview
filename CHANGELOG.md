@@ -15,6 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BREAKING: context-menu items use `@keenmate/web-components-core`'s `ActionItem` / `MenuItem`
+  field names** — `label` → `text`, `onclick` → `onClick`, `className` → `cssClass`; dividers
+  `{ divider: true, label }` → `{ divider: true, text }`. Same on the snippet components
+  (`<ContextMenuItemC text onClick cssClass>`, `<ContextMenuDividerC text>`). New, from the core
+  model: `isDanger` (`.stv__context-menu-item--danger`; the old `danger` class still styles),
+  `isToggled` (renders `role="menuitemcheckbox"` + `aria-checked`), `tooltip`.
+  `getContextMenuItemsCallback(node, closeMenuCallback, selectedNodes)` →
+  `getContextMenuItemsCallback(ctx)` with `ContextMenuContext<T> = { node, selectedNodes,
+  checkedNodes, closeMenu }` — `selectedNodes` is now the click selection (the third argument used
+  to be the checkbox set; that is `checkedNodes`). Every item's `onClick` receives the same ctx.
+  Affects `@keenmate/svelte-treeview-canvas`, which shares these types.
 - **BREAKING: every callback takes ONE ctx object (no positional arguments)** — same shapes as
   `@keenmate/web-treeview`, so fields can be added later without breaking anyone. Per-node
   callbacks get `NodeContext<T> = { node }`: `getIsExpandedCallback`, `getIsSelectableCallback`,

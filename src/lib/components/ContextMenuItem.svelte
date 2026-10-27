@@ -4,23 +4,29 @@
 
 	interface Props {
 		id?: string;
-		label: string;
+		text: string;
 		icon?: string;
 		shortcut?: string;
 		isDisabled?: boolean;
-		className?: string;
-		onclick?: () => void | Promise<void>;
+		tooltip?: string;
+		isDanger?: boolean;
+		isToggled?: boolean;
+		cssClass?: string;
+		onClick?: () => void | Promise<void>;
 		children?: Snippet;
 	}
 
 	let {
 		id,
-		label,
+		text,
+		tooltip,
+		isDanger = false,
+		isToggled,
 		icon,
 		shortcut,
 		isDisabled = false,
-		className,
-		onclick,
+		cssClass,
+		onClick,
 		children
 	}: Props = $props();
 
@@ -61,20 +67,26 @@
 	});
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex (role is menuitem | menuitemcheckbox) -->
 <div
 	bind:this={itemEl}
-	class="stv__context-menu-item {className || ''}"
+	class="stv__context-menu-item {cssClass || ''}"
 	class:stv__context-menu-item--disabled={isDisabled}
+	class:stv__context-menu-item--danger={isDanger}
+	class:stv__context-menu-item--toggled={isToggled}
 	class:stv__context-menu-item--has-children={hasChildren}
 	data-context-menu-id={id}
-	role="menuitem"
+	role={isToggled !== undefined ? 'menuitemcheckbox' : 'menuitem'}
+	aria-checked={isToggled !== undefined ? isToggled : undefined}
+	aria-disabled={isDisabled || undefined}
+	title={tooltip}
 	tabindex={isDisabled ? -1 : 0}
 	onmouseenter={() => { if (hasChildren) { cancelHide(); submenuOpen = true; } }}
 	onmouseleave={() => { if (hasChildren) scheduleHide(); }}
 	onclick={async () => {
 		if (!isDisabled && !hasChildren) {
 			try {
-				await onclick?.();
+				await onClick?.();
 			} catch (error) {
 				console.error('Context menu callback error:', error);
 			}
@@ -84,7 +96,7 @@
 		if ((e.key === 'Enter' || e.key === ' ') && !isDisabled && !hasChildren) {
 			e.preventDefault();
 			try {
-				await onclick?.();
+				await onClick?.();
 			} catch (error) {
 				console.error('Context menu callback error:', error);
 			}
@@ -94,7 +106,7 @@
 	{#if icon}
 		<span class="stv__context-menu-icon">{icon}</span>
 	{/if}
-	<span class="stv__context-menu-label">{label}</span>
+	<span class="stv__context-menu-label">{text}</span>
 	{#if shortcut}
 		<span class="stv__context-menu-shortcut">{shortcut}</span>
 	{/if}

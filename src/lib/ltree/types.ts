@@ -112,20 +112,41 @@ export interface ApplyChangesResult {
 
 // ── Context Menu Types ──────────────────────────────────────────────────
 
+// Field names follow @keenmate/web-components-core's ActionItem / MenuItem
+// ({ text, onClick, cssClass, isDanger, isToggled, … }) so a menu definition reads the same
+// in svelte-treeview and the web components.
+
 export interface ContextMenuDivider {
 	divider: true;
-	label?: string; // named divider: ──── [label] ────
+	text?: string; // named divider: ──── [text] ────
 }
 
-export interface ContextMenuItem {
+/** ctx of `getContextMenuItemsCallback` and of every item's `onClick`. */
+export interface ContextMenuContext<T = any> {
+	/** The node the menu opened on. */
+	node: LTreeNode<T>;
+	/** The click selection (selectedPaths) when the menu opened. */
+	selectedNodes: LTreeNode<T>[];
+	/** The checkbox set (checkedPaths) when the menu opened. */
+	checkedNodes: LTreeNode<T>[];
+	/** Close the menu (for items with `shouldCloseOnClick: false`). */
+	closeMenu: () => void;
+}
+
+export interface ContextMenuItem<T = any> {
 	id?: string;
-	label: string;
+	text: string;
 	icon?: string;
+	tooltip?: string;
 	shortcut?: string;
 	isDisabled?: boolean;
 	isVisible?: boolean; // false = skip rendering (callback approach)
-	className?: string; // e.g. "danger" for red styling
-	onclick?: () => void | Promise<void>;
+	/** Destructive styling (`stv__context-menu-item--danger`). */
+	isDanger?: boolean;
+	/** Toggle state — renders as `role="menuitemcheckbox"` + `aria-checked`. */
+	isToggled?: boolean;
+	cssClass?: string; // extra classes on the item
+	onClick?: (ctx: ContextMenuContext<T>) => void | Promise<void>;
 	/**
 	 * Whether activating this item auto-closes the menu. Default `true` —
 	 * selecting an entry dismisses the menu like every native/desktop menu.
@@ -135,10 +156,10 @@ export interface ContextMenuItem {
 	 * getContextMenuItemsCallback (or the snippet's close prop).
 	 */
 	shouldCloseOnClick?: boolean;
-	children?: ContextMenuEntry[]; // nested submenus
+	children?: ContextMenuEntry<T>[]; // nested submenus
 }
 
-export type ContextMenuEntry = ContextMenuItem | ContextMenuDivider;
+export type ContextMenuEntry<T = any> = ContextMenuItem<T> | ContextMenuDivider;
 
 export interface InsertArrayResult<T> {
 	successful: number;

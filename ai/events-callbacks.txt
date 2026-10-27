@@ -213,12 +213,12 @@ CONTEXT MENU CALLBACK
 Generate context menu items dynamically:
 
 <Tree
-  getContextMenuItemsCallback={(node, closeMenuCallback) => {
+  getContextMenuItemsCallback={({ node, closeMenu: closeMenuCallback }) => {
     return [
       {
         icon: '📂',
-        label: 'Open',
-        onclick: () => {
+        text: 'Open',
+        onClick: () => {
           openItem(node.data);
           closeMenuCallback();
         }
@@ -226,10 +226,10 @@ Generate context menu items dynamically:
       { divider: true },
       {
         icon: '🗑️',
-        label: 'Delete',
-        className: 'danger',
+        text: 'Delete',
+        isDanger: true,
         isDisabled: node.data.isProtected,
-        onclick: async () => {
+        onClick: async () => {
           if (await confirmDelete()) {
             deleteItem(node.data);
             closeMenuCallback();
@@ -369,7 +369,7 @@ getAllowedDropPositionsCallback:
 (ctx: NodeContext<T>) => DropPosition[] | null | undefined
 
 getContextMenuItemsCallback:
-(node: LTreeNode<T>, closeMenu: () => void, selectedNodes?: LTreeNode<T>[]) => ContextMenuEntry[]
+(ctx: ContextMenuContext<T> = { node, selectedNodes, checkedNodes, closeMenu }) => ContextMenuEntry[]
 
 sortCallback:
 (nodes: LTreeNode<T>[]) => LTreeNode<T>[]
@@ -382,7 +382,7 @@ ASYNC CALLBACKS
 These callbacks support async/Promise:
 
 - beforeDropCallback (awaited before drop)
-- getContextMenuItemsCallback item onclick handlers (individual actions)
+- getContextMenuItemsCallback item onClick handlers (individual actions)
 
 Example async beforeDropCallback:
 beforeDropCallback={async (drop, drag, pos) => {
@@ -392,8 +392,8 @@ beforeDropCallback={async (drop, drag, pos) => {
 
 Example async context menu:
 {
-  label: 'Save',
-  onclick: async () => {
+  text: 'Save',
+  onClick: async () => {
     await saveToServer();
     closeMenu();
   }
@@ -415,8 +415,8 @@ beforeDropCallback={async (drop, drag, pos) => {
 
 Context menu with error handling:
 {
-  label: 'Delete',
-  onclick: async () => {
+  text: 'Delete',
+  onClick: async () => {
     try {
       await deleteItem(node.data);
       closeMenu();

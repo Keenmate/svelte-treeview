@@ -38,21 +38,21 @@
 	// token set (icons, shortcuts, a named divider, a submenu, a danger item) so
 	// right-clicking any row shows how each theme styles the menu surface, hover,
 	// dividers and the accent/danger text.
-	const contextMenuItems = (node: LTreeNode<Item>): ContextMenuEntry[] => [
-		{ label: 'Open', icon: '📂', shortcut: 'Enter', onclick: () => {} },
-		{ label: 'Rename', icon: '✏️', shortcut: 'F2', onclick: () => {} },
-		{ divider: true, label: 'Move to' },
+	const contextMenuItems = ({ node }: { node: LTreeNode<Item> }): ContextMenuEntry[] => [
+		{ text: 'Open', icon: '📂', shortcut: 'Enter', onClick: () => {} },
+		{ text: 'Rename', icon: '✏️', shortcut: 'F2', onClick: () => {} },
+		{ divider: true, text: 'Move to' },
 		{
-			label: 'Move to…',
+			text: 'Move to…',
 			icon: '➡️',
 			children: [
-				{ label: 'Fruits', icon: '🍎', onclick: () => {} },
-				{ label: 'Vegetables', icon: '🥦', onclick: () => {} }
+				{ text: 'Fruits', icon: '🍎', onClick: () => {} },
+				{ text: 'Vegetables', icon: '🥦', onClick: () => {} }
 			]
 		},
-		{ label: 'Duplicate', icon: '⧉', shortcut: 'Ctrl+D', onclick: () => {} },
+		{ text: 'Duplicate', icon: '⧉', shortcut: 'Ctrl+D', onClick: () => {} },
 		{ divider: true },
-		{ label: 'Delete', icon: '🗑️', shortcut: 'Del', className: 'danger', onclick: () => {} }
+		{ text: 'Delete', icon: '🗑️', shortcut: 'Del', isDanger: true, onClick: () => {} }
 	];
 
 	// Themes — each is a .theme-<key> scope (in its own .css) that sets the full

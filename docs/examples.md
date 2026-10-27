@@ -280,20 +280,20 @@ The tree supports two context-menu styles: **callback-based** (imperative, share
     { path: '2', name: 'Images', type: 'folder', canEdit: false, canDelete: true }
   ];
 
-  function createContextMenu(node, close: () => void): ContextMenuEntry[] {
+  function createContextMenu({ node, closeMenu: close }): ContextMenuEntry[] {
     return [
-      { label: 'Open', icon: '📂', shortcut: 'O',
-        onclick: () => { alert(`Opening ${node.data?.name}`); close(); } },
-      { label: 'Edit', icon: '✏️', shortcut: 'E', isVisible: node.data?.canEdit,
-        onclick: () => { alert(`Editing ${node.data?.name}`); close(); } },
-      { label: 'Export As...', icon: '📤', children: [
-          { label: 'JSON', shortcut: 'J', onclick: () => { exportAs(node, 'json'); close(); } },
-          { label: 'XML', shortcut: 'X', onclick: () => { exportAs(node, 'xml'); close(); } },
+      { text: 'Open', icon: '📂', shortcut: 'O',
+        onClick: () => { alert(`Opening ${node.data?.name}`); close(); } },
+      { text: 'Edit', icon: '✏️', shortcut: 'E', isVisible: node.data?.canEdit,
+        onClick: () => { alert(`Editing ${node.data?.name}`); close(); } },
+      { text: 'Export As...', icon: '📤', children: [
+          { text: 'JSON', shortcut: 'J', onClick: () => { exportAs(node, 'json'); close(); } },
+          { text: 'XML', shortcut: 'X', onClick: () => { exportAs(node, 'xml'); close(); } },
       ]},
-      { divider: true, label: 'Danger zone' },
-      { label: 'Delete', icon: '🗑️', className: 'danger',
+      { divider: true, text: 'Danger zone' },
+      { text: 'Delete', icon: '🗑️', isDanger: true,
         isDisabled: !node.data?.canDelete,
-        onclick: () => { confirm(`Delete?`) && alert('Deleted!'); close(); } },
+        onClick: () => { confirm(`Delete?`) && alert('Deleted!'); close(); } },
     ];
   }
 </script>
@@ -315,20 +315,20 @@ The tree supports two context-menu styles: **callback-based** (imperative, share
 
 <Tree {data} idMember="path" pathMember="path">
   {#snippet contextMenu(node, close)}
-    <ContextMenuItemC label="Copy" icon="📋" shortcut="C"
-      onclick={() => { copy(node); close(); }} />
+    <ContextMenuItemC text="Copy" icon="📋" shortcut="C"
+      onClick={() => { copy(node); close(); }} />
     {#if node.data?.type === 'folder'}
-      <ContextMenuItemC label="Export As..." icon="📤">
-        <ContextMenuItemC label="JSON" shortcut="J"
-          onclick={() => { exportAs(node, 'json'); close(); }} />
-        <ContextMenuItemC label="XML" shortcut="X"
-          onclick={() => { exportAs(node, 'xml'); close(); }} />
+      <ContextMenuItemC text="Export As..." icon="📤">
+        <ContextMenuItemC text="JSON" shortcut="J"
+          onClick={() => { exportAs(node, 'json'); close(); }} />
+        <ContextMenuItemC text="XML" shortcut="X"
+          onClick={() => { exportAs(node, 'xml'); close(); }} />
       </ContextMenuItemC>
     {/if}
-    <ContextMenuDividerC label="Danger zone" />
-    <ContextMenuItemC label="Delete" icon="🗑️" className="danger"
+    <ContextMenuDividerC text="Danger zone" />
+    <ContextMenuItemC text="Delete" icon="🗑️" isDanger
       isDisabled={!!node.data?.readonly}
-      onclick={() => { del(node); close(); }} />
+      onClick={() => { del(node); close(); }} />
   {/snippet}
 </Tree>
 ```
@@ -338,9 +338,9 @@ The tree supports two context-menu styles: **callback-based** (imperative, share
 - **Unified types** — `ContextMenuItem`, `ContextMenuDivider`, `ContextMenuEntry` shared across svelte-treeview and canvas-tree
 - **Keyboard shortcuts** — `shortcut` field renders a hint and activates on keypress when menu is open (supports `Ctrl+`, `Shift+`, `Alt+` modifiers)
 - **Submenus** — `children` array opens nested menus on hover
-- **Named dividers** — `{ divider: true, label: 'Section' }` renders as `---- Section ----`
+- **Named dividers** — `{ divider: true, text: 'Section' }` renders as `---- Section ----`
 - **Visibility control** — `isVisible: false` hides items (callback approach); snippet approach uses `{#if}`
-- **Flexible styling** — `className="danger"` or any custom CSS class
+- **Flexible styling** — `isDanger` or any custom CSS class via `cssClass`
 - **Dynamic menus** — generate items based on node properties
 - **Icons and disabled states** — visual organization and context-sensitive availability
 - **Position offset** — `contextMenuXOffset` / `contextMenuYOffset` for cursor clearance

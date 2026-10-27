@@ -8,24 +8,29 @@ CRITICAL: Two approaches for context menus
 
 TYPES (v5.0.0-rc03+)
 ---------------------
-import type { ContextMenuEntry, ContextMenuItem, ContextMenuDivider } from '@keenmate/svelte-treeview';
+import type { ContextMenuEntry, ContextMenuItem, ContextMenuDivider, ContextMenuContext } from '@keenmate/svelte-treeview';
+
+// rc16: field names follow @keenmate/web-components-core's ActionItem (text / onClick / cssClass)
 
 interface ContextMenuItem {
   id?: string;
-  label: string;              // Menu item text (was "title" in old API)
+  text: string;               // Menu item text (was "label")
+  tooltip?: string;
   icon?: string;              // Optional icon (emoji, text, or Font Awesome class)
   shortcut?: string;          // Keyboard shortcut hint (e.g. "Ctrl+C", "F2")
   isDisabled?: boolean;       // Disable the item
   isVisible?: boolean;        // Hide the item (default true)
-  className?: string;         // Custom CSS class (e.g. "danger")
-  onclick?: () => void | Promise<void>;  // Action (was "callback" in old API)
+  isDanger?: boolean;         // Destructive styling
+  isToggled?: boolean;        // Toggle item (role=menuitemcheckbox, aria-checked)
+  cssClass?: string;          // Extra CSS classes (was "className")
+  onClick?: (ctx: ContextMenuContext<T>) => void | Promise<void>;  // Action (was "onclick")
   shouldCloseOnClick?: boolean;   // Default true; false keeps menu open (handler closes via close())
   children?: ContextMenuEntry[];  // Submenu items
 }
 
 interface ContextMenuDivider {
   divider: true;              // Discriminator (was "isDivider" in old API)
-  label?: string;             // Named divider: ──── [label] ────
+  text?: string;              // Named divider: ──── [text] ────
 }
 
 type ContextMenuEntry = ContextMenuItem | ContextMenuDivider;
@@ -36,45 +41,42 @@ CALLBACK-BASED CONTEXT MENU
   import type { ContextMenuEntry, LTreeNode } from '@keenmate/svelte-treeview';
 
   function createContextMenu(
-    node: LTreeNode<MyItem>,
-    closeMenuCallback: () => void,
-    selectedNodes?: LTreeNode<MyItem>[]
-  ): ContextMenuEntry[] {
+    { node, closeMenu: closeMenuCallback, selectedNodes }: { node: LTreeNode<MyItem>; closeMenu: () => void; selectedNodes: LTreeNode<MyItem>[] }): ContextMenuEntry[] {
     return [
       // Basic item with icon and shortcut
       {
-        label: 'Open',
+        text: 'Open',
         icon: '📂',
         shortcut: 'Enter',
-        onclick: () => openItem(node.data)
+        onClick: () => openItem(node.data)
       },
       // Named divider
-      { divider: true, label: 'Edit' },
+      { divider: true, text: 'Edit' },
       // Submenu
       {
-        label: 'Move to...',
+        text: 'Move to...',
         icon: '📁',
         children: [
-          { label: 'Inbox', onclick: () => moveTo(node, 'inbox') },
-          { label: 'Archive', onclick: () => moveTo(node, 'archive') },
+          { text: 'Inbox', onClick: () => moveTo(node, 'inbox') },
+          { text: 'Archive', onClick: () => moveTo(node, 'archive') },
         ]
       },
       // Divider
       { divider: true },
       // Danger item
       {
-        label: 'Delete',
+        text: 'Delete',
         icon: '🗑️',
         shortcut: 'Del',
-        className: 'danger',
+        isDanger: true,
         isDisabled: node.data?.isProtected,
-        onclick: () => deleteItem(node.data)
+        onClick: () => deleteItem(node.data)
       },
       // Selection-aware item (rc03+)
       ...(selectedNodes && selectedNodes.length > 1 ? [{
-        label: `Export ${selectedNodes.length} items`,
+        text: `Export ${selectedNodes.length} items`,
         icon: '📤',
-        onclick: () => exportItems(selectedNodes)
+        onClick: () => exportItems(selectedNodes)
       }] : [])
     ];
   }
@@ -94,19 +96,19 @@ SNIPPET-BASED CONTEXT MENU
 <Tree {data}>
   {#snippet contextMenu(node, closeMenu)}
     <ContextMenuItemC
-      label="Open"
+      text="Open"
       icon="📂"
       shortcut="Enter"
-      onclick={() => { openItem(node.data); closeMenu(); }}
+      onClick={() => { openItem(node.data); closeMenu(); }}
     />
-    <ContextMenuDividerC label="Edit" />
-    <ContextMenuItemC label="Rename" icon="✏️" shortcut="F2" onclick={() => rename(node)} />
+    <ContextMenuDividerC text="Edit" />
+    <ContextMenuItemC text="Rename" icon="✏️" shortcut="F2" onClick={() => rename(node)} />
     {#if node.data?.canDelete}
       <ContextMenuItemC
-        label="Delete"
+        text="Delete"
         icon="🗑️"
-        className="danger"
-        onclick={() => deleteItem(node.data)}
+        isDanger
+        onClick={() => deleteItem(node.data)}
       />
     {/if}
   {/snippet}
@@ -117,13 +119,13 @@ SUBMENUS
 Nested menus via children array:
 
 {
-  label: 'Sort by',
+  text: 'Sort by',
   children: [
-    { label: 'Name', onclick: () => sortBy('name') },
-    { label: 'Date', onclick: () => sortBy('date') },
+    { text: 'Name', onClick: () => sortBy('name') },
+    { text: 'Date', onClick: () => sortBy('date') },
     { divider: true },
-    { label: 'Ascending', onclick: () => sortDir('asc') },
-    { label: 'Descending', onclick: () => sortDir('desc') },
+    { text: 'Ascending', onClick: () => sortDir('asc') },
+    { text: 'Descending', onClick: () => sortDir('desc') },
   ]
 }
 
@@ -131,25 +133,25 @@ KEYBOARD SHORTCUTS
 ------------------
 When context menu is open, pressing a shortcut key triggers the matching item:
 
-{ label: 'Copy', shortcut: 'Ctrl+C', onclick: () => copyNode() }
-{ label: 'Paste', shortcut: 'Ctrl+V', onclick: () => pasteNode() }
-{ label: 'Rename', shortcut: 'F2', onclick: () => startRename() }
+{ text: 'Copy', shortcut: 'Ctrl+C', onClick: () => copyNode() }
+{ text: 'Paste', shortcut: 'Ctrl+V', onClick: () => pasteNode() }
+{ text: 'Rename', shortcut: 'F2', onClick: () => startRename() }
 
 Supported modifiers: Ctrl, Shift, Alt. Escape closes the menu.
 
 NAMED DIVIDERS
 --------------
-{ divider: true, label: 'Actions' }    // ──── Actions ────
+{ divider: true, text: 'Actions' }    // ──── Actions ────
 { divider: true }                       // ──────────────────
 
 VISIBILITY CONTROL
 ------------------
 Hide items dynamically (callback approach):
-{ label: 'Admin Panel', isVisible: user.isAdmin, onclick: () => openAdmin() }
+{ text: 'Admin Panel', isVisible: user.isAdmin, onClick: () => openAdmin() }
 
 In snippet approach, use {#if}:
 {#if user.isAdmin}
-  <ContextMenuItemC label="Admin Panel" onclick={() => openAdmin()} />
+  <ContextMenuItemC text="Admin Panel" onClick={() => openAdmin()} />
 {/if}
 
 POSITION OFFSET
@@ -184,13 +186,13 @@ CSS classes:
 
 BEST PRACTICES
 --------------
-✅ Use label (not title), onclick (not callback), { divider: true } (not isDivider)
+✅ Use text (not label), onClick (not onclick), cssClass (not className), { divider: true } (not isDivider)
 ✅ Use shortcuts for common actions
 ✅ Group related items with named dividers
-✅ Use className="danger" for destructive actions
+✅ Use isDanger: true for destructive actions
 ✅ Use isVisible to hide items contextually
 ✅ Use selectedNodes parameter for bulk actions
 
 ❌ Don't use old API (title, callback, isDivider) — use new types
 ❌ Don't create menus with too many items (>10)
-❌ Don't forget to handle async onclick errors
+❌ Don't forget to handle async onClick errors

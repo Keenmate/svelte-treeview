@@ -423,29 +423,29 @@ PERMISSION-BASED ACTIONS
     canCreate: true
   };
 
-  function createContextMenu(node, closeMenuCallback) {
+  function createContextMenu({ node, closeMenu: closeMenuCallback }) {
     const items: ContextMenuEntry[] = [];
 
     items.push({
       icon: '📂',
-      label: 'Open',
-      onclick: () => { openItem(node); closeMenuCallback(); }
+      text: 'Open',
+      onClick: () => { openItem(node); closeMenuCallback(); }
     });
 
     if (permissions.canEdit) {
       items.push({
         icon: '✏️',
-        label: 'Edit',
+        text: 'Edit',
         shortcut: 'F2',
-        onclick: () => editItem(node)
+        onClick: () => editItem(node)
       });
     }
 
     if (permissions.canCreate && node.data.type === 'folder') {
       items.push({
         icon: '➕',
-        label: 'New Item',
-        onclick: () => createItem(node)
+        text: 'New Item',
+        onClick: () => createItem(node)
       });
     }
 
@@ -453,9 +453,9 @@ PERMISSION-BASED ACTIONS
       items.push({ divider: true });
       items.push({
         icon: '🗑️',
-        label: 'Delete',
-        className: 'danger',
-        onclick: () => deleteItem(node)
+        text: 'Delete',
+        isDanger: true,
+        onClick: () => deleteItem(node)
       });
     }
 

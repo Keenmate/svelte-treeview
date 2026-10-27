@@ -1,18 +1,18 @@
 <script lang="ts" generics="T">
-	import type { LTreeNode } from '../ltree/ltree-node.svelte.js';
-	import type { ContextMenuEntry, ContextMenuItem } from '../ltree/types.js';
+	import type { ContextMenuEntry, ContextMenuItem, ContextMenuContext } from '../ltree/types.js';
 	import { computePosition, autoUpdate, offset, flip, shift } from '@floating-ui/dom';
 	import Self from './ContextMenuLevel.svelte';
 
 	interface Props {
-		entries: ContextMenuEntry[];
-		contextNode: LTreeNode<T>;
+		entries: ContextMenuEntry<T>[];
+		/** Passed to every item's onClick. */
+		menuCtx: ContextMenuContext<T>;
 		closeContextMenu: () => void;
 		/** Called by a child submenu to keep this level open while the cursor crosses into it. */
 		cancelParentHide?: () => void;
 	}
 
-	let { entries, contextNode, closeContextMenu, cancelParentHide }: Props = $props();
+	let { entries, menuCtx, closeContextMenu, cancelParentHide }: Props = $props();
 
 	let openIdx = $state<number | null>(null);
 	let hideTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -62,26 +62,32 @@
 {#each entries as entry, i (i)}
 	{#if 'divider' in entry && entry.divider}
 		<div class="stv__context-menu-divider" role="separator">
-			{#if entry.label}
-				<span class="stv__context-menu-divider-label">{entry.label}</span>
+			{#if entry.text}
+				<span class="stv__context-menu-divider-label">{entry.text}</span>
 			{/if}
 		</div>
-	{:else if (entry as ContextMenuItem).isVisible !== false}
-		{@const item = entry as ContextMenuItem}
+	{:else if (entry as ContextMenuItem<T>).isVisible !== false}
+		{@const item = entry as ContextMenuItem<T>}
 		{@const hasChildren = !!item.children && item.children.length > 0}
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex (role is menuitem | menuitemcheckbox) -->
 		<div
 			bind:this={itemEls[i]}
-			class="stv__context-menu-item {item.className || ''}"
+			class="stv__context-menu-item {item.cssClass || ''}"
 			class:stv__context-menu-item--disabled={item.isDisabled}
+			class:stv__context-menu-item--danger={item.isDanger}
+			class:stv__context-menu-item--toggled={item.isToggled}
 			class:stv__context-menu-item--has-children={hasChildren}
-			role="menuitem"
+			role={item.isToggled !== undefined ? 'menuitemcheckbox' : 'menuitem'}
+			aria-checked={item.isToggled !== undefined ? item.isToggled : undefined}
+			aria-disabled={item.isDisabled || undefined}
+			title={item.tooltip}
 			tabindex={item.isDisabled ? -1 : 0}
 			onmouseenter={() => { if (hasChildren) showSubmenu(i); else cancelHide(); }}
 			onmouseleave={() => { if (hasChildren) scheduleHide(); }}
 			onclick={async () => {
 				if (item.isDisabled || hasChildren) return;
 				try {
-					await item.onclick?.();
+					await item.onClick?.(menuCtx);
 				} catch (error) {
 					console.error('Context menu callback error:', error);
 				} finally {
@@ -97,7 +103,7 @@
 				if ((e.key === 'Enter' || e.key === ' ') && !item.isDisabled && !hasChildren) {
 					e.preventDefault();
 					try {
-						await item.onclick?.();
+						await item.onClick?.(menuCtx);
 					} catch (error) {
 						console.error('Context menu callback error:', error);
 					} finally {
@@ -109,7 +115,7 @@
 			{#if item.icon}
 				<span class="stv__context-menu-icon">{item.icon}</span>
 			{/if}
-			<span class="stv__context-menu-label">{item.label}</span>
+			<span class="stv__context-menu-label">{item.text}</span>
 			{#if item.shortcut}
 				<span class="stv__context-menu-shortcut">{item.shortcut}</span>
 			{/if}
@@ -121,7 +127,7 @@
 {/each}
 
 {#if openIdx !== null}
-	{@const openItem = entries[openIdx] as ContextMenuItem}
+	{@const openItem = entries[openIdx] as ContextMenuItem<T>}
 	{#if openItem && openItem.children}
 		<div
 			bind:this={submenuEl}
@@ -133,7 +139,7 @@
 		>
 			<Self
 				entries={openItem.children}
-				{contextNode}
+				{menuCtx}
 				{closeContextMenu}
 				cancelParentHide={cancelHide}
 			/>

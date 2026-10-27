@@ -52,7 +52,7 @@
 	}
 
 	// Context menu callback using the new unified ContextMenuEntry type
-	function getContextMenu(node: LTreeNode<FileItem>, close: () => void): ContextMenuEntry[] {
+	function getContextMenu({ node, closeMenu: close }: { node: LTreeNode<FileItem>; closeMenu: () => void }): ContextMenuEntry[] {
 		const isFolder = node.data?.type === 'folder';
 		const isReadonly = node.data?.readonly;
 
@@ -61,75 +61,75 @@
 		if (isFolder) {
 			entries.push({
 				icon: '📄',
-				label: 'New File',
+				text: 'New File',
 				shortcut: 'N',
-				onclick: () => { addLog(`New file in "${node.data?.name}"`); close(); }
+				onClick: () => { addLog(`New file in "${node.data?.name}"`); close(); }
 			});
 			entries.push({
 				icon: '📁',
-				label: 'New Folder',
+				text: 'New Folder',
 				shortcut: 'Shift+N',
-				onclick: () => { addLog(`New folder in "${node.data?.name}"`); close(); }
+				onClick: () => { addLog(`New folder in "${node.data?.name}"`); close(); }
 			});
 			entries.push({ divider: true });
 		}
 
 		entries.push({
 			icon: '📋',
-			label: 'Copy',
+			text: 'Copy',
 			shortcut: 'C',
-			onclick: () => { addLog(`Copied "${node.data?.name}"`); close(); }
+			onClick: () => { addLog(`Copied "${node.data?.name}"`); close(); }
 		});
 
 		entries.push({
 			icon: '✂️',
-			label: 'Cut',
+			text: 'Cut',
 			shortcut: 'X',
 			isDisabled: isReadonly,
-			onclick: () => { addLog(`Cut "${node.data?.name}"`); close(); }
+			onClick: () => { addLog(`Cut "${node.data?.name}"`); close(); }
 		});
 
 		entries.push({
 			icon: '📥',
-			label: 'Paste',
+			text: 'Paste',
 			shortcut: 'V',
 			isDisabled: !isFolder,
-			onclick: () => { addLog(`Paste into "${node.data?.name}"`); close(); }
+			onClick: () => { addLog(`Paste into "${node.data?.name}"`); close(); }
 		});
 
 		// Submenu example: Export As...
 		entries.push({
 			icon: '📤',
-			label: 'Export As...',
+			text: 'Export As...',
 			children: [
-				{ label: 'JSON', shortcut: 'J', onclick: () => { addLog(`Export "${node.data?.name}" as JSON`); close(); } },
-				{ label: 'XML', shortcut: 'X', onclick: () => { addLog(`Export "${node.data?.name}" as XML`); close(); } },
-				{ label: 'CSV', shortcut: 'C', onclick: () => { addLog(`Export "${node.data?.name}" as CSV`); close(); } },
+				{ text: 'JSON', shortcut: 'J', onClick: () => { addLog(`Export "${node.data?.name}" as JSON`); close(); } },
+				{ text: 'XML', shortcut: 'X', onClick: () => { addLog(`Export "${node.data?.name}" as XML`); close(); } },
+				{ text: 'CSV', shortcut: 'C', onClick: () => { addLog(`Export "${node.data?.name}" as CSV`); close(); } },
 			]
 		});
 
-		entries.push({ divider: true, label: 'Danger zone' });
+		entries.push({ divider: true, text: 'Danger zone' });
 
 		entries.push({
 			icon: '✏️',
-			label: 'Rename',
+			text: 'Rename',
 			shortcut: 'F2',
 			isDisabled: isReadonly,
-			onclick: () => { addLog(`Rename "${node.data?.name}"`); close(); }
+			onClick: () => { addLog(`Rename "${node.data?.name}"`); close(); }
 		});
 
 		entries.push({
 			icon: '🗑️',
-			label: 'Delete',
-			className: 'danger',
+			text: 'Delete',
+			isDanger: true,
 			isDisabled: isReadonly,
-			onclick: () => { addLog(`Delete "${node.data?.name}"`); close(); }
+			onClick: () => { addLog(`Delete "${node.data?.name}"`); close(); }
 		});
 
 		// isVisible example: only show lock info for readonly
 		entries.push({
 			icon: '🔒',
-			label: 'Read-only file',
+			text: 'Read-only file',
 			isDisabled: true,
 			isVisible: !!isReadonly
 		});
@@ -234,16 +234,16 @@
 					</span>
 				{/snippet}
 				{#snippet contextMenu(node: LTreeNode<FileItem>, close: () => void)}
-					<ContextMenuItemC label="Copy" icon="📋" shortcut="C" onclick={() => { addSnippetLog(`Copied "${node.data?.name}"`); close(); }} />
-					<ContextMenuItemC label="Cut" icon="✂️" shortcut="X" isDisabled={!!node.data?.readonly} onclick={() => { addSnippetLog(`Cut "${node.data?.name}"`); close(); }} />
+					<ContextMenuItemC text="Copy" icon="📋" shortcut="C" onClick={() => { addSnippetLog(`Copied "${node.data?.name}"`); close(); }} />
+					<ContextMenuItemC text="Cut" icon="✂️" shortcut="X" isDisabled={!!node.data?.readonly} onClick={() => { addSnippetLog(`Cut "${node.data?.name}"`); close(); }} />
 					{#if node.data?.type === 'folder'}
-						<ContextMenuItemC label="Export As..." icon="📤">
-							<ContextMenuItemC label="JSON" shortcut="J" onclick={() => { addSnippetLog(`Export "${node.data?.name}" as JSON`); close(); }} />
-							<ContextMenuItemC label="XML" shortcut="X" onclick={() => { addSnippetLog(`Export "${node.data?.name}" as XML`); close(); }} />
+						<ContextMenuItemC text="Export As..." icon="📤">
+							<ContextMenuItemC text="JSON" shortcut="J" onClick={() => { addSnippetLog(`Export "${node.data?.name}" as JSON`); close(); }} />
+							<ContextMenuItemC text="XML" shortcut="X" onClick={() => { addSnippetLog(`Export "${node.data?.name}" as XML`); close(); }} />
 						</ContextMenuItemC>
 					{/if}
-					<ContextMenuDividerC label="Danger zone" />
-					<ContextMenuItemC label="Delete" icon="🗑️" className="danger" isDisabled={!!node.data?.readonly} onclick={() => { addSnippetLog(`Delete "${node.data?.name}"`); close(); }} />
+					<ContextMenuDividerC text="Danger zone" />
+					<ContextMenuItemC text="Delete" icon="🗑️" isDanger isDisabled={!!node.data?.readonly} onClick={() => { addSnippetLog(`Delete "${node.data?.name}"`); close(); }} />
 				{/snippet}
 			</Tree>
 		</div>
@@ -264,19 +264,19 @@
 		<div class="code-block">
 			<pre>{`import type { ContextMenuEntry } from '@keenmate/svelte-treeview';
 
-function getContextMenu(node: LTreeNode<FileItem>, close: () => void): ContextMenuEntry[] {
+function getContextMenu({ node, closeMenu: close }: { node: LTreeNode<FileItem>; closeMenu: () => void }): ContextMenuEntry[] {
   return [
-    { label: 'Copy', icon: '📋', shortcut: 'C',
-      onclick: () => { copy(node); close(); } },
-    { label: 'Edit', icon: '✏️',
-      onclick: () => { edit(node); close(); } },
-    { label: 'Export As...', icon: '📤', children: [
-        { label: 'JSON', shortcut: 'J', onclick: () => { exportAs(node, 'json'); close(); } },
-        { label: 'XML', shortcut: 'X', onclick: () => { exportAs(node, 'xml'); close(); } },
+    { text: 'Copy', icon: '📋', shortcut: 'C',
+      onClick: () => { copy(node); close(); } },
+    { text: 'Edit', icon: '✏️',
+      onClick: () => { edit(node); close(); } },
+    { text: 'Export As...', icon: '📤', children: [
+        { text: 'JSON', shortcut: 'J', onClick: () => { exportAs(node, 'json'); close(); } },
+        { text: 'XML', shortcut: 'X', onClick: () => { exportAs(node, 'xml'); close(); } },
     ]},
-    { divider: true, label: 'Danger zone' },
-    { label: 'Delete', className: 'danger', isDisabled: node.data.readonly,
-      onclick: () => { del(node); close(); } },
+    { divider: true, text: 'Danger zone' },
+    { text: 'Delete', isDanger: true, isDisabled: node.data.readonly,
+      onClick: () => { del(node); close(); } },
   ];
 }`}</pre>
 		</div>
@@ -294,20 +294,20 @@ function getContextMenu(node: LTreeNode<FileItem>, close: () => void): ContextMe
 
 {`<Tree {data} ...>
   {#snippet contextMenu(node, close)}
-    <ContextMenuItemC label="Copy" icon="📋" shortcut="C"
-      onclick={() => { copy(node); close(); }} />
+    <ContextMenuItemC text="Copy" icon="📋" shortcut="C"
+      onClick={() => { copy(node); close(); }} />
     {#if node.data.canExport}
-      <ContextMenuItemC label="Export As..." icon="📤">
-        <ContextMenuItemC label="JSON"
-          onclick={() => { exportAs(node, 'json'); close(); }} />
-        <ContextMenuItemC label="XML"
-          onclick={() => { exportAs(node, 'xml'); close(); }} />
+      <ContextMenuItemC text="Export As..." icon="📤">
+        <ContextMenuItemC text="JSON"
+          onClick={() => { exportAs(node, 'json'); close(); }} />
+        <ContextMenuItemC text="XML"
+          onClick={() => { exportAs(node, 'xml'); close(); }} />
       </ContextMenuItemC>
     {/if}
-    <ContextMenuDividerC label="Danger zone" />
-    <ContextMenuItemC label="Delete" className="danger"
+    <ContextMenuDividerC text="Danger zone" />
+    <ContextMenuItemC text="Delete" isDanger
       isDisabled={node.data.readonly}
-      onclick={() => { del(node); close(); }} />
+      onClick={() => { del(node); close(); }} />
   {/snippet}
 </Tree>`}</pre>
 		</div>

@@ -54,7 +54,7 @@
 		snippetLog = [];
 	}
 
-	function getContextMenu(node: LTreeNode<FileItem>, close: () => void): ContextMenuEntry[] {
+	function getContextMenu({ node, closeMenu: close }: { node: LTreeNode<FileItem>; closeMenu: () => void }): ContextMenuEntry[] {
 		const isFolder = node.data?.type === 'folder';
 		const isReadonly = node.data?.readonly;
 		const entries: ContextMenuEntry[] = [];
@@ -62,73 +62,73 @@
 		if (isFolder) {
 			entries.push({
 				icon: '📄',
-				label: 'New File',
+				text: 'New File',
 				shortcut: 'N',
-				onclick: () => { addLog(`New file in "${node.data?.name}"`); close(); }
+				onClick: () => { addLog(`New file in "${node.data?.name}"`); close(); }
 			});
 			entries.push({
 				icon: '📁',
-				label: 'New Folder',
+				text: 'New Folder',
 				shortcut: 'Shift+N',
-				onclick: () => { addLog(`New folder in "${node.data?.name}"`); close(); }
+				onClick: () => { addLog(`New folder in "${node.data?.name}"`); close(); }
 			});
 			entries.push({ divider: true });
 		}
 
 		entries.push({
 			icon: '📋',
-			label: 'Copy',
+			text: 'Copy',
 			shortcut: 'C',
-			onclick: () => { addLog(`Copied "${node.data?.name}"`); close(); }
+			onClick: () => { addLog(`Copied "${node.data?.name}"`); close(); }
 		});
 
 		entries.push({
 			icon: '✂️',
-			label: 'Cut',
+			text: 'Cut',
 			shortcut: 'X',
 			isDisabled: isReadonly,
-			onclick: () => { addLog(`Cut "${node.data?.name}"`); close(); }
+			onClick: () => { addLog(`Cut "${node.data?.name}"`); close(); }
 		});
 
 		entries.push({
 			icon: '📥',
-			label: 'Paste',
+			text: 'Paste',
 			shortcut: 'V',
 			isDisabled: !isFolder,
-			onclick: () => { addLog(`Paste into "${node.data?.name}"`); close(); }
+			onClick: () => { addLog(`Paste into "${node.data?.name}"`); close(); }
 		});
 
 		entries.push({
 			icon: '📤',
-			label: 'Export As...',
+			text: 'Export As...',
 			children: [
-				{ label: 'JSON', shortcut: 'J', onclick: () => { addLog(`Export "${node.data?.name}" as JSON`); close(); } },
-				{ label: 'XML', shortcut: 'X', onclick: () => { addLog(`Export "${node.data?.name}" as XML`); close(); } },
-				{ label: 'CSV', shortcut: 'C', onclick: () => { addLog(`Export "${node.data?.name}" as CSV`); close(); } }
+				{ text: 'JSON', shortcut: 'J', onClick: () => { addLog(`Export "${node.data?.name}" as JSON`); close(); } },
+				{ text: 'XML', shortcut: 'X', onClick: () => { addLog(`Export "${node.data?.name}" as XML`); close(); } },
+				{ text: 'CSV', shortcut: 'C', onClick: () => { addLog(`Export "${node.data?.name}" as CSV`); close(); } }
 			]
 		});
 
-		entries.push({ divider: true, label: 'Danger zone' });
+		entries.push({ divider: true, text: 'Danger zone' });
 
 		entries.push({
 			icon: '✏️',
-			label: 'Rename',
+			text: 'Rename',
 			shortcut: 'F2',
 			isDisabled: isReadonly,
-			onclick: () => { addLog(`Rename "${node.data?.name}"`); close(); }
+			onClick: () => { addLog(`Rename "${node.data?.name}"`); close(); }
 		});
 
 		entries.push({
 			icon: '🗑️',
-			label: 'Delete',
-			className: 'danger',
+			text: 'Delete',
+			isDanger: true,
 			isDisabled: isReadonly,
-			onclick: () => { addLog(`Delete "${node.data?.name}"`); close(); }
+			onClick: () => { addLog(`Delete "${node.data?.name}"`); close(); }
 		});
 
 		entries.push({
 			icon: '🔒',
-			label: 'Read-only file',
+			text: 'Read-only file',
 			isDisabled: true,
 			isVisible: !!isReadonly
 		});
@@ -139,9 +139,9 @@
 		entries.push({ divider: true });
 		entries.push({
 			icon: '📌',
-			label: 'Bump (stays open)',
+			text: 'Bump (stays open)',
 			shouldCloseOnClick: false,
-			onclick: () => { pinClicks += 1; addLog(`Bump ×${pinClicks} on "${node.data?.name}"`); }
+			onClick: () => { pinClicks += 1; addLog(`Bump ×${pinClicks} on "${node.data?.name}"`); }
 		});
 
 		return entries;
@@ -204,39 +204,39 @@
 				{/snippet}
 				{#snippet contextMenu(node: LTreeNode<FileItem>, close: () => void)}
 					<ContextMenuItemC
-						label="Copy"
+						text="Copy"
 						icon="📋"
 						shortcut="C"
-						onclick={() => { addSnippetLog(`Copied "${node.data?.name}"`); close(); }}
+						onClick={() => { addSnippetLog(`Copied "${node.data?.name}"`); close(); }}
 					/>
 					<ContextMenuItemC
-						label="Cut"
+						text="Cut"
 						icon="✂️"
 						shortcut="X"
 						isDisabled={!!node.data?.readonly}
-						onclick={() => { addSnippetLog(`Cut "${node.data?.name}"`); close(); }}
+						onClick={() => { addSnippetLog(`Cut "${node.data?.name}"`); close(); }}
 					/>
 					{#if node.data?.type === 'folder'}
-						<ContextMenuItemC label="Export As..." icon="📤">
+						<ContextMenuItemC text="Export As..." icon="📤">
 							<ContextMenuItemC
-								label="JSON"
+								text="JSON"
 								shortcut="J"
-								onclick={() => { addSnippetLog(`Export "${node.data?.name}" as JSON`); close(); }}
+								onClick={() => { addSnippetLog(`Export "${node.data?.name}" as JSON`); close(); }}
 							/>
 							<ContextMenuItemC
-								label="XML"
+								text="XML"
 								shortcut="X"
-								onclick={() => { addSnippetLog(`Export "${node.data?.name}" as XML`); close(); }}
+								onClick={() => { addSnippetLog(`Export "${node.data?.name}" as XML`); close(); }}
 							/>
 						</ContextMenuItemC>
 					{/if}
-					<ContextMenuDividerC label="Danger zone" />
+					<ContextMenuDividerC text="Danger zone" />
 					<ContextMenuItemC
-						label="Delete"
+						text="Delete"
 						icon="🗑️"
-						className="danger"
+						isDanger
 						isDisabled={!!node.data?.readonly}
-						onclick={() => { addSnippetLog(`Delete "${node.data?.name}"`); close(); }}
+						onClick={() => { addSnippetLog(`Delete "${node.data?.name}"`); close(); }}
 					/>
 				{/snippet}
 			</Tree>

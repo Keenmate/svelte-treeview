@@ -7,6 +7,7 @@ import {
 	type InsertBranchResult,
 	type DeleteBranchResult,
 	type ContextMenuEntry,
+	type ContextMenuContext,
 	type DropPosition,
 	type DragDropMode,
 	type DropOperation,
@@ -604,11 +605,7 @@ export interface TreeControllerProps<T> {
 	nodeInputTransformationCallback?: NodeTransformCallback<T>;
 
 	// DATA PROVIDERS (get*Callback = returns data the system uses)
-	getContextMenuItemsCallback?: (
-		node: LTreeNode<T>,
-		closeMenuCallback: () => void,
-		selectedNodes?: LTreeNode<T>[]
-	) => ContextMenuEntry[];
+	getContextMenuItemsCallback?: (ctx: ContextMenuContext<T>) => ContextMenuEntry<T>[];
 
 	// Tells the controller whether a context menu snippet exists (set by Tree.svelte)
 	hasContextMenuSnippet?: boolean;

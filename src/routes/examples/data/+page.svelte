@@ -259,15 +259,15 @@
 		}
 	}
 
-	function getContextMenu(node: LTreeNode<DemoNode>, close: () => void): ContextMenuEntry[] {
+	function getContextMenu({ node, closeMenu: close }: { node: LTreeNode<DemoNode>; closeMenu: () => void }): ContextMenuEntry[] {
 		const items: ContextMenuEntry[] = [];
 
 		// Cut
 		items.push({
 			icon: '✂️',
-			label: 'Cut branch',
+			text: 'Cut branch',
 			isDisabled: isProcessing,
-			onclick: () => doCut(node, close)
+			onClick: () => doCut(node, close)
 		});
 
 		// Paste
@@ -276,17 +276,17 @@
 				node.path !== cutClipboard.sourcePath && !node.path.startsWith(cutClipboard.sourcePath + '.');
 			items.push({
 				icon: '📌',
-				label: `Paste "${cutClipboard.sourceName}" here`,
+				text: `Paste "${cutClipboard.sourceName}" here`,
 				isDisabled: !canPaste || isProcessing,
-				onclick: () => doPaste(node, close)
+				onClick: () => doPaste(node, close)
 			});
 		}
 
 		if (cutClipboard) {
 			items.push({
 				icon: '❌',
-				label: 'Cancel cut',
-				onclick: () => {
+				text: 'Cancel cut',
+				onClick: () => {
 					cutClipboard = null;
 					addLog('Cut cancelled');
 					close();
@@ -294,14 +294,14 @@
 			});
 		}
 
-		items.push({ divider: true, label: 'Branch Ops' });
+		items.push({ divider: true, text: 'Branch Ops' });
 
 		// Insert branch
 		items.push({
 			icon: '➕',
-			label: 'Insert branch (6 nodes)',
+			text: 'Insert branch (6 nodes)',
 			isDisabled: isProcessing,
-			onclick: () => {
+			onClick: () => {
 				const basePath = `${node.path}.${nextId}`;
 				const newNodes: DemoNode[] = [
 					{ id: nextId++, path: basePath, name: 'New Team', icon: '📁', sortOrder: 50 },
@@ -320,10 +320,10 @@
 		// Delete
 		items.push({
 			icon: '🗑️',
-			label: 'Delete branch',
-			className: 'danger',
+			text: 'Delete branch',
+			isDanger: true,
 			isDisabled: isProcessing,
-			onclick: () => {
+			onClick: () => {
 				const result = treeRef.deleteBranch(node.path);
 				addLog(`deleteBranch: Removed "${node.data?.name}" (${result.removedCount} nodes)`);
 				selectedNode = null;
@@ -334,9 +334,9 @@
 		if (node.hasChildren) {
 			items.push({
 				icon: '🧹',
-				label: 'Clear children only',
+				text: 'Clear children only',
 				isDisabled: isProcessing,
-				onclick: () => {
+				onClick: () => {
 					const result = treeRef.deleteBranch(node.path, true);
 					addLog(`Cleared ${result.removedCount} children from "${node.data?.name}"`);
 					close();

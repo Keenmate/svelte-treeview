@@ -292,22 +292,19 @@
 	// Library context menu for the right pane. Acts on the current selection when the
 	// right-clicked row is part of it, otherwise on just that row (Explorer behaviour).
 	function rightMenu(
-		node: LTreeNode<RightItem>,
-		_close: () => void,
-		selected?: LTreeNode<RightItem>[]
-	): ContextMenuEntry[] {
+		{ node, closeMenu: _close, selectedNodes: selected }: { node: LTreeNode<RightItem>; closeMenu: () => void; selectedNodes: LTreeNode<RightItem>[] }): ContextMenuEntry[] {
 		const data = node.data!;
 		const inSel = rightSel.has(data.treePath);
 		const targets: FsNode[] = inSel && selected?.length ? selected.map((s) => s.data!) : [data];
 		return [
-			{ label: 'Open', icon: data.kind === 'folder' ? '📂' : '📄', onclick: () => open(data) },
+			{ text: 'Open', icon: data.kind === 'folder' ? '📂' : '📄', onClick: () => open(data) },
 			{ divider: true },
-			{ label: 'Copy path', icon: '📋', onclick: () => copyPath(data) },
-			{ label: 'Rename', icon: '✎', isDisabled: targets.length !== 1, onclick: () => renameNode(targets[0]) },
-			{ label: `Delete${targets.length > 1 ? ` (${targets.length})` : ''}`, icon: '🗑', className: 'danger', onclick: () => deleteNodes(targets) },
+			{ text: 'Copy path', icon: '📋', onClick: () => copyPath(data) },
+			{ text: 'Rename', icon: '✎', isDisabled: targets.length !== 1, onClick: () => renameNode(targets[0]) },
+			{ text: `Delete${targets.length > 1 ? ` (${targets.length})` : ''}`, icon: '🗑', isDanger: true, onClick: () => deleteNodes(targets) },
 			{ divider: true },
-			{ label: 'New folder', icon: '🗀', onclick: () => newFolder() },
-			{ label: 'Select all', onclick: () => selectAll() }
+			{ text: 'New folder', icon: '🗀', onClick: () => newFolder() },
+			{ text: 'Select all', onClick: () => selectAll() }
 		];
 	}
 

@@ -42,18 +42,24 @@ interface Ltree<T> {
 
 interface ContextMenuDivider {
   divider: true;
-  label?: string;  // named divider: ──── [label] ────
+  text?: string;  // named divider: ──── [text] ────
 }
 
-interface ContextMenuItem {
+// rc16: field names follow core's ActionItem/MenuItem (text/onClick/cssClass/isDanger/isToggled)
+interface ContextMenuContext<T> { node; selectedNodes; checkedNodes; closeMenu(): void }
+
+interface ContextMenuItem<T = any> {
   id?: string;
-  label: string;
+  text: string;
   icon?: string;
+  tooltip?: string;
   shortcut?: string;
   isDisabled?: boolean;
   isVisible?: boolean;
-  className?: string;
-  onclick?: () => void | Promise<void>;
+  isDanger?: boolean;   // .stv__context-menu-item--danger
+  isToggled?: boolean;  // role=menuitemcheckbox + aria-checked
+  cssClass?: string;
+  onClick?: (ctx: ContextMenuContext<T>) => void | Promise<void>;
   shouldCloseOnClick?: boolean;  // default true; false = menu stays open, handler closes via close()
   children?: ContextMenuEntry[];
 }
@@ -162,7 +168,7 @@ STYLING:
 - Classes (stv__ BEM, rc11 rename — NO ltree-* classes remain): highlight states .stv__node-content--selected-bold, --highlight-border, --highlight-brackets, --highlight-fill, --highlight-glow, --scroll-highlight
 - Drag-over classes: .stv__node-content--dragover-highlight, --dragover-glow (plus --glow-before/-after/-child for snap zones)
 - Touch ghost class: .stv__touch-ghost (customizable via --tree-ghost-bg, --tree-ghost-color)
-- Context menu classes: .stv__context-menu, .stv__context-menu-item (--disabled, --has-children), .stv__context-menu-divider, .stv__context-menu-divider-label, .stv__context-menu-label, .stv__context-menu-shortcut, .stv__context-menu-icon, .stv__context-menu-arrow, .stv__context-submenu
+- Context menu classes: .stv__context-menu, .stv__context-menu-item (--disabled, --has-children, --danger, --toggled), .stv__context-menu-divider, .stv__context-menu-divider-label, .stv__context-menu-label, .stv__context-menu-shortcut, .stv__context-menu-icon, .stv__context-menu-arrow, .stv__context-submenu
 
 CONSTRAINTS:
 - Svelte 5 only (uses runes)
@@ -173,9 +179,9 @@ CONSTRAINTS:
 CONTEXT_MENU:
 - Unified types: ContextMenuItem, ContextMenuDivider, ContextMenuEntry (shared with canvas-tree)
 - Two approaches: snippet-based (ContextMenuItemC/ContextMenuDividerC components) and callback-based
-- Callback: getContextMenuItemsCallback(node, closeMenuCallback, selectedNodes?) returns ContextMenuEntry[]
-- Divider type: { divider: true, label?: string } — named dividers render as ──── [label] ────
-- Item features: label, icon, shortcut, isDisabled, isVisible, className (e.g. "danger"), onclick, shouldCloseOnClick (default true; false keeps menu open), children (submenus)
+- Callback: getContextMenuItemsCallback(ctx: ContextMenuContext = { node, selectedNodes, checkedNodes, closeMenu }) returns ContextMenuEntry[]; every item's onClick gets the same ctx
+- Divider type: { divider: true, text?: string } — named dividers render as ──── [text] ────
+- Item features: text, icon, tooltip, shortcut, isDisabled, isVisible, isDanger, isToggled, cssClass, onClick(ctx), shouldCloseOnClick (default true; false keeps menu open), children (submenus)
 - Submenus: children[] opens nested menu on hover (CSS position: absolute; left: 100%)
 - Position offset: contextMenuXOffset/YOffset for cursor clearance
 - Auto-close: closes on scroll, click outside, or programmatically
