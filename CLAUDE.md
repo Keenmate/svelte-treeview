@@ -1,6 +1,6 @@
 # svelte-treeview context
 
-PACKAGE: @keenmate/svelte-treeview v5.0.0-rc12 | Svelte 5 hierarchical tree component | MIT | KeenMate
+PACKAGE: @keenmate/svelte-treeview v5.0.0-rc16 | Svelte 5 hierarchical tree component | MIT | KeenMate
 
 CORE_FILES:
 - src/lib/components/Tree.svelte - main component
