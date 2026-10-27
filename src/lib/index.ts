@@ -11,7 +11,7 @@ export { createTreeController } from "./core/createTreeController.js"
 
 // Export types
 export type { LTreeNode, NodeId, VisualState } from "./ltree/ltree-node.svelte"
-export type { Ltree, DropPosition, DragDropMode, DropOperation, ToggleIconMode, IconSet, NodeTitleOverflow, TooltipPlacement, TooltipDelay, NodeRenderContext, ClickBehavior, CheckboxMode, CascadeSelectPolicy, SelectionMode, HighlightMode, TreeMutationOptions, ContextMenuItem, ContextMenuDivider, ContextMenuEntry, InsertArrayResult, InsertBranchResult, DeleteBranchResult, TreeChange, ApplyChangesResult } from "./ltree/types.js"
+export type { Ltree, DropPosition, DragDropMode, DropOperation, ToggleIconMode, IconSet, NodeTitleOverflow, TooltipPlacement, TooltipDelay, NodeRenderContext, ClickBehavior, CheckboxMode, CascadeCheckPolicy, SelectionMode, SelectMode, TreeMutationOptions, ContextMenuItem, ContextMenuDivider, ContextMenuEntry, InsertArrayResult, InsertBranchResult, DeleteBranchResult, TreeChange, ApplyChangesResult } from "./ltree/types.js"
 
 // Tooltip action (use:tooltip) — the hover/focus tooltip primitive the Tree uses
 // internally; exported so consumers can reuse it on their own markup.

@@ -21,8 +21,8 @@ function createTree() {
 		undefined, // getIsExpandedCallback
 		undefined, // isSelectableMember
 		undefined, // getIsSelectableCallback
-		undefined, // isSelectedMember
-		undefined, // getIsSelectedCallback
+		undefined, // isCheckedMember
+		undefined, // getIsCheckedCallback
 		undefined, // isDraggableMember
 		undefined, // getIsDraggableCallback
 		undefined, // isDropAllowedMember

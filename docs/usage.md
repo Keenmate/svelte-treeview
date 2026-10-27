@@ -20,7 +20,7 @@ Full Props, Methods, Events, and Snippets reference for `@keenmate/svelte-treevi
 | `parentPathMember` | `string \| null` | `null` | Property name for parent path references |
 | `levelMember` | `string \| null` | `null` | Property name for node level |
 | `isExpandedMember` | `string \| null` | `null` | Property name for expanded state |
-| `isSelectedMember` | `string \| null` | `null` | Property name for selected state |
+| `isCheckedMember` | `string \| null` | `null` | Property name for selected state |
 | `isDraggableMember` | `string \| null` | `null` | Property name for draggable state |
 | `isDropAllowedMember` | `string \| null` | `null` | Property name for drop allowed state |
 | `allowedDropPositionsMember` | `string \| null` | `null` | Property name for allowed drop positions array |
@@ -113,7 +113,7 @@ Without both requirements, no search indexing will occur.
 |------|------|---------|-------------|
 Every `on*` event receives a **single context object** mirroring the clipboard callbacks. The shared shape is `NodeRef<T> = { path, node, parent, siblings }` — the node the event is about plus the relational context the tree already resolved (`parent` node and `siblings`, the children of that parent), so you never need a `getNodeByPath(node.parentPath)` round-trip. `node`/`parent`/`siblings` are `null`/`[]` when the node isn't reachable (cross-tree, or removed by a cut). `NodeRef`, `NodeEventContext`, `NodeDragContext`, `NodeDropContext`, `ClipboardEventContext`, and `SelectionChangeContext` are exported from the package.
 
-> **Drag/drop is single-origin.** A drag has one DOM origin, so `onNodeDragStart` / `onNodeDragOver` / `onNodeDrop` each fire **once**, even when multiple nodes are selected. `ctx.dragged` (on all three) carries the full top-level dragged set — the multi-selection, or a single-item array for a plain drag — so you never have to read `controller.highlightedPaths` yourself. This holds **cross-tree too**: the source publishes its top-level set on drag start, so a cross-tree drop's `ctx.dragged` still lists every dragged path (as path-only refs — `node`/`parent` are `null` cross-tree). `source` (drop) is just the lead node of that set. Note the library only *auto-places* the lead node on a cross-tree drop; use `ctx.dragged` to fan out the rest yourself.
+> **Drag/drop is single-origin.** A drag has one DOM origin, so `onNodeDragStart` / `onNodeDragOver` / `onNodeDrop` each fire **once**, even when multiple nodes are selected. `ctx.dragged` (on all three) carries the full top-level dragged set — the multi-selection, or a single-item array for a plain drag — so you never have to read `controller.selectedPaths` yourself. This holds **cross-tree too**: the source publishes its top-level set on drag start, so a cross-tree drop's `ctx.dragged` still lists every dragged path (as path-only refs — `node`/`parent` are `null` cross-tree). `source` (drop) is just the lead node of that set. Note the library only *auto-places* the lead node on a cross-tree drop; use `ctx.dragged` to fan out the rest yourself.
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
@@ -124,8 +124,8 @@ Every `on*` event receives a **single context object** mirroring the clipboard c
 | `onNodeDragStart` | `(ctx: NodeDragContext<T>) => void` | `undefined` | Drag start. `ctx` is the grabbed node's `NodeRef` + `{ event, dragged }`. `dragged` is the full top-level set in flight (see below). |
 | `onNodeDragOver` | `(ctx: NodeDragContext<T>) => void` | `undefined` | Drag over. `ctx.node` is the **hovered** node; `ctx.dragged` is the in-flight set. |
 | `onNodeDrop` | `(ctx: NodeDropContext<T>) => void` | `undefined` | Drop event. `ctx = { source, target, dragged, dropped, position, operation, event }`. `source` is the lead dragged node's `NodeRef`; `target` is the drop node's `NodeRef` **or `null`** (empty tree/root). `dragged` is the **full top-level dragged set** — a drop fires once even for a multi-drag, so this is how you see the whole set. `dropped` is the nodes the **library** placed (move: the moved nodes; copy: the fresh copies), or **`null`** when the library didn't place them (cross-tree drop, or `shouldAutoHandleMove`/`Copy=false`) and the consumer owns insertion. Position is `'before'`/`'after'`/`'child'`; operation is `'move'`/`'copy'`. Symmetric with `NodeTransformContext`. (Its twin `beforeDropCallback` remains the older 5-arg positional signature.) |
-| `onHighlightChange` | `(ctx: SelectionChangeContext<T>) => void` | `undefined` | UI multi-select set (`highlightedPaths`) changed. `ctx = { paths: Set<string>, nodes }`. Suppressed by `{ silent: true }` mutations. |
-| `onSelectionChange` | `(ctx: SelectionChangeContext<T>) => void` | `undefined` | Checkbox set (`selectedPaths`) changed. Same shape as `onHighlightChange`. Suppressed by `{ silent: true }`. |
+| `onSelectionChange` | `(ctx: SelectionChangeContext<T>) => void` | `undefined` | UI multi-select set (`selectedPaths`) changed. `ctx = { paths: Set<string>, nodes }`. Suppressed by `{ silent: true }` mutations. |
+| `onCheckedChange` | `(ctx: SelectionChangeContext<T>) => void` | `undefined` | Checkbox set (`checkedPaths`) changed. Same shape as `onSelectionChange`. Suppressed by `{ silent: true }`. |
 | `onCopy` | `(ctx: ClipboardEventContext<T>) => void` | `undefined` | Fired after `controller.copyNodes()` succeeds. `ctx = { operation: 'copy', paths, nodes }` (nodes live). |
 | `onCut` | `(ctx: ClipboardEventContext<T>) => void` | `undefined` | Fired after `controller.cutNodes()` succeeds. `ctx = { operation: 'cut', paths, nodes }` (nodes still live — cut only dims until paste). |
 | `onDelete` | `(ctx: ClipboardEventContext<T>) => void` | `undefined` | Fired after the built-in Delete (or `controller.deleteNodes()`) removes nodes. `ctx = { paths, nodes }` — `nodes` are **pre-removal snapshots** (captured before removal, since the tree no longer holds them). |
@@ -133,7 +133,7 @@ Every `on*` event receives a **single context object** mirroring the clipboard c
 
 ### Clipboard interceptor properties
 
-The clipboard operations live on the `TreeController` (`copyNodes` / `cutNodes` / `pasteNodes` / `cancelCut`). You can opt into built-in key bindings with `shouldHandleKeyboardShortcuts`, or wire your own via `onTreeKeydown(ctx)` (ctx = `{ event, focusedNode, highlightedNodes, controller }`). The `before*` interceptors can rewrite or block an operation; `onCopy` / `onCut` / `onPaste` above are the post-operation notifications.
+The clipboard operations live on the `TreeController` (`copyNodes` / `cutNodes` / `pasteNodes` / `cancelCut`). You can opt into built-in key bindings with `shouldHandleKeyboardShortcuts`, or wire your own via `onTreeKeydown(ctx)` (ctx = `{ event, focusedNode, selectedNodes, controller }`). The `before*` interceptors can rewrite or block an operation; `onCopy` / `onCut` / `onPaste` above are the post-operation notifications.
 
 > **Keyboard shortcuts are focus-scoped.** Both the built-in shortcuts and `onTreeKeydown` are bound to the tree's `.stv__container` (which is `tabindex="0"`), so they only fire when focus is **inside** the tree — the standard DOM keyboard model for a component-scoped widget (there is no OS-clipboard fallback; it's a synthetic `keydown` handler). If the user touches a control *outside* the tree first (a toolbar button, checkbox, search box, dropdown), or hasn't clicked into the tree yet, a following `Ctrl/Cmd+C/X/V` or `Delete` never reaches the tree and silently does nothing. To make shortcuts work regardless of where the user last clicked, either (1) re-focus the container (`containerEl.focus()`) after your external control's handler, (2) auto-focus on hover/pointer-down — this ships for the empty-tree case via `shouldShowDropPlaceholderWhenEmpty`, or (3) attach your own document/window-level `keydown` and forward to `controller.copyNodes` / `pasteNodes` / `deleteNodes` (you then own deciding whether a given key is meant for the tree).
 
@@ -205,27 +205,28 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `applyChanges` | | Apply pending changes and refresh the tree |
 | `closeContextMenu` | | Programmatically close the context menu |
 
-### Selection / highlight / focus methods
+### Selection / checked / focus methods
 
-Three independent concerns, each with the same method shape. `opts` is always `TreeMutationOptions = { silent?: boolean }` — pass `{ silent: true }` to mutate state without firing the change callbacks (e.g. restoring state from a URL). Keep the verbs straight: **`highlight*`** drives the UI multi-select set (`highlightedPaths`), **`select*`** drives the checkbox/data set (`selectedPaths`), **`focus*`** drives the single cursor (`focusedNode`).
+Three independent concerns, each with the same method shape. `opts` is always `TreeMutationOptions = { silent?: boolean }` — pass `{ silent: true }` to mutate state without firing the change callbacks (e.g. restoring state from a URL). Keep the verbs straight: **`highlight*`** drives the UI multi-select set (`selectedPaths`), **`select*`** drives the checkbox/data set (`checkedPaths`), **`focus*`** drives the single cursor (`focusedNode`).
 
 | Method | Parameters | Description |
 |--------|------------|-------------|
-| `highlightNode` | `path: string, mode?: HighlightMode, opts?` | Highlight one node. `mode`: `'replace'` (plain click, default), `'toggle'` (Ctrl+click), `'range'` (Shift+click from cursor) |
-| `highlightNodes` | `paths: string[], opts?` | Add nodes to the highlight set (**additive**) |
-| `setHighlightedPaths` | `paths: string[], opts?` | Replace the entire highlight set |
-| `highlightAll` | `opts?` | Highlight every visible node (Ctrl+A) |
-| `clearHighlight` | `paths?: string[], opts?` | Clear the given paths, or all when omitted |
-| `selectNode` | `path: string, opts?` | Check one node (cascades to descendants in cascade mode) |
-| `selectNodes` | `paths: string[], opts?` | Check nodes (**additive**) |
-| `setSelectedPaths` | `paths: string[], opts?` | Replace the entire checkbox set |
-| `selectAll` | `opts?` | Check every selectable node |
-| `deselectNode` | `path: string, opts?` | Uncheck one node (cascades in cascade mode) |
-| `clearSelection` | `paths?: string[], opts?` | Uncheck the given paths, or all when omitted (was `deselectAll`) |
+| `selectNode` | `path: string, mode?: SelectMode, opts?` | Select one node. `mode`: `'replace'` (plain click, default), `'toggle'` (Ctrl+click), `'range'` (Shift+click from cursor) |
+| `selectNodes` | `paths: string[], opts?` | Add nodes to the selection (**additive**) |
+| `setSelectedPaths` | `paths: string[], opts?` | Replace the entire selection |
+| `selectAll` | `opts?` | Select every visible node (Ctrl+A) |
+| `clearSelection` | `paths?: string[], opts?` | Clear the given paths, or all when omitted |
+| `checkNode` | `path: string, opts?` | Check one node (cascades to descendants in cascade mode) |
+| `checkNodes` | `paths: string[], opts?` | Check nodes (**additive**) |
+| `setCheckedPaths` | `paths: string[], opts?` | Replace the entire checkbox set |
+| `checkAll` | `opts?` | Check every selectable node |
+| `uncheckNode` | `path: string, opts?` | Uncheck one node (cascades in cascade mode) |
+| `uncheckNodes` | `paths: string[], opts?` | Uncheck nodes (cascades in cascade mode) |
+| `uncheckAll` | `opts?` | Uncheck every node |
 | `focusNode` | `path: string, opts?` | Move focus to a node |
 | `clearFocus` | `opts?` | Clear the focused node |
 
-Read-side helpers: `getHighlightedNodes()` / `isNodeHighlighted(path)` / `getSelectedNodes()` / `isNodeSelected(path)`.
+Read-side helpers: `getSelectedNodes()` / `isNodeSelected(path)` / `getCheckedNodes()` / `isNodeChecked(path)`.
 
 ### ScrollToPath options
 

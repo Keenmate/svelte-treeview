@@ -69,16 +69,16 @@
 	}
 
 	let focusedNode = $state<LTreeNode<Item> | null | undefined>(null);
-	let highlightedPaths = $state<Set<string>>(new Set());
+	let selectedPaths = $state<Set<string>>(new Set());
 
 	const highlightedSorted = $derived(
-		[...highlightedPaths].sort((a, b) => a.localeCompare(b)).join(',')
+		[...selectedPaths].sort((a, b) => a.localeCompare(b)).join(',')
 	);
 
 	function resetTree() {
 		treeData = initialData();
 		focusedNode = null;
-		highlightedPaths = new Set();
+		selectedPaths = new Set();
 		treeRef.expandAll();
 	}
 </script>
@@ -96,7 +96,7 @@
 			<span>focused.name: <b data-testid="focused-name">{focusedNode?.data?.name ?? ''}</b></span>
 		</div>
 		<div class="state-row">
-			<span>highlighted.size: <b data-testid="highlighted-size">{highlightedPaths.size}</b></span>
+			<span>highlighted.size: <b data-testid="highlighted-size">{selectedPaths.size}</b></span>
 			<span>highlighted.sorted: <b data-testid="highlighted-sorted">{highlightedSorted}</b></span>
 		</div>
 		<div class="state-row">
@@ -119,7 +119,7 @@
 				clickBehavior="select"
 				selectionMode="multi"
 				bind:focusedNode
-				bind:highlightedPaths
+				bind:selectedPaths
 			>
 				{#snippet nodeTemplate(node: LTreeNode<Item>)}
 					<span data-testid="node-{node.path}">{node.data?.name}</span>

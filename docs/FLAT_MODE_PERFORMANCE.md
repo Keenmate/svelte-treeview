@@ -183,7 +183,7 @@ if (options?.uiClick && !modifiers?.ctrl && !modifiers?.shift) {
 
 - **Survives any re-render strategy** — it tracks `(path, timestamp)` on the controller, which outlives the recreated DOM element. It ignores DOM identity entirely, so future rendering optimizations can't silently break it.
 - **Identical in flat and recursive modes** — both route clicks through the same controller method.
-- **Gated to genuine UI clicks** (`uiClick`), so programmatic `highlightNode` / `selectNode` calls are never mistaken for a double-click.
+- **Gated to genuine UI clicks** (`uiClick`), so programmatic `selectNode` / `checkNode` calls are never mistaken for a double-click.
 - **Threshold is a hardcoded 400ms** — slightly tighter than Windows' 500ms default to avoid coupling unrelated clicks. (It does *not* read the OS double-click interval; switching to a configurable threshold would be the realistic path if native-like timing is ever needed.)
 
 A double-click therefore fires `onNodeClick` once (the first click) plus `onNodeDoubleClick` once; the second click is consumed.

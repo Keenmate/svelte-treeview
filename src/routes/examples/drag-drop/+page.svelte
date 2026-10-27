@@ -82,9 +82,9 @@
 	// Bindable highlight sets so users can see what they're about to multi-drag
 	// in each tree. The drag/drop logic in TreeController reads the same set
 	// internally to decide whether a single-node drag should become a multi-drag.
-	let sourceHighlightedPaths = $state(new Set<string>());
-	let targetHighlightedPaths = $state(new Set<string>());
-	let restrictedHighlightedPaths = $state(new Set<string>());
+	let sourceSelectedPaths = $state(new Set<string>());
+	let targetSelectedPaths = $state(new Set<string>());
+	let restrictedSelectedPaths = $state(new Set<string>());
 
 	// Load settings from localStorage on mount
 	onMount(() => {
@@ -224,7 +224,7 @@
 		// library (it only auto-places the lead node), but ctx.dragged still carries
 		// the FULL top-level dragged set — already draggable-filtered (pinned nodes
 		// like "File C" are excluded) — so we just copy each subtree in turn. No need
-		// to re-read highlightedPaths or re-run the isDraggable predicate here.
+		// to re-read selectedPaths or re-run the isDraggable predicate here.
 		const sourcePaths = dragged.map((r) => r.path);
 
 		let copied = 0;
@@ -823,7 +823,7 @@
 				dimmed row left in place while you drag. To merely tune the default instead of replacing it,
 				set <code>--stv-dragged-opacity</code> / <code>--stv-dragged-scale</code> (the scale is
 				anchored to the left edge so it never shifts the label — the fix for the old "phantom indent"
-				on grab). Mirrors <code>highlightedNodeClass</code> / <code>scrollHighlightClass</code>.
+				on grab). Mirrors <code>selectedNodeClass</code> / <code>scrollHighlightClass</code>.
 				The visual dims <strong>every traveling node</strong>: drag a folder and its whole
 				subtree dims; Ctrl/Shift+click several rows and drag any one and the entire set dims —
 				not just the grabbed node.
@@ -919,8 +919,8 @@
 						expandLevel={3}
 						dragDropMode="both"
 						{selectionMode}
-						highlightedNodeClass="stv__node-content--highlight-bold"
-						bind:highlightedPaths={sourceHighlightedPaths}
+						selectedNodeClass="stv__node-content--selected-bold"
+						bind:selectedPaths={sourceSelectedPaths}
 						shouldHandleKeyboardShortcuts={handleKeyboardShortcuts}
 						nodeInputTransformationCallback={transformPasted}
 						beforePasteCallback={selfPasteRedirect}
@@ -969,8 +969,8 @@
 						expandLevel={3}
 						dragDropMode="both"
 						{selectionMode}
-						highlightedNodeClass="stv__node-content--highlight-bold"
-						bind:highlightedPaths={targetHighlightedPaths}
+						selectedNodeClass="stv__node-content--selected-bold"
+						bind:selectedPaths={targetSelectedPaths}
 						shouldHandleKeyboardShortcuts={handleKeyboardShortcuts}
 						nodeInputTransformationCallback={transformPasted}
 						beforePasteCallback={selfPasteRedirect}
@@ -1010,23 +1010,23 @@
 			</div>
 		</div>
 
-		{#if sourceHighlightedPaths.size > 0}
+		{#if sourceSelectedPaths.size > 0}
 			<div class="output">
 				<p class="output-label">
-					Source highlight ({sourceHighlightedPaths.size}) — dragging any of these moves the whole
+					Source highlight ({sourceSelectedPaths.size}) — dragging any of these moves the whole
 					set
 				</p>
-				<pre>{[...sourceHighlightedPaths].join(', ')}</pre>
+				<pre>{[...sourceSelectedPaths].join(', ')}</pre>
 			</div>
 		{/if}
 
-		{#if targetHighlightedPaths.size > 0}
+		{#if targetSelectedPaths.size > 0}
 			<div class="output">
 				<p class="output-label">
-					Target highlight ({targetHighlightedPaths.size}) — dragging any of these moves the whole
+					Target highlight ({targetSelectedPaths.size}) — dragging any of these moves the whole
 					set within the target tree
 				</p>
-				<pre>{[...targetHighlightedPaths].join(', ')}</pre>
+				<pre>{[...targetSelectedPaths].join(', ')}</pre>
 			</div>
 		{/if}
 
@@ -1080,8 +1080,8 @@
 				expandLevel={3}
 				dragDropMode="self"
 				{selectionMode}
-				highlightedNodeClass="stv__node-content--highlight-bold"
-				bind:highlightedPaths={restrictedHighlightedPaths}
+				selectedNodeClass="stv__node-content--selected-bold"
+				bind:selectedPaths={restrictedSelectedPaths}
 				onNodeDrop={handleRestrictedDrop}
 				{dropZoneMode}
 				{dropZoneLayout}
@@ -1098,13 +1098,13 @@
 			</Tree>
 		</div>
 
-		{#if restrictedHighlightedPaths.size > 0}
+		{#if restrictedSelectedPaths.size > 0}
 			<div class="output">
 				<p class="output-label">
-					Highlight ({restrictedHighlightedPaths.size}) — drag any of these to move the whole set
+					Highlight ({restrictedSelectedPaths.size}) — drag any of these to move the whole set
 					(per-node <code>allowedDropPositions</code> still apply)
 				</p>
-				<pre>{[...restrictedHighlightedPaths].join(', ')}</pre>
+				<pre>{[...restrictedSelectedPaths].join(', ')}</pre>
 			</div>
 		{/if}
 
@@ -1193,8 +1193,8 @@ const data = [
 						expandLevel={3}
 						dragDropMode="both"
 						selectionMode="multi"
-						highlightedNodeClass="stv__node-content--highlight-bold"
-						bind:highlightedPaths={guardHighlighted}
+						selectedNodeClass="stv__node-content--selected-bold"
+						bind:selectedPaths={guardHighlighted}
 						getIsDraggableCallback={(node) => (node.data as GuardItem)?.locked !== true}
 						getIsDropAllowedCallback={() => true}
 						beforeDragStartCallback={beforeGuardDragStart}
@@ -1291,8 +1291,8 @@ beforeDragStartCallback={(ctx) => {
 				expandLevel={3}
 				dragDropMode="self"
 				selectionMode="multi"
-				highlightedNodeClass="stv__node-content--highlight-bold"
-				bind:highlightedPaths={leaveBehindHighlighted}
+				selectedNodeClass="stv__node-content--selected-bold"
+				bind:selectedPaths={leaveBehindHighlighted}
 				getIsDraggableCallback={() => true}
 				getIsDropAllowedCallback={() => true}
 				beforeDragStartCallback={beforeLeaveBehindDragStart}
@@ -1371,8 +1371,8 @@ beforeDragStartCallback={(ctx) => {
 						expandLevel={3}
 						dragDropMode="both"
 						selectionMode="multi"
-						highlightedNodeClass="stv__node-content--highlight-bold"
-						bind:highlightedPaths={basketHighlighted}
+						selectedNodeClass="stv__node-content--selected-bold"
+						bind:selectedPaths={basketHighlighted}
 						getIsDraggableCallback={() => true}
 						getIsDropAllowedCallback={() => true}
 						{...getTreeProps()}
@@ -1400,8 +1400,8 @@ beforeDragStartCallback={(ctx) => {
 						expandLevel={3}
 						dragDropMode="both"
 						selectionMode="multi"
-						highlightedNodeClass="stv__node-content--highlight-bold"
-						bind:highlightedPaths={pantryHighlighted}
+						selectedNodeClass="stv__node-content--selected-bold"
+						bind:selectedPaths={pantryHighlighted}
 						getIsDraggableCallback={(node: LTreeNode<ProduceItem>) =>
 							node.data?.kind !== 'category'}
 						getIsDropAllowedCallback={() => false}

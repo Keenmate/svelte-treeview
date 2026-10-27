@@ -10,7 +10,7 @@ import type { LTreeNode } from './ltree-node.svelte.js';
 //   produced (typically `true` for `node.data?.isDraggable !== false`).
 //
 //   The bug affected getIsExpandedCallback, getIsSelectableCallback,
-//   getIsSelectedCallback, getIsDraggableCallback, getIsDropAllowedCallback.
+//   getIsCheckedCallback, getIsDraggableCallback, getIsDropAllowedCallback.
 //   Caught in production by the /examples/drag-drop demo (every node draggable
 //   even though File C was marked isDraggable: false).
 //
@@ -24,7 +24,7 @@ type Row = {
 	name: string;
 	isExpanded?: boolean;
 	isSelectable?: boolean;
-	isSelected?: boolean;
+	isChecked?: boolean;
 	isDraggable?: boolean;
 	isDropAllowed?: boolean;
 };
@@ -36,7 +36,7 @@ function sortByPath(items: LTreeNode<Row>[]) {
 const fixture: Row[] = [
 	{ id: 'a', path: '1', name: 'Root A' },                                          // all defaults true
 	{ id: 'b', path: '1.1', name: 'Pinned', isDraggable: false, isDropAllowed: false }, // both false via data
-	{ id: 'c', path: '1.2', name: 'Locked', isSelectable: false, isSelected: false },    // both false via data
+	{ id: 'c', path: '1.2', name: 'Locked', isSelectable: false, isChecked: false },    // both false via data
 	{ id: 'd', path: '2', name: 'Open', isExpanded: true },                          // expanded via data
 ];
 
@@ -54,8 +54,8 @@ function buildTree(opts: {
 		cb ? (n) => n.data?.isExpanded !== false : undefined,
 		undefined,     // _isSelectableMember
 		cb ? (n) => n.data?.isSelectable !== false : undefined,
-		undefined,     // _isSelectedMember
-		cb ? (n) => n.data?.isSelected === true : undefined,
+		undefined,     // _isCheckedMember
+		cb ? (n) => n.data?.isChecked === true : undefined,
 		undefined,     // _isDraggableMember
 		cb ? (n) => n.data?.isDraggable !== false : undefined,
 		undefined,     // _isDropAllowedMember
@@ -98,9 +98,9 @@ describe('insertArray seed-time get*Callback', () => {
 		expect(normal?.isSelectable).toBe(true);
 	});
 
-	it('getIsSelectedCallback sees node.data and Locked carries isSelected=false', () => {
+	it('getIsCheckedCallback sees node.data and Locked carries isChecked=false', () => {
 		const locked = ltree.getNodeByPath('1.2');
-		expect(locked?.isSelected).toBe(false);
+		expect(locked?.isChecked).toBe(false);
 	});
 
 	it('getIsExpandedCallback sees node.data and Open is expanded', () => {

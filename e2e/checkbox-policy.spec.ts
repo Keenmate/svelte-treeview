@@ -1,8 +1,8 @@
 import { test, expect, Page, Locator } from '@playwright/test';
 
 /**
- * cascadeSelectPolicy on /test/checkbox-policy — the value policy that controls
- * WHICH paths the checkbox selection emits (via bindable selectedPaths) in cascade
+ * cascadeCheckPolicy on /test/checkbox-policy — the value policy that controls
+ * WHICH paths the checkbox selection emits (via bindable checkedPaths) in cascade
  * mode. Orthogonal to checkboxMode (which controls the cascade BEHAVIOUR).
  *
  * Fixture tree: Fruits (1) → Apple (1.1), Banana (1.2); Vegetables (2) → Carrot

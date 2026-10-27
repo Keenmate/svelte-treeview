@@ -3,7 +3,7 @@
 	import type { LTreeNode } from '$lib/ltree/types.js';
 
 	// Deterministic e2e fixture for the silent: true option on
-	// highlightNode / highlightNodes / clearHighlight / clearSelection.
+	// selectNode / selectNodes / clearSelection / uncheckAll.
 	// Targeted by e2e/silent-highlight.spec.ts.
 
 	type Item = { id: number; path: string; name: string };
@@ -23,27 +23,22 @@
 	}
 
 	let treeRef: Tree<Item>;
-	let highlightedPaths = $state(new Set<string>());
 	let selectedPaths = $state(new Set<string>());
+	let checkedPaths = $state(new Set<string>());
 
 	// Counters incremented by each callback. Spec asserts on these to verify
 	// the silent option suppresses callbacks without breaking state updates.
 	let onNodeClickCount = $state(0);
-	let onHighlightChangeCount = $state(0);
 	let onSelectionChangeCount = $state(0);
+	let onCheckedChangeCount = $state(0);
 
 	let lastClickedPath = $state<string | null>(null);
-	let lastHighlightSize = $state(0);
 	let lastSelectionSize = $state(0);
+	let lastCheckedSize = $state(0);
 
 	function handleNodeClick({ node }: { node: LTreeNode<Item> | null }) {
 		onNodeClickCount++;
 		lastClickedPath = node?.path ?? null;
-	}
-
-	function handleHighlightChange({ paths }: { paths: Set<string> }) {
-		onHighlightChangeCount++;
-		lastHighlightSize = paths.size;
 	}
 
 	function handleSelectionChange({ paths }: { paths: Set<string> }) {
@@ -51,13 +46,18 @@
 		lastSelectionSize = paths.size;
 	}
 
+	function handleCheckedChange({ paths }: { paths: Set<string> }) {
+		onCheckedChangeCount++;
+		lastCheckedSize = paths.size;
+	}
+
 	function resetCounters() {
 		onNodeClickCount = 0;
-		onHighlightChangeCount = 0;
 		onSelectionChangeCount = 0;
+		onCheckedChangeCount = 0;
 		lastClickedPath = null;
-		lastHighlightSize = 0;
 		lastSelectionSize = 0;
+		lastCheckedSize = 0;
 	}
 </script>
 
@@ -69,32 +69,32 @@
 	<h1>Silent Highlight Test Fixture</h1>
 
 	<div class="controls">
-		<button data-testid="highlight-loud" onclick={() => treeRef?.highlightNode('1.2')}>
-			highlightNode('1.2') — loud
+		<button data-testid="highlight-loud" onclick={() => treeRef?.selectNode('1.2')}>
+			selectNode('1.2') — loud
 		</button>
-		<button data-testid="highlight-silent" onclick={() => treeRef?.highlightNode('1.2', 'replace', { silent: true })}>
-			highlightNode('1.2', silent)
+		<button data-testid="highlight-silent" onclick={() => treeRef?.selectNode('1.2', 'replace', { silent: true })}>
+			selectNode('1.2', silent)
 		</button>
-		<button data-testid="highlight-other-silent" onclick={() => treeRef?.highlightNode('2.1', 'replace', { silent: true })}>
-			highlightNode('2.1', silent)
+		<button data-testid="highlight-other-silent" onclick={() => treeRef?.selectNode('2.1', 'replace', { silent: true })}>
+			selectNode('2.1', silent)
 		</button>
-		<button data-testid="highlight-many-loud" onclick={() => treeRef?.highlightNodes(['1.1', '1.2'])}>
-			highlightNodes(['1.1','1.2']) — loud
+		<button data-testid="highlight-many-loud" onclick={() => treeRef?.selectNodes(['1.1', '1.2'])}>
+			selectNodes(['1.1','1.2']) — loud
 		</button>
-		<button data-testid="highlight-many-silent" onclick={() => treeRef?.highlightNodes(['1.1', '1.2'], { silent: true })}>
-			highlightNodes(['1.1','1.2'], silent)
+		<button data-testid="highlight-many-silent" onclick={() => treeRef?.selectNodes(['1.1', '1.2'], { silent: true })}>
+			selectNodes(['1.1','1.2'], silent)
 		</button>
-		<button data-testid="clear-loud" onclick={() => treeRef?.clearHighlight()}>
-			clearHighlight() — loud
-		</button>
-		<button data-testid="clear-silent" onclick={() => treeRef?.clearHighlight(undefined, { silent: true })}>
-			clearHighlight(silent)
-		</button>
-		<button data-testid="clear-selection-loud" onclick={() => treeRef?.clearSelection()}>
+		<button data-testid="clear-loud" onclick={() => treeRef?.clearSelection()}>
 			clearSelection() — loud
 		</button>
-		<button data-testid="clear-selection-silent" onclick={() => treeRef?.clearSelection(undefined, { silent: true })}>
+		<button data-testid="clear-silent" onclick={() => treeRef?.clearSelection(undefined, { silent: true })}>
 			clearSelection(silent)
+		</button>
+		<button data-testid="clear-selection-loud" onclick={() => treeRef?.uncheckAll()}>
+			uncheckAll() — loud
+		</button>
+		<button data-testid="clear-selection-silent" onclick={() => treeRef?.uncheckAll({ silent: true })}>
+			uncheckAll(silent)
 		</button>
 		<button data-testid="reset-counters" onclick={resetCounters}>Reset counters</button>
 	</div>
@@ -109,12 +109,12 @@
 			isSorted={true}
 			expandLevel={3}
 			shouldShowCheckboxes={true}
-			highlightedNodeClass="test-highlighted"
-			bind:highlightedPaths
+			selectedNodeClass="test-highlighted"
 			bind:selectedPaths
+			bind:checkedPaths
 			onNodeClick={handleNodeClick}
-			onHighlightChange={handleHighlightChange}
 			onSelectionChange={handleSelectionChange}
+			onCheckedChange={handleCheckedChange}
 		>
 			{#snippet nodeTemplate(node: LTreeNode<Item>)}
 				<span>{node.data?.name}</span>
@@ -125,16 +125,16 @@
 	<div class="output">
 		<p class="output-label">Counters</p>
 		<pre>onNodeClick: <span data-testid="counter-click">{onNodeClickCount}</span>
-onHighlightChange: <span data-testid="counter-highlight">{onHighlightChangeCount}</span>
-onSelectionChange: <span data-testid="counter-selection">{onSelectionChangeCount}</span></pre>
+onSelectionChange: <span data-testid="counter-highlight">{onSelectionChangeCount}</span>
+onCheckedChange: <span data-testid="counter-selection">{onCheckedChangeCount}</span></pre>
 	</div>
 
 	<div class="output">
 		<p class="output-label">State</p>
 		<pre>lastClickedPath: <span data-testid="last-clicked">{lastClickedPath ?? '(none)'}</span>
-highlightedPaths.size: <span data-testid="highlight-size">{highlightedPaths.size}</span>
-highlightedPaths: <span data-testid="highlight-paths">{[...highlightedPaths].sort().join(',') || '(empty)'}</span>
-selectedPaths.size: <span data-testid="selection-size">{selectedPaths.size}</span></pre>
+selectedPaths.size: <span data-testid="highlight-size">{selectedPaths.size}</span>
+selectedPaths: <span data-testid="highlight-paths">{[...selectedPaths].sort().join(',') || '(empty)'}</span>
+checkedPaths.size: <span data-testid="checked-size">{checkedPaths.size}</span></pre>
 	</div>
 </main>
 

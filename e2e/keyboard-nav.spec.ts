@@ -27,7 +27,7 @@ import { test, expect, Page, Locator } from '@playwright/test';
  *    17 | 5     | Root-E   |   1  leaf
  *
  * Each test clicks a node to seed focus, then presses keys and asserts the
- * resulting focusedNode.path (and, for Shift+ tests, highlightedPaths).
+ * resulting focusedNode.path (and, for Shift+ tests, selectedPaths).
  */
 
 const PAGE = '/test/keyboard-nav';
@@ -268,12 +268,12 @@ test.describe('Shift+ArrowDown / Shift+ArrowUp — extend highlight by sibling',
 		page
 	}) => {
 		await clickToFocus(page, '1.1');
-		// After click, highlightedPaths = {1.1}.
+		// After click, selectedPaths = {1.1}.
 		await expect(page.getByTestId('highlighted-size')).toHaveText('1');
 
 		await page.keyboard.press('Shift+ArrowDown');
 
-		// navHighlightNext walks to next level-2 sibling → '1.2'.
+		// navSelectNext walks to next level-2 sibling → '1.2'.
 		// Range fills visible-flat from '1.1' to '1.2' = [1.1, 1.1.1, 1.1.2, 1.2].
 		await expect(page.getByTestId('focused-path')).toHaveText('1.2');
 		await expect(page.getByTestId('highlighted-size')).toHaveText('4');
@@ -287,7 +287,7 @@ test.describe('Shift+ArrowDown / Shift+ArrowUp — extend highlight by sibling',
 
 		await page.keyboard.press('Shift+ArrowUp');
 
-		// navHighlightPrev → '1.1'. Range '1.2' to '1.1' = [1.1, 1.1.1, 1.1.2, 1.2].
+		// navSelectPrev → '1.1'. Range '1.2' to '1.1' = [1.1, 1.1.1, 1.1.2, 1.2].
 		await expect(page.getByTestId('focused-path')).toHaveText('1.1');
 		await expect(page.getByTestId('highlighted-size')).toHaveText('4');
 		await expect(page.getByTestId('highlighted-sorted')).toHaveText('1.1,1.1.1,1.1.2,1.2');

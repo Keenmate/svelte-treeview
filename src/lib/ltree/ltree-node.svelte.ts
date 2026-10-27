@@ -3,8 +3,8 @@ export type DropPosition = 'before' | 'after' | 'child';
 
 export enum VisualState {
 	indeterminate = "indeterminate",
-	selected = "true",
-	notSelected = "false",
+	checked = "true",
+	unchecked = "false",
 }
 
 export interface LTreeNode<T> {
@@ -27,8 +27,8 @@ export interface LTreeNode<T> {
 	visualState: VisualState;
 	isExpanded: boolean;
 	isFocused: boolean;
-	isHighlighted: boolean;
 	isSelected: boolean;
+	isChecked: boolean;
 
 	isSelectable: boolean;
 
@@ -52,11 +52,11 @@ export function createLTreeNode<T>(data?: Partial<LTreeNode<T>>): LTreeNode<T> {
 		isCollapsible: true,
 		isDropAllowed: false,
 		allowedDropPositions: undefined,
-		visualState: VisualState.notSelected,
+		visualState: VisualState.unchecked,
 		isExpanded: false,
 		isFocused: false,
-		isHighlighted: false,
 		isSelected: false,
+		isChecked: false,
 
 		isSelectable: true,
 

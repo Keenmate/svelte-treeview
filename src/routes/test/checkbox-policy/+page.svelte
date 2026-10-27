@@ -1,14 +1,14 @@
 <script lang="ts">
 	import Tree from '$lib/components/Tree.svelte';
 	import type { LTreeNode } from '$lib/ltree/types.js';
-	import type { CascadeSelectPolicy } from '$lib/ltree/types.js';
+	import type { CascadeCheckPolicy } from '$lib/ltree/types.js';
 
-	// Deterministic e2e fixture for cascadeSelectPolicy (the value policy that
+	// Deterministic e2e fixture for cascadeCheckPolicy (the value policy that
 	// controls WHICH paths the checkbox selection emits in cascade mode).
 	// Targeted by e2e/checkbox-policy.spec.ts.
 	//
 	// Scenario the spec builds: check Fruits (1) fully + Carrot (2.1) only.
-	// Canonical checked set = {1, 1.1, 1.2, 2.1}. Emitted selectedPaths per policy:
+	// Canonical checked set = {1, 1.1, 1.2, 2.1}. Emitted checkedPaths per policy:
 	//   rolled-up → 1, 2.1   (full subtree collapses to root; partial branch emits its bits)
 	//   leaves    → 1.1, 1.2, 2.1
 	//   all       → 1, 1.1, 1.2, 2.1
@@ -28,8 +28,8 @@
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
 	}
 
-	let cascadeSelectPolicy = $state<CascadeSelectPolicy>('rolled-up');
-	let selectedPaths = $state(new Set<string>());
+	let cascadeCheckPolicy = $state<CascadeCheckPolicy>('rolled-up');
+	let checkedPaths = $state(new Set<string>());
 </script>
 
 <svelte:head>
@@ -40,13 +40,13 @@
 	<h1>Cascade Select Policy Test Fixture</h1>
 
 	<div class="controls">
-		<button data-testid="policy-rolled-up" onclick={() => (cascadeSelectPolicy = 'rolled-up')}>
+		<button data-testid="policy-rolled-up" onclick={() => (cascadeCheckPolicy = 'rolled-up')}>
 			policy = rolled-up
 		</button>
-		<button data-testid="policy-leaves" onclick={() => (cascadeSelectPolicy = 'leaves')}>
+		<button data-testid="policy-leaves" onclick={() => (cascadeCheckPolicy = 'leaves')}>
 			policy = leaves
 		</button>
-		<button data-testid="policy-all" onclick={() => (cascadeSelectPolicy = 'all')}>
+		<button data-testid="policy-all" onclick={() => (cascadeCheckPolicy = 'all')}>
 			policy = all
 		</button>
 	</div>
@@ -61,8 +61,8 @@
 			expandLevel={3}
 			shouldShowCheckboxes={true}
 			checkboxMode="cascade"
-			{cascadeSelectPolicy}
-			bind:selectedPaths
+			{cascadeCheckPolicy}
+			bind:checkedPaths
 		>
 			{#snippet nodeTemplate(node: LTreeNode<Item>)}
 				<span>{node.data?.name}</span>
@@ -72,9 +72,9 @@
 
 	<div class="output">
 		<p class="output-label">State</p>
-		<pre>policy: <span data-testid="policy">{cascadeSelectPolicy}</span>
-selectedPaths: <span data-testid="selection"
-				>{[...selectedPaths].sort().join(',') || '(empty)'}</span
+		<pre>policy: <span data-testid="policy">{cascadeCheckPolicy}</span>
+checkedPaths: <span data-testid="selection"
+				>{[...checkedPaths].sort().join(',') || '(empty)'}</span
 			></pre>
 	</div>
 </main>

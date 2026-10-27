@@ -18,9 +18,9 @@
 		type TooltipDelay,
 		type NodeRenderContext,
 		type CheckboxMode,
-		type CascadeSelectPolicy,
+		type CascadeCheckPolicy,
 		type SelectionMode,
-		type HighlightMode,
+		type SelectMode,
 		type TreeMutationOptions,
 		type TreeChange,
 		type ApplyChangesResult
@@ -55,8 +55,8 @@
 		getIsExpandedCallback?: (node: LTreeNode<T>) => boolean;
 		isSelectableMember?: string | null | undefined;
 		getIsSelectableCallback?: (node: LTreeNode<T>) => boolean;
-		isSelectedMember?: string | null | undefined;
-		getIsSelectedCallback?: (node: LTreeNode<T>) => boolean;
+		isCheckedMember?: string | null | undefined;
+		getIsCheckedCallback?: (node: LTreeNode<T>) => boolean;
 		isDraggableMember?: string | null | undefined;
 		getIsDraggableCallback?: (node: LTreeNode<T>) => boolean;
 		isDropAllowedMember?: string | null | undefined;
@@ -87,8 +87,8 @@
 		// DATA
 		data: T[];
 		focusedNode?: LTreeNode<T> | null | undefined;
-		highlightedPaths?: Set<string>;
 		selectedPaths?: Set<string>;
+		checkedPaths?: Set<string>;
 		insertResult?: InsertArrayResult<T> | null | undefined;
 
 		// SLOTS
@@ -116,21 +116,21 @@
 		expandLevel?: number | null | undefined;
 		clickBehavior?: ClickBehavior | null | undefined;
 		/**
-		 * `'single'` (default): plain click highlights one node; Ctrl/Shift+click
+		 * `'single'` (default): plain click selects one node; Ctrl/Shift+click
 		 * degrade to plain click; Shift+Arrow / Enter are no-ops.
 		 * `'multi'`: Ctrl-toggle, Shift-range, Shift+Arrow extend, Enter toggles
-		 * highlight on the focused node.
+		 * selection on the focused node.
 		 */
 		selectionMode?: SelectionMode | null | undefined;
 		shouldShowCheckboxes?: boolean | null | undefined;
 		checkboxMode?: CheckboxMode | null | undefined;
 		/**
-		 * Which paths `selectedPaths` / `onSelectionChange` EMIT in cascade mode:
+		 * Which paths `checkedPaths` / `onCheckedChange` EMIT in cascade mode:
 		 * `'rolled-up'` (default) collapses a fully-checked subtree to its root,
 		 * `'leaves'` emits only checked leaves, `'all'` emits every fully-checked node.
 		 * Orthogonal to `checkboxMode`; ignored in `'independent'` mode.
 		 */
-		cascadeSelectPolicy?: CascadeSelectPolicy | null | undefined;
+		cascadeCheckPolicy?: CascadeCheckPolicy | null | undefined;
 		shouldClickToggleCheckbox?: boolean | null | undefined;
 		beforeCheckboxToggleCallback?: (
 			node: LTreeNode<T>,
@@ -211,8 +211,8 @@
 		// onNodeDrop gets symmetric source/target NodeRefs, the set events carry paths + nodes.
 		onNodeClick?: (ctx: NodeEventContext<T>) => void;
 		onNodeDoubleClick?: (ctx: NodeEventContext<T>) => void;
-		onHighlightChange?: (ctx: SelectionChangeContext<T>) => void;
 		onSelectionChange?: (ctx: SelectionChangeContext<T>) => void;
+		onCheckedChange?: (ctx: SelectionChangeContext<T>) => void;
 		onNodeDragStart?: (ctx: NodeDragContext<T>) => void;
 		onNodeDragOver?: (ctx: NodeDragContext<T>) => void;
 		onNodeDrop?: (ctx: NodeDropContext<T>) => void;
@@ -309,11 +309,11 @@
 		 *  inherit from the page (OS preference, framework classes, etc.). */
 		theme?: 'dark' | 'light' | null | undefined;
 		bodyClass?: string | null | undefined;
-		highlightedNodeClass?: string | null | undefined;
-		focusedNodeClass?: string | null | undefined;
-		/** CSS class applied to every checked (isSelected) node — opt-in extra styling;
-		 *  the checkbox is the default signal. */
 		selectedNodeClass?: string | null | undefined;
+		focusedNodeClass?: string | null | undefined;
+		/** CSS class applied to every checked (isChecked) node — opt-in extra styling;
+		 *  the checkbox is the default signal. */
+		checkedNodeClass?: string | null | undefined;
 		/** Data-driven per-row class hook. Return extra class(es) for `.stv__node`. */
 		nodeClass?: (node: LTreeNode<T>) => string | null | undefined;
 		/** Data-driven per-row class hook. Return extra class(es) for `.stv__node-content`. */
@@ -322,7 +322,7 @@
 		/** Class for the dragged source row (the dimmed node left in place while its ghost
 		 *  follows the pointer). When set, REPLACES the built-in `.stv__node-content--dragged`
 		 *  visual (opacity + left-anchored scale) so you own the drag feedback — mirrors
-		 *  `highlightedNodeClass` / `scrollHighlightClass`. Tune the default via
+		 *  `selectedNodeClass` / `scrollHighlightClass`. Tune the default via
 		 *  `--stv-dragged-opacity` / `--stv-dragged-scale` instead of replacing it. */
 		draggedNodeClass?: string | null | undefined;
 		/** Pick the disclosure glyph as a single knob (default `'chevron'`). Re-points
@@ -382,14 +382,14 @@
 
 		/** Custom keydown handler. Return true to prevent default tree keyboard handling
 		 *  (including the built-in shortcuts). Gets a context object mirroring the other
-		 *  callback families: the resolved `focusedNode` (single) and `highlightedNodes`
+		 *  callback families: the resolved `focusedNode` (single) and `selectedNodes`
 		 *  (multi) so you don't reach through the controller for the common case; `controller`
 		 *  remains for imperative actions (addNode, copyNodes, …). A keydown is a tree-level
 		 *  event, so there's no single "the node" — that's why it carries both selections. */
 		onTreeKeydown?: (ctx: {
 			event: KeyboardEvent;
 			focusedNode: LTreeNode<T> | null;
-			highlightedNodes: LTreeNode<T>[];
+			selectedNodes: LTreeNode<T>[];
 			controller: TreeController<T>;
 		}) => boolean | void;
 
@@ -412,8 +412,8 @@
 		getIsExpandedCallback,
 		isSelectableMember,
 		getIsSelectableCallback,
-		isSelectedMember,
-		getIsSelectedCallback,
+		isCheckedMember,
+		getIsCheckedCallback,
 		isDraggableMember,
 		getIsDraggableCallback,
 		isDropAllowedMember,
@@ -435,8 +435,8 @@
 		// DATA
 		data = $bindable(),
 		focusedNode = $bindable(),
-		highlightedPaths = $bindable(new Set<string>()),
 		selectedPaths = $bindable(new Set<string>()),
+		checkedPaths = $bindable(new Set<string>()),
 		insertResult = $bindable(),
 
 		// SLOTS
@@ -456,7 +456,7 @@
 		selectionMode = 'single',
 		shouldShowCheckboxes = false,
 		checkboxMode = 'independent',
-		cascadeSelectPolicy = 'rolled-up',
+		cascadeCheckPolicy = 'rolled-up',
 		shouldClickToggleCheckbox = false,
 		beforeCheckboxToggleCallback,
 		rangeSelectionMode = 'visual',
@@ -503,8 +503,8 @@
 		// EVENTS
 		onNodeClick,
 		onNodeDoubleClick,
-		onHighlightChange,
 		onSelectionChange,
+		onCheckedChange,
 		onNodeDragStart,
 		onNodeDragOver,
 		onNodeDrop,
@@ -550,9 +550,9 @@
 		getIconColorCallback,
 		shouldAlignNodeIcons = false,
 		icon,
-		highlightedNodeClass,
-		focusedNodeClass,
 		selectedNodeClass,
+		focusedNodeClass,
+		checkedNodeClass,
 		nodeClass,
 		nodeContentClass,
 		dragOverNodeClass,
@@ -584,8 +584,8 @@
 		getIsExpandedCallback,
 		isSelectableMember,
 		getIsSelectableCallback,
-		isSelectedMember,
-		getIsSelectedCallback,
+		isCheckedMember,
+		getIsCheckedCallback,
 		isDraggableMember,
 		getIsDraggableCallback,
 		isDropAllowedMember,
@@ -606,14 +606,14 @@
 		treePathSeparator,
 		data,
 		focusedNode,
-		highlightedPaths,
 		selectedPaths,
+		checkedPaths,
 		expandLevel,
 		clickBehavior,
 		selectionMode,
 		shouldShowCheckboxes,
 		checkboxMode,
-		cascadeSelectPolicy,
+		cascadeCheckPolicy,
 		shouldClickToggleCheckbox,
 		beforeCheckboxToggleCallback,
 		rangeSelectionMode,
@@ -647,8 +647,8 @@
 		isAccordionExpand,
 		onNodeClick,
 		onNodeDoubleClick,
-		onHighlightChange,
 		onSelectionChange,
+		onCheckedChange,
 		onNodeDragStart,
 		onNodeDragOver,
 		onNodeDrop,
@@ -669,9 +669,9 @@
 		getContextMenuItemsCallback,
 		hasContextMenuSnippet: !!contextMenu,
 		bodyClass,
-		highlightedNodeClass,
-		focusedNodeClass,
 		selectedNodeClass,
+		focusedNodeClass,
+		checkedNodeClass,
 		nodeClass,
 		nodeContentClass,
 		dragOverNodeClass,
@@ -906,7 +906,7 @@
 		controller.checkboxMode = checkboxMode ?? 'independent';
 	});
 	$effect(() => {
-		controller.cascadeSelectPolicy = cascadeSelectPolicy ?? 'rolled-up';
+		controller.cascadeCheckPolicy = cascadeCheckPolicy ?? 'rolled-up';
 	});
 	$effect(() => {
 		controller.shouldClickToggleCheckbox = shouldClickToggleCheckbox ?? false;
@@ -966,7 +966,7 @@
 		controller.shouldAlignNodeIcons = shouldAlignNodeIcons ?? false;
 	});
 	$effect(() => {
-		controller.highlightedNodeClass = highlightedNodeClass;
+		controller.selectedNodeClass = selectedNodeClass;
 	});
 	$effect(() => {
 		controller.nodeClass = nodeClass;
@@ -978,7 +978,7 @@
 		controller.focusedNodeClass = focusedNodeClass;
 	});
 	$effect(() => {
-		controller.selectedNodeClass = selectedNodeClass;
+		controller.checkedNodeClass = checkedNodeClass;
 	});
 	$effect(() => {
 		controller.dragOverNodeClass = dragOverNodeClass;
@@ -1028,10 +1028,10 @@
 		controller.onNodeDoubleClickHandler = onNodeDoubleClick;
 	});
 	$effect(() => {
-		controller.onHighlightChangeHandler = onHighlightChange;
+		controller.onSelectionChangeHandler = onSelectionChange;
 	});
 	$effect(() => {
-		controller.onSelectionChangeHandler = onSelectionChange;
+		controller.onCheckedChangeHandler = onCheckedChange;
 	});
 	$effect(() => {
 		controller.onNodeDragStartHandler = onNodeDragStart;
@@ -1102,12 +1102,12 @@
 		focusedNode = controller.focusedNode;
 	});
 	$effect(() => {
-		highlightedPaths = controller.highlightedPaths;
+		selectedPaths = controller.selectedPaths;
 	});
 	$effect(() => {
 		// The bindable prop exposes the POLICY-PROJECTED selection (rolled-up /
-		// leaves / all), not the internal canonical set. See cascadeSelectPolicy.
-		selectedPaths = controller.emittedPaths;
+		// leaves / all), not the internal canonical set. See cascadeCheckPolicy.
+		checkedPaths = controller.emittedPaths;
 	});
 	$effect(() => {
 		insertResult = controller.insertResult;
@@ -1122,19 +1122,19 @@
 	});
 	$effect(() => {
 		// Compare by size + content to avoid proxy identity loops
-		const hp = highlightedPaths;
-		const cp = controller.highlightedPaths;
+		const hp = selectedPaths;
+		const cp = controller.selectedPaths;
 		if (hp.size !== cp.size || [...hp].some((p) => !cp.has(p))) {
-			controller.highlightedPaths = new Set(hp);
+			controller.selectedPaths = new Set(hp);
 		}
 	});
 	$effect(() => {
-		const sp = selectedPaths;
+		const sp = checkedPaths;
 		const cp = controller.emittedPaths;
 		if (sp.size !== cp.size || [...sp].some((p) => !cp.has(p))) {
 			// Incoming set is a projection; expand it (cascade-down) into the canonical
-			// checked state. Silent — the parent set this, so don't echo onSelectionChange.
-			controller.setSelectedPaths([...sp], { silent: true });
+			// checked state. Silent — the parent set this, so don't echo onCheckedChange.
+			controller.setCheckedPaths([...sp], { silent: true });
 		}
 	});
 
@@ -1313,34 +1313,13 @@
 		controller.closeContextMenu();
 	}
 
-	// ── Highlight set (UI multi-select — highlightedPaths) ──────────────
-	export function highlightNode(
+	// ── Selection set (UI multi-select — selectedPaths) ──────────────
+	export function selectNode(
 		path: string,
-		mode: HighlightMode = 'replace',
+		mode: SelectMode = 'replace',
 		options?: TreeMutationOptions
 	) {
-		controller.highlightNode(path, mode, options);
-	}
-
-	export function highlightNodes(paths: string[], options?: TreeMutationOptions) {
-		controller.highlightNodes(paths, options);
-	}
-
-	export function setHighlightedPaths(paths: string[], options?: TreeMutationOptions) {
-		controller.setHighlightedPaths(paths, options);
-	}
-
-	export function highlightAll(options?: TreeMutationOptions) {
-		controller.highlightAll(options);
-	}
-
-	export function clearHighlight(paths?: string[], options?: TreeMutationOptions) {
-		controller.clearHighlight(paths, options);
-	}
-
-	// ── Selection set (checkbox / data state — selectedPaths) ───────────
-	export function selectNode(path: string, options?: TreeMutationOptions) {
-		controller.selectNode(path, options);
+		controller.selectNode(path, mode, options);
 	}
 
 	export function selectNodes(paths: string[], options?: TreeMutationOptions) {
@@ -1355,12 +1334,37 @@
 		controller.selectAll(options);
 	}
 
-	export function deselectNode(path: string, options?: TreeMutationOptions) {
-		controller.deselectNode(path, options);
-	}
-
 	export function clearSelection(paths?: string[], options?: TreeMutationOptions) {
 		controller.clearSelection(paths, options);
+	}
+
+	// ── Checked set (checkbox / data state — checkedPaths) ───────────
+	export function checkNode(path: string, options?: TreeMutationOptions) {
+		controller.checkNode(path, options);
+	}
+
+	export function checkNodes(paths: string[], options?: TreeMutationOptions) {
+		controller.checkNodes(paths, options);
+	}
+
+	export function setCheckedPaths(paths: string[], options?: TreeMutationOptions) {
+		controller.setCheckedPaths(paths, options);
+	}
+
+	export function checkAll(options?: TreeMutationOptions) {
+		controller.checkAll(options);
+	}
+
+	export function uncheckNode(path: string, options?: TreeMutationOptions) {
+		controller.uncheckNode(path, options);
+	}
+
+	export function uncheckNodes(paths: string[], options?: TreeMutationOptions) {
+		controller.uncheckNodes(paths, options);
+	}
+
+	export function uncheckAll(options?: TreeMutationOptions) {
+		controller.uncheckAll(options);
 	}
 
 	// ── Focus (single cursor — focusedNode) ─────────────────────────────
@@ -1372,12 +1376,12 @@
 		controller.clearFocus(options);
 	}
 
-	export function getSelectedNodes(): LTreeNode<T>[] {
-		return controller.getSelectedNodes();
+	export function getCheckedNodes(): LTreeNode<T>[] {
+		return controller.getCheckedNodes();
 	}
 
-	export function isNodeSelected(path: string): boolean {
-		return controller.isNodeSelected(path);
+	export function isNodeChecked(path: string): boolean {
+		return controller.isNodeChecked(path);
 	}
 
 	export async function scrollToPath(
@@ -1409,8 +1413,8 @@
 				| 'getIsExpandedCallback'
 				| 'isSelectableMember'
 				| 'getIsSelectableCallback'
-				| 'isSelectedMember'
-				| 'getIsSelectedCallback'
+				| 'isCheckedMember'
+				| 'getIsCheckedCallback'
 				| 'isDraggableMember'
 				| 'getIsDraggableCallback'
 				| 'isDropAllowedMember'
@@ -1427,14 +1431,14 @@
 				| 'sortCallback'
 				| 'data'
 				| 'focusedNode'
-				| 'highlightedPaths'
 				| 'selectedPaths'
+				| 'checkedPaths'
 				| 'expandLevel'
 				| 'clickBehavior'
 				| 'selectionMode'
 				| 'shouldShowCheckboxes'
 				| 'checkboxMode'
-				| 'cascadeSelectPolicy'
+				| 'cascadeCheckPolicy'
 				| 'shouldClickToggleCheckbox'
 				| 'beforeCheckboxToggleCallback'
 				| 'rangeSelectionMode'
@@ -1445,8 +1449,8 @@
 				| 'indexerTimeout'
 				| 'onNodeClick'
 				| 'onNodeDoubleClick'
-				| 'onHighlightChange'
 				| 'onSelectionChange'
+				| 'onCheckedChange'
 				| 'onNodeDragStart'
 				| 'onNodeDragOver'
 				| 'onNodeDrop'
@@ -1494,11 +1498,11 @@
 				| 'iconColorMember'
 				| 'getIconColorCallback'
 				| 'shouldAlignNodeIcons'
-				| 'highlightedNodeClass'
+				| 'selectedNodeClass'
 				| 'nodeClass'
 				| 'nodeContentClass'
 				| 'focusedNodeClass'
-				| 'selectedNodeClass'
+				| 'checkedNodeClass'
 				| 'dragOverNodeClass'
 				| 'draggedNodeClass'
 				| 'scrollHighlightTimeout'
@@ -1525,9 +1529,9 @@
 		if (updates.isSelectableMember !== undefined) isSelectableMember = updates.isSelectableMember;
 		if (updates.getIsSelectableCallback !== undefined)
 			getIsSelectableCallback = updates.getIsSelectableCallback;
-		if (updates.isSelectedMember !== undefined) isSelectedMember = updates.isSelectedMember;
-		if (updates.getIsSelectedCallback !== undefined)
-			getIsSelectedCallback = updates.getIsSelectedCallback;
+		if (updates.isCheckedMember !== undefined) isCheckedMember = updates.isCheckedMember;
+		if (updates.getIsCheckedCallback !== undefined)
+			getIsCheckedCallback = updates.getIsCheckedCallback;
 		if (updates.isDraggableMember !== undefined) isDraggableMember = updates.isDraggableMember;
 		if (updates.getIsDraggableCallback !== undefined)
 			getIsDraggableCallback = updates.getIsDraggableCallback;
@@ -1552,16 +1556,16 @@
 		if (updates.sortCallback !== undefined) sortCallback = updates.sortCallback;
 		if (updates.data !== undefined) data = updates.data;
 		if (updates.focusedNode !== undefined) focusedNode = updates.focusedNode;
-		if (updates.highlightedPaths !== undefined) highlightedPaths = updates.highlightedPaths;
 		if (updates.selectedPaths !== undefined) selectedPaths = updates.selectedPaths;
+		if (updates.checkedPaths !== undefined) checkedPaths = updates.checkedPaths;
 		if (updates.expandLevel !== undefined) expandLevel = updates.expandLevel;
 		if (updates.clickBehavior !== undefined) clickBehavior = updates.clickBehavior;
 		if (updates.selectionMode !== undefined) selectionMode = updates.selectionMode;
 		if (updates.shouldShowCheckboxes !== undefined)
 			shouldShowCheckboxes = updates.shouldShowCheckboxes;
 		if (updates.checkboxMode !== undefined) checkboxMode = updates.checkboxMode;
-		if (updates.cascadeSelectPolicy !== undefined)
-			cascadeSelectPolicy = updates.cascadeSelectPolicy;
+		if (updates.cascadeCheckPolicy !== undefined)
+			cascadeCheckPolicy = updates.cascadeCheckPolicy;
 		if (updates.shouldClickToggleCheckbox !== undefined)
 			shouldClickToggleCheckbox = updates.shouldClickToggleCheckbox;
 		if (updates.beforeCheckboxToggleCallback !== undefined)
@@ -1576,8 +1580,8 @@
 		if (updates.indexerTimeout !== undefined) indexerTimeout = updates.indexerTimeout;
 		if (updates.onNodeClick !== undefined) onNodeClick = updates.onNodeClick;
 		if (updates.onNodeDoubleClick !== undefined) onNodeDoubleClick = updates.onNodeDoubleClick;
-		if (updates.onHighlightChange !== undefined) onHighlightChange = updates.onHighlightChange;
 		if (updates.onSelectionChange !== undefined) onSelectionChange = updates.onSelectionChange;
+		if (updates.onCheckedChange !== undefined) onCheckedChange = updates.onCheckedChange;
 		if (updates.onNodeDragStart !== undefined) onNodeDragStart = updates.onNodeDragStart;
 		if (updates.onNodeDragOver !== undefined) onNodeDragOver = updates.onNodeDragOver;
 		if (updates.onNodeDrop !== undefined) onNodeDrop = updates.onNodeDrop;
@@ -1641,12 +1645,12 @@
 			getIconColorCallback = updates.getIconColorCallback;
 		if (updates.shouldAlignNodeIcons !== undefined)
 			shouldAlignNodeIcons = updates.shouldAlignNodeIcons;
-		if (updates.highlightedNodeClass !== undefined)
-			highlightedNodeClass = updates.highlightedNodeClass;
+		if (updates.selectedNodeClass !== undefined)
+			selectedNodeClass = updates.selectedNodeClass;
 		if (updates.nodeClass !== undefined) nodeClass = updates.nodeClass;
 		if (updates.nodeContentClass !== undefined) nodeContentClass = updates.nodeContentClass;
 		if (updates.focusedNodeClass !== undefined) focusedNodeClass = updates.focusedNodeClass;
-		if (updates.selectedNodeClass !== undefined) selectedNodeClass = updates.selectedNodeClass;
+		if (updates.checkedNodeClass !== undefined) checkedNodeClass = updates.checkedNodeClass;
 		if (updates.dragOverNodeClass !== undefined) dragOverNodeClass = updates.dragOverNodeClass;
 		if (updates.draggedNodeClass !== undefined) draggedNodeClass = updates.draggedNodeClass;
 		if (updates.scrollHighlightTimeout !== undefined)
@@ -1670,16 +1674,16 @@
 		if (controller.contextMenuVisible) return;
 
 		// Call custom handler first — return true to suppress default handling. Resolve the
-		// focus + highlight selections up front so the consumer gets nodes, not raw paths.
+		// focus + selection sets up front so the consumer gets nodes, not raw paths.
 		if (onTreeKeydown) {
-			const highlightedNodes = [...controller.highlightedPaths]
+			const selectedNodes = [...controller.selectedPaths]
 				.map((p) => controller.getNodeByPath(p))
 				.filter((n): n is LTreeNode<T> => n !== null);
 			if (
 				onTreeKeydown({
 					event,
 					focusedNode: controller.focusedNode ?? null,
-					highlightedNodes,
+					selectedNodes,
 					controller
 				}) === true
 			) {
@@ -1700,14 +1704,14 @@
 
 		let handled = true;
 
-		// Shift+nav extends the highlight range. In single mode the controller
-		// short-circuits these to no-ops (see _navHighlightTo).
+		// Shift+nav extends the selection range. In single mode the controller
+		// short-circuits these to no-ops (see _navSelectTo).
 		switch (event.key) {
 			case 'ArrowDown':
-				event.shiftKey ? controller.navHighlightNext() : controller.navNextSibling();
+				event.shiftKey ? controller.navSelectNext() : controller.navNextSibling();
 				break;
 			case 'ArrowUp':
-				event.shiftKey ? controller.navHighlightPrev() : controller.navPrevSibling();
+				event.shiftKey ? controller.navSelectPrev() : controller.navPrevSibling();
 				break;
 			case 'ArrowRight':
 				controller.navInto();
@@ -1719,20 +1723,20 @@
 				controller.navBackOut();
 				break;
 			case 'Home':
-				event.shiftKey ? controller.navHighlightFirst() : controller.navFirst();
+				event.shiftKey ? controller.navSelectFirst() : controller.navFirst();
 				break;
 			case 'End':
-				event.shiftKey ? controller.navHighlightLast() : controller.navLast();
+				event.shiftKey ? controller.navSelectLast() : controller.navLast();
 				break;
 			case 'PageDown':
-				event.shiftKey ? controller.navHighlightPageDown() : controller.navPageDown();
+				event.shiftKey ? controller.navSelectPageDown() : controller.navPageDown();
 				break;
 			case 'PageUp':
-				event.shiftKey ? controller.navHighlightPageUp() : controller.navPageUp();
+				event.shiftKey ? controller.navSelectPageUp() : controller.navPageUp();
 				break;
 			case 'Enter':
-				// single: no-op (per spec); multi: toggle highlight on focused node.
-				if (controller.selectionMode === 'multi') controller.toggleFocusedHighlight();
+				// single: no-op (per spec); multi: toggle selection on focused node.
+				if (controller.selectionMode === 'multi') controller.toggleFocusedSelect();
 				else handled = false;
 				break;
 			case ' ':
@@ -1745,13 +1749,13 @@
 				}
 				break;
 			case 'Escape':
-				// Priority: pending cut → highlight set → leave alone for surrounding UI.
+				// Priority: pending cut → selection set → leave alone for surrounding UI.
 				// File Explorer / Finder convention. Context-menu Escape is handled by
 				// the separate window-level listener above and never reaches this path.
 				if (controller.hasClipboardContent() && controller.getClipboardOperation() === 'cut') {
 					controller.cancelCut();
-				} else if (controller.highlightedPaths.size > 0) {
-					controller.clearHighlight();
+				} else if (controller.selectedPaths.size > 0) {
+					controller.clearSelection();
 				} else {
 					handled = false;
 				}
@@ -1824,7 +1828,7 @@
 		const entries = getContextMenuItemsCallback(
 			controller.contextMenuNode,
 			controller.closeContextMenu.bind(controller),
-			controller.getSelectedNodes()
+			controller.getCheckedNodes()
 		);
 		const match = findEntryByShortcut(entries, event);
 		if (match) {
@@ -2018,7 +2022,7 @@
 				{@const menuEntries = getContextMenuItemsCallback(
 					controller.contextMenuNode,
 					controller.closeContextMenu.bind(controller),
-					controller.getSelectedNodes()
+					controller.getCheckedNodes()
 				)}
 				<ContextMenuLevel
 					entries={menuEntries}

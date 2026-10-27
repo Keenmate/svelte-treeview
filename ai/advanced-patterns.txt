@@ -21,10 +21,10 @@ treeElement.update({
 treeElement.update({ searchText: '' });
 
 All props updatable except snippets:
-- data, searchText, focusedNode, highlightedPaths, selectedPaths, expandLevel
+- data, searchText, focusedNode, selectedPaths, checkedPaths, expandLevel
 - Members: idMember, pathMember, displayValueMember
 - Callbacks: sortCallback, onNodeClick, etc.
-- Visual: highlightedNodeClass, focusedNodeClass, etc.
+- Visual: selectedNodeClass, focusedNodeClass, etc.
 
 LAZY LOADING CHILDREN
 ---------------------
@@ -93,64 +93,65 @@ THREE-LEVEL SELECTION (v5.0.0-rc06+)
 Three independent state tracks:
 
 1. focusedNode — single node (click/arrow keys), for detail panels
-2. highlightedPaths — multi-node UI highlight (Ctrl/Shift+click), for bulk ops
-3. selectedPaths — checkbox data state, independent of highlight
+2. selectedPaths — multi-node UI selection (Ctrl/Shift+click), for bulk ops
+3. checkedPaths — checkbox data state, independent of the selection
 
 <script>
   let focusedNode = $state(null);
-  let highlightedPaths = $state(new Set<string>());
   let selectedPaths = $state(new Set<string>());
+  let checkedPaths = $state(new Set<string>());
 </script>
 
 <Tree
   {data}
   bind:focusedNode
-  bind:highlightedPaths
   bind:selectedPaths
-  highlightedNodeClass="stv__node-content--highlighted"
+  bind:checkedPaths
+  selectedNodeClass="stv__node-content--selected"
   shouldShowCheckboxes={true}
   checkboxMode="cascade"
   rangeSelectionMode="visual"
-  onHighlightChange={(ctx) => console.log(`${ctx.paths.size} highlighted`)}
-  onSelectionChange={(ctx) => console.log(`${ctx.paths.size} checked`)}
+  onSelectionChange={(ctx) => console.log(`${ctx.paths.size} selected`)}
+  onCheckedChange={(ctx) => console.log(`${ctx.paths.size} checked`)}
 />
 
 Events take ONE context object. SelectionChangeContext<T> = { paths: Set<string>, nodes }.
 
-Highlight interactions:
-- Ctrl+click (Cmd on Mac): toggle individual node highlight
-- Shift+click: range highlight from anchor to target
-- Shift+Arrow/Home/End/PageUp/PageDown: extend highlight via keyboard
-- Plain click: clear highlights, highlight one
+Selection interactions:
+- Ctrl+click (Cmd on Mac): toggle individual node selection
+- Shift+click: range selection from anchor to target
+- Shift+Arrow/Home/End/PageUp/PageDown: extend selection via keyboard
+- Plain click: clear the selection, select one
 
 Checkbox interactions:
-- Click checkbox: toggle isSelected (independent of highlight)
-- Click checkbox on highlighted node with multi-highlight: all highlighted toggle
+- Click checkbox: toggle isChecked (independent of the selection)
+- Click checkbox on a selected node with multi-selection: all selected toggle
 - Cascade mode: checking parent checks all descendants, indeterminate state
 
 rangeSelectionMode:
-- "visual" (default): highlights only visible/expanded nodes
-- "logical": highlights all nodes in depth-first order including collapsed
+- "visual" (default): selects only visible/expanded nodes
+- "logical": selects all nodes in depth-first order including collapsed
 
 TreeController API — three symmetric families (opts = { silent? }):
 Access via bind:this on <Tree> (treeRef) — every method below is on the controller.
 
-HIGHLIGHT (UI multi-select set = highlightedPaths):
-- treeRef.highlightNode(path, mode?, opts?)   // mode: 'replace' | 'toggle' | 'range'
-- treeRef.highlightNodes(paths, opts?)        // additive
-- treeRef.setHighlightedPaths(paths, opts?)   // replace whole set
-- treeRef.highlightAll(opts?)
-- treeRef.clearHighlight(paths?, opts?)
-
-SELECTION (checkbox data set = selectedPaths):
-- treeRef.selectNode(path, opts?)
-- treeRef.selectNodes(paths, opts?)           // additive
-- treeRef.setSelectedPaths(paths, opts?)      // replace whole set
+SELECTION (UI multi-select set = selectedPaths):
+- treeRef.selectNode(path, mode?, opts?)   // mode: 'replace' | 'toggle' | 'range'
+- treeRef.selectNodes(paths, opts?)        // additive
+- treeRef.setSelectedPaths(paths, opts?)   // replace whole set
 - treeRef.selectAll(opts?)
-- treeRef.deselectNode(path, opts?)
-- treeRef.clearSelection(paths?, opts?)       // replaced the old deselectAll()
-- treeRef.getSelectedNodes()
-- treeRef.isNodeSelected(path)
+- treeRef.clearSelection(paths?, opts?)
+
+CHECKED (checkbox data set = checkedPaths):
+- treeRef.checkNode(path, opts?)
+- treeRef.checkNodes(paths, opts?)           // additive
+- treeRef.setCheckedPaths(paths, opts?)      // replace whole set
+- treeRef.checkAll(opts?)
+- treeRef.uncheckNode(path, opts?)
+- treeRef.uncheckNodes(paths, opts?)
+- treeRef.uncheckAll(opts?)
+- treeRef.getCheckedNodes()
+- treeRef.isNodeChecked(path)
 
 FOCUS (single = focusedNode):
 - treeRef.focusNode(path, opts?)
@@ -342,29 +343,29 @@ FORM INTEGRATION
 Use tree as form input:
 
 <script>
-  let selectedPaths = $state([]);
+  let checkedPaths = $state([]);
 
   function handleSubmit(e) {
     const formData = new FormData(e.target);
-    formData.set('selectedNodes', JSON.stringify(selectedPaths));
+    formData.set('selectedNodes', JSON.stringify(checkedPaths));
     // Submit form
   }
 </script>
 
 <form onsubmit={handleSubmit}>
-  <input type="hidden" name="selectedNodes" value={JSON.stringify(selectedPaths)} />
+  <input type="hidden" name="selectedNodes" value={JSON.stringify(checkedPaths)} />
 
   <Tree {data}>
     {#snippet nodeTemplate(node)}
       <label>
         <input
           type="checkbox"
-          checked={selectedPaths.includes(node.path)}
+          checked={checkedPaths.includes(node.path)}
           onchange={(e) => {
             if (e.target.checked) {
-              selectedPaths = [...selectedPaths, node.path];
+              checkedPaths = [...checkedPaths, node.path];
             } else {
-              selectedPaths = selectedPaths.filter(p => p !== node.path);
+              checkedPaths = checkedPaths.filter(p => p !== node.path);
             }
           }}
         />

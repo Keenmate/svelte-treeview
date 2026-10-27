@@ -5,9 +5,9 @@ import { test, expect, Page, Locator } from '@playwright/test';
  *
  * Two contracts:
  *
- *  1. Highlight-marker FALLBACK. `.stv__node-content--highlighted` ships a
+ *  1. Highlight-marker FALLBACK. `.stv__node-content--selected` ships a
  *     default look so highlight is visible out of the box, but Node.svelte only
- *     applies it when `highlightedNodeClass` is unset. The moment a highlight
+ *     applies it when `selectedNodeClass` is unset. The moment a highlight
  *     class is configured the marker must NOT be on the element — otherwise the
  *     default background fights the configured style (regression that prompted
  *     these tests).
@@ -24,10 +24,10 @@ import { test, expect, Page, Locator } from '@playwright/test';
 
 const PAGE = '/test/highlight-focus';
 
-const MARKER = 'stv__node-content--highlighted';
+const MARKER = 'stv__node-content--selected';
 const FOCUS_MARKER = 'stv__node-content--focused';
-const BOLD = 'stv__node-content--highlight-bold';
-const GLOW = 'stv__node-content--highlight-glow';
+const BOLD = 'stv__node-content--selected-bold';
+const GLOW = 'stv__node-content--selected-glow';
 const FOCUS_CLASS = 'test-focus';
 
 function nodeContent(page: Page, path: string): Locator {
@@ -46,7 +46,7 @@ async function goto(page: Page) {
 // ── Highlight marker fallback ────────────────────────────────────────────────
 
 test.describe('highlight marker fallback', () => {
-	test('no highlightedNodeClass: highlighted row gets the fallback marker', async ({ page }) => {
+	test('no selectedNodeClass: highlighted row gets the fallback marker', async ({ page }) => {
 		await goto(page);
 
 		const work = nodeContent(page, '1.1');
@@ -54,10 +54,10 @@ test.describe('highlight marker fallback', () => {
 
 		await expect(page.locator('.output').filter({ hasText: 'Highlighted' }).locator('pre')).toContainText('1.1');
 		// Fallback marker present because no class is configured.
-		await expect(work).toHaveClass(new RegExp(`\\b${MARKER}\\b`));
+		await expect(work).toHaveClass(new RegExp(`(^|\\s)${MARKER}(\\s|$)`));
 	});
 
-	test('highlightedNodeClass="Bold": custom class applied, fallback marker suppressed', async ({ page }) => {
+	test('selectedNodeClass="Bold": custom class applied, fallback marker suppressed', async ({ page }) => {
 		await goto(page);
 		await page.getByLabel('Highlight Class:').selectOption(BOLD);
 
@@ -67,10 +67,10 @@ test.describe('highlight marker fallback', () => {
 		// Custom class is on the row...
 		await expect(work).toHaveClass(new RegExp(`\\b${BOLD}\\b`));
 		// ...and the fallback marker is NOT — this is the anti-fight contract.
-		await expect(work).not.toHaveClass(new RegExp(`\\b${MARKER}\\b`));
+		await expect(work).not.toHaveClass(new RegExp(`(^|\\s)${MARKER}(\\s|$)`));
 	});
 
-	test('highlightedNodeClass="Glow": custom class applied, fallback marker suppressed', async ({ page }) => {
+	test('selectedNodeClass="Glow": custom class applied, fallback marker suppressed', async ({ page }) => {
 		await goto(page);
 		await page.getByLabel('Highlight Class:').selectOption(GLOW);
 
@@ -78,7 +78,7 @@ test.describe('highlight marker fallback', () => {
 		await work.click();
 
 		await expect(work).toHaveClass(new RegExp(`\\b${GLOW}\\b`));
-		await expect(work).not.toHaveClass(new RegExp(`\\b${MARKER}\\b`));
+		await expect(work).not.toHaveClass(new RegExp(`(^|\\s)${MARKER}(\\s|$)`));
 	});
 
 	test('switching the class back to none restores the fallback marker', async ({ page }) => {
@@ -88,12 +88,12 @@ test.describe('highlight marker fallback', () => {
 		await page.getByLabel('Highlight Class:').selectOption(BOLD);
 		const work = nodeContent(page, '1.1');
 		await work.click();
-		await expect(work).not.toHaveClass(new RegExp(`\\b${MARKER}\\b`));
+		await expect(work).not.toHaveClass(new RegExp(`(^|\\s)${MARKER}(\\s|$)`));
 
 		// Switch back to (none) — the same highlighted row should regain the marker
 		// and drop the Bold class.
 		await page.getByLabel('Highlight Class:').selectOption('');
-		await expect(work).toHaveClass(new RegExp(`\\b${MARKER}\\b`));
+		await expect(work).toHaveClass(new RegExp(`(^|\\s)${MARKER}(\\s|$)`));
 		await expect(work).not.toHaveClass(new RegExp(`\\b${BOLD}\\b`));
 	});
 });
@@ -159,6 +159,6 @@ test.describe('focused node styling', () => {
 		// and the fallback marker still stays away.
 		await expect(work).toHaveClass(new RegExp(`\\b${BOLD}\\b`));
 		await expect(work).toHaveClass(new RegExp(`\\b${FOCUS_CLASS}\\b`));
-		await expect(work).not.toHaveClass(new RegExp(`\\b${MARKER}\\b`));
+		await expect(work).not.toHaveClass(new RegExp(`(^|\\s)${MARKER}(\\s|$)`));
 	});
 });

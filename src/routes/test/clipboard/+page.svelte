@@ -21,7 +21,7 @@
 
 	let treeRef: Tree<Item>;
 	let focusedNode = $state<LTreeNode<Item> | null>(null);
-	let highlightedPaths = $state<Set<string>>(new Set());
+	let selectedPaths = $state<Set<string>>(new Set());
 	let cutPaths = $state<Set<string>>(new Set());
 	let lastLog = $state('');
 	let nextId = 100;
@@ -31,7 +31,7 @@
 	}
 
 	function clipboardPaths(controller: TreeController<Item>): string[] {
-		if (controller.highlightedPaths.size > 0) return [...controller.highlightedPaths];
+		if (controller.selectedPaths.size > 0) return [...controller.selectedPaths];
 		return focusedNode ? [focusedNode.path] : [];
 	}
 
@@ -76,7 +76,7 @@
 	}: {
 		event: KeyboardEvent;
 		focusedNode: LTreeNode<Item> | null;
-		highlightedNodes: LTreeNode<Item>[];
+		selectedNodes: LTreeNode<Item>[];
 		controller: TreeController<Item>;
 	}): boolean {
 		const mod = event.ctrlKey || event.metaKey;
@@ -139,7 +139,7 @@
 			clickBehavior="select"
 			selectionMode="multi"
 			bind:focusedNode
-			bind:highlightedPaths
+			bind:selectedPaths
 			{onTreeKeydown}
 			onCopy={({ paths }) => (lastLog = `copied ${paths.length}`)}
 			onCut={({ paths }) => (lastLog = `cut ${paths.length}`)}

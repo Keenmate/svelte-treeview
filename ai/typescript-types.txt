@@ -47,8 +47,8 @@ import type {
   ClickBehavior,       // 'select' | 'expand' | 'expand-and-focus'
   CheckboxMode,        // 'independent' | 'cascade'
   SelectionMode,       // 'single' | 'multi'
-  HighlightMode,       // 'replace' | 'toggle' | 'range'
-  TreeMutationOptions, // { silent? } — passed to selection/highlight/focus mutators
+  SelectMode,       // 'replace' | 'toggle' | 'range'
+  TreeMutationOptions, // { silent? } — passed to selection/checked/focus mutators
 
   // Context menu (unified types)
   ContextMenuEntry,    // ContextMenuItem | ContextMenuDivider
@@ -115,7 +115,7 @@ interface LTreeNode<T> {
 
   // State
   isExpanded: boolean;
-  isSelected: boolean;
+  isChecked: boolean;
 
   // Drag and drop
   isDraggable: boolean;
@@ -244,8 +244,8 @@ onNodeDoubleClick?: (ctx: NodeEventContext<T>) => void;
 onNodeDragStart?: (ctx: NodeDragContext<T>) => void;     // grabbed node + event + dragged set
 onNodeDragOver?: (ctx: NodeDragContext<T>) => void;      // hovered node + event + dragged set
 onNodeDrop?: (ctx: NodeDropContext<T>) => void;          // source/target/dragged/dropped/...
-onHighlightChange?: (ctx: SelectionChangeContext<T>) => void;  // UI multi-select (highlightedPaths)
-onSelectionChange?: (ctx: SelectionChangeContext<T>) => void;  // checkbox set (selectedPaths)
+onSelectionChange?: (ctx: SelectionChangeContext<T>) => void;  // UI multi-select (selectedPaths)
+onCheckedChange?: (ctx: SelectionChangeContext<T>) => void;  // checkbox set (checkedPaths)
 onCopy?: (ctx: ClipboardEventContext<T>) => void;
 onCut?: (ctx: ClipboardEventContext<T>) => void;
 onDelete?: (ctx: ClipboardEventContext<T>) => void;      // ctx.operation omitted for delete
@@ -255,7 +255,7 @@ onPaste?: (result: PasteResult<T>) => void;
 onTreeKeydown?: (ctx: {
   event: KeyboardEvent;
   focusedNode: LTreeNode<T> | null;
-  highlightedNodes: LTreeNode<T>[];
+  selectedNodes: LTreeNode<T>[];
   controller: TreeController<T>;
 }) => boolean | void;
 
@@ -288,7 +288,7 @@ getSearchValueCallback?: (node: LTreeNode<T>) => string;
 getAllowedDropPositionsCallback?: (node: LTreeNode<T>) => DropPosition[] | null | undefined;
 
 // Context menu (label/onclick/divider API). closeMenuCallback closes the menu;
-// selectedNodes is the current highlight set when the menu opened.
+// selectedNodes is the current selection when the menu opened.
 getContextMenuItemsCallback?: (
   node: LTreeNode<T>,
   closeMenuCallback: () => void,
@@ -339,7 +339,7 @@ interface ClipboardEventContext<T> {
   nodes: LTreeNode<T>[];
 }
 
-// onHighlightChange (highlightedPaths) / onSelectionChange (selectedPaths).
+// onSelectionChange (selectedPaths) / onCheckedChange (checkedPaths).
 // Suppressed by { silent: true } mutations.
 interface SelectionChangeContext<T> {
   paths: Set<string>;

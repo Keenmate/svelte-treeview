@@ -23,7 +23,7 @@ For live demos, see [svelte-treeview.keenmate.dev](https://svelte-treeview.keenm
   data={fileData}
   idMember="path"
   pathMember="path"
-  selectedNodeClass="stv__selected--bold"
+  checkedNodeClass="stv__selected--bold"
   onNodeClicked={(node) => console.log('Clicked:', node.data?.name)}
 >
   {#snippet nodeTemplate(node)}

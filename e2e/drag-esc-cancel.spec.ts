@@ -7,7 +7,7 @@ import { test, expect } from '@playwright/test';
  * the highlight with the dragged node (OS-convention selection sync). If the
  * user then presses Esc, the browser fires dragend with dropEffect='none' and
  * _onNodeDragEnd must roll the highlight back. Without the rollback the user
- * is left with the dragged node visually selected (.stv__node-content--highlight-bold
+ * is left with the dragged node visually selected (.stv__node-content--selected-bold
  * sticks on the source row).
  *
  * Playwright's mouse helpers don't synthesize HTML5 drag events, so we
@@ -30,7 +30,7 @@ test('Esc during drag restores the pre-drag highlight on the source row', async 
 	const before = await fileARow.getAttribute('class');
 
 	// Dispatch a real dragstart, wait for the controller's rAF selection sync to
-	// run (the bug: that sync sets node.isHighlighted = true), then dispatch a
+	// run (the bug: that sync sets node.isSelected = true), then dispatch a
 	// dragend with dropEffect='none' (which is what Esc-cancel produces).
 	// Re-query the row after the rAF — the controller's tree.refresh() re-keys
 	// the source node, so the original DOM element is detached and dragend on

@@ -25,30 +25,30 @@ The tree is fully navigable from the keyboard. Focus the tree (`Tab` into it), t
 | Key | Action |
 |-----|--------|
 | `Space` | Toggle expand/collapse of the focused node. If `shouldShowCheckboxes={true}` and the node is selectable, toggle its checkbox instead. |
-| `Enter` | In `selectionMode='multi'`: toggle highlight on the focused node. In `'single'` mode: no-op (handled by the consumer's `onNodeClicked`). |
+| `Enter` | In `selectionMode='multi'`: toggle selection on the focused node. In `'single'` mode: no-op (handled by the consumer's `onNodeClicked`). |
 
-### Range highlight (`selectionMode='multi'`)
+### Range selection (`selectionMode='multi'`)
 
 Hold `Shift` together with any movement key to extend the highlight range from the anchor (last clicked/focused node) to the new position. In `'single'` mode these are no-ops.
 
 | Key | Action |
 |-----|--------|
-| `Shift+ArrowDown` | Extend highlight to the next visible node |
-| `Shift+ArrowUp` | Extend highlight to the previous visible node |
-| `Shift+Home` | Extend highlight to the first visible node |
-| `Shift+End` | Extend highlight to the last visible node |
-| `Shift+PageDown` | Extend highlight forward ~10 visible nodes |
-| `Shift+PageUp` | Extend highlight back ~10 visible nodes |
+| `Shift+ArrowDown` | Extend selection to the next visible node |
+| `Shift+ArrowUp` | Extend selection to the previous visible node |
+| `Shift+Home` | Extend selection to the first visible node |
+| `Shift+End` | Extend selection to the last visible node |
+| `Shift+PageDown` | Extend selection forward ~10 visible nodes |
+| `Shift+PageUp` | Extend selection back ~10 visible nodes |
 
 ### Pointer modifiers (`selectionMode='multi'`)
 
 | Gesture | Action |
 |---------|--------|
-| Click | Move focus and replace highlight with the clicked node |
-| `Ctrl+Click` | Toggle the clicked node's highlight (additive) |
-| `Shift+Click` | Extend highlight from the anchor to the clicked node |
+| Click | Move focus and replace the selection with the clicked node |
+| `Ctrl+Click` | Toggle the clicked node's selection (additive) |
+| `Shift+Click` | Extend selection from the anchor to the clicked node |
 
-Ctrl/Shift+Click does **not** auto-toggle expand/collapse — modifier clicks are reserved for highlight management so multi-selecting folders doesn't open them.
+Ctrl/Shift+Click does **not** auto-toggle expand/collapse — modifier clicks are reserved for selection management so multi-selecting folders doesn't open them.
 
 ### Context menu
 
@@ -88,10 +88,10 @@ Override or augment the default keymap with `onTreeKeydown` — return `true` to
 The tree exposes a three-level selection model — see [`docs/examples.md`](./examples.md) for a usage cookbook, and the rc09 notes in [`README.md`](../README.md#whats-new-in-v500-rc09) for the rationale:
 
 - **Focus** (`focusedNode`) — the single node with keyboard cursor on it
-- **Highlight** (`highlightedPaths: Set<string>`) — multi-selection set (Ctrl/Shift+click, Shift+Arrow)
-- **Selection** (`selectedPaths: Set<string>`) — checkbox state when `shouldShowCheckboxes={true}`
+- **Selection** (`selectedPaths: Set<string>`) — multi-selection set (Ctrl/Shift+click, Shift+Arrow)
+- **Selection** (`checkedPaths: Set<string>`) — checkbox state when `shouldShowCheckboxes={true}`
 
-When `shouldShowCheckboxes={false}`, highlight is mirrored into `selectedPaths` automatically — consumers always have a single "what's selected" set to read regardless of UI style.
+When `shouldShowCheckboxes={false}`, the selection is mirrored into `checkedPaths` automatically — consumers always have a single "what's selected" set to read regardless of UI style.
 
 ## Screen reader semantics
 

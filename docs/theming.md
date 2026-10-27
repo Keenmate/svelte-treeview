@@ -136,7 +136,7 @@ The tree emits BEM-style classes (`stv__<element>` / `stv__<element>--<modifier>
   {data}
   idMember="path"
   pathMember="path"
-  selectedNodeClass="stv__selected--bold"
+  checkedNodeClass="stv__selected--bold"
   dragOverNodeClass="stv__dragover--highlight"
 />
 ```

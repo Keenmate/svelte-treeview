@@ -4,7 +4,7 @@
 	//   - onNodeClick / onNodeDoubleClick (NodeRef)
 	//   - onNodeDragStart / onNodeDragOver (NodeDragContext: NodeRef + event + dragged)
 	//   - onNodeDrop (NodeDropContext: source, target, dragged, dropped, position, operation)
-	//   - onHighlightChange / onSelectionChange ({ paths, nodes })
+	//   - onSelectionChange / onCheckedChange ({ paths, nodes })
 	//   - onCopy / onCut / onDelete ({ operation?, paths, nodes })
 	// Two trees (treeA source / treeB target) exercise same-tree vs cross-tree drops.
 	// Targeted by e2e/event-context.spec.ts.
@@ -46,8 +46,8 @@
 	let dragStartLog = $state<any[]>([]);
 	let dragOverLog = $state<any[]>([]);
 	let dropLog = $state<any[]>([]);
-	let highlightLog = $state<any[]>([]);
 	let selectionLog = $state<any[]>([]);
+	let checkedLog = $state<any[]>([]);
 	let copyLog = $state<any[]>([]);
 	let cutLog = $state<any[]>([]);
 	let deleteLog = $state<any[]>([]);
@@ -58,8 +58,8 @@
 		dragStartLog = [];
 		dragOverLog = [];
 		dropLog = [];
-		highlightLog = [];
 		selectionLog = [];
+		checkedLog = [];
 		copyLog = [];
 		cutLog = [];
 		deleteLog = [];
@@ -113,11 +113,11 @@
 			}
 		];
 	}
-	function logHighlight(ctx: SelectionChangeContext<Item>) {
-		highlightLog = [...highlightLog, { paths: [...ctx.paths], nodes: ctx.nodes.map((n) => n.path) }];
-	}
 	function logSelection(ctx: SelectionChangeContext<Item>) {
 		selectionLog = [...selectionLog, { paths: [...ctx.paths], nodes: ctx.nodes.map((n) => n.path) }];
+	}
+	function logChecked(ctx: SelectionChangeContext<Item>) {
+		checkedLog = [...checkedLog, { paths: [...ctx.paths], nodes: ctx.nodes.map((n) => n.path) }];
 	}
 	function logCopy(ctx: ClipboardEventContext<Item>) {
 		copyLog = [...copyLog, { operation: ctx.operation, paths: ctx.paths, nodes: ctx.nodes.map((n) => n.path) }];
@@ -144,8 +144,8 @@
 	<pre data-testid="dragstart-ctx">{JSON.stringify(dragStartLog)}</pre>
 	<pre data-testid="dragover-ctx">{JSON.stringify(dragOverLog)}</pre>
 	<pre data-testid="drop-ctx">{JSON.stringify(dropLog)}</pre>
-	<pre data-testid="highlight-ctx">{JSON.stringify(highlightLog)}</pre>
-	<pre data-testid="selection-ctx">{JSON.stringify(selectionLog)}</pre>
+	<pre data-testid="highlight-ctx">{JSON.stringify(selectionLog)}</pre>
+	<pre data-testid="selection-ctx">{JSON.stringify(checkedLog)}</pre>
 	<pre data-testid="copy-ctx">{JSON.stringify(copyLog)}</pre>
 	<pre data-testid="cut-ctx">{JSON.stringify(cutLog)}</pre>
 	<pre data-testid="delete-ctx">{JSON.stringify(deleteLog)}</pre>
@@ -169,14 +169,14 @@
 				getIsDropAllowedCallback={() => true}
 				shouldHandleKeyboardShortcuts={true}
 				bind:focusedNode={focusedA}
-				bind:highlightedPaths={highlightedA}
+				bind:selectedPaths={highlightedA}
 				onNodeClick={logClick}
 				onNodeDoubleClick={logDblClick}
 				onNodeDragStart={logDragStart}
 				onNodeDragOver={logDragOver}
 				onNodeDrop={logDrop}
-				onHighlightChange={logHighlight}
 				onSelectionChange={logSelection}
+				onCheckedChange={logChecked}
 				onCopy={logCopy}
 				onCut={logCut}
 				onDelete={logDelete}
@@ -203,7 +203,7 @@
 				getIsDraggableCallback={() => true}
 				getIsDropAllowedCallback={() => true}
 				bind:focusedNode={focusedB}
-				bind:highlightedPaths={highlightedB}
+				bind:selectedPaths={highlightedB}
 				onNodeDrop={logDrop}
 			>
 				{#snippet nodeTemplate(node: LTreeNode<Item>)}

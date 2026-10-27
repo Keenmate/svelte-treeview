@@ -131,7 +131,7 @@ import type {
   NodeDropContext,       // onNodeDrop context object
   NodeDragContext,       // onNodeDragStart / onNodeDragOver context
   ClipboardEventContext, // onCopy / onCut / onDelete context
-  SelectionChangeContext,// onHighlightChange / onSelectionChange context
+  SelectionChangeContext,// onSelectionChange / onCheckedChange context
   PasteResult,           // onPaste result
   NodeTransformContext   // copy/paste transformation callback context
 } from '@keenmate/svelte-treeview';

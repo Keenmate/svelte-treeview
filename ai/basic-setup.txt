@@ -105,8 +105,8 @@ BINDING FOCUSED NODE
 
 Other bindable selection state:
 - bind:focusedNode        // single focused node (click / arrow keys)
-- bind:highlightedPaths   // Set<string> — UI multi-select (Ctrl/Shift+click)
-- bind:selectedPaths      // Set<string> — checkbox data state
+- bind:selectedPaths   // Set<string> — UI multi-select (Ctrl/Shift+click)
+- bind:checkedPaths      // Set<string> — checkbox data state
 
 BINDING SEARCH TEXT
 -------------------

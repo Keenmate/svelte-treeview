@@ -73,12 +73,12 @@
 	const toggleIconMode = $derived(config.toggleIconMode);
 	// True when a custom (non-default) expand class is in play — the escape hatch.
 	const isCustomGlyph = $derived(expandIconClass !== 'stv__toggle-icon--expand');
-	const highlightedNodeClass = $derived(config.highlightedNodeClass);
-	const focusedNodeClass = $derived(config.focusedNodeClass);
-	// Opt-in class for checked (isSelected) rows — the checkbox is the default signal.
 	const selectedNodeClass = $derived(config.selectedNodeClass);
+	const focusedNodeClass = $derived(config.focusedNodeClass);
+	// Opt-in class for checked (isChecked) rows — the checkbox is the default signal.
+	const checkedNodeClass = $derived(config.checkedNodeClass);
 	// When set, replaces the built-in .stv__node-content--dragged visual on the dimmed
-	// source row (see template). Mirrors highlightedNodeClass / focusedNodeClass.
+	// source row (see template). Mirrors selectedNodeClass / focusedNodeClass.
 	const draggedNodeClass = $derived(config.draggedNodeClass);
 	// This node is part of the active drag (lead, a multi-drag member, or a traveling
 	// descendant). Derived per-node from the controller's complete manifest so recursive
@@ -181,8 +181,8 @@
 		deviceClass: renderEnv?.deviceClass ?? 'desktop',
 		container: renderEnv?.container ?? { width: 0, height: 0 },
 		isExpanded: !!node.isExpanded,
+		isChecked: !!node.isChecked,
 		isSelected: !!node.isSelected,
-		isHighlighted: !!node.isHighlighted,
 		isFocused: !!node.isFocused,
 		level: node.level ?? 0,
 		hasChildren: !!node.hasChildren
@@ -457,12 +457,12 @@
 			     (not the native .indeterminate prop, which doesn't survive re-render /
 			     virtual scroll). tabindex=-1 keeps keyboard nav scoped to
 			     .stv__container; onclick preventDefaults so the controller's
-			     node.isSelected stays the source of truth. -->
+			     node.isChecked stays the source of truth. -->
 			<input
 				type="checkbox"
 				class="stv__checkbox"
 				class:stv__checkbox--indeterminate={isIndeterminate}
-				checked={node.isSelected && !isIndeterminate}
+				checked={node.isChecked && !isIndeterminate}
 				aria-checked={isIndeterminate ? 'mixed' : undefined}
 				tabindex={-1}
 				onclick={(e) => {
@@ -485,8 +485,8 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
-			class="stv__node-content {node.isHighlighted ? highlightedNodeClass : ''} {node.isFocused && focusedNodeClass ? focusedNodeClass : ''} {node.isSelected && selectedNodeClass ? selectedNodeClass : ''} {isDraggedNode && draggedNodeClass ? draggedNodeClass : ''} {customNodeContentClass}"
-			class:stv__node-content--highlighted={node.isHighlighted && !highlightedNodeClass}
+			class="stv__node-content {node.isSelected ? selectedNodeClass : ''} {node.isFocused && focusedNodeClass ? focusedNodeClass : ''} {node.isChecked && checkedNodeClass ? checkedNodeClass : ''} {isDraggedNode && draggedNodeClass ? draggedNodeClass : ''} {customNodeContentClass}"
+			class:stv__node-content--selected={node.isSelected && !selectedNodeClass}
 			class:stv__node-content--focused={node.isFocused}
 			class:stv__node-content--focused-default={node.isFocused && !focusedNodeClass}
 			class:stv__clickable={node.isSelectable}

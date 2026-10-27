@@ -1,13 +1,13 @@
 import { test, expect, Page, Locator } from '@playwright/test';
 
 /**
- * Tests for the isSelectableMember + isSelectedMember props introduced in the
+ * Tests for the isSelectableMember + isCheckedMember props introduced in the
  * v5-rc consolidation pass.
  *
  * - isSelectableMember: data field controlling whether a node renders a checkbox
  *   and carries the stv__clickable class.
- * - isSelectedMember:  data field that seeds node.isSelected and (via
- *   TreeController) the bindable selectedPaths Set.
+ * - isCheckedMember:  data field that seeds node.isChecked and (via
+ *   TreeController) the bindable checkedPaths Set.
  *
  * Fixture page: src/routes/test/member-props/+page.svelte
  *
@@ -82,7 +82,7 @@ test.describe('isSelectableMember', () => {
 	});
 });
 
-test.describe('isSelectedMember', () => {
+test.describe('isCheckedMember', () => {
 	test('nodes with selected=true and selectable=true render their checkbox in checked state', async ({
 		page
 	}) => {
@@ -97,22 +97,22 @@ test.describe('isSelectedMember', () => {
 		await expect(checkbox(nodeByPath(page, '2.1'))).not.toBeChecked();
 	});
 
-	test('selectedPaths is seeded with every path where selected=true (incl. non-selectable)', async ({
+	test('checkedPaths is seeded with every path where selected=true (incl. non-selectable)', async ({
 		page
 	}) => {
 		await gotoFixture(page);
 
-		// Seed walk visits node.isSelected for every node, independent of isSelectable.
+		// Seed walk visits node.isChecked for every node, independent of isSelectable.
 		// Expect all three selected=true paths: 1.1, 1.3, 2 (sorted).
-		await expect(page.getByTestId('selected-paths-count')).toHaveText('3');
-		await expect(page.getByTestId('selected-paths-list')).toHaveText('1.1,1.3,2');
+		await expect(page.getByTestId('checked-paths-count')).toHaveText('3');
+		await expect(page.getByTestId('checked-paths-list')).toHaveText('1.1,1.3,2');
 	});
 
-	test('toggling a checkbox updates selectedPaths', async ({ page }) => {
+	test('toggling a checkbox updates checkedPaths', async ({ page }) => {
 		await gotoFixture(page);
 
 		// Initial: 1.1, 1.3, 2 — count 3.
-		await expect(page.getByTestId('selected-paths-count')).toHaveText('3');
+		await expect(page.getByTestId('checked-paths-count')).toHaveText('3');
 
 		// Toggle 2.1 on. Click the label (which dispatches the controller toggle);
 		// clicking the input directly is suppressed by the label onclick handler.
@@ -120,13 +120,13 @@ test.describe('isSelectedMember', () => {
 		await expect(checkbox(nodeByPath(page, '2.1'))).toBeChecked();
 
 		// Set is now {1.1, 1.3, 2, 2.1} — size 4.
-		await expect(page.getByTestId('selected-paths-count')).toHaveText('4');
-		await expect(page.getByTestId('selected-paths-list')).toHaveText('1.1,1.3,2,2.1');
+		await expect(page.getByTestId('checked-paths-count')).toHaveText('4');
+		await expect(page.getByTestId('checked-paths-list')).toHaveText('1.1,1.3,2,2.1');
 
 		// Toggle 1.1 off.
 		await nodeByPath(page, '1.1').locator('> .stv__node-row .stv__checkbox').first().click();
 		await expect(checkbox(nodeByPath(page, '1.1'))).not.toBeChecked();
-		await expect(page.getByTestId('selected-paths-count')).toHaveText('3');
-		await expect(page.getByTestId('selected-paths-list')).toHaveText('1.3,2,2.1');
+		await expect(page.getByTestId('checked-paths-count')).toHaveText('3');
+		await expect(page.getByTestId('checked-paths-list')).toHaveText('1.3,2,2.1');
 	});
 });

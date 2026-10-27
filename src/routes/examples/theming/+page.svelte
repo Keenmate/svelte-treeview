@@ -193,7 +193,7 @@
 					expandLevel={3}
 					theme={treeTheme}
 					selectionMode="multi"
-					bind:highlightedPaths={playgroundHighlight}
+					bind:selectedPaths={playgroundHighlight}
 					{...getTreeProps()}
 				>
 					{#snippet nodeTemplate(node: any)}
@@ -315,23 +315,23 @@
 			</thead>
 			<tbody>
 				<tr>
-					<td><code>stv__node-content--highlight-bold</code></td>
+					<td><code>stv__node-content--selected-bold</code></td>
 					<td>Bold text with primary color</td>
 				</tr>
 				<tr>
-					<td><code>stv__node-content--highlight-border</code></td>
+					<td><code>stv__node-content--selected-border</code></td>
 					<td>Border with light background</td>
 				</tr>
 				<tr>
-					<td><code>stv__node-content--highlight-brackets</code></td>
+					<td><code>stv__node-content--selected-brackets</code></td>
 					<td>Chevron brackets around content</td>
 				</tr>
 				<tr>
-					<td><code>stv__node-content--highlight-fill</code></td>
+					<td><code>stv__node-content--selected-fill</code></td>
 					<td>Explorer-style solid fill background</td>
 				</tr>
 				<tr>
-					<td><code>stv__node-content--highlight-glow</code></td>
+					<td><code>stv__node-content--selected-glow</code></td>
 					<td>Tinted background with a soft primary-colored glow ring</td>
 				</tr>
 			</tbody>
@@ -340,7 +340,7 @@
 		<div class="code-block">
 			<pre>{`<Tree ...>
   {#snippet nodeTemplate(node: any)}
-    <span class:stv__node-content--highlight-bold={node.isSelected}>
+    <span class:stv__node-content--selected-bold={node.isChecked}>
       {node.data?.name}
     </span>
   {/snippet}
@@ -653,11 +653,11 @@
 				<tr><td><code>--stv-checkbox-focus-ring</code></td><td><code>0 0 0 [ring-width] [ring-color]</code></td><td>Composed box-shadow; override directly for full control, or tune the two parts above</td></tr>
 
 				<tr class="section-row"><td colspan="3">Selection &amp; highlight states</td></tr>
-				<tr><td><code>--stv-highlight-bg</code></td><td><code>#cce8ff</code></td><td>Explorer-style highlight background</td></tr>
-				<tr><td><code>--stv-highlight-color</code></td><td><code>inherit</code></td><td>Highlight text color</td></tr>
-				<tr><td><code>--stv-highlighted-bg</code></td><td><code>var(--base-highlighted-bg) → primary 10%</code></td><td>Default highlight tint (multi-select)</td></tr>
-				<tr><td><code>--stv-highlight-ring-color</code></td><td><code>color-mix(primary 45%, transparent)</code></td><td>Hairline ring of the border / glow presets</td></tr>
-				<tr><td><code>--stv-highlighted-bg-hover</code> / <code>-color</code> / <code>-border</code></td><td><code>var(--base-highlighted-bg-hover / -text / -ring)</code></td><td>Highlighted row on hover, its text color, optional ring (outline shorthand)</td></tr>
+				<tr><td><code>--stv-selected-fill-bg</code></td><td><code>#cce8ff</code></td><td>Explorer-style highlight background</td></tr>
+				<tr><td><code>--stv-selected-fill-color</code></td><td><code>inherit</code></td><td>Highlight text color</td></tr>
+				<tr><td><code>--stv-selected-bg</code></td><td><code>var(--base-selected-bg) → primary 10%</code></td><td>Default highlight tint (multi-select)</td></tr>
+				<tr><td><code>--stv-selected-preset-ring-color</code></td><td><code>color-mix(primary 45%, transparent)</code></td><td>Hairline ring of the border / glow presets</td></tr>
+				<tr><td><code>--stv-selected-bg-hover</code> / <code>-color</code> / <code>-border</code></td><td><code>var(--base-selected-bg-hover / -text / -ring)</code></td><td>Highlighted row on hover, its text color, optional ring (outline shorthand)</td></tr>
 				<tr><td><code>--stv-focused-ring</code></td><td><code>var(--base-focused-outline) → 1px solid primary</code></td><td>Default focus ring, drawn inset (<code>none</code> hides it)</td></tr>
 				<tr><td><code>--stv-focused-bg</code> / <code>-color</code></td><td><code>var(--base-focused-bg / -text)</code></td><td>Focused row background (transparent) and text color</td></tr>
 				<tr><td><code>--stv-checkbox-gap</code></td><td><code>calc(0.6 * rem)</code></td><td>Space between checkbox and node row</td></tr>
@@ -808,7 +808,7 @@
 					expandLevel={3}
 					theme={dynamicTreeTheme}
 					selectionMode="multi"
-					bind:highlightedPaths={dynamicHighlight}
+					bind:selectedPaths={dynamicHighlight}
 					{...getTreeProps()}
 				>
 					{#snippet nodeTemplate(node: any)}
@@ -1030,7 +1030,7 @@ wrapper.className = 'brand-${dynamicBrand}';
 
 	   The border uses var(--stv-primary) so the active brand theme is visible
 	   at rest (the library's accent normally only shows in interaction states).
-	   We also bump --stv-highlighted-bg locally so the pre-highlighted "Work"
+	   We also bump --stv-selected-bg locally so the pre-highlighted "Work"
 	   node reads strongly against either surface — the library default (12%)
 	   is intentionally subtle and doesn't make a great demo. */
 	.playground-tree {
@@ -1039,7 +1039,7 @@ wrapper.className = 'brand-${dynamicBrand}';
 		background: light-dark(#ffffff, #1a1a1a);
 		border: 2px solid var(--stv-primary);
 		transition: background 0.15s ease;
-		--stv-highlighted-bg: color-mix(in srgb, var(--stv-primary) 18%, transparent);
+		--stv-selected-bg: color-mix(in srgb, var(--stv-primary) 18%, transparent);
 	}
 	@media (prefers-color-scheme: dark) {
 		.playground-tree { background: #1a1a1a; }

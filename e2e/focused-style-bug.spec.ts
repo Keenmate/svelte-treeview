@@ -16,7 +16,7 @@ test('shift+click range only marks the clicked node as focused (not the anchor)'
 
 	// Pick explicit styles so each state is identifiable by class (the demo now
 	// defaults to the built-in soft-tint highlight + inset-bar focus).
-	await page.getByLabel('Highlighted Style:').selectOption('stv__node-content--highlight-bold');
+	await page.getByLabel('Highlighted Style:').selectOption('stv__node-content--selected-bold');
 	await page.getByLabel('Focused Style:').selectOption('demo-focused-bar');
 
 	await page.waitForSelector('.stv__node-content', { timeout: 5000 });
@@ -28,8 +28,8 @@ test('shift+click range only marks the clicked node as focused (not the anchor)'
 	await nodes.nth(2).click({ modifiers: ['Shift'] });
 
 	const focusedCount = await firstTree.locator('.stv__node-content.demo-focused-bar').count();
-	const highlightedCount = await firstTree.locator('.stv__node-content.stv__node-content--highlight-bold').count();
+	const selectedCount = await firstTree.locator('.stv__node-content.stv__node-content--selected-bold').count();
 
 	expect(focusedCount, 'Only one node should have focus style after Shift+click range').toBe(1);
-	expect(highlightedCount, 'Three nodes should be highlighted in the range').toBeGreaterThanOrEqual(2);
+	expect(selectedCount, 'Three nodes should be highlighted in the range').toBeGreaterThanOrEqual(2);
 });

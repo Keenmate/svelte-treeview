@@ -99,8 +99,8 @@
 				{checkboxMode}
 				{shouldClickToggleCheckbox}
 				bind:focusedNode={focusedNode1}
-				bind:highlightedPaths={highlightedPaths1}
-				bind:selectedPaths={selectedPaths1}
+				bind:selectedPaths={highlightedPaths1}
+				bind:checkedPaths={selectedPaths1}
 			>
 				{#snippet nodeTemplate(node: LTreeNode<Item>)}
 					<span>{node.data?.icon} {node.data?.name}</span>
@@ -138,8 +138,8 @@
 				expandLevel={3}
 				selectionMode="multi"
 				bind:focusedNode={focusedNode2}
-				bind:highlightedPaths={highlightedPaths2}
-				bind:selectedPaths={selectedPaths2}
+				bind:selectedPaths={highlightedPaths2}
+				bind:checkedPaths={selectedPaths2}
 			>
 				{#snippet nodeTemplate(node: LTreeNode<Item>)}
 					<span>{node.data?.icon} {node.data?.name}</span>

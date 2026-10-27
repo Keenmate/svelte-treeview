@@ -57,8 +57,8 @@ export interface NodeRenderContext {
 	/** The tree's own container border-box, in px. */
 	container: { width: number; height: number };
 	isExpanded: boolean;
+	isChecked: boolean;
 	isSelected: boolean;
-	isHighlighted: boolean;
 	isFocused: boolean;
 	level: number;
 	hasChildren: boolean;
@@ -66,7 +66,7 @@ export interface NodeRenderContext {
 export type ClickBehavior = 'select' | 'expand' | 'expand-and-focus';
 export type CheckboxMode = 'independent' | 'cascade';
 /**
- * Which paths the checkbox selection EMITS (via `selectedPaths` + `onSelectionChange`)
+ * Which paths the checkbox selection EMITS (via `checkedPaths` + `onCheckedChange`)
  * when `checkboxMode === 'cascade'`. Orthogonal to `checkboxMode` (which controls the
  * cascade BEHAVIOUR); this controls the projected OUTPUT. Ignored in `'independent'` mode
  * (there the emitted set is the raw toggled set).
@@ -75,13 +75,13 @@ export type CheckboxMode = 'independent' | 'cascade';
  * - `'leaves'`: only the checked leaf nodes.
  * - `'all'`: every fully-checked node (branches + leaves).
  */
-export type CascadeSelectPolicy = 'rolled-up' | 'leaves' | 'all';
+export type CascadeCheckPolicy = 'rolled-up' | 'leaves' | 'all';
 export type SelectionMode = 'single' | 'multi';
-/** Gesture mode for highlightNode(): replace = plain click, toggle = Ctrl+click, range = Shift+click. */
-export type HighlightMode = 'replace' | 'toggle' | 'range';
-/** Options shared by every imperative selection/highlight/focus mutator. */
+/** Gesture mode for selectNode(): replace = plain click, toggle = Ctrl+click, range = Shift+click. */
+export type SelectMode = 'replace' | 'toggle' | 'range';
+/** Options shared by every imperative selection/checked/focus mutator. */
 export interface TreeMutationOptions {
-	/** Update state without firing onNodeClick / onHighlightChange / onSelectionChange
+	/** Update state without firing onNodeClick / onSelectionChange / onCheckedChange
 	 *  (e.g. when restoring state from URL params or other external sources). */
 	silent?: boolean;
 }
@@ -191,8 +191,8 @@ export interface Ltree<T> {
 
 	isSelectableMember: string | null | undefined;
 	getIsSelectableCallback?: (node: LTreeNode<T>) => boolean;
-	isSelectedMember: string | null | undefined;
-	getIsSelectedCallback?: (node: LTreeNode<T>) => boolean;
+	isCheckedMember: string | null | undefined;
+	getIsCheckedCallback?: (node: LTreeNode<T>) => boolean;
 	isDraggableMember: string | null | undefined;
 	getIsDraggableCallback?: (node: LTreeNode<T>) => boolean;
 	isDropAllowedMember: string | null | undefined;

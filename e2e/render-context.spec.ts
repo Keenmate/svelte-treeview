@@ -45,19 +45,19 @@ test('isExpanded updates reactively on collapse', async ({ page }) => {
 	await expect(ctx(page, '1')).toHaveAttribute('data-expanded', 'false');
 });
 
-test('isSelected flips when the checkbox is toggled', async ({ page }) => {
+test('isChecked flips when the checkbox is toggled', async ({ page }) => {
 	const leaf = ctx(page, '1.1.1');
-	await expect(leaf).toHaveAttribute('data-selected', 'false');
+	await expect(leaf).toHaveAttribute('data-checked', 'false');
 	await page.locator('[data-tree-path="1.1.1"] .stv__checkbox').first().click();
-	await expect(leaf).toHaveAttribute('data-selected', 'true');
+	await expect(leaf).toHaveAttribute('data-checked', 'true');
 });
 
-test('isHighlighted + isFocused flip when a row is clicked', async ({ page }) => {
+test('isSelected + isFocused flip when a row is clicked', async ({ page }) => {
 	const leaf = ctx(page, '1.1.1');
-	await expect(leaf).toHaveAttribute('data-highlighted', 'false');
+	await expect(leaf).toHaveAttribute('data-selected', 'false');
 	await expect(leaf).toHaveAttribute('data-focused', 'false');
 	// Plain click on the row (multi-select mode) highlights + focuses it.
 	await page.locator('[data-tree-path="1.1.1"] .stv__node-content').first().click();
 	await expect(leaf).toHaveAttribute('data-focused', 'true');
-	await expect(leaf).toHaveAttribute('data-highlighted', 'true');
+	await expect(leaf).toHaveAttribute('data-selected', 'true');
 });

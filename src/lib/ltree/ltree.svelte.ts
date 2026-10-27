@@ -31,8 +31,8 @@ export function createLTree<T>(
 	_getIsExpandedCallback?: (node: LTreeNode<T>) => boolean,
 	_isSelectableMember?: string | null | undefined,
 	_getIsSelectableCallback?: (node: LTreeNode<T>) => boolean,
-	_isSelectedMember?: string | null | undefined,
-	_getIsSelectedCallback?: (node: LTreeNode<T>) => boolean,
+	_isCheckedMember?: string | null | undefined,
+	_getIsCheckedCallback?: (node: LTreeNode<T>) => boolean,
 	_isDraggableMember?: string | null | undefined,
 	_getIsDraggableCallback?: (node: LTreeNode<T>) => boolean,
 	_isDropAllowedMember?: string | null | undefined,
@@ -69,7 +69,7 @@ export function createLTree<T>(
 	let shouldCalculateHasChildren: boolean = isEmptyString(_hasChildrenMember);
 	let shouldCalculateIsExpanded: boolean = isEmptyString(_isExpandedMember);
 	let shouldCalculateIsSelectable: boolean = isEmptyString(_isSelectableMember);
-	let shouldCalculateIsSelected: boolean = isEmptyString(_isSelectedMember);
+	let shouldCalculateIsChecked: boolean = isEmptyString(_isCheckedMember);
 	let shouldCalculateIsDraggable: boolean = isEmptyString(_isDraggableMember);
 	let shouldCalculateIsDropAllowed: boolean = isEmptyString(_isDropAllowedMember);
 	let shouldCalculateAllowedDropPositions: boolean = isEmptyString(_allowedDropPositionsMember);
@@ -144,8 +144,8 @@ export function createLTree<T>(
 		getIsExpandedCallback: _getIsExpandedCallback,
 		isSelectableMember: _isSelectableMember,
 		getIsSelectableCallback: _getIsSelectableCallback,
-		isSelectedMember: _isSelectedMember,
-		getIsSelectedCallback: _getIsSelectedCallback,
+		isCheckedMember: _isCheckedMember,
+		getIsCheckedCallback: _getIsCheckedCallback,
 		isDraggableMember: _isDraggableMember,
 		getIsDraggableCallback: _getIsDraggableCallback,
 		isDropAllowedMember: _isDropAllowedMember,
@@ -322,9 +322,9 @@ export function createLTree<T>(
 					else if (!shouldCalculateIsSelectable)
 						node.isSelectable = getField(row, _isSelectableMember!);
 
-					// isSelected: callback > member
-					if (_getIsSelectedCallback) node.isSelected = _getIsSelectedCallback(node);
-					else if (!shouldCalculateIsSelected) node.isSelected = getField(row, _isSelectedMember!);
+					// isChecked: callback > member
+					if (_getIsCheckedCallback) node.isChecked = _getIsCheckedCallback(node);
+					else if (!shouldCalculateIsChecked) node.isChecked = getField(row, _isCheckedMember!);
 
 					if (_getIsDraggableCallback) node.isDraggable = _getIsDraggableCallback(node);
 					else if (!shouldCalculateIsDraggable)
@@ -1352,9 +1352,9 @@ export function createLTree<T>(
 				else if (!shouldCalculateIsSelectable)
 					newNode.isSelectable = getField(data, _isSelectableMember!);
 
-				if (_getIsSelectedCallback) newNode.isSelected = _getIsSelectedCallback(newNode);
-				else if (!shouldCalculateIsSelected)
-					newNode.isSelected = getField(data, _isSelectedMember!);
+				if (_getIsCheckedCallback) newNode.isChecked = _getIsCheckedCallback(newNode);
+				else if (!shouldCalculateIsChecked)
+					newNode.isChecked = getField(data, _isCheckedMember!);
 
 				if (_getIsExpandedCallback) newNode.isExpanded = _getIsExpandedCallback(newNode);
 				else if (!shouldCalculateIsExpanded)
@@ -1742,9 +1742,9 @@ export function createLTree<T>(
 					else if (!shouldCalculateIsSelectable)
 						node.isSelectable = getField(row, _isSelectableMember!);
 
-					// isSelected: callback > member
-					if (_getIsSelectedCallback) node.isSelected = _getIsSelectedCallback(node);
-					else if (!shouldCalculateIsSelected) node.isSelected = getField(row, _isSelectedMember!);
+					// isChecked: callback > member
+					if (_getIsCheckedCallback) node.isChecked = _getIsCheckedCallback(node);
+					else if (!shouldCalculateIsChecked) node.isChecked = getField(row, _isCheckedMember!);
 
 					if (_getIsDraggableCallback) node.isDraggable = _getIsDraggableCallback(node);
 					else if (!shouldCalculateIsDraggable)

@@ -6,8 +6,8 @@
 	// styling. Targeted by e2e/highlight-focus.spec.ts.
 	//
 	// Two behaviours under test:
-	//   1. `.stv__node-content--highlighted` is a FALLBACK — Node.svelte only
-	//      applies it when `highlightedNodeClass` is unset. Setting a highlight
+	//   1. `.stv__node-content--selected` is a FALLBACK — Node.svelte only
+	//      applies it when `selectedNodeClass` is unset. Setting a highlight
 	//      class must suppress the marker so the two never fight.
 	//   2. `.stv__node-content--focused` is a PURE HOOK applied whenever a node
 	//      is focused; `focusedNodeClass` is additive and lands on exactly the
@@ -30,11 +30,11 @@
 	}
 
 	// '' = unset → fallback marker should appear. Non-empty = custom class wins.
-	let highlightedNodeClass = $state('');
+	let selectedNodeClass = $state('');
 	let focusedNodeClass = $state('');
 
 	let focusedNode = $state<LTreeNode<Item> | null>(null);
-	let highlightedPaths = $state(new Set<string>());
+	let selectedPaths = $state(new Set<string>());
 </script>
 
 <svelte:head>
@@ -47,10 +47,10 @@
 	<div class="controls">
 		<label>
 			Highlight Class:
-			<select bind:value={highlightedNodeClass}>
+			<select bind:value={selectedNodeClass}>
 				<option value="">(none / fallback)</option>
-				<option value="stv__node-content--highlight-bold">Bold</option>
-				<option value="stv__node-content--highlight-glow">Glow</option>
+				<option value="stv__node-content--selected-bold">Bold</option>
+				<option value="stv__node-content--selected-glow">Glow</option>
 			</select>
 		</label>
 		<label>
@@ -60,7 +60,7 @@
 				<option value="test-focus">Custom focus</option>
 			</select>
 		</label>
-		<button onclick={() => { highlightedPaths = new Set(); focusedNode = null; }}>Clear</button>
+		<button onclick={() => { selectedPaths = new Set(); focusedNode = null; }}>Clear</button>
 	</div>
 
 	<div class="tree-container">
@@ -73,10 +73,10 @@
 			expandLevel={2}
 			selectionMode="multi"
 			clickBehavior="select"
-			{highlightedNodeClass}
+			{selectedNodeClass}
 			{focusedNodeClass}
 			bind:focusedNode
-			bind:highlightedPaths
+			bind:selectedPaths
 		>
 			{#snippet nodeTemplate(node: LTreeNode<Item>)}
 				<span>{node.data?.name}</span>
@@ -90,7 +90,7 @@
 	</div>
 	<div class="output">
 		<p class="output-label">Highlighted</p>
-		<pre>{highlightedPaths.size > 0 ? [...highlightedPaths].join(', ') : '(none)'}</pre>
+		<pre>{selectedPaths.size > 0 ? [...selectedPaths].join(', ') : '(none)'}</pre>
 	</div>
 </main>
 

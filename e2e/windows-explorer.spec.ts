@@ -128,7 +128,7 @@ test.describe('Windows File Explorer demo', () => {
 
 	test('selecting rows uses the library highlight; status reflects the count', async ({ page }) => {
 		await rowContent(page, 'System32').click();
-		await expect(row(page, 'System32').locator('.stv__node-content')).toHaveClass(/stv__node-content--highlighted/);
+		await expect(row(page, 'System32').locator('.stv__node-content')).toHaveClass(/stv__node-content--selected/);
 		await expect(page.locator('.winx__status-sel')).toHaveText(/1 item selected/);
 		// Ctrl+click extends (selectionMode="multi").
 		await rowContent(page, 'Fonts').click({ modifiers: ['Control'] });

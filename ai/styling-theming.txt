@@ -61,25 +61,25 @@ Set --base-* once at :root and every KM component picks it up automatically:
 Tree-specific --stv-* overrides take precedence over --base-* tokens, so
 you can theme a single tree without affecting other components.
 
-HIGHLIGHTED NODE CLASSES
+SELECTED NODE CLASSES
 ------------------------
-<Tree highlightedNodeClass="stv__node-content--highlight-bold" />
+<Tree selectedNodeClass="stv__node-content--selected-bold" />
 
 Built-in classes:
-- stv__node-content--highlight-bold - Bold text with primary color
-- stv__node-content--highlight-border - Border and background highlight
-- stv__node-content--highlight-brackets - Decorative brackets ❯ Node ❮
-- stv__node-content--highlight-fill - Filled background
-- stv__node-content--highlight-glow - Shadow glow
+- stv__node-content--selected-bold - Bold text with primary color
+- stv__node-content--selected-border - Border and background highlight
+- stv__node-content--selected-brackets - Decorative brackets ❯ Node ❮
+- stv__node-content--selected-fill - Filled background
+- stv__node-content--selected-glow - Shadow glow
 
-Custom highlighted style:
-.my-highlight {
+Custom selected style:
+.my-selected {
   background: #e0f2fe;
   border-left: 3px solid #0284c7;
   font-weight: 600;
 }
 
-<Tree highlightedNodeClass="my-highlight" />
+<Tree selectedNodeClass="my-selected" />
 
 DRAG-OVER CLASSES
 -----------------
@@ -130,8 +130,8 @@ Built-in classes:
 - stv__node-content--scroll-highlight - Blue background glow
 - stv__scroll-arrow - Red arrow indicator
 
-Custom highlight:
-.my-highlight {
+Custom selection style:
+.my-selected {
   animation: pulse 0.5s ease-in-out 3;
 }
 
@@ -140,7 +140,7 @@ Custom highlight:
   50% { background: #fef08a; }
 }
 
-<Tree scrollHighlightClass="my-highlight" />
+<Tree scrollHighlightClass="my-selected" />
 
 DROP ZONE STYLING
 -----------------
@@ -252,7 +252,7 @@ Tree structure:
 
 States (modifiers on .stv__node-content):
 - .stv__node-content--focused - Focused node (single)
-- .stv__node-content--highlighted - Highlighted node (UI multi-select)
+- .stv__node-content--selected - Selected node (UI multi-select)
 - .stv__node-content--multi-selected - Part of a multi-selection
 - .stv__node-content--draggable - Draggable node
 - .stv__node-content--drag-over - Drop target during drag

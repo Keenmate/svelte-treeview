@@ -59,7 +59,7 @@ OPTIONAL MEMBERS
 | parentPathMember | string | Property for parent path (usually derived) |
 | levelMember | string | Property for depth level (usually calculated) |
 | isExpandedMember | string | Property for expanded state |
-| isSelectedMember | string | Property for selected state (checkbox data) |
+| isCheckedMember | string | Property for selected state (checkbox data) |
 | isSelectableMember | string | Property for whether node is selectable |
 | isDraggableMember | string | Property for draggable state |
 | isDropAllowedMember | string | Property for drop allowed state |
@@ -84,7 +84,7 @@ Each *Member has a matching get*Callback that overrides it (callback wins):
 | getDisplayValueCallback | (node) => string |
 | getSearchValueCallback | (node) => string |
 | getIsExpandedCallback | (node) => boolean |
-| getIsSelectedCallback | (node) => boolean |
+| getIsCheckedCallback | (node) => boolean |
 | getIsSelectableCallback | (node) => boolean |
 | getIsDraggableCallback | (node) => boolean |
 | getIsDropAllowedCallback | (node) => boolean |
@@ -272,8 +272,8 @@ interface LTreeNode<T> {
   visualState: VisualState;  // "indeterminate" | "true" | "false"
   isExpanded: boolean;
   isFocused: boolean;        // single focused node
-  isHighlighted: boolean;    // UI multi-select set
-  isSelected: boolean;       // checkbox data set
+  isSelected: boolean;    // UI multi-select set
+  isChecked: boolean;       // checkbox data set
   isSelectable: boolean;
   _rev: number;              // bumps on change (keyed re-render)
 }

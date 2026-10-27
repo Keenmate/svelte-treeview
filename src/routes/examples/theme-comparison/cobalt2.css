@@ -30,10 +30,10 @@
 	--base-disabled-bg: #1f4662;
 	--base-elevated-bg: #1f4662;
 	--base-outline-width: 1px;
-	--base-highlighted-bg: var(--base-primary-bg-subtle);
-	--base-highlighted-bg-hover: var(--base-highlighted-bg);
-	--base-highlighted-text-color: currentColor;
-	--base-highlighted-outline: none;
+	--base-selected-bg: var(--base-primary-bg-subtle);
+	--base-selected-bg-hover: var(--base-selected-bg);
+	--base-selected-text-color: currentColor;
+	--base-selected-outline: none;
 	--base-focused-bg: transparent;
 	--base-focused-text-color: currentColor;
 	--base-focused-outline: var(--base-outline-width) solid var(--base-primary-color);

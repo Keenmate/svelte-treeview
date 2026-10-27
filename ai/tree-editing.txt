@@ -380,18 +380,18 @@ onTreeKeydown interceptor (ctx.controller) or hold your own reference. Below,
 `controller` is that TreeController instance.
 
 // Copy selected nodes (or specific paths)
-controller.copyNodes();                 // copies highlightedPaths
+controller.copyNodes();                 // copies selectedPaths
 controller.copyNodes(['1.2', '1.3']);   // copies specific paths
 
 // Cut selected nodes (dims them visually, removes on paste)
-controller.cutNodes();                  // cuts highlightedPaths
+controller.cutNodes();                  // cuts selectedPaths
 controller.cutNodes(['1.2']);           // cuts specific paths
 
 // Paste at target node
 controller.pasteNodes('2.1');           // paste as children of 2.1 (default)
 controller.pasteNodes('2.1', null, 'after');  // paste as siblings after 2.1
 
-// Delete nodes (highlightedPaths, or specific paths; honors beforeDeleteCallback)
+// Delete nodes (selectedPaths, or specific paths; honors beforeDeleteCallback)
 controller.deleteNodes();               // returns { removed, blocked }
 controller.deleteNodes(['1.2']);
 

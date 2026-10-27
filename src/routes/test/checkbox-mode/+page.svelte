@@ -24,7 +24,7 @@
 	}
 
 	let checkboxMode = $state<CheckboxMode>('cascade');
-	let selectedPaths = $state(new Set<string>());
+	let checkedPaths = $state(new Set<string>());
 </script>
 
 <svelte:head>
@@ -53,7 +53,7 @@
 			expandLevel={3}
 			shouldShowCheckboxes={true}
 			{checkboxMode}
-			bind:selectedPaths
+			bind:checkedPaths
 		>
 			{#snippet nodeTemplate(node: LTreeNode<Item>)}
 				<span>{node.data?.name}</span>
@@ -64,7 +64,7 @@
 	<div class="output">
 		<p class="output-label">State</p>
 		<pre>checkboxMode: <span data-testid="mode">{checkboxMode}</span>
-selectedPaths: <span data-testid="selection">{[...selectedPaths].sort().join(',') || '(empty)'}</span></pre>
+checkedPaths: <span data-testid="selection">{[...checkedPaths].sort().join(',') || '(empty)'}</span></pre>
 	</div>
 </main>
 

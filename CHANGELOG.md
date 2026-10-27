@@ -11,9 +11,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **`selectedNodeClass` — opt-in CSS class for checked rows, completing the class-override family (`highlightedNodeClass` / `focusedNodeClass` / `selectedNodeClass`).** Checked rows carry no default row treatment — the checkbox is the signal — so set this prop when you want to style the checked rows themselves. Threaded through `<Tree>` + `update()` + `TreeController`; `Node.svelte` applies it whenever `node.isSelected`. Mirrored in `@keenmate/web-treeview`.
+- **`selectedNodeClass` (renamed to `checkedNodeClass` in the rc16 selection rename below) — opt-in CSS class for checked rows, completing the class-override family (`highlightedNodeClass` / `focusedNodeClass` / `selectedNodeClass`).** Checked rows carry no default row treatment — the checkbox is the signal — so set this prop when you want to style the checked rows themselves. Threaded through `<Tree>` + `update()` + `TreeController`; `Node.svelte` applies it whenever `node.isSelected`. Mirrored in `@keenmate/web-treeview`.
 
 ### Changed
+
+- **BREAKING: selection vocabulary aligned with `@keenmate/web-treeview` and the shared
+  `--base-*` item states — the click set is now "selected", the checkbox set "checked".**
+  Two-phase rename, no aliases. Phase 1 (checkbox, was "selected" → "checked"): `selectedPaths` →
+  `checkedPaths`, `selectNode`/`selectNodes`/`selectAll`/`deselectNode` → `checkNode`/`checkNodes`/
+  `checkAll`/`uncheckNode`, new `uncheckNodes(paths, opts?)`, `clearSelection(paths?)` →
+  `uncheckAll(opts?)` (paths form → `uncheckNodes`), `setSelectedPaths` → `setCheckedPaths`,
+  `getSelectedNodes`/`isNodeSelected` → `getCheckedNodes`/`isNodeChecked`, `isSelectedMember`/
+  `getIsSelectedCallback` → `isCheckedMember`/`getIsCheckedCallback`, `cascadeSelectPolicy`/
+  `CascadeSelectPolicy` → `cascadeCheckPolicy`/`CascadeCheckPolicy`, `onSelectionChange` →
+  `onCheckedChange`, `LTreeNode.isSelected` → `isChecked`, `VisualState.selected`/`notSelected` →
+  `checked`/`unchecked`, the v5 checked-row class prop `selectedNodeClass` → `checkedNodeClass`.
+  Phase 2 (click set, was "highlighted" → "selected"): `highlightedPaths` → `selectedPaths`,
+  `highlightNode`/`highlightNodes`/`highlightAll`/`clearHighlight`/`setHighlightedPaths` →
+  `selectNode`/`selectNodes`/`selectAll`/`clearSelection`/`setSelectedPaths`,
+  `getHighlightedNodes`/`isNodeHighlighted` → `getSelectedNodes`/`isNodeSelected`,
+  `onHighlightChange` → `onSelectionChange`, `highlightedNodeClass` → `selectedNodeClass`,
+  `HighlightMode` → `SelectMode` (`SelectionMode` stays the single/multiple knob),
+  `LTreeNode.isHighlighted` → `isSelected`, `NodeRenderContext.isSelected`/`isHighlighted` →
+  `isChecked`/`isSelected`, `toggleFocusedHighlight` → `toggleFocusedSelect`, controller
+  `navHighlight*` → `navSelect*`, `onTreeKeydown` ctx `highlightedNodes` → `selectedNodes`.
+  CSS: `.stv__node-content--highlighted` → `--selected`, presets `--highlight-bold|border|brackets|fill|glow`
+  → `--selected-*`; variables `--stv-highlighted-*` → `--stv-selected-*`, `--stv-highlight-bg|color` →
+  `--stv-selected-fill-bg|color`, `--stv-highlight-ring-color` → `--stv-selected-preset-ring-color`;
+  reads `--base-selected-*` (base-css-variables 2.0.0-rc03 renamed `--base-highlighted-*`).
+  "Highlight" now only means visual emphasis: `scrollHighlightClass`, `.stv__node-content--scroll-highlight`,
+  `scrollToPath({ highlight })`, drag-over highlight.
 
 - **Shadows share one tone with pure-admin: `--base-shadow-color`.** Tooltip, node info reveal,
   drag ghost and the context-menu fallback keep their sizes but take their colour from

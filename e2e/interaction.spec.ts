@@ -5,8 +5,8 @@ import { test, expect, Page, Locator } from '@playwright/test';
  * is the tutorial demo with the same logic plus persistence and styling controls).
  *
  * Three trees live on this page, sharing the shouldShowCheckboxes/checkboxMode
- * settings but each binding its own focusedNode / highlightedPaths /
- * selectedPaths Set. Locators are scoped by the card heading so the trees
+ * settings but each binding its own focusedNode / selectedPaths /
+ * checkedPaths Set. Locators are scoped by the card heading so the trees
  * don't collide.
  *
  * The page persists its settings to localStorage under
@@ -112,7 +112,7 @@ test.describe('Click Behavior tree', () => {
 		await expect(outputValue(card, 'Focused Node')).toContainText('(1)');
 	});
 
-	test('Ctrl+click adds paths to highlightedPaths', async ({ page }) => {
+	test('Ctrl+click adds paths to selectedPaths', async ({ page }) => {
 		await gotoInteraction(page);
 		const card = clickBehaviorCard(page);
 
@@ -170,7 +170,7 @@ test.describe('Click Behavior tree', () => {
 		await checkboxLabelOf(nodeInCard(card, '1')).click();
 
 		const selected = outputValue(card, 'Selected / Checked');
-		// Default cascadeSelectPolicy is 'rolled-up': a fully-checked subtree collapses to its
+		// Default cascadeCheckPolicy is 'rolled-up': a fully-checked subtree collapses to its
 		// root, so the EMITTED set is just the parent path — not the flattened descendants.
 		// (The 'all' projection is covered separately in e2e/checkbox-policy.spec.ts.)
 		await expect(selected).toContainText('1');

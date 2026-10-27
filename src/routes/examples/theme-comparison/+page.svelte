@@ -32,7 +32,7 @@
 	const childCount = (node: LTreeNode<Item>) => Object.keys(node.children ?? {}).length;
 
 	// Tree checkbox state (preselect a couple so the accent-on-checkbox shows).
-	let selectedPaths = $state<Set<string>>(new Set(['1.1', '1.3.1']));
+	let checkedPaths = $state<Set<string>>(new Set(['1.1', '1.3.1']));
 
 	// Context menu — a themed sample that exercises the full --stv-context-menu-*
 	// token set (icons, shortcuts, a named divider, a submenu, a danger item) so
@@ -343,7 +343,7 @@
 						sortCallback={sortByPath}
 						shouldShowCheckboxes
 						checkboxMode="cascade"
-						bind:selectedPaths
+						bind:checkedPaths
 						iconSet={treeIconSet}
 						expandLevel={5}
 						getContextMenuItemsCallback={contextMenuItems}

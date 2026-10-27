@@ -216,7 +216,7 @@
 	   SELECTION & HIGHLIGHT STATES
 
 	   Highlight (the multi-select set) and focus (the keyboard cursor) read the
-	   shared --base-highlighted-* / --base-focused-* item-state tokens, so a
+	   shared --base-selected-* / --base-focused-* item-state tokens, so a
 	   highlighted tree row and a selected web-multiselect option on the same page
 	   look identical and one override re-themes both. Fallbacks = the same defaults
 	   for standalone use. One visual channel per state so they compose:
@@ -224,22 +224,22 @@
 	     • focus → an INSET OUTLINE ring (outline-offset = −width): no layout shift,
 	       no bleed, and its own paint channel — box-shadow presets / the scroll
 	       flash can't erase it
-	     • checked → the CHECKBOX only; style checked rows via `selectedNodeClass`
+	     • checked → the CHECKBOX only; style checked rows via `checkedNodeClass`
 	   ------------------------------------------------------------------------- */
-	--stv-highlighted-bg: var(--base-highlighted-bg, color-mix(in srgb, var(--stv-primary) 10%, transparent));
-	--stv-highlighted-bg-hover: var(--base-highlighted-bg-hover, var(--stv-highlighted-bg));
-	--stv-highlighted-text: var(--base-highlighted-text-color, currentColor);
-	--stv-highlighted-ring: var(--base-highlighted-outline, none);
+	--stv-selected-bg: var(--base-selected-bg, color-mix(in srgb, var(--stv-primary) 10%, transparent));
+	--stv-selected-bg-hover: var(--base-selected-bg-hover, var(--stv-selected-bg));
+	--stv-selected-text: var(--base-selected-text-color, currentColor);
+	--stv-selected-ring: var(--base-selected-outline, none);
 	--stv-focused-bg: var(--base-focused-bg, transparent);
 	--stv-focused-text: var(--base-focused-text-color, currentColor);
 	--stv-focused-ring: var(--base-focused-outline, var(--base-outline-width, 1px) solid var(--stv-primary));
 	/* Keep = −(ring width) so the ring stays inside the row. Follows
 	   --base-outline-width; thicken the ring there, not inside the shorthand. */
 	--stv-focused-outline-offset: calc(-1 * var(--base-outline-width, 1px));
-	--stv-highlight-bg: color-mix(in srgb, var(--stv-primary) 30%, transparent);
-	--stv-highlight-color: inherit;
-	/* Hairline ring used by the --highlight-border / --highlight-glow presets. */
-	--stv-highlight-ring-color: color-mix(in srgb, var(--stv-primary) 45%, transparent);
+	--stv-selected-fill-bg: color-mix(in srgb, var(--stv-primary) 30%, transparent);
+	--stv-selected-fill-color: inherit;
+	/* Hairline ring used by the --selected-border / --selected-glow presets. */
+	--stv-selected-preset-ring-color: color-mix(in srgb, var(--stv-primary) 45%, transparent);
 
 	/* -------------------------------------------------------------------------
 	   DRAG / DROP — placeholder + dragover + ghost

@@ -975,9 +975,9 @@
 				getIsDropAllowedCallback={() => true}
 				clickBehavior="select"
 				selectionMode="multi"
-				highlightedNodeClass="stv__node-content--highlight-bold"
+				selectedNodeClass="stv__node-content--selected-bold"
 				bind:focusedNode={multiFocused}
-				bind:highlightedPaths={multiHighlighted}
+				bind:selectedPaths={multiHighlighted}
 				onNodeDrop={onMultiDrop}
 			>
 				{#snippet nodeTemplate(node: LTreeNode<Item>)}
@@ -1010,9 +1010,9 @@
 				getIsDropAllowedCallback={() => true}
 				clickBehavior="select"
 				selectionMode="multi"
-				highlightedNodeClass="stv__node-content--highlight-bold"
+				selectedNodeClass="stv__node-content--selected-bold"
 				bind:focusedNode={lockedFocused}
-				bind:highlightedPaths={lockedHighlighted}
+				bind:selectedPaths={lockedHighlighted}
 				onNodeDrop={onLockedDrop}
 			>
 				{#snippet nodeTemplate(node: LTreeNode<LockableItem>)}
@@ -1077,9 +1077,9 @@
 				getIsDropAllowedCallback={() => true}
 				clickBehavior="select"
 				selectionMode="multi"
-				highlightedNodeClass="stv__node-content--highlight-bold"
+				selectedNodeClass="stv__node-content--selected-bold"
 				bind:focusedNode={bdFocused}
-				bind:highlightedPaths={bdHighlighted}
+				bind:selectedPaths={bdHighlighted}
 				beforeDragStartCallback={beforeBdDragStart}
 				onNodeDragStart={onBdDragStart}
 				onNodeDrop={onBdDrop}
@@ -1115,9 +1115,9 @@
 				getIsDropAllowedCallback={() => false}
 				clickBehavior="select"
 				selectionMode="multi"
-				highlightedNodeClass="stv__node-content--highlight-bold"
+				selectedNodeClass="stv__node-content--selected-bold"
 				bind:focusedNode={produceFocused}
-				bind:highlightedPaths={produceHighlighted}
+				bind:selectedPaths={produceHighlighted}
 				beforeDropCallback={beforeProduceDrop}
 				onNodeDrop={onProduceDrop}
 			>

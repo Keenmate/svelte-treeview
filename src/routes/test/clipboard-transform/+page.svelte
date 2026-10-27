@@ -30,7 +30,7 @@
 	let data = $state<Item[]>(initialData());
 	let treeRef: Tree<Item>;
 	let focusedNode = $state<LTreeNode<Item> | null>(null);
-	let highlightedPaths = $state<Set<string>>(new Set());
+	let selectedPaths = $state<Set<string>>(new Set());
 	let lastLog = $state('');
 	let pasteCount = $state(0);
 	let pasteSkipped = $state(0);
@@ -44,7 +44,7 @@
 	}
 
 	function clipboardPaths(controller: TreeController<Item>): string[] {
-		if (controller.highlightedPaths.size > 0) return [...controller.highlightedPaths];
+		if (controller.selectedPaths.size > 0) return [...controller.selectedPaths];
 		return focusedNode ? [focusedNode.path] : [];
 	}
 
@@ -78,7 +78,7 @@
 	}: {
 		event: KeyboardEvent;
 		focusedNode: LTreeNode<Item> | null;
-		highlightedNodes: LTreeNode<Item>[];
+		selectedNodes: LTreeNode<Item>[];
 		controller: TreeController<Item>;
 	}): boolean {
 		const mod = event.ctrlKey || event.metaKey;
@@ -123,7 +123,7 @@
 				}
 				if (treeRef.removeNode(p).success) removed++;
 			}
-			controller.clearHighlight();
+			controller.clearSelection();
 			focusedNode = null;
 			deleteWarning = blocked > 0 ? `Cannot delete ${blocked} node(s) with subnodes` : '';
 			lastLog = `deleted ${removed} blocked ${blocked}`;
@@ -159,7 +159,7 @@
 			getAllowedDropPositionsCallback={(node): DropPosition[] | undefined =>
 				canHaveChildren(node) ? undefined : ['before', 'after']}
 			bind:focusedNode
-			bind:highlightedPaths
+			bind:selectedPaths
 			{onTreeKeydown}
 			nodeOutputTransformationCallback={copyTransform}
 			nodeInputTransformationCallback={pasteTransform}

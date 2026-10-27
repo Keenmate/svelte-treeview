@@ -718,7 +718,7 @@ treeRef.insertBranch(targetPath, serverResult);`}</pre>
 					sortCallback={sortByOrder}
 					isSorted={true}
 					expandLevel={3}
-					highlightedNodeClass="stv__node-content--highlight-bold"
+					selectedNodeClass="stv__node-content--selected-bold"
 					getContextMenuItemsCallback={getContextMenu}
 					bind:focusedNode={selectedNode}
 					{...getTreeProps()}
@@ -868,7 +868,7 @@ treeRef.insertBranch(targetPath, serverResult);`}</pre>
 					<td>Whether children are visible</td>
 				</tr>
 				<tr>
-					<td><code>isSelected</code></td>
+					<td><code>isChecked</code></td>
 					<td><code>boolean</code></td>
 					<td>Whether this node is selected</td>
 				</tr>
@@ -881,7 +881,7 @@ treeRef.insertBranch(targetPath, serverResult);`}</pre>
   <span>
     {node.data?.name}
     <small>Level: {node.level}, Path: {node.path}</small>
-    {#if node.isSelected}
+    {#if node.isChecked}
       <strong>(Selected)</strong>
     {/if}
   </span>

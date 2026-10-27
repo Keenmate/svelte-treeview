@@ -2,7 +2,7 @@
 	import Tree from '$lib/components/Tree.svelte';
 	import type { LTreeNode } from '$lib/ltree/types.js';
 
-	// Test fixture for isSelectableMember + isSelectedMember props.
+	// Test fixture for isSelectableMember + isCheckedMember props.
 	// Targeted by e2e/member-props.spec.ts — keep paths and field semantics
 	// stable. Moved from /dev/member-props as part of the /test/ migration.
 
@@ -19,8 +19,8 @@
 		{ id: 2, path: '1.1', name: 'Work', selectable: true, selected: true },
 		{ id: 3, path: '1.2', name: 'Locked', selectable: false, selected: false },
 		// 1.3 / Pinned: not selectable, but "selected" — selectable gates rendering,
-		// so checkbox is still hidden. Path should still appear in selectedPaths
-		// (the seed walk reads node.isSelected regardless of isSelectable).
+		// so checkbox is still hidden. Path should still appear in checkedPaths
+		// (the seed walk reads node.isChecked regardless of isSelectable).
 		{ id: 4, path: '1.3', name: 'Pinned', selectable: false, selected: true },
 		{ id: 5, path: '2', name: 'Music', selectable: true, selected: true },
 		{ id: 6, path: '2.1', name: 'Playlists', selectable: true, selected: false }
@@ -30,7 +30,7 @@
 		return [...items].sort((a, b) => a.path.localeCompare(b.path));
 	}
 
-	let selectedPaths: Set<string> = $state(new Set());
+	let checkedPaths: Set<string> = $state(new Set());
 </script>
 
 <svelte:head>
@@ -42,12 +42,12 @@
 
 	<section id="paths-display">
 		<p>
-			<strong>selectedPaths.size</strong>:
-			<span data-testid="selected-paths-count">{selectedPaths.size}</span>
+			<strong>checkedPaths.size</strong>:
+			<span data-testid="checked-paths-count">{checkedPaths.size}</span>
 		</p>
 		<p>
-			<strong>selectedPaths</strong>:
-			<span data-testid="selected-paths-list">{[...selectedPaths].sort().join(',')}</span>
+			<strong>checkedPaths</strong>:
+			<span data-testid="checked-paths-list">{[...checkedPaths].sort().join(',')}</span>
 		</p>
 	</section>
 
@@ -57,11 +57,11 @@
 			idMember="id"
 			pathMember="path"
 			isSelectableMember="selectable"
-			isSelectedMember="selected"
+			isCheckedMember="selected"
 			sortCallback={sortByPath}
 			shouldShowCheckboxes={true}
 			expandLevel={10}
-			bind:selectedPaths
+			bind:checkedPaths
 		>
 			{#snippet nodeTemplate(node: LTreeNode<Item>)}
 				<span data-testid="node-name-{node.path}">{node.data?.name}</span>

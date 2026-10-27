@@ -29,17 +29,17 @@ export interface TreeNavigation<T> {
 
 	// ── Shift+navigation: extend highlight range ────────────────────
 	/** Shift+ArrowDown — extend highlight to next visible node */
-	navHighlightNext(): void;
+	navSelectNext(): void;
 	/** Shift+ArrowUp — extend highlight to previous visible node */
-	navHighlightPrev(): void;
+	navSelectPrev(): void;
 	/** Shift+Home — extend highlight to first visible node */
-	navHighlightFirst(): void;
+	navSelectFirst(): void;
 	/** Shift+End — extend highlight to last visible node */
-	navHighlightLast(): void;
+	navSelectLast(): void;
 	/** Shift+PageDown — extend highlight forward ~10 visible nodes */
-	navHighlightPageDown(): void;
+	navSelectPageDown(): void;
 	/** Shift+PageUp — extend highlight back ~10 visible nodes */
-	navHighlightPageUp(): void;
+	navSelectPageUp(): void;
 }
 
 export type TreeNavigationOverrides<T> = Partial<TreeNavigation<T>>;

@@ -86,7 +86,7 @@ test.describe('Event contexts', () => {
 		expect(c.parent).toBe('1'); // A1's parent = A
 		expect(sorted(c.siblings)).toEqual(['1.1', '1.2']); // A's children
 
-		// click also fires onHighlightChange with the resolved node
+		// click also fires onSelectionChange with the resolved node
 		const hl = await readLog(page, 'highlight-ctx');
 		expect(hl[hl.length - 1]).toEqual({ paths: ['1.1'], nodes: ['1.1'] });
 	});
@@ -100,7 +100,7 @@ test.describe('Event contexts', () => {
 		expect(d.parent).toBe('1');
 	});
 
-	test('onSelectionChange carries { paths, nodes } for the checkbox set', async ({ page }) => {
+	test('onCheckedChange carries { paths, nodes } for the checkbox set', async ({ page }) => {
 		await checkboxA(page, '1.1').click(); // toggle A1's checkbox
 		const sel = await readLog(page, 'selection-ctx');
 		expect(sel.length).toBeGreaterThanOrEqual(1);

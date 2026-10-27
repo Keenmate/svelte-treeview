@@ -4,7 +4,7 @@
 	//   - nodeOutputTransformationCallback / nodeInputTransformationCallback (NodeTransformContext)
 	//   - beforeCopyCallback / beforeCutCallback (BeforeCopyContext)
 	//   - beforePasteCallback (BeforePasteContext) / beforeDeleteCallback (BeforeDeleteContext)
-	//   - onTreeKeydown ({ event, focusedNode, highlightedNodes, controller })
+	//   - onTreeKeydown ({ event, focusedNode, selectedNodes, controller })
 	// Two trees (treeA source / treeB target) exercise same-tree vs cross-tree source refs.
 	// Targeted by e2e/clipboard-context.spec.ts.
 	import { Tree, uniqueName } from '$lib/index.js';
@@ -131,7 +131,7 @@
 	}
 
 	function clipPaths(controller: TreeController<Item>, focused: LTreeNode<Item> | null): string[] {
-		if (controller.highlightedPaths.size > 0) return [...controller.highlightedPaths];
+		if (controller.selectedPaths.size > 0) return [...controller.selectedPaths];
 		return focused ? [focused.path] : [];
 	}
 
@@ -139,12 +139,12 @@
 		return function ({
 			event,
 			focusedNode,
-			highlightedNodes,
+			selectedNodes,
 			controller
 		}: {
 			event: KeyboardEvent;
 			focusedNode: LTreeNode<Item> | null;
-			highlightedNodes: LTreeNode<Item>[];
+			selectedNodes: LTreeNode<Item>[];
 			controller: TreeController<Item>;
 		}): boolean {
 			keydownLog = [
@@ -153,7 +153,7 @@
 					key: event.key,
 					ctrl: event.ctrlKey || event.metaKey,
 					focusedNode: focusedNode?.path ?? null,
-					highlightedNodes: highlightedNodes.map((n) => n.path)
+					selectedNodes: selectedNodes.map((n) => n.path)
 				}
 			];
 			const focused = getFocused();
@@ -221,7 +221,7 @@
 				clickBehavior="select"
 				selectionMode="multi"
 				bind:focusedNode={focusedA}
-				bind:highlightedPaths={highlightedA}
+				bind:selectedPaths={highlightedA}
 				onTreeKeydown={onKeydownA}
 				beforeCopyCallback={beforeCopy}
 				beforeCutCallback={beforeCut}
@@ -248,7 +248,7 @@
 				clickBehavior="select"
 				selectionMode="multi"
 				bind:focusedNode={focusedB}
-				bind:highlightedPaths={highlightedB}
+				bind:selectedPaths={highlightedB}
 				onTreeKeydown={onKeydownB}
 				beforeCopyCallback={beforeCopy}
 				beforeCutCallback={beforeCut}

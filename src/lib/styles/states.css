@@ -4,19 +4,19 @@
 
 /* Markers applied automatically by Node.svelte. One visual CHANNEL per state so
    they layer instead of fighting:
-     • highlighted → background-color (soft tint, --base-highlighted-*)
+     • highlighted → background-color (soft tint, --base-selected-*)
      • focused     → an INSET OUTLINE ring (--base-focused-*). Outline is its own
                      paint channel, so presets that use a box-shadow ring
                      (border/glow) or the scroll flash can't erase it
      • presets     → inset box-shadow hairline rings (no padding/border changes, so
                      the row never shifts and nothing bleeds onto neighbouring rows)
-   `--highlighted` / `--focused-default` are FALLBACK looks: Node.svelte only adds
-   them when highlightedNodeClass / focusedNodeClass is NOT set. `--focused` is a
+   `--selected` / `--focused-default` are FALLBACK looks: Node.svelte only adds
+   them when selectedNodeClass / focusedNodeClass is NOT set. `--focused` is a
    pure hook, always present on the focused row. */
-.stv__node-content--highlighted {
-	background-color: var(--stv-highlighted-bg);
-	color: var(--stv-highlighted-text);
-	outline: var(--stv-highlighted-ring);
+.stv__node-content--selected {
+	background-color: var(--stv-selected-bg);
+	color: var(--stv-selected-text);
+	outline: var(--stv-selected-ring);
 	outline-offset: var(--stv-focused-outline-offset);
 }
 
@@ -25,7 +25,7 @@
 }
 
 /* Default focus look — a thin inset ring (matches web-multiselect's focused option).
-   Declared after --highlighted so on a focused + highlighted row the focus ring wins
+   Declared after --selected so on a focused + selected row the focus ring wins
    over any selected-border outline, while the highlight tint stays. Set
    --stv-focused-ring: none to hide the ring but keep the hook. */
 .stv__node-content--focused-default {
@@ -33,47 +33,47 @@
 	outline: var(--stv-focused-ring);
 	outline-offset: var(--stv-focused-outline-offset);
 }
-.stv__node-content--focused-default:not(.stv__node-content--highlighted) {
+.stv__node-content--focused-default:not(.stv__node-content--selected) {
 	background-color: var(--stv-focused-bg);
 }
 
-.stv__node-content--highlight-bold {
+.stv__node-content--selected-bold {
 	font-weight: bold !important;
 	color: var(--stv-primary) !important;
 }
 
 /* Hairline inset ring + soft tint. Inset box-shadow (not border) → no layout shift. */
-.stv__node-content--highlight-border {
-	background-color: var(--stv-highlighted-bg) !important;
-	box-shadow: inset 0 0 0 1px var(--stv-highlight-ring-color) !important;
+.stv__node-content--selected-border {
+	background-color: var(--stv-selected-bg) !important;
+	box-shadow: inset 0 0 0 1px var(--stv-selected-preset-ring-color) !important;
 }
 
-.stv__node-content--highlight-fill {
-	background-color: var(--stv-highlight-bg) !important;
-	color: var(--stv-highlight-color) !important;
+.stv__node-content--selected-fill {
+	background-color: var(--stv-selected-fill-bg) !important;
+	color: var(--stv-selected-fill-color) !important;
 }
 
 /* Soft ring — tint + an inset hairline + a faint INNER glow. Kept inside the pill so
    it never spills onto neighbouring rows or clips at the scroll edge. */
-.stv__node-content--highlight-glow {
-	background-color: var(--stv-highlighted-bg) !important;
+.stv__node-content--selected-glow {
+	background-color: var(--stv-selected-bg) !important;
 	box-shadow:
-		inset 0 0 0 1px var(--stv-highlight-ring-color),
+		inset 0 0 0 1px var(--stv-selected-preset-ring-color),
 		inset 0 0 6px 0 color-mix(in srgb, var(--stv-primary) 20%, transparent) !important;
 }
 
-.stv__node-content--highlight-brackets {
+.stv__node-content--selected-brackets {
 	position: relative;
 }
 
-.stv__node-content--highlight-brackets::before {
+.stv__node-content--selected-brackets::before {
 	content: '❯';
 	margin-right: 6px;
 	color: var(--stv-primary);
 	font-weight: bold;
 }
 
-.stv__node-content--highlight-brackets::after {
+.stv__node-content--selected-brackets::after {
 	content: '❮';
 	margin-left: 6px;
 	color: var(--stv-primary);

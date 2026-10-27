@@ -420,7 +420,7 @@
 					selectionMode="multi"
 					leafIconClass=""
 					nodeClass={rightNodeClass}
-					bind:highlightedPaths={rightSel}
+					bind:selectedPaths={rightSel}
 					onNodeClick={({ node }) => { if (node?.data) statusInfo = previewText(node.data); }}
 					onNodeDoubleClick={({ node }) => { if (node?.data) open(node.data); }}
 					getContextMenuItemsCallback={rightMenu}
@@ -593,8 +593,8 @@
 	}
 	.winx-right :global(.stv__node-content:hover) { background: #f2f7fd; }
 	/* library highlight = our selection look (background-only so the grid never shifts) */
-	.winx-right :global(.stv__node-content--highlighted) { background: #cfe5fb; box-shadow: inset 0 0 0 1px #a8cef0; }
-	.winx-right :global(.stv__node-content--highlighted:hover) { background: #c3ddf8; }
+	.winx-right :global(.stv__node-content--selected) { background: #cfe5fb; box-shadow: inset 0 0 0 1px #a8cef0; }
+	.winx-right :global(.stv__node-content--selected:hover) { background: #c3ddf8; }
 
 	.winx__cell { padding: 3px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #1b1b1b; min-width: 0; }
 	.winx__cell--name { display: flex; align-items: center; gap: 8px; }

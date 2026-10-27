@@ -44,8 +44,8 @@ C
 Callbacks → events-callbacks.txt, data-handling.txt
 cancelCut → tree-editing.txt
 clearFocus → advanced-patterns.txt
-clearHighlight → advanced-patterns.txt
-clearSelection → tree-editing.txt, advanced-patterns.txt
+clearSelection → advanced-patterns.txt
+uncheckAll / uncheckNodes → tree-editing.txt, advanced-patterns.txt
 clipboard → tree-editing.txt
 closeContextMenu → context-menu.txt
 collapseAll → basic-setup.txt, tree-editing.txt
@@ -130,7 +130,7 @@ isDraggableMember → drag-drop.txt, data-handling.txt
 isDropAllowedMember → drag-drop.txt, data-handling.txt
 isExpandedMember → data-handling.txt
 isRendering → performance.txt
-isSelectedMember → data-handling.txt
+isCheckedMember → data-handling.txt
 isSorted → data-handling.txt
 
 K
@@ -168,7 +168,7 @@ O
 onCopy → events-callbacks.txt
 onCut → events-callbacks.txt
 onDelete → events-callbacks.txt
-onHighlightChange → events-callbacks.txt
+onSelectionChange → events-callbacks.txt
 onNodeClick → events-callbacks.txt
 onNodeDoubleClick → events-callbacks.txt
 onNodeDragOver → events-callbacks.txt, drag-drop.txt
@@ -178,7 +178,7 @@ onPaste → events-callbacks.txt
 onRenderComplete → performance.txt
 onRenderProgress → performance.txt
 onRenderStart → performance.txt
-onSelectionChange → events-callbacks.txt, advanced-patterns.txt
+onCheckedChange → events-callbacks.txt, advanced-patterns.txt
 onTreeKeydown → events-callbacks.txt
 orderMember → drag-drop.txt, tree-editing.txt
 
@@ -205,11 +205,11 @@ Root drop zone → drag-drop.txt
 S
 -
 CSS / styles.css → styling-theming.txt, import-patterns.txt
-selectAll → tree-editing.txt, advanced-patterns.txt
-selectNode → tree-editing.txt, advanced-patterns.txt
+checkAll → tree-editing.txt, advanced-patterns.txt
+checkNode → tree-editing.txt, advanced-patterns.txt
 setExpandedPaths → tree-editing.txt
-setHighlightedPaths → advanced-patterns.txt
-setSelectedPaths → tree-editing.txt, advanced-patterns.txt
+setSelectedPaths → advanced-patterns.txt
+setCheckedPaths → tree-editing.txt, advanced-patterns.txt
 scrollHighlightClass → styling-theming.txt
 scrollHighlightTimeout → styling-theming.txt
 scrollToPath → basic-setup.txt, tree-editing.txt
@@ -219,10 +219,10 @@ searchText → search-features.txt, basic-setup.txt
 searchValueMember → search-features.txt, data-handling.txt
 focusedNode → basic-setup.txt, events-callbacks.txt
 focusNode → advanced-patterns.txt
-highlightedNodeClass → styling-theming.txt
-highlightedPaths → advanced-patterns.txt
-highlightNode → advanced-patterns.txt
-selectedPaths → advanced-patterns.txt (checkbox data state)
+selectedNodeClass → styling-theming.txt
+selectedPaths → advanced-patterns.txt
+selectNode → advanced-patterns.txt
+checkedPaths → advanced-patterns.txt (checkbox data state)
 shouldShowCheckboxes → basic-setup.txt
 checkboxMode → basic-setup.txt
 clickBehavior → basic-setup.txt, events-callbacks.txt

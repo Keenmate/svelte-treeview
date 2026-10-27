@@ -73,7 +73,7 @@
 	let treeRef: Tree<EditorNode>;
 	let selectedNode = $state<LTreeNode<EditorNode> | null>(null);
 	// Multi-select highlight set (Ctrl/Cmd+click, Shift+click, Shift+Arrow).
-	let highlightedPaths = $state<Set<string>>(new Set());
+	let selectedPaths = $state<Set<string>>(new Set());
 	// Paths currently dimmed because they were cut and await paste. The library
 	// tracks an equivalent set on the controller (controller.cutPaths) but doesn't
 	// render it, so we mirror it here and dim via the nodeTemplate.
@@ -97,7 +97,7 @@
 
 	// Copy/cut operate on the highlight set when present, else the focused node.
 	function clipboardPaths(controller: TreeController<EditorNode>): string[] {
-		if (controller.highlightedPaths.size > 0) return [...controller.highlightedPaths];
+		if (controller.selectedPaths.size > 0) return [...controller.selectedPaths];
 		return selectedNode ? [selectedNode.path] : [];
 	}
 
@@ -143,7 +143,7 @@
 	}: {
 		event: KeyboardEvent;
 		focusedNode: LTreeNode<EditorNode> | null;
-		highlightedNodes: LTreeNode<EditorNode>[];
+		selectedNodes: LTreeNode<EditorNode>[];
 		controller: TreeController<EditorNode>;
 	}): boolean {
 		// Ctrl on Windows/Linux, Cmd (metaKey) on macOS.
@@ -220,7 +220,7 @@
 				}
 				if (treeRef.removeNode(p).success) removed++;
 			}
-			controller.clearHighlight();
+			controller.clearSelection();
 			selectedNode = null;
 			cutPaths = new Set();
 			if (blocked > 0) {
@@ -1078,7 +1078,7 @@
 						getAllowedDropPositionsCallback={(node): DropPosition[] | undefined =>
 							canHaveChildren(node) ? undefined : ['before', 'after']}
 						bind:focusedNode={selectedNode}
-						bind:highlightedPaths={highlightedPaths}
+						bind:selectedPaths={selectedPaths}
 						onTreeKeydown={handleTreeKeydown}
 						onCopy={({ paths }) => { if (!suppressClipboardLog) addLog(`Copied ${paths.length} node(s) to clipboard`); }}
 						onCut={({ paths }) => addLog(`Cut ${paths.length} node(s) — paste to move`)}
@@ -1459,13 +1459,13 @@
 import type { TreeController, NodeTransformContext } from '@keenmate/svelte-treeview';
 
 let focusedNode = $state<LTreeNode<MyNode> | null>(null);
-let highlightedPaths = $state<Set<string>>(new Set());
+let selectedPaths = $state<Set<string>>(new Set());
 let cutPaths = $state<Set<string>>(new Set());
 let nextId = 1000;
 
 // Copy/cut act on the highlight set when present, else the focused node.
 function clipboardPaths(controller: TreeController<MyNode>) {
-  if (controller.highlightedPaths.size > 0) return [...controller.highlightedPaths];
+  if (controller.selectedPaths.size > 0) return [...controller.selectedPaths];
   return focusedNode ? [focusedNode.path] : [];
 }
 

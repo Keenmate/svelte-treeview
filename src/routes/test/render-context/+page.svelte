@@ -39,8 +39,8 @@
 				data-level={ctx.level}
 				data-haschildren={ctx.hasChildren}
 				data-expanded={ctx.isExpanded}
+				data-checked={ctx.isChecked}
 				data-selected={ctx.isSelected}
-				data-highlighted={ctx.isHighlighted}
 				data-focused={ctx.isFocused}
 				data-cw={ctx.container.width}
 			>•</span>

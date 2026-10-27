@@ -7,7 +7,7 @@ import { test, expect, Page } from '@playwright/test';
  *     position, and the symmetric source/target groups ({ path, node, parent, siblings }).
  *   - BeforeCopyContext / BeforeDeleteContext ({ paths, nodes }), BeforePasteContext
  *     ({ operation, target: { path, node }, entries }).
- *   - onTreeKeydown ({ event, focusedNode, highlightedNodes, controller }).
+ *   - onTreeKeydown ({ event, focusedNode, selectedNodes, controller }).
  *   - same-tree source refs are LIVE; cross-tree source refs are null/[].
  */
 
@@ -193,7 +193,7 @@ test.describe('Clipboard callback contexts', () => {
 		expect(bd).toEqual([{ paths: ['1.2'], nodes: ['1.2'] }]);
 	});
 
-	test('onTreeKeydown carries the resolved focusedNode + highlightedNodes', async ({ page }) => {
+	test('onTreeKeydown carries the resolved focusedNode + selectedNodes', async ({ page }) => {
 		await clickA(page, 'A1'); // highlight {1.1}, focus 1.1
 		await ctrlClickA(page, 'A2'); // highlight {1.1,1.2}, focus 1.2
 		await page.keyboard.press('Control+c');
@@ -203,7 +203,7 @@ test.describe('Clipboard callback contexts', () => {
 		expect(last.key).toBe('c');
 		expect(last.ctrl).toBe(true);
 		expect(last.focusedNode).toBe('1.2');
-		expect(sorted(last.highlightedNodes)).toEqual(['1.1', '1.2']);
+		expect(sorted(last.selectedNodes)).toEqual(['1.1', '1.2']);
 	});
 
 	test('cross-tree paste: source refs are null/[], target refs resolve in the destination tree', async ({
