@@ -36,7 +36,7 @@ describe('LTree Sorting', () => {
 			undefined, // initializeIndexCallback
 			25, // indexerBatchSize
 			50, // indexerTimeout
-			{ shouldDisplayDebugInformation: false }
+			{}
 		);
 	}
 

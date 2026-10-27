@@ -225,7 +225,6 @@ highlightNode → advanced-patterns.txt
 selectedPaths → advanced-patterns.txt (checkbox data state)
 shouldShowCheckboxes → basic-setup.txt
 checkboxMode → basic-setup.txt
-shouldDisplayDebugInformation → basic-setup.txt, performance.txt
 clickBehavior → basic-setup.txt, events-callbacks.txt
 shouldUseInternalSearchIndex → search-features.txt
 Snippets → basic-setup.txt, context-menu.txt

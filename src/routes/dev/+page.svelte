@@ -200,7 +200,6 @@
 						bind:focusedNode={selectedNode}
 						bind:searchText
 						shouldUseInternalSearchIndex={true}
-						shouldDisplayDebugInformation={true}
 						clickBehavior="expand-and-focus"
 						{onNodeClick}
 					>

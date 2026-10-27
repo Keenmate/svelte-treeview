@@ -143,8 +143,6 @@
 		shouldUseInternalSearchIndex?: boolean | null | undefined;
 		indexerBatchSize?: number | null | undefined;
 		indexerTimeout?: number | null | undefined;
-		shouldDisplayDebugInformation?: boolean;
-		shouldDisplayContextMenuInDebugMode?: boolean;
 		isLoading?: boolean;
 
 		// Progressive rendering (exponential batching: 20 → 40 → 80 → 160...)
@@ -467,8 +465,6 @@
 		searchText = $bindable(),
 		indexerBatchSize = 25,
 		indexerTimeout = 50,
-		shouldDisplayDebugInformation = false,
-		shouldDisplayContextMenuInDebugMode = false,
 		isLoading = false,
 
 		// Progressive rendering (exponential batching: 20 → 40 → 80 → 160...)
@@ -626,8 +622,6 @@
 		searchText,
 		indexerBatchSize,
 		indexerTimeout,
-		shouldDisplayDebugInformation,
-		shouldDisplayContextMenuInDebugMode,
 		isLoading,
 		isProgressiveRender,
 		initialBatchSize,
@@ -839,12 +833,6 @@
 	});
 	$effect(() => {
 		controller.treePathSeparator = treePathSeparator ?? '.';
-	});
-	$effect(() => {
-		controller.shouldDisplayDebugInformation = shouldDisplayDebugInformation ?? false;
-	});
-	$effect(() => {
-		controller.shouldDisplayContextMenuInDebugMode = shouldDisplayContextMenuInDebugMode ?? false;
 	});
 	$effect(() => {
 		controller.isLoading = isLoading ?? false;
@@ -1455,8 +1443,6 @@
 				| 'searchText'
 				| 'indexerBatchSize'
 				| 'indexerTimeout'
-				| 'shouldDisplayDebugInformation'
-				| 'shouldDisplayContextMenuInDebugMode'
 				| 'onNodeClick'
 				| 'onNodeDoubleClick'
 				| 'onHighlightChange'
@@ -1588,10 +1574,6 @@
 		if (updates.searchText !== undefined) searchText = updates.searchText;
 		if (updates.indexerBatchSize !== undefined) indexerBatchSize = updates.indexerBatchSize;
 		if (updates.indexerTimeout !== undefined) indexerTimeout = updates.indexerTimeout;
-		if (updates.shouldDisplayDebugInformation !== undefined)
-			shouldDisplayDebugInformation = updates.shouldDisplayDebugInformation;
-		if (updates.shouldDisplayContextMenuInDebugMode !== undefined)
-			shouldDisplayContextMenuInDebugMode = updates.shouldDisplayContextMenuInDebugMode;
 		if (updates.onNodeClick !== undefined) onNodeClick = updates.onNodeClick;
 		if (updates.onNodeDoubleClick !== undefined) onNodeDoubleClick = updates.onNodeDoubleClick;
 		if (updates.onHighlightChange !== undefined) onHighlightChange = updates.onHighlightChange;
@@ -1899,28 +1881,6 @@
 	bind:this={treeContainerRef}
 	onkeydown={handleTreeKeydown}
 >
-	{#if controller.shouldDisplayDebugInformation}
-		<div class="stv__debug-info">
-			<details>
-				<summary>Debug Info</summary>
-				<div class="stv__debug-stats">
-					<span>Tree: {controller.treeId}</span>
-					<span>Data: {controller.data?.length || 0}</span>
-					<span>Expand level: {expandLevel || 0}</span>
-					<span>Nodes: {controller.tree?.statistics.nodeCount || 0}</span>
-					<span>Levels: {controller.tree?.statistics.maxLevel || 0}</span>
-					{#if controller.tree?.statistics.filteredNodeCount > 0}
-						<span>Filtered: {controller.tree.statistics.filteredNodeCount}</span>
-					{/if}
-					{#if controller.tree?.statistics.isIndexing}
-						<span>Indexing: {controller.tree.statistics.pendingIndexCount} pending</span>
-					{/if}
-					<span>Dragging: {controller.draggedNode?.path || 'none'}</span>
-				</div>
-			</details>
-		</div>
-	{/if}
-
 	{@render treeHeader?.()}
 
 	{#if controller.isLoading}

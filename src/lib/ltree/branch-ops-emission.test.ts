@@ -43,7 +43,7 @@ function createTree() {
 		undefined, // initializeIndexCallback
 		25,
 		50,
-		{ shouldDisplayDebugInformation: false }
+		{}
 	);
 }
 

@@ -296,17 +296,6 @@ Simplify search value callback:
   return `${node.data.name} ${node.data.email}`;
 }}
 
-DEBUG MODE OVERHEAD
--------------------
-Disable in production:
-
-<Tree shouldDisplayDebugInformation={false} />
-
-Debug mode adds:
-- Statistics calculations
-- Console logging
-- Debug panel rendering
-
 COMMON PERFORMANCE ISSUES
 -------------------------
 Issue: Tree takes forever to render

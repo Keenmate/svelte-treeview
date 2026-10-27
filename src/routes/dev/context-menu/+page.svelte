@@ -21,7 +21,6 @@
 	let searchText = $state('');
 	let contextMenuXOffset = $state(8);
 	let contextMenuYOffset = $state(0);
-	let debugContextMenu = $state(false);
 
 	// Second example data - more complex menu scenarios
 	const advancedContextMenuData = [
@@ -36,7 +35,6 @@
 	// Advanced example configuration
 	let selectedNode2 = $state(null);
 	let searchText2 = $state('');
-	let debugContextMenu2 = $state(false);
 
 
 	// Sort callback
@@ -312,13 +310,11 @@
 						bind:focusedNode={selectedNode}
 						bind:searchText
 						shouldUseInternalSearchIndex={true}
-						shouldDisplayDebugInformation={true}
 						clickBehavior="expand-and-focus"
 						{onNodeClick}
 						{contextMenuXOffset}
 						{contextMenuYOffset}
 						getContextMenuItemsCallback={createContextMenu}
-						shouldDisplayContextMenuInDebugMode={debugContextMenu}
 					>
 						{#snippet nodeTemplate(node: any)}
 							<div class="d-flex align-items-center context-menu-target">
@@ -446,20 +442,6 @@
 						</label>
 					</div>
 
-					<div class="mb-3">
-						<div class="form-check">
-							<input
-								type="checkbox"
-								class="form-check-input"
-								bind:checked={debugContextMenu}
-								id="debugContextMenu"
-							>
-							<label class="form-check-label" for="debugContextMenu">
-								Debug Context Menu
-							</label>
-						</div>
-						<small class="form-text text-muted">Shows context menu at fixed position relative to tree (200px right, 100px down)</small>
-					</div>
 				</div>
 			</div>
 
@@ -506,13 +488,11 @@
 						bind:focusedNode={selectedNode2}
 						bind:searchText={searchText2}
 						shouldUseInternalSearchIndex={true}
-						shouldDisplayDebugInformation={false}
 						clickBehavior="expand-and-focus"
 						{onNodeClick}
 						{contextMenuXOffset}
 						{contextMenuYOffset}
 						getContextMenuItemsCallback={createAdvancedContextMenu}
-						shouldDisplayContextMenuInDebugMode={debugContextMenu2}
 					>
 						{#snippet nodeTemplate(node: any)}
 							<div class="d-flex align-items-center context-menu-target">
@@ -574,26 +554,6 @@
 						bind:value={searchText2}
 						placeholder="Search servers/services..."
 					>
-				</div>
-			</div>
-
-			<div class="card mb-3">
-				<div class="card-header">
-					<h5 class="card-title mb-0">Debug Tools</h5>
-				</div>
-				<div class="card-body">
-					<div class="form-check">
-						<input
-							type="checkbox"
-							class="form-check-input"
-							bind:checked={debugContextMenu2}
-							id="debugContextMenu2"
-						>
-						<label class="form-check-label" for="debugContextMenu2">
-							Debug Context Menu
-						</label>
-					</div>
-					<small class="form-text text-muted">Shows context menu at fixed position relative to tree for styling development</small>
 				</div>
 			</div>
 

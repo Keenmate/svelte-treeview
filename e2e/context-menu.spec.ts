@@ -290,17 +290,6 @@ test.describe('Callback approach', () => {
 		// The output block unmounts when the log is empty.
 		await expect(card.locator('.output')).toHaveCount(0);
 	});
-
-	test('debug mode keeps the menu open after right-click and clicks the named divider region', async ({ page }) => {
-		await gotoContextMenu(page);
-		const card = callbackCard(page);
-
-		await card.getByText('Debug Mode (menu appears at fixed position)').click();
-		await rightClick(card, '1');
-
-		// The named divider is still rendered with its label.
-		await expect(menuIn(card).locator('.stv__context-menu-divider-label')).toHaveText('Danger zone');
-	});
 });
 
 // ── Snippet approach ───────────────────────────────────────────────────────

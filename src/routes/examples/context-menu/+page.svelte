@@ -28,7 +28,6 @@
 
 	let activityLog = $state<string[]>([]);
 	let snippetLog = $state<string[]>([]);
-	let debugMode = $state(false);
 	let xOffset = $state(8);
 	let yOffset = $state(0);
 
@@ -163,10 +162,6 @@
 
 		<div class="controls">
 			<label>
-				<input type="checkbox" bind:checked={debugMode} />
-				Debug Mode (menu appears at fixed position)
-			</label>
-			<label>
 				X Offset:
 				<input type="number" bind:value={xOffset} style="width: 70px;" />
 				<span class="hint">px</span>
@@ -190,7 +185,6 @@
 				getContextMenuItemsCallback={getContextMenu}
 				contextMenuXOffset={xOffset}
 				contextMenuYOffset={yOffset}
-				shouldDisplayContextMenuInDebugMode={debugMode}
 				{...getTreeProps()}
 			>
 				{#snippet nodeTemplate(node: any)}
@@ -416,11 +410,6 @@ type ContextMenuEntry = ContextMenuItem | ContextMenuDivider;`}</pre>
   contextMenuXOffset={8}   // Default: 8px right of cursor
   contextMenuYOffset={0}   // Default: 0px below cursor
 />`}</pre>
-		</div>
-
-		<div class="note">
-			<p class="note-title">Debug Mode</p>
-			<p>Enable <code>shouldDisplayContextMenuInDebugMode</code> to display the context menu at a fixed position (200px right, 100px down from tree container). Useful for development and testing.</p>
 		</div>
 
 	</div>

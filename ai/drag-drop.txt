@@ -409,10 +409,6 @@ Enable drag logging:
 import { setCategoryLevel } from '@keenmate/svelte-treeview';
 setCategoryLevel('LTREE:DRAG', 'debug');
 
-Debug panel:
-<Tree shouldDisplayDebugInformation={true} />
-// Shows currently dragged node
-
 BEST PRACTICES
 --------------
 ✅ Set orderMember for sibling ordering

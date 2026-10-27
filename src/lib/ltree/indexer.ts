@@ -25,8 +25,7 @@ export class Indexer<T> {
 		searchValueMember?: string | null | undefined,
 		getSearchValueCallback?: (node: LTreeNode<T>) => string,
 		batchSize: number = 25,
-		private timeout: number = 50,
-		shouldDisplayDebugInformation: boolean = false
+		private timeout: number = 50
 	) {
 		this.treeId = treeId;
 		this.searchIndex = searchIndex;

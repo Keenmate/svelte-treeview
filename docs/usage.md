@@ -74,8 +74,6 @@ Without both requirements, no search indexing will occur.
 | `indexerBatchSize` | `number \| null` | `25` | Number of nodes to process per batch during search indexing |
 | `indexerTimeout` | `number \| null` | `50` | Maximum time (ms) to wait for idle callback before forcing indexing |
 | `isLoading` | `boolean` | `false` | Show loading placeholder instead of tree content |
-| `shouldDisplayDebugInformation` | `boolean` | `false` | Show debug information panel with tree statistics and enable console debug logging |
-| `shouldDisplayContextMenuInDebugMode` | `boolean` | `false` | Display persistent context menu at fixed position for styling development |
 
 ### Rendering properties
 
@@ -313,7 +311,6 @@ const treeElement = document.querySelector('#my-tree');
 treeElement.update({
   searchText: 'Production',
   expandLevel: 3,
-  shouldDisplayDebugInformation: true,
   data: newDataArray,
   contextMenuXOffset: 10
 });
@@ -330,19 +327,15 @@ treeElement.update({ searchText: 'new search' });
 - Context menu: `getContextMenuItemsCallback`, `contextMenuXOffset`, `contextMenuYOffset`
 - Behavior: `clickBehavior`, `shouldUseInternalSearchIndex`, etc.
 
-## Debug information
+## Debug logging
 
-Enable debug information to see real-time tree statistics and console logging:
+There is no in-tree debug panel. Turn on the category loggers instead:
 
-```svelte
-<Tree
-  {data}
-  idMember="path"
-  pathMember="path"
-  shouldDisplayDebugInformation={true}
-/>
+```typescript
+import { enableLogging, setCategoryLevel } from '@keenmate/svelte-treeview';
+
+enableLogging();                            // everything
+setCategoryLevel('LTREE:DATA', 'debug');    // or just one category
 ```
 
-The visual debug panel shows tree ID, data array length, expand level, node count, maximum depth, filtered node count (when filtering is active), search indexing progress (when indexing is active), and currently dragged node.
-
-When enabled, the component logs detailed information to the browser console including data mapping and sorting metrics, node filtering and search operations, tree structure changes, indexer initialization and progress, and batch processing details.
+Categories cover data mapping/sorting, filtering and search, tree structure changes, indexer progress and drag-and-drop.

@@ -78,7 +78,6 @@ TREE_PROPS_KEY:
 - checkboxMode: CheckboxMode (default 'independent') - 'independent' | 'cascade'. Changing it at runtime re-derives every node's visualState + re-renders (controller `checkboxMode` is a getter/setter → `_reconcileVisualStatesForMode`): switching to 'independent' PROMOTES an indeterminate [-] node to fully checked (isSelected=true); switching to 'cascade' recomputes parent dashes from descendants. Without this the [-] dash stuck (indeterminate is a derived render state — the `stv__checkbox--indeterminate` modifier class + `aria-checked="mixed"` — so a visualState change needs the re-render to re-emit the class; it is NO LONGER the native `.indeterminate` DOM prop). Guarded by e2e/checkbox-mode.spec.ts.
 - cascadeSelectPolicy: CascadeSelectPolicy (default 'rolled-up') - 'rolled-up' | 'leaves' | 'all'. The SECOND orthogonal checkbox knob: checkboxMode controls cascade BEHAVIOUR, this controls which paths the selection EMITS. ONLY applies in cascade mode (independent emits the raw checked set). The controller keeps the CANONICAL checked set on `#selectedPaths` (every fully-checked node — leaves + fully-checked branches; never an indeterminate branch) and derives an EMITTED projection `#emittedPaths` via `_projectSelection`: rolled-up = minimal cover (a fully-checked selectable subtree collapses to its root, a partial branch descends to emit its checked bits); leaves = only checked leaf nodes; all = the canonical set unchanged. The bindable `selectedPaths` PROP + `onSelectionChange` now expose `#emittedPaths` (via `controller.emittedPaths`); `controller.selectedPaths` getter still returns the canonical set for internal/back-compat reads. A parent SET of the prop is treated as a projection and expanded back into canonical via `setSelectedPaths` (cascade-down). Live policy/mode switches re-project (both setters reassign `#emittedPaths`). NOTE: default 'rolled-up' changes what cascade consumers previously read from selectedPaths (was the full 'all' set). Guarded by e2e/checkbox-policy.spec.ts + fixture /test/checkbox-policy.
 - shouldUseInternalSearchIndex: boolean
-- shouldDisplayDebugInformation: boolean
 - expandLevel: number (default 2)
 - nodeClass: (node) => string|null|undefined - data-driven class applied to .stv__node (recomputes on node._rev change)
 - nodeContentClass: (node) => string|null|undefined - same, applied to .stv__node-content
@@ -98,7 +97,6 @@ TREE_PROPS_KEY:
 - getContextMenuItemsCallback: (node: LTreeNode<T>, closeMenuCallback: () => void, selectedNodes?: LTreeNode<T>[]) => ContextMenuEntry[]
 - contextMenuXOffset: number (default 8px)
 - contextMenuYOffset: number (default 0px)
-- shouldDisplayContextMenuInDebugMode: boolean (default false)
 - shouldShowDropPlaceholderWhenEmpty: boolean (default false) - keep the dropPlaceholder visible whenever the tree is empty (not just mid-drag) AND focus the tabbable .stv__container on hover + pointerdown, so a Ctrl/Cmd+V (routed via onTreeKeydown) pastes into an empty tree whether the user hovers or clicks the zone first. All four empty-state render sites share one `emptyDropState` snippet.
 - shouldEnableTreeDropZone: boolean (default false) - make the WHOLE populated tree one drop target: a drop anywhere lands with target=null (route via beforeDropCallback → DropGroup[]), regardless of per-node getIsDropAllowedCallback. Wired as ondragover/ondrop on the always-present .stv__container (only when on); container ondragover preventDefaults so a drop is accepted even when every node rejects it. A drop ON a node is stopPropagation()'d by Node.svelte, so it can't bubble — instead _onNodeDrop/_onZoneDrop FORWARD their reject path to handleTreeZoneDrop (guarded by controller.shouldEnableTreeDropZone, mirrored from the prop via $effect); drops on empty container area hit handleTreeZoneDrop directly. Visual: .stv__container gets .stv__tree-drop-zone--active (outline) while a drag hovers. Use for "drop a basket, auto-sort into category nodes". Guarded by e2e/drag-drop.spec.ts "tree drop zone + DropGroup routing" + fixture /test/drag-drop section-tree-zone.
 - noData: snippet - content for an empty tree (renamed from noDataFound). Falls back to noDataText.
@@ -156,7 +154,7 @@ STYLING:
 - main.css declares `@layer variables, component, overrides;` and wraps every @import in `layer(...)`
 - Tier 1 (skeleton): variables.css, base.css, dark-mode.css (overrides layer)
 - Tier 2 (canonical): controls.css, floating.css, states.css, animations.css (stubs where not needed)
-- Tier 3 (features): node.css, toggle-icons.css, checkbox.css, drag-drop.css, drop-zones.css, context-menu.css, debug.css, loading.css
+- Tier 3 (features): node.css, toggle-icons.css, checkbox.css, drag-drop.css, drop-zones.css, context-menu.css, loading.css
 - No underscore prefix on file names (legacy SASS convention removed)
 - lightningcss-cli resolves @import at build time
 - Dark mode: light-dark() in color fallbacks + dark-mode.css with @media (prefers-color-scheme: dark), framework classes ([data-theme], [data-bs-theme], .dark), and per-instance `<Tree theme="dark"|"light"/>` prop (forwarded as data-theme on .stv__container)
@@ -180,9 +178,8 @@ CONTEXT_MENU:
 - Item features: label, icon, shortcut, isDisabled, isVisible, className (e.g. "danger"), onclick, shouldCloseOnClick (default true; false keeps menu open), children (submenus)
 - Submenus: children[] opens nested menu on hover (CSS position: absolute; left: 100%)
 - Position offset: contextMenuXOffset/YOffset for cursor clearance
-- Debug mode: shouldDisplayContextMenuInDebugMode shows menu at tree-relative position (200px right, 100px down)
 - Auto-close: closes on scroll, click outside, or programmatically
-- Dev page: /dev/context-menu with examples and debug controls
+- Dev page: /dev/context-menu with examples
 - Spec document: context-menu-spec.md (migration guide for web-treeview)
 
 EXTERNAL_UPDATE:

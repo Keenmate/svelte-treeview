@@ -32,6 +32,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `--base-tooltip-text-color` (the `--base-tooltip-color` duplicate is gone) — whichever of these
   the component uses.
 
+### Removed
+
+- **BREAKING: debug aids removed — `shouldDisplayDebugInformation` and
+  `shouldDisplayContextMenuInDebugMode`.** Both were Sep-2025 development tools, not user
+  features. The "Debug Info" stats box above the tree (`.stv__debug-info` / `.stv__debug-stats`,
+  `debug.css`) is gone, and so is the debug context menu that pinned itself open at a fixed spot.
+  `Ltree`'s `shouldDisplayDebugInformation` option/field went with it (it only gated one
+  `copyNodeWithDescendants` warning, which now always goes through the `LTREE:DATA` logger).
+  Use the loggers instead: `enableLogging()` / `setCategoryLevel('LTREE:DATA', 'debug')`. Tree
+  statistics stay available on a headless `TreeController` (`controller.statistics`). Same removal as
+  `@keenmate/web-treeview`.
+
 ## [5.0.0] - 2026-10-13 [PUBLISHED]
 
 ### Added

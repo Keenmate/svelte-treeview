@@ -124,8 +124,7 @@ export function createLTree<T>(
 			_searchValueMember,
 			_getSearchValueCallback,
 			_indexerBatchSize || 25, // batch size with fallback
-			_indexerTimeout || 50, // timeout with fallback
-			opts?.shouldDisplayDebugInformation ?? false
+			_indexerTimeout || 50 // timeout with fallback
 		);
 	}
 
@@ -169,7 +168,6 @@ export function createLTree<T>(
 		getIsCollapsibleCallback: _getIsCollapsibleCallback,
 		orderMember: _orderMember,
 		isSorted: false,
-		shouldDisplayDebugInformation: opts?.shouldDisplayDebugInformation ?? false,
 
 		// Properties for filtering
 		filteredTree,
@@ -1554,12 +1552,10 @@ export function createLTree<T>(
 				// Add the node
 				const result = this.addNode(parentPath, transformedData);
 				if (!result.success || !result.node) {
-					if (this.shouldDisplayDebugInformation) {
-						console.warn(
-							`[Tree ${_treeId}] copyNodeWithDescendants: Failed to add node`,
-							result.error
-						);
-					}
+					dataLogger.warn(
+						`[Tree ${_treeId}] copyNodeWithDescendants: Failed to add node`,
+						result.error
+					);
 					return null;
 				}
 

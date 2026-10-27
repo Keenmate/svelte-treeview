@@ -982,7 +982,6 @@
 							)}
 						onDelete={(c) => addLog(`Deleted ${c.paths.length} node(s) from target-tree`)}
 						onNodeDrop={handleTargetDrop}
-						shouldDisplayDebugInformation={true}
 						shouldShowDropPlaceholderWhenEmpty={showDropZoneWhenEmpty}
 						{isCopyAllowed}
 						{dropZoneMode}
@@ -1473,7 +1472,6 @@ beforeDragStartCallback={(ctx) => {
 				isSorted={true}
 				expandLevel={3}
 				dragDropMode="self"
-				shouldDisplayDebugInformation={true}
 				onNodeDragStart={handleTouchDragStart}
 				onNodeDrop={handleTouchDrop}
 				{...getTreeProps()}

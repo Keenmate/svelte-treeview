@@ -182,13 +182,6 @@ CSS classes:
 - .stv__context-menu-arrow - Submenu arrow indicator
 - .stv__context-submenu - Submenu container
 
-DEBUG MODE
-----------
-<Tree
-  getContextMenuItemsCallback={createMenu}
-  shouldDisplayContextMenuInDebugMode={true}
-/>
-
 BEST PRACTICES
 --------------
 ✅ Use label (not title), onclick (not callback), { divider: true } (not isDivider)

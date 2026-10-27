@@ -32,7 +32,6 @@
 
 	let activityLog = $state<string[]>([]);
 	let snippetLog = $state<string[]>([]);
-	let debugMode = $state(false);
 	let pinClicks = $state(0);
 
 	function sortByName(items: LTreeNode<FileItem>[]) {
@@ -159,10 +158,6 @@
 	<div class="card">
 		<h2>Callback Approach</h2>
 		<div class="controls">
-			<label>
-				<input type="checkbox" bind:checked={debugMode} />
-				Debug Mode (menu appears at fixed position)
-			</label>
 			<button onclick={clearLog}>Clear Log</button>
 		</div>
 
@@ -175,7 +170,6 @@
 				isSorted={true}
 				expandLevel={3}
 				getContextMenuItemsCallback={getContextMenu}
-				shouldDisplayContextMenuInDebugMode={debugMode}
 			>
 				{#snippet nodeTemplate(node: LTreeNode<FileItem>)}
 					<span>{node.data?.icon} {node.data?.name}</span>

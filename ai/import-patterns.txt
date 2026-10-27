@@ -271,7 +271,6 @@ PACKAGE STRUCTURE
 │       ├── drag-drop.css
 │       ├── drop-zones.css
 │       ├── context-menu.css
-│       ├── debug.css
 │       └── loading.css
 └── package.json
 

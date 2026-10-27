@@ -399,9 +399,10 @@ Category tree:
 
 DEBUGGING DATA
 --------------
-Enable debug mode:
+Enable data logging:
 
-<Tree shouldDisplayDebugInformation={true} />
+import { setCategoryLevel } from '@keenmate/svelte-treeview';
+setCategoryLevel('LTREE:DATA', 'debug');
 
 Check data in console:
 

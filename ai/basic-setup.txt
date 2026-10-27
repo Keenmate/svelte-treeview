@@ -67,7 +67,6 @@ RECOMMENDED PROPS
 | clickBehavior | string | 'expand-and-focus' | 'select' \| 'expand' \| 'expand-and-focus' |
 | shouldShowCheckboxes | boolean | false | Render a selection checkbox per node |
 | checkboxMode | string | 'independent' | 'independent' \| 'cascade' |
-| shouldDisplayDebugInformation | boolean | false | Show debug panel + logging |
 
 PATH STRUCTURE
 --------------
@@ -219,22 +218,14 @@ TREE STATISTICS
   }
 </script>
 
-DEBUG MODE
-----------
-Enable debug panel and console logging:
+DEBUG LOGGING
+-------------
+No in-tree debug panel (shouldDisplayDebugInformation was removed).
+Use the category loggers:
 
-<Tree
-  {data}
-  shouldDisplayDebugInformation={true}
-/>
-
-Shows:
-- Tree ID
-- Node count
-- Max depth
-- Filtered count
-- Indexing status
-- Currently dragged node
+import { enableLogging, setCategoryLevel } from '@keenmate/svelte-treeview';
+enableLogging();
+setCategoryLevel('LTREE:DATA', 'debug');
 
 EMPTY STATE
 -----------

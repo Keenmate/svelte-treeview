@@ -33,7 +33,6 @@
 /* === COMPONENT-SPECIFIC FEATURES (Tier 3 — alphabetized) === */
 @import url('./checkbox.css')    layer(component);
 @import url('./context-menu.css') layer(component);
-@import url('./debug.css')       layer(component);
 @import url('./drag-drop.css')   layer(component);
 @import url('./drop-zones.css')  layer(component);
 @import url('./loading.css')     layer(component);

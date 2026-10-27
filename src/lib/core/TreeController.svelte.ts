@@ -458,8 +458,6 @@ export interface TreeControllerProps<T> {
 	shouldUseInternalSearchIndex?: boolean | null | undefined;
 	indexerBatchSize?: number | null | undefined;
 	indexerTimeout?: number | null | undefined;
-	shouldDisplayDebugInformation?: boolean;
-	shouldDisplayContextMenuInDebugMode?: boolean;
 	isLoading?: boolean;
 
 	// Progressive rendering
@@ -737,8 +735,6 @@ export class TreeController<T> {
 	isRendering = $state(false);
 
 	// BEHAVIOUR
-	shouldDisplayDebugInformation = $state(false);
-	shouldDisplayContextMenuInDebugMode = $state(false);
 	rangeSelectionMode = $state<'visual' | 'logical'>('visual');
 	isLoading = $state(false);
 	isFlatRenderingEnabled = $state(true);
@@ -882,7 +878,6 @@ export class TreeController<T> {
 	contextMenuX = $state(0);
 	contextMenuY = $state(0);
 	contextMenuNode: LTreeNode<T> | null = $state.raw(null);
-	isDebugMenuActive = $state(false);
 
 	// Scroll highlight
 	currentHighlight: {
@@ -1035,8 +1030,6 @@ export class TreeController<T> {
 		this.selectedPaths = props.selectedPaths ?? new Set();
 		this.searchText = props.searchText;
 
-		this.shouldDisplayDebugInformation = props.shouldDisplayDebugInformation ?? false;
-		this.shouldDisplayContextMenuInDebugMode = props.shouldDisplayContextMenuInDebugMode ?? false;
 		this.rangeSelectionMode = props.rangeSelectionMode ?? 'visual';
 		this.isLoading = props.isLoading ?? false;
 
@@ -1164,7 +1157,6 @@ export class TreeController<T> {
 			props.indexerBatchSize,
 			props.indexerTimeout,
 			{
-				shouldDisplayDebugInformation: props.shouldDisplayDebugInformation,
 				isSorted: props.isSorted,
 				sortCallback: props.sortCallback,
 				displayValueFallback: props.displayValueFallback
@@ -1462,30 +1454,6 @@ export class TreeController<T> {
 					document.removeEventListener('scroll', handleGlobalScroll, true);
 					window.removeEventListener('wheel', handleGlobalScroll);
 				};
-			}
-		});
-
-		// Debug context menu
-		$effect(() => {
-			if (
-				this.shouldDisplayContextMenuInDebugMode &&
-				(this.hasContextMenuSnippet || this.getContextMenuItemsHandler) &&
-				this.tree?.tree &&
-				this.tree.tree.length > 0
-			) {
-				const targetNode = this.tree.tree.length > 1 ? this.tree.tree[1] : this.tree.tree[0];
-				if (targetNode && this.containerElement) {
-					const treeRect = this.containerElement.getBoundingClientRect();
-					this.contextMenuNode = targetNode;
-					this.contextMenuX = treeRect.left + 200;
-					this.contextMenuY = treeRect.top + 100;
-					this.contextMenuVisible = true;
-					this.isDebugMenuActive = true;
-				}
-			} else if (!this.shouldDisplayContextMenuInDebugMode && this.isDebugMenuActive) {
-				this.contextMenuVisible = false;
-				this.contextMenuNode = null;
-				this.isDebugMenuActive = false;
 			}
 		});
 
@@ -2756,14 +2724,12 @@ export class TreeController<T> {
 		this.contextMenuX = screenX + this.contextMenuXOffset;
 		this.contextMenuY = screenY + this.contextMenuYOffset;
 		this.contextMenuVisible = true;
-		this.isDebugMenuActive = false;
 	}
 
 	// svelte-ignore non_reactive_update
 	closeContextMenu() {
 		this.contextMenuVisible = false;
 		this.contextMenuNode = null;
-		this.isDebugMenuActive = false;
 	}
 
 	// ── Public Drag-and-Drop API for custom renderers ────────────────
@@ -3243,13 +3209,8 @@ export class TreeController<T> {
 		if (updates.cascadeSelectPolicy !== undefined)
 			this.cascadeSelectPolicy = updates.cascadeSelectPolicy ?? 'rolled-up';
 		if (updates.searchText !== undefined) this.searchText = updates.searchText;
-		if (updates.shouldDisplayDebugInformation !== undefined)
-			this.shouldDisplayDebugInformation = updates.shouldDisplayDebugInformation;
 		if (updates.rangeSelectionMode !== undefined)
 			this.rangeSelectionMode = updates.rangeSelectionMode ?? 'visual';
-		if (updates.shouldDisplayContextMenuInDebugMode !== undefined)
-			this.shouldDisplayContextMenuInDebugMode =
-				updates.shouldDisplayContextMenuInDebugMode ?? false;
 		if (updates.isLoading !== undefined) this.isLoading = updates.isLoading ?? false;
 		if (updates.bodyClass !== undefined) this.bodyClass = updates.bodyClass;
 
