@@ -125,6 +125,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Search after removals finds the right nodes.** The internal search index is keyed by a node's
+  slot in a flat array; removing nodes (`removeBranch`, `replaceBranch`, `applyChanges` deletes)
+  compacted that array, so every later hit resolved to the wrong node, and `removeNode` never
+  dropped the node from search at all (removed nodes stayed findable). Removed slots are now
+  tombstones and their index entries are removed; `addNode` also indexes the new node (it was never
+  searchable). Shared bug with `@keenmate/web-treeview` (still open there).
 - **Emoji icons render.** An `iconMember` / `getIconCallback` value that isn't a CSS class
   list (an emoji such as `🗂️`, a symbol) went onto the `<i>` as a class, so the icon slot stayed
   empty — the IC02 emoji demo showed nothing. Such a value is now rendered as the icon's text;

@@ -96,7 +96,25 @@ export function createLTree<T>(
 	let nodeCount = 0;
 	let maxLevel = 0;
 
-	let flatTreeNodes: LTreeNode<T>[] = [];
+	// Positional store behind the search index: a node's slot number IS its FlexSearch id.
+	// Removal leaves a tombstone (null) instead of compacting, so every other id stays valid.
+	let flatTreeNodes: (LTreeNode<T> | null)[] = [];
+
+	/** Drop removed nodes from search: tombstone their slots + remove their index entries. */
+	function dropFromSearch(paths: Set<string>) {
+		if (paths.size === 0) return;
+		for (let i = 0; i < flatTreeNodes.length; i++) {
+			const n = flatTreeNodes[i];
+			if (n && paths.has(n.path)) {
+				flatTreeNodes[i] = null;
+				try {
+					searchIndex?.remove(i);
+				} catch {
+					/* not indexed yet — the null slot already hides it */
+				}
+			}
+		}
+	}
 	let filteredTree: LTreeNode<T>[] | null = null;
 	let isFiltered = false;
 
@@ -546,7 +564,10 @@ export function createLTree<T>(
 
 			perfStart(`[${_treeId}] filterNodes:search`);
 			const resultIndices = searchIndex!.search(_searchTerm!, _searchOptions);
-			const foundPaths = resultIndices.map((row) => flatTreeNodes[row as number].path);
+			const foundPaths = resultIndices
+				.map((row) => flatTreeNodes[row as number])
+				.filter((n): n is LTreeNode<T> => n != null)
+				.map((n) => n.path);
 			perfEnd(`[${_treeId}] filterNodes:search`, resultIndices.length);
 
 			this.createFilteredTree(foundPaths);
@@ -565,7 +586,9 @@ export function createLTree<T>(
 			}
 
 			const resultIndices = searchIndex!.search(_searchTerm!, _searchOptions);
-			const foundNodes = resultIndices.map((row) => flatTreeNodes[row as number]);
+			const foundNodes = resultIndices
+				.map((row) => flatTreeNodes[row as number])
+				.filter((n): n is LTreeNode<T> => n != null);
 
 			return foundNodes;
 		},
@@ -1255,6 +1278,17 @@ export function createLTree<T>(
 				return { success: false, error: `Parent not found: ${parentPath}` };
 			}
 
+			// Leave the search index too (node + subtree), else it stays findable
+			const removedPaths = new Set<string>([node.path]);
+			const collectRemoved = (n: LTreeNode<T>) => {
+				for (const child of Object.values(n.children)) {
+					removedPaths.add(child.path);
+					collectRemoved(child);
+				}
+			};
+			collectRemoved(node);
+			dropFromSearch(removedPaths);
+
 			// Remove from parent
 			const segment = segmentPrefix + node.pathSegment;
 			delete parent.children[segment];
@@ -1396,8 +1430,11 @@ export function createLTree<T>(
 			nodeCount++;
 			maxLevel = Math.max(maxLevel, newNode.level || 0);
 
-			// Add to flat tree for search indexing
+			// Add to flat tree for search indexing (slot number = index id)
 			flatTreeNodes.push(newNode);
+			if (indexer && _shouldUseInternalSearchIndex) {
+				indexer.addItem({ node: newNode, index: flatTreeNodes.length - 1 });
+			}
 
 			// Re-sort siblings to place new node in correct position
 			this.refreshSiblings(parentPath);
@@ -1844,7 +1881,8 @@ export function createLTree<T>(
 				const startIdx = flatTreeNodes.length - insertedCount;
 				const itemsToIndex: { node: LTreeNode<T>; index: number }[] = [];
 				for (let i = startIdx; i < flatTreeNodes.length; i++) {
-					itemsToIndex.push({ node: flatTreeNodes[i], index: i });
+					const n = flatTreeNodes[i];
+					if (n) itemsToIndex.push({ node: n, index: i });
 				}
 				if (itemsToIndex.length > 0) {
 					indexer.addToQueue(itemsToIndex);
@@ -1884,7 +1922,7 @@ export function createLTree<T>(
 				};
 				const pathsToRemove = new Set<string>();
 				collectPaths(parentNode, pathsToRemove);
-				flatTreeNodes = flatTreeNodes.filter((n) => !pathsToRemove.has(n.path));
+				dropFromSearch(pathsToRemove);
 			}
 
 			// Clear children
@@ -1931,7 +1969,7 @@ export function createLTree<T>(
 				// Remove from flatTreeNodes
 				const pathsToRemove = new Set<string>();
 				collectPaths(targetNode, pathsToRemove);
-				flatTreeNodes = flatTreeNodes.filter((n) => !pathsToRemove.has(n.path));
+				dropFromSearch(pathsToRemove);
 
 				targetNode.children = {};
 				targetNode.hasChildren = false;
@@ -1977,7 +2015,7 @@ export function createLTree<T>(
 				const pathsToRemove = new Set<string>();
 				pathsToRemove.add(node.path);
 				collectPaths(node, pathsToRemove);
-				flatTreeNodes = flatTreeNodes.filter((n) => !pathsToRemove.has(n.path));
+				dropFromSearch(pathsToRemove);
 
 				// Remove from parent
 				const segment = segmentPrefix + node.pathSegment;
