@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Emoji icons render.** An `iconMember` / `getIconCallback` value that isn't a CSS class
+  list (an emoji such as `🗂️`, a symbol) went onto the `<i>` as a class, so the icon slot stayed
+  empty — the IC02 emoji demo showed nothing. Such a value is now rendered as the icon's text;
+  class lists (`fa-solid fa-user`) still go on the class. Same fix as `@keenmate/web-treeview`.
+
 ### Changed
 
 - **Shadows share one tone with pure-admin: `--base-shadow-color`.** Tooltip, node info reveal,

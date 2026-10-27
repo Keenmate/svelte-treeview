@@ -38,6 +38,20 @@
 	/>
 </div>
 
+<h2>getIconCallback returning emoji (text, not a class)</h2>
+<div class="tree" data-testid="tree-emoji">
+	<Tree
+		{data}
+		idMember="id"
+		pathMember="path"
+		displayValueMember="name"
+		sortCallback={sortByPath}
+		isSorted={true}
+		expandLevel={3}
+		getIconCallback={(node) => (node.path === '1.2' ? 'fa-building' : node.path === '1' ? '🗂️' : '👤')}
+	/>
+</div>
+
 <h2>icon snippet (receives resolved value)</h2>
 <div class="tree" data-testid="tree-snippet">
 	<Tree

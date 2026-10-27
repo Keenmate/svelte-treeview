@@ -47,3 +47,14 @@ test('snippet: the icon snippet renders and receives the resolved value', async 
 	await expect(inner).toHaveText('★');
 	await expect(inner).toHaveAttribute('data-value', 'fa-sitemap');
 });
+
+test('default: a non-class value (emoji) renders as the icon text', async ({ page }) => {
+	const branch = iconAt(page, 'tree-emoji', '1');
+	await expect(branch).toHaveText('🗂️');
+	expect(await branch.getAttribute('class')).not.toContain('🗂');
+	await expect(iconAt(page, 'tree-emoji', '1.1.1')).toHaveText('👤');
+	// A class-like value on the same tree still goes on the class, with no text.
+	const cls = iconAt(page, 'tree-emoji', '1.2');
+	await expect(cls).toHaveClass(/fa-building/);
+	await expect(cls).toHaveText('');
+});

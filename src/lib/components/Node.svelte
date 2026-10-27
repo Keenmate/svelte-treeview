@@ -142,7 +142,8 @@
 
 	// ── Per-node icon (dedicated .stv__node-icon element, all nodes) ─────────
 	// VALUE from getIconCallback (wins) or iconMember; COLOR from getIconColorCallback
-	// or iconColorMember. Default render is `<i class={value}>` (FA-friendly); the `icon`
+	// or iconColorMember. Default render is `<i class={value}>` (FA-friendly) or, for a
+	// non-class value like an emoji, `<i>{value}</i>`; the `icon`
 	// snippet (via context) overrides. shouldAlignNodeIcons reserves an empty column.
 	const nodeIconSnippet = getContext<Snippet<[LTreeNode<T>, string | null | undefined, NodeRenderContext]> | undefined>('NodeIcon')
 	const hasIconSupport = $derived(!!(config.iconMember || config.getIconCallback || nodeIconSnippet))
@@ -154,6 +155,9 @@
 		}
 		return null
 	})
+	// A value that reads as CSS classes (`fa-solid fa-user`) goes on the class; anything
+	// else (emoji, symbol, text) is rendered as the element's text.
+	const iconIsClassList = $derived(!iconValue || /^\s*-?[A-Za-z_][\w-]*(\s+-?[A-Za-z_][\w-]*)*\s*$/.test(iconValue))
 	const iconColor = $derived.by(() => {
 		if (config.getIconColorCallback) return config.getIconColorCallback(node) ?? null
 		if (config.iconColorMember && node.data) {
@@ -473,7 +477,7 @@
 			{#if nodeIconSnippet}
 				<span class="stv__node-icon" class:stv__node-icon--aligned={alignIcons} style:color={iconColor}>{@render nodeIconSnippet(node, iconValue, renderCtx)}</span>
 			{:else}
-				<i class="stv__node-icon {iconValue ?? ''}" class:stv__node-icon--aligned={alignIcons} style:color={iconColor}></i>
+				<i class="stv__node-icon {iconIsClassList ? (iconValue ?? '') : ''}" class:stv__node-icon--aligned={alignIcons} style:color={iconColor}>{iconIsClassList ? '' : iconValue}</i>
 			{/if}
 		{/if}
 
