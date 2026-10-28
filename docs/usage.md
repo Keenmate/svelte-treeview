@@ -218,8 +218,8 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 
 ### Sorting & positions
 
-Siblings are ordered by one rule: **`orderMember`** (display value breaks ties) → **`sortCallback`**
-→ the display value compared with `Intl.Collator(undefined, { numeric: true })` (`'Item 2'` before
+Siblings are ordered by one rule: **`sortCallback`** (if set — it may use the order field itself)
+→ **`orderMember`** (display value breaks ties) → the display value compared with `Intl.Collator(undefined, { numeric: true })` (`'Item 2'` before
 `'Item 10'`). The tree re-sorts **only the siblings of the affected parent** — on the initial load
 (unless `isSorted`), `addNode` / `addBranch`, `moveNode` / drop, `insertNode` / `insertBranch`
 (with `orderMember`), and `updateNode` when it changes the order value.

@@ -1237,7 +1237,7 @@
 	}
 
 	/** Sort the children of each node — one level (`''` = the root level). Default rule = the
-	 *  tree's own (`orderMember` → `sortCallback` → `Intl.Collator(numeric)` by display value);
+	 *  tree's own (`sortCallback` → `orderMember` → `Intl.Collator(numeric)` by display value);
 	 *  `compareCallback` / `direction` override it. Runs even with `isSortingEnabled={false}`. */
 	export function sortNodes(paths: string | string[], options?: SortOptions<T>): void {
 		controller.sortNodes(paths, options);

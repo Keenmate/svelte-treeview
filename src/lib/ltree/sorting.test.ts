@@ -188,3 +188,22 @@ describe('sortNodes / sortAll', () => {
 		expect(names(plain)).toEqual(['C', 'B', 'A']);
 	});
 });
+
+describe('sibling rule precedence', () => {
+	it('sortCallback wins over orderMember (auto re-sort and sortNodes default)', () => {
+		// by name, descending — ignores the order field
+		const byNameDesc = ({ nodes }: any) =>
+			[...nodes].sort((a: any, b: any) => b.data.name.localeCompare(a.data.name));
+		const tree = createTree('order', { isSorted: true, sortCallback: byNameDesc });
+		tree.insertArray([
+			{ id: 1, path: '1', name: 'A', order: 10 },
+			{ id: 2, path: '2', name: 'B', order: 20 }
+		]);
+		tree.addNode('', { id: 3, name: 'C', order: 30 });
+		expect(names(tree)).toEqual(['C', 'B', 'A']);
+		tree.sortNodes('', { direction: 'asc' });
+		expect(names(tree)).toEqual(['C', 'B', 'A']);
+		tree.refreshSiblings('');
+		expect(names(tree)).toEqual(['C', 'B', 'A']);
+	});
+});

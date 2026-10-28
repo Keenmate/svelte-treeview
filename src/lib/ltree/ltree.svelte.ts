@@ -2116,8 +2116,8 @@ export function createLTree<T>(
 		},
 
 		/**
-		 * The sibling rule: `compareCallback` (when given) → `orderMember` (display value breaks
-		 * ties) → `sortCallback` → `Intl.Collator(numeric)` by display value. `direction: 'desc'`
+		 * The sibling rule: `compareCallback` (when given) → `sortCallback` → `orderMember`
+		 * (display value breaks ties) → `Intl.Collator(numeric)` by display value. `direction: 'desc'`
 		 * reverses whichever rule applied. Returns a new array.
 		 */
 		_sortSiblings(
@@ -2131,6 +2131,8 @@ export function createLTree<T>(
 			if (options?.compareCallback) {
 				const cb = options.compareCallback;
 				sorted = [...children].sort((a, b) => cb({ a, b }));
+			} else if (this.sortCallback) {
+				sorted = [...this.sortCallback({ nodes: [...children] })];
 			} else if (om) {
 				sorted = [...children].sort((a, b) => {
 					if (a.data && b.data) {
@@ -2140,8 +2142,6 @@ export function createLTree<T>(
 					}
 					return byDisplay(a, b);
 				});
-			} else if (this.sortCallback) {
-				sorted = [...this.sortCallback({ nodes: [...children] })];
 			} else {
 				sorted = [...children].sort(byDisplay);
 			}

@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sorts the children of each node (one level; `''` = the root level), `sortAll` whole subtrees
   (`null` / omitted = the whole tree). Both run regardless of `isSortingEnabled`. `SortOptions {
   compareCallback?: ({ a, b }) => number; direction?: 'asc' | 'desc'; isSilent? }` — default rule =
-  the tree's own (`orderMember` → `sortCallback` → `Intl.Collator(numeric)` by display value);
+  the tree's own (`sortCallback` → `orderMember` → `Intl.Collator(numeric)` by display value);
   `direction: 'desc'` reverses whichever rule applies. With `orderMember` set, a custom compare (or
   `'desc'`) rewrites the order values (10, 20, 30…) and fires the **new `onNodesReorder`** callback
   once per affected parent: `{ parentPath, nodes, changes: [{ path, oldOrder, newOrder }] }`
@@ -49,11 +49,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `controller.nodes` returns it synchronously. The write-back is not re-inserted (no rebuild, expand /
   selection state kept); assigning a new array still reloads the tree. `node.data` (your object)
   is unchanged. Same as `@keenmate/web-treeview` (`tree.nodes`).
-- **Sibling sort rule unified** — the automatic re-sort (`addNode`, `moveNode`, `updateNode` of the
-  order value, `addBranch`, `refreshSiblings`) and `sortNodes` / `sortAll` share one rule:
-  `orderMember` first (it used to lose to `sortCallback` in sibling re-sorts), then `sortCallback`,
-  then the display value compared with `Intl.Collator(undefined, { numeric: true })` (was
-  `localeCompare` — `'Item 2'` now sorts before `'Item 10'`; also the initial load's tie-break).
+- **BREAKING: display-value sorting is numeric-aware** — siblings without an order value compare
+  their display values with `Intl.Collator(undefined, { numeric: true })` (was `localeCompare`):
+  `'Item 2'` now sorts before `'Item 10'` (initial load tie-break and every sibling re-sort). The
+  automatic re-sort (`addNode`, `moveNode`, `updateNode` of the order value, `addBranch`,
+  `refreshSiblings`) and `sortNodes` / `sortAll` share one rule: `sortCallback` (if set) →
+  `orderMember` → display value.
 - **BREAKING: `silent` → `isSilent` in every options object** (`TreeMutationOptions` of the
   selection / checked / focus mutators, `ExpandOptions`). `isSilent` suppresses events / callbacks
   ONLY — the tree always re-renders: `expandNodes(p, { isSilent: true })` (and `collapseNodes` /

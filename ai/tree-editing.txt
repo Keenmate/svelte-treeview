@@ -122,7 +122,7 @@ When moving nodes with orderMember:
 
 SORTING & POSITIONS
 -------------------
-One sibling rule: orderMember (display value breaks ties) -> sortCallback ->
+One sibling rule: sortCallback (if set) -> orderMember (display value breaks ties) ->
 Intl.Collator(numeric) by display value ('Item 2' before 'Item 10').
 The tree re-sorts ONLY the siblings of the affected parent: initial load (unless isSorted),
 addNode / addBranch, moveNode / drop, insertNode / insertBranch (with orderMember),

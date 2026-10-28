@@ -23,8 +23,8 @@ export interface SortCompareContext<T> {
 
 /** Options of `sortNodes` / `sortAll`. */
 export interface SortOptions<T = any> {
-	/** Ascending comparator (negative = `a` first). Default: the tree's own rule — `orderMember`
-	 *  → `sortCallback` → `Intl.Collator(numeric)` by display value. With `orderMember` set, a
+	/** Ascending comparator (negative = `a` first). Default: the tree's own rule — `sortCallback`
+	 *  → `orderMember` → `Intl.Collator(numeric)` by display value. With `orderMember` set, a
 	 *  custom compare rewrites the order values (10, 20, 30…) and fires `onNodesReorder`. */
 	compareCallback?: (ctx: SortCompareContext<T>) => number;
 	/** `'desc'` reverses whichever rule applies (with `orderMember`: values rewritten, like a

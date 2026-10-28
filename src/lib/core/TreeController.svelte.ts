@@ -1788,7 +1788,7 @@ export class TreeController<T> {
 	}
 
 	/** Sort the children of each node — one level (`''` = the root level). Default rule = the
-	 *  tree's own (`orderMember` → `sortCallback` → `Intl.Collator(numeric)` by display value);
+	 *  tree's own (`sortCallback` → `orderMember` → `Intl.Collator(numeric)` by display value);
 	 *  `compareCallback` / `direction` override it. Runs even with `isSortingEnabled = false`. */
 	sortNodes(paths: string | string[], options?: SortOptions<T>): void {
 		this._runSort(() => this.tree?.sortNodes(paths, options) ?? [], options);
