@@ -113,7 +113,7 @@ export interface NodeRef<T> {
  * it, so repeat inserts stay clean.
  */
 /** ctx of `beforeCheckboxToggleCallback`. */
-export interface BeforeCheckboxToggleContext<T> {
+export interface BeforeCheckboxToggleContext<T> extends TreeCallbackContext<T> {
 	node: LTreeNode<T>;
 	/** The state the node is about to get (true = checking). */
 	isChecked: boolean;
@@ -124,7 +124,7 @@ export interface BeforeCheckboxToggleContext<T> {
 /** ctx of the node transforms (`nodeOutputTransformationCallback` / `nodeInputTransformationCallback`
  *  and the `transform` argument of pasteNodes / duplicateNodes): the data to transform plus
  *  where it comes from / goes to. Return the (new) data; an input transform may return null to skip. */
-export type NodeTransformCallbackContext<T> = NodeTransformContext<T> & {
+export type NodeTransformCallbackContext<T> = NodeTransformContext<T> & TreeCallbackContext<T> & {
 	/** The node data to transform (a snapshot — return a new object). */
 	data: T;
 };
@@ -164,7 +164,7 @@ export interface NodeTransformContext<T> {
  * live parent/siblings, so a click handler never has to reach back through the controller
  * for what the tree already resolved.
  */
-export type NodeEventContext<T> = NodeRef<T>;
+export type NodeEventContext<T> = NodeRef<T> & TreeCallbackContext<T>;
 
 /**
  * Context for onNodeDragStart / onNodeDragOver. A NodeRef (for dragStart the node that
@@ -173,7 +173,7 @@ export type NodeEventContext<T> = NodeRef<T>;
  * so the event fires once; `dragged` is the whole multi-selection (or just the one node for
  * a single drag) so a handler doesn't have to read `controller.selectedPaths` itself.
  */
-export interface NodeDragContext<T> extends NodeRef<T> {
+export interface NodeDragContext<T> extends NodeRef<T>, TreeCallbackContext<T> {
 	event: DragEvent | PointerEvent;
 	/** The full top-level set being dragged (multi-selection; a single-item array otherwise). */
 	dragged: NodeRef<T>[];
@@ -197,7 +197,7 @@ export interface NodeDragContext<T> extends NodeRef<T> {
  * Synchronous only: it runs inside the native `dragstart`, so a returned Promise cannot veto
  * (the browser has already committed the drag by the next tick).
  */
-export interface DragStartContext<T> {
+export interface DragStartContext<T> extends TreeCallbackContext<T> {
 	/** The node physically grabbed (the drag's lead / anchor). */
 	lead: NodeRef<T>;
 	/** The tree's default top-level dragged set before the callback (isDraggable-filtered). */
@@ -213,7 +213,7 @@ export interface DragStartContext<T> {
  * top-level dragged set (the lead is `dragged[0]`-ish; use it to reason about the whole set),
  * `position`/`operation` the resolved drop intent, `event` the DOM event. Async-capable.
  */
-export interface BeforeDropContext<T> {
+export interface BeforeDropContext<T> extends TreeCallbackContext<T> {
 	target: NodeRef<T> | null;
 	dragged: NodeRef<T>[];
 	position: DropPosition;
@@ -249,7 +249,7 @@ export interface DropGroup {
  * fresh copies) — it is null when the library did NOT place them (a cross-tree drop, or
  * shouldAutoHandleMove/Copy=false), because then the consumer owns insertion.
  */
-export interface NodeDropContext<T> {
+export interface NodeDropContext<T> extends TreeCallbackContext<T> {
 	source: NodeRef<T>;
 	target: NodeRef<T> | null;
 	/** The full top-level dragged set (includes `source`). */
@@ -267,7 +267,7 @@ export interface NodeDropContext<T> {
  * resolved live nodes for `paths`; for onNodeCut/onNodeDelete they are pre-removal snapshots captured
  * before the nodes left the tree (the tree no longer holds them by the time the event fires).
  */
-export interface ClipboardEventContext<T> {
+export interface ClipboardEventContext<T> extends TreeCallbackContext<T> {
 	/** Present for copy/cut; omitted for delete (which has no copy/cut operation). */
 	operation?: 'copy' | 'cut';
 	paths: string[];
@@ -286,7 +286,7 @@ export interface KeydownContext<T> {
 	controller: TreeController<T>;
 }
 
-export interface SelectionChangeContext<T> {
+export interface SelectionChangeContext<T> extends TreeCallbackContext<T> {
 	paths: Set<string>;
 	nodes: LTreeNode<T>[];
 }
@@ -323,7 +323,7 @@ export type BeforeExpandContext<T> = NodeRef<T> & TreeCallbackContext<T>;
  * snapshot is taken. Return a new path list to rewrite the set, false to block, or nothing
  * to proceed.
  */
-export interface BeforeCopyContext<T> {
+export interface BeforeCopyContext<T> extends TreeCallbackContext<T> {
 	operation: 'copy' | 'cut';
 	/** The paths about to be copied/cut (the highlight set, or the explicit paths arg). */
 	paths: string[];
@@ -336,7 +336,7 @@ export interface BeforeCopyContext<T> {
  * Return a narrowed path list to delete only those, false to block entirely, or nothing to
  * proceed. Mirrors BeforeCopyContext's paths/nodes shape (delete has no copy/cut operation).
  */
-export interface BeforeDeleteContext<T> {
+export interface BeforeDeleteContext<T> extends TreeCallbackContext<T> {
 	/** The top-level paths about to be deleted. */
 	paths: string[];
 	/** The resolved live nodes for those paths. */
@@ -347,7 +347,7 @@ export interface BeforeDeleteContext<T> {
  * Context for beforePasteCallback — batch policy run once before the insert loop.
  * Return { targetPath?, position? } to redirect, false to block, or nothing to proceed.
  */
-export interface BeforePasteContext<T> {
+export interface BeforePasteContext<T> extends TreeCallbackContext<T> {
 	operation: 'copy' | 'cut';
 	/** The destination side (proposed, pre-insert): `path` ('' = root, after the leaf-aware
 	 * position redirect) and the node at that path (null at root). The hook may still
@@ -446,19 +446,19 @@ export interface TreeControllerProps<T> {
 	parentPathMember?: string | null | undefined;
 	levelMember?: string | null | undefined;
 	isExpandedMember?: string | null | undefined;
-	getIsExpandedCallback?: (ctx: NodeContext<T>) => boolean;
+	getIsExpandedCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => boolean;
 	isSelectableMember?: string | null | undefined;
-	getIsSelectableCallback?: (ctx: NodeContext<T>) => boolean;
+	getIsSelectableCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => boolean;
 	isCheckedMember?: string | null | undefined;
-	getIsCheckedCallback?: (ctx: NodeContext<T>) => boolean;
+	getIsCheckedCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => boolean;
 	isDraggableMember?: string | null | undefined;
-	getIsDraggableCallback?: (ctx: NodeContext<T>) => boolean;
+	getIsDraggableCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => boolean;
 	isDropAllowedMember?: string | null | undefined;
-	getIsDropAllowedCallback?: (ctx: NodeContext<T>) => boolean;
+	getIsDropAllowedCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => boolean;
 	allowedDropPositionsMember?: string | null | undefined;
-	getAllowedDropPositionsCallback?: (ctx: NodeContext<T>) => DropPosition[] | null | undefined;
+	getAllowedDropPositionsCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => DropPosition[] | null | undefined;
 	isCollapsibleMember?: string | null | undefined;
-	getIsCollapsibleCallback?: (ctx: NodeContext<T>) => boolean;
+	getIsCollapsibleCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => boolean;
 	hasChildrenMember?: string | null | undefined;
 	isSorted?: boolean | null | undefined;
 	/** `false` = never auto-sort: input order kept, `addNode` appends, `insertNode` /
@@ -468,18 +468,18 @@ export interface TreeControllerProps<T> {
 	isSortingEnabled?: boolean;
 
 	displayValueMember?: string | null | undefined;
-	getDisplayValueCallback?: (ctx: NodeContext<T>) => string;
+	getDisplayValueCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string;
 	/** UI strings — partial, merged per key over the English defaults ('' = render nothing). */
 	labels?: Partial<TreeLabels> | null;
 
 	searchValueMember?: string | null | undefined;
-	getSearchValueCallback?: (ctx: NodeContext<T>) => string;
+	getSearchValueCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string;
 
 	orderMember?: string | null | undefined;
 
 	treeId?: string | null | undefined;
 	treePathSeparator?: string | null | undefined;
-	sortCallback?: (ctx: SortContext<T>) => LTreeNode<T>[];
+	sortCallback?: (ctx: SortContext<T> & TreeCallbackContext<T>) => LTreeNode<T>[];
 
 	// DATA
 	/** The tree's nodes (flat `T[]`, ltree paths). Input; reading `controller.nodes` returns
@@ -540,9 +540,9 @@ export interface TreeControllerProps<T> {
 	isProgressiveRenderEnabled?: boolean;
 	initialBatchSize?: number;
 	maxBatchSize?: number;
-	onRenderStart?: () => void;
-	onRenderProgress?: (stats: RenderStats) => void;
-	onRenderComplete?: (stats: RenderStats) => void;
+	onRenderStart?: (ctx: TreeCallbackContext<T>) => void;
+	onRenderProgress?: (stats: RenderStats & TreeCallbackContext<T>) => void;
+	onRenderComplete?: (stats: RenderStats & TreeCallbackContext<T>) => void;
 
 	// Flat rendering
 	isFlatRenderingEnabled?: boolean;
@@ -612,13 +612,13 @@ export interface TreeControllerProps<T> {
 	/** `sortNodes` / `sortAll` rewrote the `orderMember` values of one parent's children (custom
 	 *  `compareCallback` or `direction: 'desc'` with `orderMember` set) — persist `changes`.
 	 *  Once per affected parent; skipped with `isSilent`. */
-	onNodesReorder?: (ctx: NodesReorderContext<T>) => void;
+	onNodesReorder?: (ctx: NodesReorderContext<T> & TreeCallbackContext<T>) => void;
 	// Post-operation clipboard notifications (fired AFTER the op succeeds). Symmetric
 	// with the before*Callback interceptors: onNodeCopy/onNodeCut/onNodeDelete carry the final paths
 	// plus resolved nodes (pre-removal snapshots for cut/delete); onNodePaste the PasteResult.
 	onNodeCopy?: (ctx: ClipboardEventContext<T>) => void;
 	onNodeCut?: (ctx: ClipboardEventContext<T>) => void;
-	onNodePaste?: (result: PasteResult<T>) => void;
+	onNodePaste?: (result: PasteResult<T> & TreeCallbackContext<T>) => void;
 	/** Fired after `runDeleteCommand` removes nodes (built-in Delete key or the public method),
 	 *  with the top-level paths that were actually removed plus their pre-removal nodes. */
 	onNodeDelete?: (ctx: ClipboardEventContext<T>) => void;
@@ -699,8 +699,8 @@ export interface TreeControllerProps<T> {
 	selectedNodeClass?: string | null | undefined;
 	focusedNodeClass?: string | null | undefined;
 	checkedNodeClass?: string | null | undefined;
-	getNodeClassCallback?: (ctx: NodeContext<T>) => string | null | undefined;
-	getNodeContentClassCallback?: (ctx: NodeContext<T>) => string | null | undefined;
+	getNodeClassCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
+	getNodeContentClassCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
 	dragOverNodeClass?: string | null | undefined;
 	draggedNodeClass?: string | null | undefined;
 	/** @deprecated Prefer the `iconSet` prop on `<Tree>`. Escape hatch to override
@@ -713,15 +713,15 @@ export interface TreeControllerProps<T> {
 	toggleIconMode?: ToggleIconMode;
 	nodeTitleOverflow?: NodeTitleOverflow;
 	isNodeTooltipsShown?: boolean;
-	getNodeTooltipCallback?: (ctx: NodeContext<T>) => string | null | undefined;
+	getNodeTooltipCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
 	tooltipPlacement?: TooltipPlacement;
 	tooltipDelay?: TooltipDelay;
 	tooltipOffset?: number;
 	shouldTooltipFollowCursor?: boolean;
 	iconMember?: string | null | undefined;
-	getIconCallback?: (ctx: NodeContext<T>) => string | null | undefined;
+	getIconCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
 	iconColorMember?: string | null | undefined;
-	getIconColorCallback?: (ctx: NodeContext<T>) => string | null | undefined;
+	getIconColorCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
 	shouldAlignNodeIcons?: boolean;
 	scrollHighlightTimeout?: number | null | undefined;
 	scrollHighlightClass?: string | null | undefined;
@@ -922,11 +922,11 @@ export class TreeController<T> {
 	onNodeDropRejectHandler: TreeControllerProps<T>['onNodeDropReject'];
 	onNodeCopyHandler: TreeControllerProps<T>['onNodeCopy'];
 	onNodeCutHandler: TreeControllerProps<T>['onNodeCut'];
-	onNodePasteHandler: ((result: PasteResult<T>) => void) | undefined;
+	onNodePasteHandler: TreeControllerProps<T>['onNodePaste'];
 	onNodeDeleteHandler: TreeControllerProps<T>['onNodeDelete'];
-	onRenderStartHandler: (() => void) | undefined;
-	onRenderProgressHandler: ((stats: RenderStats) => void) | undefined;
-	onRenderCompleteHandler: ((stats: RenderStats) => void) | undefined;
+	onRenderStartHandler: TreeControllerProps<T>['onRenderStart'];
+	onRenderProgressHandler: TreeControllerProps<T>['onRenderProgress'];
+	onRenderCompleteHandler: TreeControllerProps<T>['onRenderComplete'];
 
 	// Interceptor handlers (before*Callback)
 	beforeDragStartHandler: TreeControllerProps<T>['beforeDragStartCallback'];
@@ -976,7 +976,7 @@ export class TreeController<T> {
 	toggleIconMode = $state<ToggleIconMode>('rotate');
 	nodeTitleOverflow = $state<NodeTitleOverflow>('ellipsis');
 	isNodeTooltipsShown = $state<boolean>(false);
-	getNodeTooltipCallback = $state<((ctx: NodeContext<any>) => string | null | undefined) | undefined>(
+	getNodeTooltipCallback = $state<TreeControllerProps<T>['getNodeTooltipCallback']>(
 		undefined
 	);
 	tooltipPlacement = $state<TooltipPlacement>('top-start');
@@ -984,19 +984,19 @@ export class TreeController<T> {
 	tooltipOffset = $state<number>(8);
 	shouldTooltipFollowCursor = $state<boolean>(false);
 	iconMember = $state<string | null | undefined>(undefined);
-	getIconCallback = $state<((ctx: NodeContext<any>) => string | null | undefined) | undefined>(
+	getIconCallback = $state<TreeControllerProps<T>['getIconCallback']>(
 		undefined
 	);
 	iconColorMember = $state<string | null | undefined>(undefined);
-	getIconColorCallback = $state<((ctx: NodeContext<any>) => string | null | undefined) | undefined>(
+	getIconColorCallback = $state<TreeControllerProps<T>['getIconColorCallback']>(
 		undefined
 	);
 	shouldAlignNodeIcons = $state<boolean>(true);
 	selectedNodeClass = $state<string | null | undefined>(undefined);
 	focusedNodeClass = $state<string | null | undefined>(undefined);
 	checkedNodeClass = $state<string | null | undefined>(undefined);
-	getNodeClassCallback = $state<((ctx: NodeContext<any>) => string | null | undefined) | undefined>(undefined);
-	getNodeContentClassCallback = $state<((ctx: NodeContext<any>) => string | null | undefined) | undefined>(
+	getNodeClassCallback = $state<TreeControllerProps<T>['getNodeClassCallback']>(undefined);
+	getNodeContentClassCallback = $state<TreeControllerProps<T>['getNodeContentClassCallback']>(
 		undefined
 	);
 	dragOverNodeClass = $state<string | null | undefined>(undefined);
@@ -1316,23 +1316,23 @@ export class TreeController<T> {
 			props.levelMember,
 			props.hasChildrenMember,
 			props.isExpandedMember,
-			props.getIsExpandedCallback,
+			this._withController(props.getIsExpandedCallback),
 			props.isSelectableMember,
-			props.getIsSelectableCallback,
+			this._withController(props.getIsSelectableCallback),
 			props.isCheckedMember,
-			props.getIsCheckedCallback,
+			this._withController(props.getIsCheckedCallback),
 			props.isDraggableMember,
-			props.getIsDraggableCallback,
+			this._withController(props.getIsDraggableCallback),
 			props.isDropAllowedMember,
-			props.getIsDropAllowedCallback,
+			this._withController(props.getIsDropAllowedCallback),
 			props.allowedDropPositionsMember,
 			props.displayValueMember,
-			props.getDisplayValueCallback,
+			this._withController(props.getDisplayValueCallback),
 			props.searchValueMember,
-			props.getSearchValueCallback,
-			props.getAllowedDropPositionsCallback,
+			this._withController(props.getSearchValueCallback),
+			this._withController(props.getAllowedDropPositionsCallback),
 			props.isCollapsibleMember,
-			props.getIsCollapsibleCallback,
+			this._withController(props.getIsCollapsibleCallback),
 			props.orderMember,
 			this.treeId,
 			this.treePathSeparator,
@@ -1344,7 +1344,7 @@ export class TreeController<T> {
 			{
 				isSorted: props.isSorted,
 				isSortingEnabled: props.isSortingEnabled ?? true,
-				sortCallback: props.sortCallback,
+				sortCallback: this._withController(props.sortCallback),
 				displayValueFallback: resolveLabel(props.labels, 'noDisplayValue')
 			}
 		);
@@ -1354,14 +1354,14 @@ export class TreeController<T> {
 			? createRenderCoordinator(2, {
 					onStart: () => {
 						this.isRendering = true;
-						this.onRenderStartHandler?.();
+						this.onRenderStartHandler?.(this._ctx({}));
 					},
 					onProgress: (stats) => {
-						this.onRenderProgressHandler?.(stats);
+						this.onRenderProgressHandler?.(this._ctx(stats));
 					},
 					onComplete: (stats) => {
 						this.isRendering = false;
-						this.onRenderCompleteHandler?.(stats);
+						this.onRenderCompleteHandler?.(this._ctx(stats));
 					}
 				})
 			: null;
@@ -1391,21 +1391,21 @@ export class TreeController<T> {
 			toggleIconMode: this.toggleIconMode,
 			nodeTitleOverflow: this.nodeTitleOverflow,
 			isNodeTooltipsShown: this.isNodeTooltipsShown,
-			getNodeTooltipCallback: this.getNodeTooltipCallback,
+			getNodeTooltipCallback: this._withController(this.getNodeTooltipCallback),
 			tooltipPlacement: this.tooltipPlacement,
 			tooltipDelay: this.tooltipDelay,
 			tooltipOffset: this.tooltipOffset,
 			shouldTooltipFollowCursor: this.shouldTooltipFollowCursor,
 			iconMember: this.iconMember,
-			getIconCallback: this.getIconCallback,
+			getIconCallback: this._withController(this.getIconCallback),
 			iconColorMember: this.iconColorMember,
-			getIconColorCallback: this.getIconColorCallback,
+			getIconColorCallback: this._withController(this.getIconColorCallback),
 			shouldAlignNodeIcons: this.shouldAlignNodeIcons,
 			selectedNodeClass: this.selectedNodeClass,
 			focusedNodeClass: this.focusedNodeClass,
 			checkedNodeClass: this.checkedNodeClass,
-			getNodeClassCallback: this.getNodeClassCallback,
-			getNodeContentClassCallback: this.getNodeContentClassCallback,
+			getNodeClassCallback: this._withController(this.getNodeClassCallback),
+			getNodeContentClassCallback: this._withController(this.getNodeContentClassCallback),
 			dragOverNodeClass: this.dragOverNodeClass,
 			draggedNodeClass: this.draggedNodeClass,
 			draggedPaths: this.draggedPaths,
@@ -1450,21 +1450,21 @@ export class TreeController<T> {
 				toggleIconMode: this.toggleIconMode,
 				nodeTitleOverflow: this.nodeTitleOverflow,
 				isNodeTooltipsShown: this.isNodeTooltipsShown,
-				getNodeTooltipCallback: this.getNodeTooltipCallback,
+				getNodeTooltipCallback: this._withController(this.getNodeTooltipCallback),
 				tooltipPlacement: this.tooltipPlacement,
 				tooltipDelay: this.tooltipDelay,
 				tooltipOffset: this.tooltipOffset,
 				shouldTooltipFollowCursor: this.shouldTooltipFollowCursor,
 				iconMember: this.iconMember,
-				getIconCallback: this.getIconCallback,
+				getIconCallback: this._withController(this.getIconCallback),
 				iconColorMember: this.iconColorMember,
-				getIconColorCallback: this.getIconColorCallback,
+				getIconColorCallback: this._withController(this.getIconColorCallback),
 				shouldAlignNodeIcons: this.shouldAlignNodeIcons,
 				selectedNodeClass: this.selectedNodeClass,
 				focusedNodeClass: this.focusedNodeClass,
 				checkedNodeClass: this.checkedNodeClass,
-				getNodeClassCallback: this.getNodeClassCallback,
-				getNodeContentClassCallback: this.getNodeContentClassCallback,
+				getNodeClassCallback: this._withController(this.getNodeClassCallback),
+				getNodeContentClassCallback: this._withController(this.getNodeContentClassCallback),
 				dragOverNodeClass: this.dragOverNodeClass,
 			draggedNodeClass: this.draggedNodeClass,
 			draggedPaths: this.draggedPaths,
@@ -1655,13 +1655,18 @@ export class TreeController<T> {
 					this.closeContextMenu();
 				};
 
-				document.addEventListener('click', handleGlobalClick);
-				document.addEventListener('contextmenu', handleGlobalClick);
-				window.addEventListener('scroll', handleGlobalScroll, true);
-				document.addEventListener('scroll', handleGlobalScroll, true);
-				window.addEventListener('wheel', handleGlobalScroll, { passive: true });
+				// Attach on the next task: the event that opened the menu (a click calling
+				// openContextMenu(), the right-click) is still bubbling and must not close it.
+				const attach = setTimeout(() => {
+					document.addEventListener('click', handleGlobalClick);
+					document.addEventListener('contextmenu', handleGlobalClick);
+					window.addEventListener('scroll', handleGlobalScroll, true);
+					document.addEventListener('scroll', handleGlobalScroll, true);
+					window.addEventListener('wheel', handleGlobalScroll, { passive: true });
+				});
 
 				return () => {
+					clearTimeout(attach);
 					document.removeEventListener('click', handleGlobalClick);
 					document.removeEventListener('contextmenu', handleGlobalClick);
 					window.removeEventListener('scroll', handleGlobalScroll, true);
@@ -1785,6 +1790,16 @@ export class TreeController<T> {
 		this._syncExpanded(options?.isSilent);
 	}
 
+	/** The visible nodes in display order (expanded + search filter applied) — a snapshot. */
+	getVisibleFlatNodes(): LTreeNode<T>[] {
+		return [...this.allFlatNodes];
+	}
+
+	/** The underlying LTree (advanced use). */
+	getTree(): Ltree<T> {
+		return this.tree;
+	}
+
 	/** Whether `path` has an async `beforeExpandCallback` in flight (it shows the loading state). */
 	isExpandPending(path: string): boolean {
 		return this.expandPendingPaths.has(path);
@@ -1792,7 +1807,7 @@ export class TreeController<T> {
 
 	private _emitExpandEvent(kind: 'expand' | 'collapse', node: LTreeNode<T>): void {
 		const handler = kind === 'expand' ? this.onNodeExpandHandler : this.onNodeCollapseHandler;
-		handler?.(this._ctx(this.nodeRef(node)));
+		handler?.(this._ctx(this.getNodeRef(node)));
 	}
 
 	/** Expand `paths` (no gate) and fire `onNodeExpand` for each node that changed. */
@@ -1856,7 +1871,7 @@ export class TreeController<T> {
 		if (!cb) return true;
 		let result: unknown;
 		try {
-			result = cb(this._ctx(this.nodeRef(node)));
+			result = cb(this._ctx(this.getNodeRef(node)));
 		} catch (err) {
 			uiLogger.error(`[Tree ${this.treeId}] beforeExpandCallback threw — the node stays collapsed`, err);
 			return false;
@@ -1912,10 +1927,31 @@ export class TreeController<T> {
 		this._syncExpanded(true);
 	}
 
-	/** Attach the `controller` to a callback / event context. */
+	/** Attach the `controller` to a callback / event context — non-enumerable (like web-treeview's
+	 *  component context): destructuring works, JSON / Object.keys / a spread see only the data.
+	 *  A spread therefore drops it — re-attach with `_ctx` after spreading. */
 	private _ctx<C extends object>(ctx: C): C & TreeCallbackContext<T> {
-		return { ...ctx, controller: this };
+		const out = { ...ctx } as C & TreeCallbackContext<T>;
+		Object.defineProperty(out, 'controller', { value: this, enumerable: false, configurable: true, writable: true });
+		return out;
 	}
+
+	/** @internal Wrap a per-node / data callback so its ctx carries `controller` (memoized per fn). */
+	_withController<C extends object, R>(
+		fn: ((ctx: C & TreeCallbackContext<T>) => R) | null | undefined
+	): ((ctx: C) => R) | undefined {
+		if (typeof fn !== 'function') return undefined;
+		let wrapped = this.#ctrlWrapped.get(fn);
+		if (!wrapped) {
+			const proto = this.#ctxProto;
+			wrapped = (ctx: object) => fn(Object.assign(Object.create(proto), ctx));
+			this.#ctrlWrapped.set(fn, wrapped);
+		}
+		return wrapped as (ctx: C) => R;
+	}
+	#ctrlWrapped = new WeakMap<Function, (ctx: object) => unknown>();
+	/** Prototype of the per-node ctx: `controller` inherited (cheap, non-enumerable). */
+	#ctxProto: object = Object.defineProperty({}, 'controller', { get: () => this });
 
 	filterNodes(term: string, searchOptions?: SearchOptions): void {
 		this.tree?.filterNodes(term, searchOptions);
@@ -1942,7 +1978,7 @@ export class TreeController<T> {
 	 * Pass the live node (preferred) or just a path (e.g. a pre-removal snapshot, where the
 	 * node is gone and only the path is known). Missing parent/siblings resolve to null/[].
 	 */
-	nodeRef(nodeOrPath: LTreeNode<T> | string | null): NodeRef<T> {
+	getNodeRef(nodeOrPath: LTreeNode<T> | string | null): NodeRef<T> {
 		const node =
 			typeof nodeOrPath === 'string' ? (this.tree?.getNodeByPath(nodeOrPath) ?? null) : nodeOrPath;
 		if (!node) {
@@ -2002,13 +2038,13 @@ export class TreeController<T> {
 				return this._dragSetOverride
 					.map((p) => this.tree?.getNodeByPath(p) ?? null)
 					.filter((n): n is LTreeNode<T> => !!n)
-					.map((n) => this.nodeRef(n));
+					.map((n) => this.getNodeRef(n));
 			}
-			return this._draggedTopLevel(draggedNode).map((n) => this.nodeRef(n));
+			return this._draggedTopLevel(draggedNode).map((n) => this.getNodeRef(n));
 		}
 		const set = getDragSet();
 		const paths = set && set.sourceTreeId === draggedNode.treeId ? set.paths : [draggedNode.path];
-		return paths.map((p) => this.nodeRef(p));
+		return paths.map((p) => this.getNodeRef(p));
 	}
 
 	/**
@@ -2111,7 +2147,7 @@ export class TreeController<T> {
 			this._markNodesChanged(false);
 		});
 		if (options?.isSilent || !this.onNodesReorderHandler) return;
-		for (const ctx of reorders) this.onNodesReorderHandler(ctx);
+		for (const ctx of reorders) this.onNodesReorderHandler(this._ctx(ctx));
 	}
 
 	refreshNode(path: string): void {
@@ -2233,7 +2269,7 @@ export class TreeController<T> {
 	 * hole (left behind by moveNodes). Same-tree only (nodes are live at drag start).
 	 */
 	private _completeDraggedRefs(refs: NodeRef<T>[]): NodeRef<T>[] {
-		return this._completeManifest(refs.map((r) => r.path)).map((p) => this.nodeRef(p));
+		return this._completeManifest(refs.map((r) => r.path)).map((p) => this.getNodeRef(p));
 	}
 
 	/**
@@ -2427,7 +2463,7 @@ export class TreeController<T> {
 			const wrapped = ({ data, node: srcNode }: { data: T; node: LTreeNode<T> }): T | null => {
 				if (!manifest.has(srcNode.path)) return null; // hole → skip node + subtree
 				if (!transform) return data;
-				return transform({ ...ctxFor(srcNode, srcNode === root, index), data });
+				return transform(this._ctx({ ...ctxFor(srcNode, srcNode === root, index), data }));
 			};
 
 			const result = tree.copyNodeWithDescendants(
@@ -2666,16 +2702,16 @@ export class TreeController<T> {
 		const snapshot = (n: LTreeNode<T>, isRoot: boolean): T => {
 			const snap = $state.snapshot(n.data) as T;
 			if (!this.outputTransformHandler) return snap;
-			return this.outputTransformHandler({
+			return this.outputTransformHandler(this._ctx({
 				data: snap,
 				operation,
 				phase: 'output',
 				isRoot,
 				rootIndex,
 				position: null,
-				source: this.nodeRef(n),
+				source: this.getNodeRef(n),
 				target: null
-			});
+			}));
 		};
 
 		const walk = (n: LTreeNode<T>) => {
@@ -2712,7 +2748,7 @@ export class TreeController<T> {
 			const nodes = pathsToUse
 				.map((p) => this.tree.getNodeByPath(p))
 				.filter((n): n is LTreeNode<T> => n !== null);
-			const result = this.beforeCopyHandler({ operation: 'copy', paths: pathsToUse, nodes });
+			const result = this.beforeCopyHandler(this._ctx({ operation: 'copy', paths: pathsToUse, nodes }));
 			if (result === false) return;
 			if (Array.isArray(result)) pathsToUse = result;
 		}
@@ -2733,13 +2769,13 @@ export class TreeController<T> {
 			sourceTreeId: this.treeId
 		});
 		uiLogger.debug(`[clipboard] Copied ${entries.length} node(s)`);
-		this.onNodeCopyHandler?.({
+		this.onNodeCopyHandler?.(this._ctx({
 			operation: 'copy',
 			paths: pathsToUse,
 			nodes: pathsToUse
 				.map((p) => this.tree.getNodeByPath(p))
 				.filter((n): n is LTreeNode<T> => n !== null)
-		});
+		}));
 	}
 
 	/**
@@ -2755,7 +2791,7 @@ export class TreeController<T> {
 			const nodes = pathsToUse
 				.map((p) => this.tree.getNodeByPath(p))
 				.filter((n): n is LTreeNode<T> => n !== null);
-			const result = this.beforeCutHandler({ operation: 'cut', paths: pathsToUse, nodes });
+			const result = this.beforeCutHandler(this._ctx({ operation: 'cut', paths: pathsToUse, nodes }));
 			if (result === false) return;
 			if (Array.isArray(result)) pathsToUse = result;
 		}
@@ -2788,13 +2824,13 @@ export class TreeController<T> {
 		this.cutPaths = cutSet;
 		uiLogger.debug(`[clipboard] Cut ${entries.length} node(s), dimming ${cutSet.size} paths`);
 		// Cut only dims — nodes aren't removed until paste — so they're still live here.
-		this.onNodeCutHandler?.({
+		this.onNodeCutHandler?.(this._ctx({
 			operation: 'cut',
 			paths: pathsToUse,
 			nodes: pathsToUse
 				.map((p) => this.tree.getNodeByPath(p))
 				.filter((n): n is LTreeNode<T> => n !== null)
-		});
+		}));
 	}
 
 	/**
@@ -2847,14 +2883,14 @@ export class TreeController<T> {
 		// resolved target node + readonly entries (no per-node data rewriting; that's the
 		// transform's job).
 		if (this.beforePasteHandler) {
-			const result = this.beforePasteHandler({
+			const result = this.beforePasteHandler(this._ctx({
 				operation,
 				target: {
 					path: targetPath,
 					node: targetPath ? (this.tree.getNodeByPath(targetPath) ?? null) : null
 				},
 				entries: workEntries
-			});
+			}));
 			if (result === false) {
 				const blocked: PasteResult<T> = {
 					success: false,
@@ -2862,7 +2898,7 @@ export class TreeController<T> {
 					skipped: 0,
 					error: 'Paste blocked by beforePasteCallback'
 				};
-				this.onNodePasteHandler?.(blocked);
+				this.onNodePasteHandler?.(this._ctx(blocked));
 				return blocked;
 			}
 			if (result && typeof result === 'object') {
@@ -2881,7 +2917,7 @@ export class TreeController<T> {
 				skipped: 0,
 				error: `Target node not found: ${targetPath}`
 			};
-			this.onNodePasteHandler?.(notFound);
+			this.onNodePasteHandler?.(this._ctx(notFound));
 			return notFound;
 		}
 
@@ -2894,7 +2930,7 @@ export class TreeController<T> {
 
 		const transform = transformData ?? this.inputTransformHandler ?? null;
 		const apply = (data: T, ctx: NodeTransformContext<T>): T | null =>
-			transform ? transform({ ...ctx, data }) : data;
+			transform ? transform(this._ctx({ ...ctx, data })) : data;
 		const sameTree = clip.sourceTreeId === this.treeId;
 
 		// When shouldAutoHandlePaste=false, don't modify the tree — just forward the
@@ -2914,7 +2950,7 @@ export class TreeController<T> {
 			uiLogger.debug(
 				`[clipboard] shouldAutoHandlePaste=false — forwarding ${workEntries.length} entries to consumer`
 			);
-			this.onNodePasteHandler?.(result);
+			this.onNodePasteHandler?.(this._ctx(result));
 			return result;
 		}
 
@@ -3061,7 +3097,7 @@ export class TreeController<T> {
 					: undefined
 		};
 		uiLogger.debug(`[clipboard] Pasted ${totalCount} node(s), skipped ${skipped}`);
-		this.onNodePasteHandler?.(result);
+		this.onNodePasteHandler?.(this._ctx(result));
 		return result;
 	}
 
@@ -3141,7 +3177,7 @@ export class TreeController<T> {
 			const nodes = targets
 				.map((p) => this.tree.getNodeByPath(p))
 				.filter((n): n is LTreeNode<T> => n !== null);
-			const result = this.beforeDeleteHandler({ paths: targets, nodes });
+			const result = this.beforeDeleteHandler(this._ctx({ paths: targets, nodes }));
 			if (result === false) return { removed: 0, blocked: targets.length };
 			if (Array.isArray(result)) targets = this._topLevelOf(result);
 		}
@@ -3160,12 +3196,12 @@ export class TreeController<T> {
 			this.clearSelection();
 			this.clearFocus();
 			const removedPaths = targets.slice(0, removed);
-			this.onNodeDeleteHandler?.({
+			this.onNodeDeleteHandler?.(this._ctx({
 				paths: removedPaths,
 				nodes: removedPaths
 					.map((p) => preRemoval.get(p))
 					.filter((n): n is LTreeNode<T> => n != null)
-			});
+			}));
 			uiLogger.debug(`[delete] Removed ${removed} node(s), ${blocked} failed`);
 		}
 		return { removed, blocked };
@@ -3235,7 +3271,7 @@ export class TreeController<T> {
 
 	/** @internal The context menu's surface ctx: the node with its live parent / siblings + controller. */
 	menuContext(node: LTreeNode<T>): TreeMenuContext<T> {
-		return this._ctx({ ...this.nodeRef(node), node }) as TreeMenuContext<T>;
+		return this._ctx({ ...this.getNodeRef(node), node }) as TreeMenuContext<T>;
 	}
 
 	/** @internal The built-in state (text from `labels`, disabled, danger) of a built-in action item. */
@@ -3276,7 +3312,7 @@ export class TreeController<T> {
 		trigger?: HTMLElement,
 		event?: Event
 	): Promise<boolean> {
-		const detail = {
+		const detail = this._ctx({
 			...ctx,
 			action: item.action ?? 'custom',
 			...(item.id !== undefined ? { id: item.id } : {}),
@@ -3285,7 +3321,7 @@ export class TreeController<T> {
 			sourceEvent: event,
 			triggerElement: trigger,
 			dataset: {}
-		} as TreeActionEventDetail<T>;
+		}) as TreeActionEventDetail<T>;
 		return runAction({
 			detail,
 			beforeActionCallback: this.beforeActionHandler,
@@ -3431,11 +3467,11 @@ export class TreeController<T> {
 			operation: this.currentDropOperation,
 			hasElement: !!element
 		});
-		this.onNodeDragOverHandler?.({
-			...this.nodeRef(node),
+		this.onNodeDragOverHandler?.(this._ctx({
+			...this.getNodeRef(node),
 			event,
 			dragged: this._draggedRefs(this.draggedNode)
-		});
+		}));
 	}
 
 	/** Call from ondragleave. Clears hover state when cursor leaves element bounds. */
@@ -3567,9 +3603,11 @@ export class TreeController<T> {
 		return this.tree?.getNodeIsDraggable(node) ?? false;
 	}
 
-	/** Get whether a node accepts drops (proxies LTree resolution: callback > member > node property). */
-	getNodeIsDropAllowed(node: LTreeNode<T>): boolean {
-		return this.tree?.getNodeIsDropAllowed(node) ?? false;
+	/** Whether the node at `path` accepts drops (`getIsDropAllowedCallback` > `isDropAllowedMember`
+	 *  > the node's flag). `false` for an unknown path. */
+	isNodeDropAllowed(path: string): boolean {
+		const node = this.tree?.getNodeByPath(path);
+		return node ? this.tree.getNodeIsDropAllowed(node) : false;
 	}
 
 	/** Get whether a node is collapsible (proxies LTree resolution: callback > member > node property). */
@@ -3970,7 +4008,7 @@ export class TreeController<T> {
 			if (isDouble) {
 				this._lastClickPath = null;
 				this._lastClickTime = 0;
-				this.onNodeDoubleClickHandler?.(this.nodeRef(node));
+				this.onNodeDoubleClickHandler?.(this._ctx(this.getNodeRef(node)));
 				if (this.clickBehavior === 'select') {
 					const canonical = this.tree.getNodeByPath(node.path) ?? node;
 					if (canonical.hasChildren && canonical.isCollapsible !== false) {
@@ -4056,7 +4094,7 @@ export class TreeController<T> {
 		this._setFocusedNode(node);
 
 		if (!silent) {
-			this.onNodeClickHandler?.(this.nodeRef(node));
+			this.onNodeClickHandler?.(this._ctx(this.getNodeRef(node)));
 			this._notifySelectionChanged();
 			this._mirrorSelectedToChecked();
 		}
@@ -4145,11 +4183,11 @@ export class TreeController<T> {
 
 		// Call interceptor if provided
 		if (this.beforeCheckboxToggleHandler) {
-			const result = this.beforeCheckboxToggleHandler({
+			const result = this.beforeCheckboxToggleHandler(this._ctx({
 				node,
 				isChecked: newChecked,
 				affectedPaths
-			});
+			}));
 			if (result === false) return;
 			if (Array.isArray(result)) {
 				affectedPaths = result;
@@ -4190,7 +4228,7 @@ export class TreeController<T> {
 			}
 		}
 
-		this.onNodeClickHandler?.(this.nodeRef(node));
+		this.onNodeClickHandler?.(this._ctx(this.getNodeRef(node)));
 		this._notifyCheckedChanged();
 		this.tree.refresh();
 		if (!options?.skipFocus) this.containerElement?.focus();
@@ -4439,7 +4477,7 @@ export class TreeController<T> {
 	private _notifySelectionChanged() {
 		if (this.onSelectionChangeHandler) {
 			const nodes = this.getSelectedNodes();
-			this.onSelectionChangeHandler({ paths: this.selectedPaths, nodes });
+			this.onSelectionChangeHandler(this._ctx({ paths: this.selectedPaths, nodes }));
 		}
 	}
 
@@ -4452,7 +4490,7 @@ export class TreeController<T> {
 				const node = this.tree.getNodeByPath(path);
 				if (node) nodes.push(node);
 			}
-			this.onCheckedChangeHandler({ paths: this.#emittedPaths, nodes });
+			this.onCheckedChangeHandler(this._ctx({ paths: this.#emittedPaths, nodes }));
 		}
 	}
 
@@ -4669,7 +4707,9 @@ export class TreeController<T> {
 	/** Toggle the focused node in/out of the highlight set. Multi-mode only. */
 	toggleFocusedSelect(): void {
 		if (this.selectionMode !== 'multiple') return;
-		const node = this.focusedNode;
+		// The bound focusedNode can be a $state clone — toggle the tree's canonical node.
+		const focused = this.focusedNode;
+		const node = focused ? (this.tree?.getNodeByPath(focused.path) ?? null) : null;
 		if (!node || !node.isSelectable) return;
 		this._onNodeClicked(node, { ctrl: true, shift: false }, { forceMultiSemantics: true });
 	}
@@ -4882,11 +4922,11 @@ export class TreeController<T> {
 		this._dragSetOverride = null;
 		let draggedRefs = this._draggedRefs(node);
 		if (this.beforeDragStartHandler) {
-			const decision = this.beforeDragStartHandler({
-				lead: this.nodeRef(node),
+			const decision = this.beforeDragStartHandler(this._ctx({
+				lead: this.getNodeRef(node),
 				dragged: this._completeDraggedRefs(draggedRefs),
 				event
-			});
+			}));
 			if (decision === false) {
 				// Cancel: prevent the native drag from starting and unwind the state we set.
 				event.preventDefault();
@@ -4932,11 +4972,11 @@ export class TreeController<T> {
 				/* setData can throw outside a dragstart — ignore, dragSet still covers it */
 			}
 		}
-		this.onNodeDragStartHandler?.({
-			...this.nodeRef(node),
+		this.onNodeDragStartHandler?.(this._ctx({
+			...this.getNodeRef(node),
 			event,
 			dragged: draggedRefs
-		});
+		}));
 
 		// The container-level `ondragend` listener on `.stv__container` misses
 		// the cancellation path when the rAF below calls `tree.refresh()`: the
@@ -5089,25 +5129,25 @@ export class TreeController<T> {
 		// (null when it didn't — cross-tree or shouldAutoHandle*=false). NodeRefs are built
 		// at fire time so parent/siblings reflect the final tree.
 		const fireDrop = (dropped: LTreeNode<T>[] | null) => {
-			this.onNodeDropHandler?.({
-				source: this.nodeRef(draggedNodeRef),
-				target: dropNode ? this.nodeRef(dropNode) : null,
+			this.onNodeDropHandler?.(this._ctx({
+				source: this.getNodeRef(draggedNodeRef),
+				target: dropNode ? this.getNodeRef(dropNode) : null,
 				dragged: draggedRefs,
-				dropped: dropped ? dropped.map((n) => this.nodeRef(n)) : null,
+				dropped: dropped ? dropped.map((n) => this.getNodeRef(n)) : null,
 				position,
 				operation,
 				event
-			});
+			}));
 		};
 
 		if (this.beforeDropHandler) {
-			const result = await this.beforeDropHandler({
-				target: dropNode ? this.nodeRef(dropNode) : null,
+			const result = await this.beforeDropHandler(this._ctx({
+				target: dropNode ? this.getNodeRef(dropNode) : null,
 				dragged: draggedRefs,
 				position,
 				operation,
 				event
-			});
+			}));
 			if (result === false) return false;
 			if (Array.isArray(result)) {
 				// Content-addressed routing: fan the drop out to the returned groups. Same-tree
@@ -5260,7 +5300,8 @@ export class TreeController<T> {
 	// Floating drop zone: overlay before/after/child buttons rendered at Tree level (position:fixed
 	// over the hovered row). Pointer drops on them are handled in _onPointerUp; this predicate just
 	// gates which buttons render for the hovered node.
-	isFloatingPositionAllowed(position: DropPosition): boolean {
+	/** @internal Whether the floating drop zone may offer `position` for the hovered target. */
+	_isFloatingPositionAllowed(position: DropPosition): boolean {
 		if (!this.hoveredNodeForDrop) return false;
 		const allowed = this.tree.getNodeAllowedDropPositions(this.hoveredNodeForDrop);
 		if (!allowed || allowed.length === 0) return true; // All positions allowed by default
@@ -5340,11 +5381,11 @@ export class TreeController<T> {
 		this._dragSetOverride = null;
 		let draggedRefs = this._draggedRefs(node);
 		if (this.beforeDragStartHandler) {
-			const decision = this.beforeDragStartHandler({
-				lead: this.nodeRef(node),
+			const decision = this.beforeDragStartHandler(this._ctx({
+				lead: this.getNodeRef(node),
 				dragged: this._completeDraggedRefs(draggedRefs),
 				event
-			});
+			}));
 			if (decision === false) {
 				this._resetPointerState();
 				return;
@@ -5364,7 +5405,7 @@ export class TreeController<T> {
 		this.draggedPaths = new Set(placementManifest);
 		setDragSet(this.treeId, draggedRefs.map((r) => r.path), placementManifest);
 		this.createGhostElement(node, event.clientX, event.clientY);
-		this.onNodeDragStartHandler?.({ ...this.nodeRef(node), event, dragged: draggedRefs });
+		this.onNodeDragStartHandler?.(this._ctx({ ...this.getNodeRef(node), event, dragged: draggedRefs }));
 
 		// OS-convention selection sync: grabbing a node OUTSIDE the current highlight replaces
 		// the highlight with just it (Explorer/Finder mousedown-selects). Done synchronously —
@@ -5565,11 +5606,11 @@ export class TreeController<T> {
 					targetCtrl.floatingZoneRect = { top: r.top, left: r.left, width: r.width, height: r.height };
 				}
 			}
-			this.onNodeDragOverHandler?.({
-				...targetCtrl.nodeRef(ctx.node),
+			this.onNodeDragOverHandler?.(this._ctx({
+				...targetCtrl.getNodeRef(ctx.node),
 				event,
 				dragged: this._draggedRefs(this.draggedNode)
-			});
+			}));
 		} else {
 			this._clearHover();
 			targetCtrl.isDropPlaceholderActive = !!el?.closest('.stv__empty-state');
@@ -5768,7 +5809,7 @@ export class TreeController<T> {
 	private _indicateDragDenied(node: LTreeNode<any>) {
 		dragLogger.debug('[drag-denied] locked node long-pressed', { path: node?.path });
 
-		this.onNodeDragRejectHandler?.(this.nodeRef(node));
+		this.onNodeDragRejectHandler?.(this._ctx(this.getNodeRef(node)));
 
 		if (!this.shouldIndicateUndraggable) return;
 
@@ -5821,7 +5862,7 @@ export class TreeController<T> {
 	private _indicateDropDenied(node: LTreeNode<any>) {
 		dragLogger.debug('[drop-denied] target refused drop', { path: node?.path });
 
-		this.onNodeDropRejectHandler?.(this.nodeRef(node));
+		this.onNodeDropRejectHandler?.(this._ctx(this.getNodeRef(node)));
 
 		if (!this.shouldIndicateUndraggable) return;
 
@@ -5916,6 +5957,16 @@ export class TreeController<T> {
 		this.navigation.navTo(path);
 	}
 	/** Move to next visible node at the same level */
+	/** Move to the next visible node (flat order). */
+	navNext(): void {
+		this.navigation.navNext();
+	}
+
+	/** Move to the previous visible node (flat order). */
+	navPrev(): void {
+		this.navigation.navPrev();
+	}
+
 	navNextSibling(): void {
 		this.navigation.navNextSibling();
 	}
@@ -5990,6 +6041,30 @@ export class TreeController<T> {
 				if (!node) return;
 				this.selectNode(path, 'replace');
 				this.scrollToPath(path, { expand: false, highlight: false, containerScroll: true });
+			},
+
+			navNext: () => {
+				const flatNodes = this.allFlatNodes;
+				if (flatNodes.length === 0) return;
+				const currentPath = this.focusedNode?.path;
+				const idx = currentPath ? flatNodes.findIndex((n) => n.path === currentPath) : -1;
+				if (idx === -1) {
+					this.navigation.navTo(flatNodes[0].path);
+					return;
+				}
+				if (idx < flatNodes.length - 1) this.navigation.navTo(flatNodes[idx + 1].path);
+			},
+
+			navPrev: () => {
+				const flatNodes = this.allFlatNodes;
+				if (flatNodes.length === 0) return;
+				const currentPath = this.focusedNode?.path;
+				const idx = currentPath ? flatNodes.findIndex((n) => n.path === currentPath) : -1;
+				if (idx === -1) {
+					this.navigation.navTo(flatNodes[flatNodes.length - 1].path);
+					return;
+				}
+				if (idx > 0) this.navigation.navTo(flatNodes[idx - 1].path);
 			},
 
 			navNextSibling: () => {

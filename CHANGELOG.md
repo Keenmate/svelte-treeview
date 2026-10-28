@@ -36,6 +36,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   keys: the 13 built-in texts + `showFullLabel` (the `nodeTitleOverflow: 'info'` button's accessible
   name, was hardcoded). New types `TreeMenuContext`, `TreeMenuItem`, `TreeMenuEntry`, `TreeAction`,
   `TreeActionEventDetail` (+ core `ActionItem`, `MenuItem`, `MenuEntry`, `MenuDivider`, …).
+- **`<Tree>` exports what web-treeview's element has** — `getSelectedNodes()`, `isNodeSelected(path)`,
+  `getVisibleFlatNodes()`, `getTree()`, `getNodeRef(nodeOrPath)`, `openContextMenu(path, x, y)`,
+  `isNodeDropAllowed(path)`, the clipboard methods (`copyNodes`, `cutNodes`, `pasteNodes`, `cancelCut`,
+  `hasClipboardContent`, `getClipboardOperation`) and the keyboard-navigation family (`navTo`,
+  `navNextSibling` … `navSelectPageUp`) plus **new `navNext` / `navPrev`** (next / previous visible
+  node; also on `TreeNavigation` / `navigationOverrides`).
+- **`controller` on every callback ctx** (was only `beforeKeydownCallback`) — all `on*` events,
+  `before*Callback`s, the node transforms, `sortCallback`, the per-node `get*Callback`s and the visual
+  callbacks (`getNodeClassCallback`, `getIconCallback`, `getNodeTooltipCallback`, …), `onRenderStart` /
+  `onRenderProgress` / `onRenderComplete`, `onContainerResize`. Non-enumerable (like web-treeview's
+  component context): destructuring works, `JSON.stringify` / `Object.keys` / a spread skip it.
 - **`onFocusChange({ focusedNode, controller })`** — the focused node changed (click, keyboard,
   `focusNode` / `clearFocus`, removal); `focusNode` / `clearFocus` now honour `{ isSilent: true }`
   (the option used to be ignored). Assigning `bind:focusedNode` stays silent. **`onTreeChange({
@@ -240,6 +251,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Space / `toggleFocusedSelect()` toggled a `$state` clone of the bound `focusedNode` — the row
+  kept its selected look; it now toggles the tree's own node.
+- A context menu opened from a click handler (`openContextMenu(...)` in a button's `onclick`) closed
+  at once: the outside-click listener saw the opening click. Listeners attach on the next task now.
+
 - **Search after removals finds the right nodes.** The internal search index is keyed by a node's
   slot in a flat array; removing nodes (`removeBranch`, `replaceBranch`, `applyChanges` deletes)
   compacted that array, so every later hit resolved to the wrong node, and `removeNode` never
@@ -255,6 +271,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Drop placeholder no longer triggers a horizontal scrollbar.** `.stv__drop-placeholder` is `box-sizing: border-box` (the 2px dashed border no longer overruns the container width), and `--stv-drop-placeholder-hover-scale` now defaults to `1` (was `1.015`, which spilled past both edges).
 
 ### Removed
+
+- **BREAKING: `TreeController.nodeRef()` → `getNodeRef()`**; `getNodeIsDropAllowed(node)` →
+  **`isNodeDropAllowed(path)`**; `isFloatingPositionAllowed` is internal now (`_isFloatingPositionAllowed`).
+  `openContextMenu(node, x, y)` → **`openContextMenu(path, x, y)`**.
 
 - **BREAKING: the old context-menu ctx / types** — `ContextMenuContext` (`{ node, selectedNodes,
   checkedNodes, closeMenu }`), `ContextMenuItem`, `ContextMenuDivider`, `ContextMenuEntry` (types) →

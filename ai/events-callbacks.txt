@@ -307,6 +307,8 @@ Example combining both:
 CALLBACK SIGNATURES
 -------------------
 All on* events take ONE ctx object (fire-and-forget), except beforeKeydownCallback.
+Every ctx (on*, before*, get*Callback, transforms, sortCallback, menu) also carries `controller`
+(non-enumerable: destructure it; JSON.stringify / spread skip it).
 
 NodeRef<T> = { path, node, parent, siblings }  // node/parent/siblings null/[] cross-tree
 

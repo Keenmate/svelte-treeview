@@ -5,6 +5,7 @@
 	import { computePosition, autoUpdate, offset, flip, shift } from '@floating-ui/dom';
 	import { type LTreeNode } from '../ltree/ltree-node.svelte.js';
 	import {
+		type Ltree,
 		type InsertArrayResult,
 		type InsertBranchResult,
 		type RemoveBranchResult,
@@ -47,7 +48,10 @@
 		BeforeCheckboxToggleContext,
 		NodeTransformCallbackContext,
 		NodeTransformCallback,
-		KeydownContext
+		KeydownContext,
+		NodeRef,
+		PasteResult,
+		TreeCallbackContext
 	} from '../core/TreeController.svelte.js';
 	import { uiLogger } from '../logger.js';
 	import { createTreeController } from '../core/createTreeController.js';
@@ -69,19 +73,19 @@
 		parentPathMember?: string | null | undefined;
 		levelMember?: string | null | undefined;
 		isExpandedMember?: string | null | undefined;
-		getIsExpandedCallback?: (ctx: NodeContext<T>) => boolean;
+		getIsExpandedCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => boolean;
 		isSelectableMember?: string | null | undefined;
-		getIsSelectableCallback?: (ctx: NodeContext<T>) => boolean;
+		getIsSelectableCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => boolean;
 		isCheckedMember?: string | null | undefined;
-		getIsCheckedCallback?: (ctx: NodeContext<T>) => boolean;
+		getIsCheckedCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => boolean;
 		isDraggableMember?: string | null | undefined;
-		getIsDraggableCallback?: (ctx: NodeContext<T>) => boolean;
+		getIsDraggableCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => boolean;
 		isDropAllowedMember?: string | null | undefined;
-		getIsDropAllowedCallback?: (ctx: NodeContext<T>) => boolean;
+		getIsDropAllowedCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => boolean;
 		allowedDropPositionsMember?: string | null | undefined;
-		getAllowedDropPositionsCallback?: (ctx: NodeContext<T>) => DropPosition[] | null | undefined;
+		getAllowedDropPositionsCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => DropPosition[] | null | undefined;
 		isCollapsibleMember?: string | null | undefined;
-		getIsCollapsibleCallback?: (ctx: NodeContext<T>) => boolean;
+		getIsCollapsibleCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => boolean;
 		hasChildrenMember?: string | null | undefined;
 		isSorted?: boolean | null | undefined;
 		/** `false` = never auto-sort: input order kept, `addNode` appends, `insertNode` /
@@ -91,17 +95,17 @@
 		isSortingEnabled?: boolean;
 
 		displayValueMember?: string | null | undefined;
-		getDisplayValueCallback?: (ctx: NodeContext<T>) => string;
+		getDisplayValueCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string;
 
 		searchValueMember?: string | null | undefined;
-		getSearchValueCallback?: (ctx: NodeContext<T>) => string;
+		getSearchValueCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string;
 
 		// For sibling ordering in drag-drop (before/after positioning)
 		orderMember?: string | null | undefined;
 
 		treeId?: string | null | undefined;
 		treePathSeparator?: string | null | undefined;
-		sortCallback?: (ctx: SortContext<T>) => LTreeNode<T>[];
+		sortCallback?: (ctx: SortContext<T> & TreeCallbackContext<T>) => LTreeNode<T>[];
 
 		// DATA
 		/** The tree's nodes (flat `T[]` with ltree paths). Input AND current state: after a
@@ -177,9 +181,9 @@
 		initialBatchSize?: number;
 		maxBatchSize?: number;
 		isRendering?: boolean; // Bindable: true while progressive rendering is active
-		onRenderStart?: () => void;
-		onRenderProgress?: (stats: RenderStats) => void;
-		onRenderComplete?: (stats: RenderStats) => void;
+		onRenderStart?: (ctx: TreeCallbackContext<T>) => void;
+		onRenderProgress?: (stats: RenderStats & TreeCallbackContext<T>) => void;
+		onRenderComplete?: (stats: RenderStats & TreeCallbackContext<T>) => void;
 
 		/**
 		 * Use flat/centralized rendering instead of recursive node rendering.
@@ -261,7 +265,7 @@
 		onTreeChange?: (ctx: TreeChangeContext<T>) => void;
 		/** `sortNodes` / `sortAll` rewrote one parent's `orderMember` values (custom compare /
 		 *  `direction: 'desc'`) — persist `changes`. Skipped with `isSilent`. */
-		onNodesReorder?: (ctx: NodesReorderContext<T>) => void;
+		onNodesReorder?: (ctx: NodesReorderContext<T> & TreeCallbackContext<T>) => void;
 		onNodeDragStart?: (ctx: NodeDragContext<T>) => void;
 		onNodeDragOver?: (ctx: NodeDragContext<T>) => void;
 		onNodeDrop?: (ctx: NodeDropContext<T>) => void;
@@ -285,7 +289,7 @@
 		/** Fire-and-forget: the tree's own border-box changed (immediate on mount, then on
 		 *  resize, throttled ~30ms). `deviceClass` is the capability+size class of the WINDOW
 		 *  (`classifyDevice`), handy alongside the box for AB10-style adaptation. */
-		onContainerResize?: (ctx: { size: ElementSize; deviceClass: DeviceClass }) => void;
+		onContainerResize?: (ctx: { size: ElementSize; deviceClass: DeviceClass } & TreeCallbackContext<T>) => void;
 		/** Bindable: the tree's live border-box size in CSS px. Read it in your own `$derived`
 		 *  to switch settings by space. Updated from the same signal as `onContainerResize`. */
 		containerSize?: ElementSize;
@@ -365,9 +369,9 @@
 		 *  the checkbox is the default signal. */
 		checkedNodeClass?: string | null | undefined;
 		/** Data-driven per-row class hook. Return extra class(es) for `.stv__node`. */
-		getNodeClassCallback?: (ctx: NodeContext<T>) => string | null | undefined;
+		getNodeClassCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
 		/** Data-driven per-row class hook. Return extra class(es) for `.stv__node-content`. */
-		getNodeContentClassCallback?: (ctx: NodeContext<T>) => string | null | undefined;
+		getNodeContentClassCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
 		dragOverNodeClass?: string | null | undefined;
 		/** Class for the dragged source row (the dimmed node left in place while its ghost
 		 *  follows the pointer). When set, REPLACES the built-in `.stv__node-content--dragged`
@@ -397,7 +401,7 @@
 		 *  snippet (preferred) or `getNodeTooltipCallback`; no content ⇒ no tooltip. */
 		isNodeTooltipsShown?: boolean;
 		/** Plain-text tooltip for a node (fallback when no `tooltip` snippet is given). */
-		getNodeTooltipCallback?: (ctx: NodeContext<T>) => string | null | undefined;
+		getNodeTooltipCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
 		/** Tooltip placement relative to the row. Default `'top-start'`. */
 		tooltipPlacement?: TooltipPlacement;
 		/** Show/hide delay(s), ms. Default `{ show: 400, hide: 100 }`. */
@@ -410,11 +414,11 @@
 		 *  element on every node (default `<i class="stv__node-icon {value}">`, FA-friendly). */
 		iconMember?: string | null | undefined;
 		/** Per-node icon VALUE from a callback (overrides iconMember). */
-		getIconCallback?: (ctx: NodeContext<T>) => string | null | undefined;
+		getIconCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
 		/** Per-node icon COLOR from a data key (applied to the icon element). */
 		iconColorMember?: string | null | undefined;
 		/** Per-node icon COLOR from a callback (overrides iconColorMember). */
-		getIconColorCallback?: (ctx: NodeContext<T>) => string | null | undefined;
+		getIconColorCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
 		/** Reserve the icon column so labels align even on rows with no icon. Default `true`. */
 		shouldAlignNodeIcons?: boolean;
 		scrollHighlightTimeout?: number | null | undefined;
@@ -832,7 +836,7 @@
 		const snapshot: ElementSize = { width: w, height: h };
 		_lastEmittedBox = snapshot;
 		containerSize = snapshot;
-		onContainerResize?.({ size: snapshot, deviceClass: classifyDevice(getEnvironment()) });
+		onContainerResize?.(Object.defineProperty({ size: snapshot, deviceClass: classifyDevice(getEnvironment()) }, 'controller', { value: controller, enumerable: false }) as { size: ElementSize; deviceClass: DeviceClass } & TreeCallbackContext<T>);
 	});
 
 	// Feed the shared NodeRenderContext env: reactive device class + container box.
@@ -1451,6 +1455,88 @@
 		controller.closeContextMenu();
 	}
 
+	/** Open the context menu for the node at `path` at viewport coordinates (offsets applied). */
+	export function openContextMenu(path: string, x: number, y: number): void {
+		controller.openContextMenu(path, x, y);
+	}
+
+	// ── Lookups ──────────────────────────────────────────────────────
+	/** `{ path, node, parent, siblings }` for a node (or a path — node/parent null when unknown). */
+	export function getNodeRef(nodeOrPath: LTreeNode<T> | string | null): NodeRef<T> {
+		return controller.getNodeRef(nodeOrPath);
+	}
+
+	/** The visible nodes in display order (expanded + search filter applied). */
+	export function getVisibleFlatNodes(): LTreeNode<T>[] {
+		return controller.getVisibleFlatNodes();
+	}
+
+	/** The underlying LTree (advanced use). */
+	export function getTree(): Ltree<T> {
+		return controller.getTree();
+	}
+
+	/** Whether the node at `path` accepts drops (`getIsDropAllowedCallback` > `isDropAllowedMember`). */
+	export function isNodeDropAllowed(path: string): boolean {
+		return controller.isNodeDropAllowed(path);
+	}
+
+	// ── Clipboard ────────────────────────────────────────────────────
+	/** Copy `paths` (default: the selection) to the clipboard (`beforeCopyCallback`, `onNodeCopy`). */
+	export function copyNodes(paths?: string[]): void {
+		controller.copyNodes(paths);
+	}
+
+	/** Cut `paths` (default: the selection) — removed on paste (`beforeCutCallback`, `onNodeCut`). */
+	export function cutNodes(paths?: string[]): void {
+		controller.cutNodes(paths);
+	}
+
+	/** Paste the clipboard under / before / after `targetPath` (`beforePasteCallback`, `onNodePaste`). */
+	export function pasteNodes(
+		targetPath: string,
+		transformData?: NodeTransformCallback<T> | null,
+		position: 'child' | 'before' | 'after' = 'child'
+	): PasteResult<T> {
+		return controller.pasteNodes(targetPath, transformData, position);
+	}
+
+	/** Cancel a pending cut (the cut nodes stay). */
+	export function cancelCut(): void {
+		controller.cancelCut();
+	}
+
+	/** Whether the (page-wide) clipboard holds something to paste. */
+	export function hasClipboardContent(): boolean {
+		return controller.hasClipboardContent();
+	}
+
+	/** `'copy'` / `'cut'` of the clipboard content, `null` when empty. */
+	export function getClipboardOperation(): 'copy' | 'cut' | null {
+		return controller.getClipboardOperation();
+	}
+
+	// ── Keyboard navigation (what the built-in keys call; overridable via navigationOverrides) ──
+	export function navTo(path: string): void { controller.navTo(path); }
+	export function navNext(): void { controller.navNext(); }
+	export function navPrev(): void { controller.navPrev(); }
+	export function navNextSibling(): void { controller.navNextSibling(); }
+	export function navPrevSibling(): void { controller.navPrevSibling(); }
+	export function navInto(): void { controller.navInto(); }
+	export function navOut(): void { controller.navOut(); }
+	export function navBackOut(): void { controller.navBackOut(); }
+	export function navToggle(): void { controller.navToggle(); }
+	export function navFirst(): void { controller.navFirst(); }
+	export function navLast(): void { controller.navLast(); }
+	export function navPageDown(): void { controller.navPageDown(); }
+	export function navPageUp(): void { controller.navPageUp(); }
+	export function navSelectNext(): void { controller.navSelectNext(); }
+	export function navSelectPrev(): void { controller.navSelectPrev(); }
+	export function navSelectFirst(): void { controller.navSelectFirst(); }
+	export function navSelectLast(): void { controller.navSelectLast(); }
+	export function navSelectPageDown(): void { controller.navSelectPageDown(); }
+	export function navSelectPageUp(): void { controller.navSelectPageUp(); }
+
 	// ── Selection set (UI multi-select — selectedPaths) ──────────────
 	export function selectNode(
 		path: string,
@@ -1504,6 +1590,16 @@
 
 	export function clearFocus(options?: TreeMutationOptions) {
 		controller.clearFocus(options);
+	}
+
+	/** The selected nodes (the `selectedPaths` set, resolved). */
+	export function getSelectedNodes(): LTreeNode<T>[] {
+		return controller.getSelectedNodes();
+	}
+
+	/** Whether the node at `path` is in the selection. */
+	export function isNodeSelected(path: string): boolean {
+		return controller.isNodeSelected(path);
 	}
 
 	export function getCheckedNodes(): LTreeNode<T>[] {
@@ -2142,7 +2238,7 @@
 				.floatingZoneRect
 				.height}px; z-index: 10000; --drop-zone-start: {formattedDropZoneStart}; --drop-zone-max-width: {controller.dropZoneMaxWidth}px;"
 		>
-			{#if controller.isFloatingPositionAllowed('before')}
+			{#if controller._isFloatingPositionAllowed('before')}
 				<div
 					class="stv__drop-zone stv__drop-zone--before"
 					class:stv__drop-zone--active={controller.floatingHoveredZone === 'before'}
@@ -2150,7 +2246,7 @@
 					↑ Before
 				</div>
 			{/if}
-			{#if controller.isFloatingPositionAllowed('after')}
+			{#if controller._isFloatingPositionAllowed('after')}
 				<div
 					class="stv__drop-zone stv__drop-zone--after"
 					class:stv__drop-zone--active={controller.floatingHoveredZone === 'after'}
@@ -2158,7 +2254,7 @@
 					↓ After
 				</div>
 			{/if}
-			{#if controller.isFloatingPositionAllowed('child')}
+			{#if controller._isFloatingPositionAllowed('child')}
 				<div
 					class="stv__drop-zone stv__drop-zone--child"
 					class:stv__drop-zone--active={controller.floatingHoveredZone === 'child'}

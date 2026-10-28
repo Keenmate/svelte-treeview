@@ -6,6 +6,10 @@
 export interface TreeNavigation<T> {
 	/** Select a node and scroll it into view (core navigation primitive) */
 	navTo(path: string): void;
+	/** Move to the next visible node (flat order; the first one when nothing is focused) */
+	navNext(): void;
+	/** Move to the previous visible node (flat order; the last one when nothing is focused) */
+	navPrev(): void;
 	/** Move to next visible node at the same level */
 	navNextSibling(): void;
 	/** Move to previous visible node at the same level */

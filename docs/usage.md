@@ -116,7 +116,7 @@ Without both requirements, no search indexing will occur.
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-Every `on*` event receives a **single context object** mirroring the clipboard callbacks. The shared shape is `NodeRef<T> = { path, node, parent, siblings }` — the node the event is about plus the relational context the tree already resolved (`parent` node and `siblings`, the children of that parent), so you never need a `getNodeByPath(node.parentPath)` round-trip. `node`/`parent`/`siblings` are `null`/`[]` when the node isn't reachable (cross-tree, or removed by a cut). `NodeRef`, `NodeEventContext`, `NodeDragContext`, `NodeDropContext`, `ClipboardEventContext`, and `SelectionChangeContext` are exported from the package.
+Every `on*` event, `before*Callback` and per-node `get*Callback` ctx also carries **`controller`** (the `TreeController`, non-enumerable — destructure it; JSON / spread skip it). Every `on*` event receives a **single context object** mirroring the clipboard callbacks. The shared shape is `NodeRef<T> = { path, node, parent, siblings }` — the node the event is about plus the relational context the tree already resolved (`parent` node and `siblings`, the children of that parent), so you never need a `getNodeByPath(node.parentPath)` round-trip. `node`/`parent`/`siblings` are `null`/`[]` when the node isn't reachable (cross-tree, or removed by a cut). `NodeRef`, `NodeEventContext`, `NodeDragContext`, `NodeDropContext`, `ClipboardEventContext`, and `SelectionChangeContext` are exported from the package.
 
 > **Drag/drop is single-origin.** A drag has one DOM origin, so `onNodeDragStart` / `onNodeDragOver` / `onNodeDrop` each fire **once**, even when multiple nodes are selected. `ctx.dragged` (on all three) carries the full top-level dragged set — the multi-selection, or a single-item array for a plain drag — so you never have to read `controller.selectedPaths` yourself. This holds **cross-tree too**: the source publishes its top-level set on drag start, so a cross-tree drop's `ctx.dragged` still lists every dragged path (as path-only refs — `node`/`parent` are `null` cross-tree). `source` (drop) is just the lead node of that set. Note the library only *auto-places* the lead node on a cross-tree drop; use `ctx.dragged` to fan out the rest yourself.
 
@@ -233,6 +233,15 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `sortAll` | `paths?: string \| string[] \| null, options?: SortOptions` | Sort whole subtrees (`null` / omitted = the whole tree) |
 | `applyChanges` | `changes: TreeChange<T>[]` | Batch: `add` {parentPath, data, pathSegment?} / `insert` {targetPath, position, data} / `update` {path, data} / `remove` {path} |
 | `closeContextMenu` | | Programmatically close the context menu |
+| `openContextMenu` | `path: string, x: number, y: number` | Open the context menu for the node at `path` at viewport coordinates (offsets applied; unknown path = no-op) |
+| `getNodeRef` | `nodeOrPath: LTreeNode<T> \| string` | `{ path, node, parent, siblings }` (node / parent `null` for an unknown path) |
+| `getVisibleFlatNodes` | | The visible nodes in display order (expanded + search filter) |
+| `getTree` | | The underlying LTree (advanced) |
+| `isNodeDropAllowed` | `path: string` | Whether the node accepts drops (`getIsDropAllowedCallback` > `isDropAllowedMember`); `false` for an unknown path |
+| `copyNodes` / `cutNodes` | `paths?: string[]` | Copy / cut `paths` (default: the selection) — `before*Callback`, `onNodeCopy` / `onNodeCut` |
+| `pasteNodes` | `targetPath, transform?, position = 'child'` | Paste the clipboard → `PasteResult` (`beforePasteCallback`, `onNodePaste`) |
+| `cancelCut` / `hasClipboardContent` / `getClipboardOperation` | | Clipboard state (page-wide clipboard) |
+| `navTo(path)`, `navNext`, `navPrev`, `navNextSibling`, `navPrevSibling`, `navInto`, `navOut`, `navBackOut`, `navToggle`, `navFirst`, `navLast`, `navPageDown`, `navPageUp`, `navSelectNext`, `navSelectPrev`, `navSelectFirst`, `navSelectLast`, `navSelectPageDown`, `navSelectPageUp` | | Keyboard navigation — what the built-in keys call (overridable via `navigationOverrides`). `navNext` / `navPrev` = next / previous visible node (flat order) |
 
 `ExpandOptions = { isExclusive?: boolean; isSilent?: boolean }` — `isExclusive` (expand only) collapses every open branch off the targets' spine; `isSilent` suppresses events / callbacks only — the tree always re-renders (svelte-treeview has no expand callbacks, so it is accepted for API parity).
 
@@ -277,6 +286,8 @@ Three independent concerns, each with the same method shape. `opts` is always `T
 | `uncheckNode` | `path: string, opts?` | Uncheck one node (cascades in cascade mode) |
 | `uncheckNodes` | `paths: string[], opts?` | Uncheck nodes (cascades in cascade mode) |
 | `uncheckAll` | `opts?` | Uncheck every node |
+| `getSelectedNodes` | | The selected nodes (`selectedPaths`, resolved) |
+| `isNodeSelected` | `path: string` | Whether the node is in the selection |
 | `focusNode` | `path: string, opts?` | Move focus to a node (fires `onFocusChange` unless `{ isSilent: true }`) |
 | `clearFocus` | `opts?` | Clear the focused node |
 
