@@ -15,6 +15,6 @@ export default defineConfig({
 	test: {
 		// Vitest runs unit tests; Playwright owns e2e/**.
 		// Keep vitest's defaults (node_modules, dist) and add the e2e dir.
-		exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**']
+		exclude: ['**/node_modules/**', '**/dist/**', '**/.svelte-kit/**', 'e2e/**']
 	}
 });
