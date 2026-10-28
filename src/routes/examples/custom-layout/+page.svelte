@@ -421,7 +421,7 @@
 		</p>
 		<div class="tree-container tree-container-tall">
 			<Tree
-				data={sampleData}
+				nodes={sampleData}
 				idMember="id"
 				pathMember="path"
 				sortCallback={sortByName}
@@ -454,7 +454,7 @@
 		</p>
 
 		<TreeProvider
-			data={notepadppData}
+			nodes={notepadppData}
 			idMember="id"
 			pathMember="path"
 			sortCallback={sortFilesByName}
@@ -635,7 +635,7 @@
 		</p>
 
 		<TreeProvider
-			data={sampleData}
+			nodes={sampleData}
 			idMember="id"
 			pathMember="path"
 			sortCallback={sortByName}
@@ -683,7 +683,7 @@
 		</p>
 
 		<TreeProvider
-			data={sampleData}
+			nodes={sampleData}
 			idMember="id"
 			pathMember="path"
 			orderMember="order"
@@ -739,7 +739,7 @@
 		</p>
 
 		<TreeProvider
-			data={sampleData}
+			nodes={sampleData}
 			idMember="id"
 			pathMember="path"
 			sortCallback={sortByName}
@@ -818,7 +818,7 @@
 		</p>
 
 		<TreeProvider
-			data={sampleData}
+			nodes={sampleData}
 			idMember="id"
 			pathMember="path"
 			orderMember="order"
@@ -880,7 +880,7 @@
 		</p>
 
 		<TreeProvider
-			data={sampleData}
+			nodes={sampleData}
 			idMember="id"
 			pathMember="path"
 			orderMember="order"
@@ -948,7 +948,7 @@
 			drag-drop) while you render however you like.
 		</p>
 		<div class="code-block">
-<pre>{`<TreeProvider data={myData} idMember="id" pathMember="path" ...>
+<pre>{`<TreeProvider nodes={myData} idMember="id" pathMember="path" ...>
   {#snippet children(controller)}
     <!-- controller.tree.tree        → root nodes -->
     <!-- controller.flatNodesToRender → all visible nodes -->

@@ -59,7 +59,7 @@
 		<h2>Simple Tree</h2>
 		<div class="tree-container">
 			<Tree
-				data={sampleData}
+				nodes={sampleData}
 				idMember="id"
 				pathMember="path"
 				sortCallback={sortByName}
@@ -105,7 +105,7 @@
 		<div class="tree-container">
 			{#key expandLevel}
 				<Tree
-					data={sampleData}
+					nodes={sampleData}
 					idMember="id"
 					pathMember="path"
 					sortCallback={sortByName}
@@ -131,7 +131,7 @@
 		<div class="tree-container">
 			<Tree
 				bind:this={scrollTreeRef}
-				data={sampleData}
+				nodes={sampleData}
 				idMember="id"
 				pathMember="path"
 				sortCallback={sortByName}
@@ -157,7 +157,7 @@
 		<div class="tree-container">
 			<Tree
 				bind:this={expandCollapseTreeRef}
-				data={sampleData}
+				nodes={sampleData}
 				idMember="id"
 				pathMember="path"
 				sortCallback={sortByName}

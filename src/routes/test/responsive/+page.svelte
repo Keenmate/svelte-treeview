@@ -63,7 +63,7 @@
 <!-- The wrapper is the resize driver; padding/border 0 so box.width == wrapper width. -->
 <div class="wrap" style="width: {width}px;" data-testid="wrap">
 	<Tree
-		{data}
+		nodes={data}
 		idMember="id"
 		pathMember="path"
 		sortCallback={sortByPath}

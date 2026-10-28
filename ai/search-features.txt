@@ -15,7 +15,7 @@ BASIC SEARCH SETUP
 <input bind:value={searchTerm} placeholder="Search..." />
 
 <Tree
-  {data}
+  nodes={data}
   idMember="id"
   pathMember="path"
   bind:searchTerm
@@ -196,7 +196,7 @@ Handle search externally:
 </script>
 
 <input bind:value={searchTerm} />
-<Tree data={filteredData} ... />
+<Tree nodes={filteredData} ... />
 
 Note: This approach loses the tree hierarchy when filtering
 
@@ -204,7 +204,7 @@ SEARCH HIGHLIGHT
 ----------------
 Highlight matching text in node template:
 
-<Tree {data} bind:searchTerm>
+<Tree nodes={data} bind:searchTerm>
   {#snippet nodeTemplate(node)}
     {@html highlightMatch(node.data.name, searchTerm)}
   {/snippet}
@@ -278,7 +278,7 @@ SEARCH WITH EMPTY TREE
 ----------------------
 Handle no results state:
 
-<Tree {data} bind:searchTerm>
+<Tree nodes={data} bind:searchTerm>
   {#snippet noData()}
     {#if searchTerm}
       <p>No results for "{searchTerm}"</p>

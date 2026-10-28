@@ -27,7 +27,7 @@
 <h1>getNodeClassCallback / getNodeContentClassCallback test</h1>
 
 <Tree
-	{data}
+	nodes={data}
 	idMember="id"
 	pathMember="path"
 	sortCallback={sortByName}

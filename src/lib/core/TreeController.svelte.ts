@@ -440,7 +440,9 @@ export interface TreeControllerProps<T> {
 	sortCallback?: (ctx: SortContext<T>) => LTreeNode<T>[];
 
 	// DATA
-	data: T[];
+	/** The tree's nodes (flat `T[]`, ltree paths). Input; reading `controller.nodes` returns
+	 *  the CURRENT state (mutations included). */
+	nodes: T[];
 	focusedNode?: LTreeNode<T> | null | undefined;
 	selectedPaths?: Set<string>;
 	checkedPaths?: Set<string>;
@@ -706,7 +708,32 @@ export class TreeController<T> {
 	treePathSeparator = $state<string>('.');
 
 	// DATA (bidirectional / output)
-	data = $state.raw<T[]>([]);
+	/** Input array last assigned (or written back after a mutation). */
+	#nodes = $state.raw<T[]>([]);
+	/** The array this controller wrote back itself — the insertArray effect must not re-insert it. */
+	#selfWrittenNodes: T[] | null = null;
+	#nodesDirty = false;
+	/** The tree's nodes. Assign to (re)load the tree; read for the CURRENT state — after a
+	 *  mutation (move / add / remove / paste / applyChanges…) this is the tree's data,
+	 *  re-collected (and written back on a microtask, which updates `bind:nodes`). */
+	get nodes(): T[] {
+		return this.#nodesDirty ? (this.tree?.getAllData() ?? []) : this.#nodes;
+	}
+	set nodes(value: T[]) {
+		this.#nodes = value;
+	}
+	/** @internal A mutation changed the tree's data — re-collect `nodes` (coalesced, microtask). */
+	_markNodesChanged() {
+		if (this.#nodesDirty) return;
+		this.#nodesDirty = true;
+		queueMicrotask(() => {
+			if (!this.#nodesDirty) return;
+			this.#nodesDirty = false;
+			const current = this.tree?.getAllData() ?? [];
+			this.#selfWrittenNodes = current;
+			this.#nodes = current;
+		});
+	}
 	focusedNode = $state.raw<LTreeNode<T> | null | undefined>(null);
 	selectedPaths = $state.raw<Set<string>>(new Set());
 	/** Hidden internal cursor used by Shift+Arrow / Shift+click to extend ranges
@@ -1064,7 +1091,7 @@ export class TreeController<T> {
 		// tree can remove the originals from here (same-tree cut removes them directly).
 		registerClipboardTree(this.treeId, this);
 
-		this.data = props.data;
+		this.#nodes = props.nodes;
 		this.labels = props.labels;
 		this.focusedNode = props.focusedNode ?? null;
 		this.selectedPaths = props.selectedPaths ?? new Set();
@@ -1335,7 +1362,10 @@ export class TreeController<T> {
 
 		// InsertArray when data changes
 		$effect(() => {
-			if (this.tree && this.data) {
+			const nodes = this.#nodes;
+			if (this.tree && nodes) {
+				// Our own write-back of the current state (after a mutation) — already in the tree.
+				if (nodes === this.#selfWrittenNodes) return;
 				if (this._skipInsertArray) {
 					this._skipInsertArray = false;
 					return;
@@ -1347,7 +1377,7 @@ export class TreeController<T> {
 				// Reset virtual scroll measurements
 				this.vsMeasuredRowHeight = null;
 				this.vsDetectedHeight = null;
-				this.insertResult = this.tree.insertArray(this.data);
+				this.insertResult = this.tree.insertArray(nodes);
 
 				// Seed checkedPaths from node.isChecked flags written by insertArray
 				if (this.tree.isCheckedMember || this.tree.getIsCheckedCallback) {
@@ -1750,6 +1780,7 @@ export class TreeController<T> {
 		position: 'before' | 'after' | 'child'
 	): { success: boolean; error?: string } {
 		this._skipInsertArray = true;
+		this._markNodesChanged();
 		// Capture the affected path set BEFORE the move: any highlighted /
 		// selected path that is the source itself or a descendant of it needs
 		// to be remapped onto the new location. Without this the path Sets
@@ -1823,6 +1854,7 @@ export class TreeController<T> {
 
 		tick().then(() => {
 			this._skipInsertArray = false;
+			this._markNodesChanged();
 		});
 		return result;
 	}
@@ -2024,6 +2056,7 @@ export class TreeController<T> {
 		};
 
 		this._skipInsertArray = true;
+		this._markNodesChanged();
 		const copiedNodes: LTreeNode<T>[] = [];
 		let skipped = 0;
 		let lastError: string | undefined;
@@ -2065,6 +2098,7 @@ export class TreeController<T> {
 
 		tick().then(() => {
 			this._skipInsertArray = false;
+			this._markNodesChanged();
 		});
 
 		return {
@@ -2089,12 +2123,14 @@ export class TreeController<T> {
 		includeDescendants: boolean = true
 	): { success: boolean; node?: LTreeNode<T>; error?: string } {
 		this._skipInsertArray = true;
+		this._markNodesChanged();
 		const result = this.tree?.removeNode(path, includeDescendants) || {
 			success: false,
 			error: 'Tree not initialized'
 		};
 		tick().then(() => {
 			this._skipInsertArray = false;
+			this._markNodesChanged();
 		});
 		return result;
 	}
@@ -2105,12 +2141,14 @@ export class TreeController<T> {
 		pathSegment?: string
 	): { success: boolean; node?: LTreeNode<T>; error?: string } {
 		this._skipInsertArray = true;
+		this._markNodesChanged();
 		const result = this.tree?.addNode(parentPath, nodeData, pathSegment) || {
 			success: false,
 			error: 'Tree not initialized'
 		};
 		tick().then(() => {
 			this._skipInsertArray = false;
+			this._markNodesChanged();
 		});
 		return result;
 	}
@@ -2120,21 +2158,25 @@ export class TreeController<T> {
 		dataUpdates: Partial<T>
 	): { success: boolean; node?: LTreeNode<T>; error?: string } {
 		this._skipInsertArray = true;
+		this._markNodesChanged();
 		const result = this.tree?.updateNode(path, dataUpdates) || {
 			success: false,
 			error: 'Tree not initialized'
 		};
 		tick().then(() => {
 			this._skipInsertArray = false;
+			this._markNodesChanged();
 		});
 		return result;
 	}
 
 	applyChanges(changes: TreeChange<T>[]): ApplyChangesResult {
 		this._skipInsertArray = true;
+		this._markNodesChanged();
 		const result = this.tree?.applyChanges(changes) || { successful: 0, failed: [] };
 		tick().then(() => {
 			this._skipInsertArray = false;
+			this._markNodesChanged();
 		});
 		return result;
 	}
@@ -2147,6 +2189,7 @@ export class TreeController<T> {
 		position?: 'before' | 'after'
 	): { success: boolean; rootNode?: LTreeNode<T>; count: number; error?: string } {
 		this._skipInsertArray = true;
+		this._markNodesChanged();
 		const result = this.tree?.copyNodeWithDescendants(
 			sourceNode,
 			targetParentPath,
@@ -2156,6 +2199,7 @@ export class TreeController<T> {
 		) || { success: false, count: 0, error: 'Tree not initialized' };
 		tick().then(() => {
 			this._skipInsertArray = false;
+			this._markNodesChanged();
 		});
 		return result;
 	}
@@ -2164,6 +2208,7 @@ export class TreeController<T> {
 
 	insertBranch(parentPath: string, data: T[]): InsertBranchResult<T> {
 		this._skipInsertArray = true;
+		this._markNodesChanged();
 		const result = this.tree?.insertBranch(parentPath, data) || {
 			success: false,
 			count: 0,
@@ -2172,12 +2217,14 @@ export class TreeController<T> {
 		};
 		tick().then(() => {
 			this._skipInsertArray = false;
+			this._markNodesChanged();
 		});
 		return result;
 	}
 
 	replaceBranch(parentPath: string, data: T[]): InsertBranchResult<T> {
 		this._skipInsertArray = true;
+		this._markNodesChanged();
 		const result = this.tree?.replaceBranch(parentPath, data) || {
 			success: false,
 			count: 0,
@@ -2186,12 +2233,14 @@ export class TreeController<T> {
 		};
 		tick().then(() => {
 			this._skipInsertArray = false;
+			this._markNodesChanged();
 		});
 		return result;
 	}
 
 	removeBranch(path: string, keepParent?: boolean): RemoveBranchResult<T> {
 		this._skipInsertArray = true;
+		this._markNodesChanged();
 		const result = this.tree?.removeBranch(path, keepParent) || {
 			success: false,
 			removedCount: 0,
@@ -2199,6 +2248,7 @@ export class TreeController<T> {
 		};
 		tick().then(() => {
 			this._skipInsertArray = false;
+			this._markNodesChanged();
 		});
 		return result;
 	}
@@ -2480,6 +2530,7 @@ export class TreeController<T> {
 		}
 
 		this._skipInsertArray = true;
+		this._markNodesChanged();
 		let totalCount = 0;
 		let skipped = 0;
 		let lastError: string | undefined;
@@ -2603,6 +2654,7 @@ export class TreeController<T> {
 
 		tick().then(() => {
 			this._skipInsertArray = false;
+			this._markNodesChanged();
 		});
 
 		// Clear cut-dimming. A CUT is a one-shot move, so clear the clipboard; a COPY
@@ -2787,10 +2839,6 @@ export class TreeController<T> {
 
 	setExpandedPaths(paths: string[]): void {
 		this.tree?.setExpandedPaths(paths);
-	}
-
-	getAllData(): T[] {
-		return this.tree?.getAllData() || [];
 	}
 
 	/** Open the context menu at the given screen coordinates (offsets are applied automatically). */
@@ -3273,7 +3321,7 @@ export class TreeController<T> {
 		if (updates.treeId !== undefined) this.treeId = updates.treeId || this.treeId;
 		if (updates.treePathSeparator !== undefined)
 			this.treePathSeparator = updates.treePathSeparator ?? '.';
-		if (updates.data !== undefined) this.data = updates.data;
+		if (updates.nodes !== undefined) this.nodes = updates.nodes;
 		if (updates.focusedNode !== undefined) this._setFocusedNode(updates.focusedNode ?? null);
 		if (updates.selectedPaths !== undefined)
 			this._replaceSelectedPaths(updates.selectedPaths ?? []);

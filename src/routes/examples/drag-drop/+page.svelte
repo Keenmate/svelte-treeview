@@ -908,7 +908,7 @@
 						bind:this={sourceTreeRef}
 						treeId="source-tree"
 						clickBehavior="select"
-						data={sourceData}
+						nodes={sourceData}
 						idMember="id"
 						pathMember="path"
 						displayValueMember="name"
@@ -959,7 +959,7 @@
 						bind:this={targetTreeRef}
 						treeId="target-tree"
 						clickBehavior="select"
-						data={targetData}
+						nodes={targetData}
 						idMember="id"
 						pathMember="path"
 						displayValueMember="name"
@@ -1068,7 +1068,7 @@
 				bind:this={restrictedTreeRef}
 				treeId="restricted-tree"
 				clickBehavior="select"
-				data={restrictedData}
+				nodes={restrictedData}
 				idMember="id"
 				pathMember="path"
 				displayValueMember="name"
@@ -1130,7 +1130,7 @@ const data = [
 ];
 
 <Tree
-  data={data}
+  nodes={data}
   allowedDropPositionsMember="allowedDropPositions"
   ...
 />`}</pre>
@@ -1184,7 +1184,7 @@ const data = [
 						bind:this={guardSourceRef}
 						treeId="guard-source"
 						clickBehavior="select"
-						data={guardSourceData}
+						nodes={guardSourceData}
 						idMember="id"
 						pathMember="path"
 						displayValueMember="name"
@@ -1214,7 +1214,7 @@ const data = [
 						bind:this={guardDestRef}
 						treeId="guard-dest"
 						clickBehavior="select"
-						data={guardDestData}
+						nodes={guardDestData}
 						idMember="id"
 						pathMember="path"
 						displayValueMember="name"
@@ -1282,7 +1282,7 @@ beforeDragStartCallback={(ctx) => {
 			<Tree
 				treeId="leave-behind"
 				clickBehavior="select"
-				data={leaveBehindData}
+				nodes={leaveBehindData}
 				idMember="id"
 				pathMember="path"
 				displayValueMember="name"
@@ -1362,7 +1362,7 @@ beforeDragStartCallback={(ctx) => {
 						bind:this={basketRef}
 						treeId="produce-basket"
 						clickBehavior="select"
-						data={basketData}
+						nodes={basketData}
 						idMember="id"
 						pathMember="path"
 						displayValueMember="name"
@@ -1391,7 +1391,7 @@ beforeDragStartCallback={(ctx) => {
 						bind:this={pantryRef}
 						treeId="produce-pantry"
 						clickBehavior="select"
-						data={pantryData}
+						nodes={pantryData}
 						idMember="id"
 						pathMember="path"
 						displayValueMember="name"
@@ -1461,7 +1461,7 @@ beforeDragStartCallback={(ctx) => {
 
 		<div class="tree-container touch-demo-tree" style="max-height: 260px;">
 			<Tree
-				data={touchData}
+				nodes={touchData}
 				clickBehavior="select"
 				idMember="id"
 				pathMember="path"
@@ -1507,7 +1507,7 @@ beforeDragStartCallback={(ctx) => {
 		<div class="code-block">
 			<pre>{`<!-- Touch events are handled automatically -->
 <Tree
-  data={data}
+  nodes={data}
   idMember="id"
   pathMember="path"
   dragDropMode="self"
@@ -1534,7 +1534,7 @@ beforeDragStartCallback={(ctx) => {
 		</p>
 
 		<div class="code-block">
-			<pre>{`<Tree data={emptyData} ...>
+			<pre>{`<Tree nodes={emptyData} ...>
   {#snippet dropPlaceholder()}
     <div style="text-align: center; color: #667eea;">
       <p style="font-size: 2rem;">📥</p>
@@ -1603,7 +1603,7 @@ beforeDragStartCallback={(ctx) => {
 		<div class="code-block">
 			<pre>{`<!-- Only allow drops from other trees -->
 <Tree
-  data={targetData}
+  nodes={targetData}
   dragDropMode="cross"
   onNodeDrop={({ source, target, position, operation }) => {
     // Only triggered when dropping from a different tree

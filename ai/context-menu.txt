@@ -83,7 +83,7 @@ CALLBACK-BASED CONTEXT MENU
 </script>
 
 <Tree
-  {data}
+  nodes={data}
   getContextMenuItemsCallback={createContextMenu}
 />
 
@@ -93,7 +93,7 @@ SNIPPET-BASED CONTEXT MENU
   import { ContextMenuItemC, ContextMenuDividerC } from '@keenmate/svelte-treeview';
 </script>
 
-<Tree {data}>
+<Tree nodes={data}>
   {#snippet contextMenu(node, closeMenu)}
     <ContextMenuItemC
       text="Open"

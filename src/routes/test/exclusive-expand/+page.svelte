@@ -49,7 +49,7 @@
 	<div class="tree-wrap">
 		<Tree
 			bind:this={treeRef}
-			{data}
+			nodes={data}
 			idMember="id"
 			pathMember="path"
 			sortCallback={sortByName}

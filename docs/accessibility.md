@@ -70,7 +70,7 @@ Override or augment the default keymap with `beforeKeydownCallback` — return `
 
 ```svelte
 <Tree
-  {data}
+  nodes={data}
   idMember="path"
   pathMember="path"
   beforeKeydownCallback={({ event, controller }) => {

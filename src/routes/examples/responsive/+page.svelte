@@ -101,7 +101,7 @@ isNarrow = {isNarrow}   →   {isNarrow ? 'compact rows (title only)' : 'comfort
 
 		<div class="resize-box" style="width: {width1}px;" class:compact={isNarrow}>
 			<Tree
-				data={iscoData}
+				nodes={iscoData}
 				idMember="value"
 				pathMember="path"
 				sortCallback={sortByPath}
@@ -130,7 +130,7 @@ isNarrow = {isNarrow}   →   {isNarrow ? 'compact rows (title only)' : 'comfort
 <` + `/script>
 
 <div class:compact={isNarrow}>
-  <Tree data={iscoData} idMember="value" pathMember="path" {sortCallback}
+  <Tree nodes={iscoData} idMember="value" pathMember="path" {sortCallback}
         displayValueMember="label" bind:containerSize={box}>
     {#snippet nodeTemplate(node)}
       <span class="isco-row">
@@ -170,7 +170,7 @@ isNarrow = {isNarrow}   →   {isNarrow ? 'compact rows (title only)' : 'comfort
 
 		<div class="resize-box" style="width: {width2}px;">
 			<Tree
-				data={iscoData}
+				nodes={iscoData}
 				idMember="value"
 				pathMember="path"
 				sortCallback={sortByPath}
@@ -199,7 +199,7 @@ function onContainerResize({ size, deviceClass }: { size: ElementSize; deviceCla
   else                                              expandLevel = 3; // + minor
 }
 
-// <Tree data={iscoData} idMember="value" pathMember="path"
+// <Tree nodes={iscoData} idMember="value" pathMember="path"
 //       {expandLevel} {onContainerResize} />`}</pre></div>
 	</div>
 
@@ -229,7 +229,7 @@ function onContainerResize({ size, deviceClass }: { size: ElementSize; deviceCla
 
 		<div class="resize-box" style="width: 340px;">
 			<Tree
-				data={iscoData}
+				nodes={iscoData}
 				idMember="value"
 				pathMember="path"
 				sortCallback={sortByPath}
@@ -243,7 +243,7 @@ function onContainerResize({ size, deviceClass }: { size: ElementSize; deviceCla
 			In <code>info</code> mode, expand a group and click the ⓘ on a long occupation title.
 		</p>
 
-		<div class="code-block"><pre>{`<Tree data={iscoData} idMember="value" pathMember="path" {sortCallback}
+		<div class="code-block"><pre>{`<Tree nodes={iscoData} idMember="value" pathMember="path" {sortCallback}
       displayValueMember="label"
       nodeTitleOverflow="info" />   <!-- 'wrap' | 'ellipsis' | 'info' -->`}</pre></div>
 	</div>

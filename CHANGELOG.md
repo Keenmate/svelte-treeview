@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BREAKING: `data` → `nodes`; `getAllData()` removed** (`<Tree>`, `<TreeProvider>`, `update()`,
+  `TreeController`). `nodes` is the input AND the current state: after a mutation (move / add /
+  remove / paste / `applyChanges` / branch ops) the tree writes its current data back — `bind:nodes`
+  receives it (coalesced on a microtask; `await tick()` before reading right after a call), and
+  `controller.nodes` returns it synchronously. The write-back is not re-inserted (no rebuild, expand /
+  selection state kept); assigning a new array still reloads the tree. `node.data` (your object)
+  is unchanged. Same as `@keenmate/web-treeview` (`tree.nodes`).
 - **BREAKING: expand API options are `ExpandOptions { isExclusive?, silent? }`** (was `{ exclusive?,
   noEmit? }`) on `expandNodes` / `collapseNodes` / `expandAll` / `collapseAll` (`<Tree>`,
   `TreeController`, `Ltree`); the type is exported. Parameters are `paths` (`string | string[]`;

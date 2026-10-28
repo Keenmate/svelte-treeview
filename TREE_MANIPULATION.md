@@ -358,26 +358,22 @@ treeRef.setExpandedPaths(expandedPaths);
 
 ---
 
-### getAllData() - Extract All Node Data
+### `nodes` - Input AND Current State
 
-**Location:** `ltree.svelte.ts:1180-1192`, exposed in `Tree.svelte:313-315`
+`bind:nodes` (and `controller.nodes`) is both the input and the tree's current data: after a
+mutation (move / add / remove / paste / `applyChanges` …) the tree writes its data back to the
+bound array (coalesced, on a microtask). `getAllData()` was removed.
 
-```typescript
-getAllData(): T[]
+```svelte
+<Tree bind:this={treeRef} bind:nodes={items} ... />
 ```
 
-**Returns:** Flat array of all node data objects.
-
-**Use case:** Extract entire tree structure for saving to database.
-
 ```typescript
-// Build tree structure
 treeRef.addNode('', { id: 1, name: 'Root' });
 treeRef.addNode('1', { id: 2, name: 'Child' });
 
-// Extract for saving
-const allData = treeRef.getAllData();
-await saveToDatabase(allData);
+await tick(); // the write-back lands on a microtask
+await saveToDatabase($state.snapshot(items));
 ```
 
 ---
@@ -698,7 +694,7 @@ console.log(`${batchResult.successful} succeeded, ${batchResult.failed.length} f
 ```svelte
 <Tree
   bind:this={treeRef}
-  data={myData}
+  nodes={myData}
   idMember="id"
   pathMember="path"
   orderMember="sortOrder"
@@ -811,4 +807,4 @@ This documentation reflects `@keenmate/svelte-treeview` v4.6.0+ with:
 - Glow and floating drop zone modes
 - `copyNodeWithDescendants()` for cross-tree hierarchy copies
 - `_skipInsertArray` mechanism with `tick()` reset for reliable internal mutations
-- State persistence methods: `getExpandedPaths()`, `setExpandedPaths()`, `getAllData()`
+- State persistence methods: `getExpandedPaths()`, `setExpandedPaths()`, `bind:nodes` (current state)

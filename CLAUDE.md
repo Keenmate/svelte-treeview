@@ -68,7 +68,7 @@ type ContextMenuEntry = ContextMenuItem | ContextMenuDivider;
 ```
 
 TREE_PROPS_REQUIRED:
-- data: T[]
+- nodes: T[] (bindable; input AND current state — the controller writes the tree's data back after a mutation via _markNodesChanged (microtask); Tree.svelte's isNodesEcho guard keeps the echo from re-inserting; getAllData removed)
 - idMember: string  
 - pathMember: string
 - sortCallback: (ctx: SortContext<T>) => LTreeNode<T>[]

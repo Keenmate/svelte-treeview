@@ -336,7 +336,7 @@
 				</header>
 				<div class="panel-body">
 					<Tree
-						{data}
+						nodes={data}
 						idMember="id"
 						pathMember="path"
 						displayValueMember="name"

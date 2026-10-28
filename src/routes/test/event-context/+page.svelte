@@ -154,7 +154,7 @@
 		<div class="tree" data-testid="tree-a" style="max-width: 360px; border: 1px solid #ccc;">
 			<Tree
 				treeId="treeA"
-				data={treeAData}
+				nodes={treeAData}
 				idMember="id"
 				pathMember="path"
 				sortCallback={sortByName}
@@ -190,7 +190,7 @@
 		<div class="tree" data-testid="tree-b" style="max-width: 360px; border: 1px solid #ccc;">
 			<Tree
 				treeId="treeB"
-				data={treeBData}
+				nodes={treeBData}
 				idMember="id"
 				pathMember="path"
 				sortCallback={sortByName}

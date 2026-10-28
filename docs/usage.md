@@ -8,7 +8,7 @@ Full Props, Methods, Events, and Snippets reference for `@keenmate/svelte-treevi
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `data` | `T[]` | **required** | Array of data objects |
+| `nodes` | `T[]` | **required** | The tree's data objects (flat, ltree paths). Bindable: input AND current state — after a mutation `bind:nodes` receives the tree's current data |
 | `idMember` | `string` | **required** | Property name for unique identifiers |
 | `pathMember` | `string` | **required** | Property name for hierarchical paths |
 | `sortCallback` | `(ctx: SortContext<T>) => LTreeNode<T>[]` (ctx = `{ nodes }`) | `undefined` | Function to sort tree nodes |
@@ -206,7 +206,6 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `refreshSiblings` | `path: string` | Force re-render of a node's siblings |
 | `getExpandedPaths` | | Get array of all currently expanded node paths |
 | `setExpandedPaths` | `paths: string[]` | Restore expanded state from saved paths |
-| `getAllData` | | Get all tree data as a flat array |
 | `applyChanges` | | Apply pending changes and refresh the tree |
 | `closeContextMenu` | | Programmatically close the context menu |
 
@@ -263,7 +262,7 @@ await tree.scrollToPath('1.2.3', { containerScroll: true });
 ```svelte
 <!-- Default background highlight -->
 <Tree
-  {data}
+  nodes={data}
   idMember="path"
   pathMember="path"
   scrollHighlightClass="stv__scroll-highlight"
@@ -272,7 +271,7 @@ await tree.scrollToPath('1.2.3', { containerScroll: true });
 
 <!-- Red arrow highlight -->
 <Tree
-  {data}
+  nodes={data}
   idMember="path"
   pathMember="path"
   scrollHighlightClass="stv__scroll-highlight--arrow"

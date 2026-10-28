@@ -185,7 +185,7 @@
 		>
 			<div class="tree-container playground-tree">
 				<Tree
-					data={sampleData}
+					nodes={sampleData}
 					idMember="id"
 					pathMember="path"
 					sortCallback={sortByName}
@@ -221,7 +221,7 @@
 				<h3>Default Theme</h3>
 				<div class="tree-container">
 					<Tree
-						data={sampleData}
+						nodes={sampleData}
 						idMember="id"
 						pathMember="path"
 						sortCallback={sortByName}
@@ -241,7 +241,7 @@
 				<h3>Purple Theme</h3>
 				<div class="tree-container">
 					<Tree
-						data={sampleData}
+						nodes={sampleData}
 						idMember="id"
 						pathMember="path"
 						sortCallback={sortByName}
@@ -263,7 +263,7 @@
 				<h3 style="color: white;">Dark Theme <code class="hint-code">theme="dark"</code></h3>
 				<div class="tree-container">
 					<Tree
-						data={sampleData}
+						nodes={sampleData}
 						idMember="id"
 						pathMember="path"
 						sortCallback={sortByName}
@@ -284,7 +284,7 @@
 				<h3>Green Theme</h3>
 				<div class="tree-container">
 					<Tree
-						data={sampleData}
+						nodes={sampleData}
 						idMember="id"
 						pathMember="path"
 						sortCallback={sortByName}
@@ -417,7 +417,7 @@
 
 			<div class="tree-container toggle-demo-tree" style={toggleDemoStyle}>
 				<Tree
-					data={sampleData}
+					nodes={sampleData}
 					idMember="id"
 					pathMember="path"
 					sortCallback={sortByName}
@@ -800,7 +800,7 @@
 		>
 			<div class="tree-container playground-tree">
 				<Tree
-					data={sampleData}
+					nodes={sampleData}
 					idMember="id"
 					pathMember="path"
 					sortCallback={sortByName}

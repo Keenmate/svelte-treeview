@@ -780,7 +780,7 @@
         {#key treeKey}
           <Tree
             bind:this={treeRef}
-            data={treeData}
+            nodes={treeData}
             idMember="id"
             pathMember="path"
             parentPathMember="parentPath"

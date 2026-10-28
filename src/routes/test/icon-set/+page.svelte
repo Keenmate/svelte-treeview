@@ -29,34 +29,34 @@
 
 <div data-testid="tree-chevron">
 	<h2>chevron (default)</h2>
-	<Tree {data} idMember="id" pathMember="path" displayValueMember="name" expandLevel={1} />
+	<Tree nodes={data} idMember="id" pathMember="path" displayValueMember="name" expandLevel={1} />
 </div>
 
 <div data-testid="tree-triangle">
 	<h2>triangle</h2>
-	<Tree {data} idMember="id" pathMember="path" displayValueMember="name" expandLevel={1} iconSet="triangle" />
+	<Tree nodes={data} idMember="id" pathMember="path" displayValueMember="name" expandLevel={1} iconSet="triangle" />
 </div>
 
 <div data-testid="tree-plus-minus">
 	<h2>plus-minus</h2>
-	<Tree {data} idMember="id" pathMember="path" displayValueMember="name" expandLevel={1} iconSet="plus-minus" />
+	<Tree nodes={data} idMember="id" pathMember="path" displayValueMember="name" expandLevel={1} iconSet="plus-minus" />
 </div>
 
 <div data-testid="tree-arrow">
 	<h2>arrow</h2>
-	<Tree {data} idMember="id" pathMember="path" displayValueMember="name" expandLevel={1} iconSet="arrow" />
+	<Tree nodes={data} idMember="id" pathMember="path" displayValueMember="name" expandLevel={1} iconSet="arrow" />
 </div>
 
 <div data-testid="tree-swap">
 	<h2>chevron + toggleIconMode="swap"</h2>
-	<Tree {data} idMember="id" pathMember="path" displayValueMember="name" expandLevel={1} toggleIconMode="swap" />
+	<Tree nodes={data} idMember="id" pathMember="path" displayValueMember="name" expandLevel={1} toggleIconMode="swap" />
 </div>
 
 <!-- Overriding the shared base chevron on an ANCESTOR of .stv__container should
 	 re-skin the default set's glyph — --stv-icon-expand chains to it. -->
 <div data-testid="tree-base-icon" style="--base-icon-chevron: url('http://sentinel.test/chevron.svg')">
 	<h2>--base-icon-chevron override</h2>
-	<Tree {data} idMember="id" pathMember="path" displayValueMember="name" expandLevel={1} />
+	<Tree nodes={data} idMember="id" pathMember="path" displayValueMember="name" expandLevel={1} />
 </div>
 
 <div data-testid="tree-live">
@@ -71,7 +71,7 @@
 	</div>
 	<div data-testid="live-readout">iconSet = {liveSet}, swap = {liveSwap}</div>
 	<Tree
-		{data}
+		nodes={data}
 		idMember="id"
 		pathMember="path"
 		displayValueMember="name"

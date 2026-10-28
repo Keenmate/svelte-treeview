@@ -189,7 +189,7 @@
 				</div>
 				<div class="card-body">
 					<Tree
-						{data}
+						nodes={data}
 						{idMember}
 						{pathMember}
 						{displayValueMember}

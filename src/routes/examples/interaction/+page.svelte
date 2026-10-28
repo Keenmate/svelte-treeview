@@ -365,7 +365,7 @@
 			<div class="tree-container tree-container-tall">
 				<Tree
 					bind:this={clickTreeRef}
-					data={sampleData}
+					nodes={sampleData}
 					idMember="id"
 					pathMember="path"
 					sortCallback={sortByName}
@@ -487,7 +487,7 @@
 		<div class="grid-2">
 			<div class="tree-container tree-container-tall">
 				<Tree
-					data={sampleData}
+					nodes={sampleData}
 					idMember="id"
 					pathMember="path"
 					sortCallback={sortByName}
@@ -600,7 +600,7 @@ End    Go to last visible node
 		<div class="grid-2">
 			<div class="tree-container tree-container-tall">
 				<Tree
-					data={sampleData}
+					nodes={sampleData}
 					idMember="id"
 					pathMember="path"
 					sortCallback={sortByName}
@@ -672,7 +672,7 @@ End    Go to last visible node
 		<div class="tree-container tree-container-tall">
 			<Tree
 				bind:this={silentTreeRef}
-				data={sampleData}
+				nodes={sampleData}
 				idMember="id"
 				pathMember="path"
 				sortCallback={sortByName}

@@ -299,7 +299,7 @@
 				</div>
 				<div class="card-body">
 					<Tree
-						data={contextMenuData}
+						nodes={contextMenuData}
 						idMember="id"
 						pathMember="path"
 						displayValueMember="name"
@@ -477,7 +477,7 @@
 				</div>
 				<div class="card-body">
 					<Tree
-						data={advancedContextMenuData}
+						nodes={advancedContextMenuData}
 						idMember="id"
 						pathMember="path"
 						displayValueMember="name"

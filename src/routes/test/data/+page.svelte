@@ -59,7 +59,7 @@
 		<h2>Path-Based Data Structure</h2>
 		<div class="tree-container">
 			<Tree
-				data={dotSeparatorData}
+				nodes={dotSeparatorData}
 				idMember="id"
 				pathMember="path"
 				sortCallback={sortByName}
@@ -78,7 +78,7 @@
 		<div class="two-up">
 			<div class="tree-container">
 				<Tree
-					data={slashSeparatorData}
+					nodes={slashSeparatorData}
 					idMember="id"
 					pathMember="path"
 					sortCallback={sortByName}
@@ -93,7 +93,7 @@
 			</div>
 			<div class="tree-container">
 				<Tree
-					data={colonSeparatorData}
+					nodes={colonSeparatorData}
 					idMember="id"
 					pathMember="path"
 					sortCallback={sortByName}
@@ -113,7 +113,7 @@
 		<h2>Insert Result and Validation</h2>
 		<div class="tree-container">
 			<Tree
-				data={problematicData}
+				nodes={problematicData}
 				idMember="id"
 				pathMember="path"
 				sortCallback={sortByName}

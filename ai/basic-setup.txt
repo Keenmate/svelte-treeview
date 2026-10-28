@@ -40,7 +40,7 @@ MINIMAL EXAMPLE
 </script>
 
 <Tree
-  {data}
+  nodes={data}
   idMember="id"
   pathMember="path"
   displayValueMember="name"
@@ -93,7 +93,7 @@ BINDING FOCUSED NODE
 </script>
 
 <Tree
-  {data}
+  nodes={data}
   idMember="id"
   pathMember="path"
   bind:focusedNode
@@ -117,7 +117,7 @@ BINDING SEARCH TEXT
 <input bind:value={searchTerm} placeholder="Search..." />
 
 <Tree
-  {data}
+  nodes={data}
   idMember="id"
   pathMember="path"
   bind:searchTerm
@@ -128,7 +128,7 @@ BINDING SEARCH TEXT
 CUSTOM NODE TEMPLATE
 --------------------
 <Tree
-  {data}
+  nodes={data}
   idMember="id"
   pathMember="path"
 >
@@ -150,7 +150,7 @@ EXPAND/COLLAPSE CONTROL
 Control initial expansion:
 
 <Tree
-  {data}
+  nodes={data}
   expandLevel={3}  <!-- Expand first 3 levels -->
 />
 
@@ -160,7 +160,7 @@ Programmatic control:
   let treeRef;
 </script>
 
-<Tree bind:this={treeRef} {data} ... />
+<Tree bind:this={treeRef} nodes={data} ... />
 
 <button onclick={() => treeRef.expandAll()}>Expand All</button>
 <button onclick={() => treeRef.collapseAll()}>Collapse All</button>
@@ -173,7 +173,7 @@ Programmatic control:
 CLICK HANDLING
 --------------
 <Tree
-  {data}
+  nodes={data}
   idMember="id"
   pathMember="path"
   onNodeClick={(ctx) => {
@@ -205,7 +205,7 @@ SCROLL TO NODE
   }
 </script>
 
-<Tree bind:this={treeRef} {data} ... />
+<Tree bind:this={treeRef} nodes={data} ... />
 <button onclick={goToNode}>Go to 1.2.3</button>
 
 TREE STATISTICS
@@ -235,7 +235,7 @@ EMPTY STATE
 -----------
 Custom message when tree is empty:
 
-<Tree {data} ...>
+<Tree nodes={data} ...>
   {#snippet noData()}
     <div class="empty-state">
       <p>No items found</p>
@@ -248,7 +248,7 @@ The snippet name is noData (not noDataFound). Without a snippet the
 labels prop supplies the text: labels.noData (default "No data") when the
 tree has no nodes, labels.noResults (default "No results found") when the
 search filter matched nothing. '' renders nothing.
-<Tree {data} labels={{ noData: 'Nothing here yet' }} />
+<Tree nodes={data} labels={{ noData: 'Nothing here yet' }} />
 
 LABELS (UI strings)
 -------------------
@@ -263,7 +263,7 @@ LOADING STATE
 -------------
 Show a loading placeholder while data is being fetched:
 
-<Tree {data} isLoading={isLoading}>
+<Tree nodes={data} isLoading={isLoading}>
   {#snippet loadingPlaceholder()}
     <div class="loading">Loading tree data...</div>
   {/snippet}
@@ -273,7 +273,7 @@ DROP PLACEHOLDER
 ----------------
 Custom placeholder for empty trees that accept drops:
 
-<Tree {data} dragDropMode="both">
+<Tree nodes={data} dragDropMode="both">
   {#snippet dropPlaceholder()}
     <div class="drop-here">Drop items here to start</div>
   {/snippet}
@@ -301,7 +301,7 @@ COMMON SETUP PATTERNS
 ---------------------
 File explorer:
 <Tree
-  {data}
+  nodes={data}
   idMember="id"
   pathMember="path"
   displayValueMember="name"
@@ -311,7 +311,7 @@ File explorer:
 
 Organization tree:
 <Tree
-  {data}
+  nodes={data}
   idMember="employeeId"
   pathMember="orgPath"
   displayValueMember="fullName"
@@ -320,7 +320,7 @@ Organization tree:
 
 With search and drag-drop:
 <Tree
-  {data}
+  nodes={data}
   idMember="id"
   pathMember="path"
   bind:searchTerm

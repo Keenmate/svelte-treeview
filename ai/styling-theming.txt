@@ -306,8 +306,8 @@ Three ways dark mode kicks in:
 3. Per-instance: the theme prop forces one tree dark or light regardless of
    the page. It is forwarded to the root .stv__container as data-theme:
 
-<Tree {data} theme="dark" />
-<Tree {data} theme="light" />
+<Tree nodes={data} theme="dark" />
+<Tree nodes={data} theme="light" />
 
 Leave theme undefined to inherit from the page.
 
@@ -336,7 +336,7 @@ Level 1 = 0 offset, Level 2 = 1rem, Level 3 = 2rem, etc. (indent is
 
 NODE TEMPLATE STYLING
 ---------------------
-<Tree {data}>
+<Tree nodes={data}>
   {#snippet nodeTemplate(node)}
     <div class="custom-node">
       <span class="icon">{node.data.icon}</span>

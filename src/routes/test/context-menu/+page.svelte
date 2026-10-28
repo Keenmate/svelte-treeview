@@ -163,7 +163,7 @@
 
 		<div class="tree-container">
 			<Tree
-				data={sampleData}
+				nodes={sampleData}
 				idMember="id"
 				pathMember="path"
 				sortCallback={sortByName}
@@ -192,7 +192,7 @@
 
 		<div class="tree-container">
 			<Tree
-				data={sampleData}
+				nodes={sampleData}
 				idMember="id"
 				pathMember="path"
 				sortCallback={sortByName}

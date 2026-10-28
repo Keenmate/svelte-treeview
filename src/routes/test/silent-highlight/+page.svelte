@@ -102,7 +102,7 @@
 	<div class="tree-container">
 		<Tree
 			bind:this={treeRef}
-			data={sampleData}
+			nodes={sampleData}
 			idMember="id"
 			pathMember="path"
 			sortCallback={sortByName}

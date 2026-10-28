@@ -95,7 +95,7 @@
 	<div class="tree-scroll" data-testid="scroll-container">
 		<Tree
 			bind:this={treeRef}
-			{data}
+			nodes={data}
 			idMember="id"
 			pathMember="path"
 			sortCallback={sortByName}

@@ -79,7 +79,7 @@
 
 		<div class="tree-container">
 			<Tree
-				data={sampleData}
+				nodes={sampleData}
 				idMember="id"
 				pathMember="path"
 				displayValueMember="name"
@@ -118,7 +118,7 @@
 
 		<div class="tree-container">
 			<Tree
-				data={sampleData}
+				nodes={sampleData}
 				idMember="id"
 				pathMember="path"
 				displayValueMember="name"
@@ -163,7 +163,7 @@
 
 		<div class="tree-container" style={sizeStyle}>
 			<Tree
-				data={sampleData}
+				nodes={sampleData}
 				idMember="id"
 				pathMember="path"
 				displayValueMember="name"

@@ -42,7 +42,7 @@
 	<section data-testid="select">
 		<h2>clickBehavior="select"</h2>
 		<Tree
-			{data}
+			nodes={data}
 			idMember="id"
 			pathMember="path"
 			sortCallback={sortByName}
@@ -57,7 +57,7 @@
 	<section data-testid="expand">
 		<h2>clickBehavior="expand-and-focus" (default)</h2>
 		<Tree
-			{data}
+			nodes={data}
 			idMember="id"
 			pathMember="path"
 			sortCallback={sortByName}

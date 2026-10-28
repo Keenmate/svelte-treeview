@@ -20,7 +20,7 @@ For live demos, see [svelte-treeview.keenmate.dev](https://svelte-treeview.keenm
 </script>
 
 <Tree
-  data={fileData}
+  nodes={fileData}
   idMember="path"
   pathMember="path"
   checkedNodeClass="stv__selected--bold"
@@ -51,7 +51,7 @@ For live demos, see [svelte-treeview.keenmate.dev](https://svelte-treeview.keenm
 <input type="text" placeholder="Search..." bind:value={searchTerm} />
 
 <Tree
-  {data}
+  nodes={data}
   idMember="path"
   pathMember="path"
   shouldUseInternalSearchIndex={true}
@@ -91,7 +91,7 @@ For live demos, see [svelte-treeview.keenmate.dev](https://svelte-treeview.keenm
 
 <Tree
   bind:this={treeRef}
-  {data}
+  nodes={data}
   idMember="path"
   pathMember="path"
   shouldUseInternalSearchIndex={true}
@@ -147,7 +147,7 @@ Full reference: [FlexSearch options](https://github.com/nextapps-de/flexsearch#o
 
 <Tree
   bind:this={treeRef}
-  {data}
+  nodes={data}
   idMember="path"
   pathMember="path"
   dragDropMode="both"
@@ -185,13 +185,13 @@ Restrict which positions a node accepts:
   }
 </script>
 
-<Tree {data} getAllowedDropPositionsCallback={getAllowedDropPositions} />
+<Tree nodes={data} getAllowedDropPositionsCallback={getAllowedDropPositions} />
 ```
 
 Or the member-based form for server-side data:
 
 ```svelte
-<Tree {data} allowedDropPositionsMember="allowedDropPositions" />
+<Tree nodes={data} allowedDropPositionsMember="allowedDropPositions" />
 <!-- Where data items have: { allowedDropPositions: ['child'] } -->
 ```
 
@@ -218,7 +218,7 @@ Use `beforeDropCallback` to validate or modify drops, including async confirmati
   }
 </script>
 
-<Tree {data} beforeDropCallback={beforeDrop} onNodeDrop={onDrop} />
+<Tree nodes={data} beforeDropCallback={beforeDrop} onNodeDrop={onDrop} />
 ```
 
 ## Tree editing
@@ -254,7 +254,7 @@ The tree exposes methods for programmatic editing:
 
 <Tree
   bind:this={treeRef}
-  {data}
+  nodes={data}
   idMember="id"
   pathMember="path"
   orderMember="sortOrder"
@@ -299,7 +299,7 @@ The tree supports two context-menu styles: **callback-based** (imperative, share
 </script>
 
 <Tree
-  {data}
+  nodes={data}
   idMember="path"
   pathMember="path"
   contextMenuCallback={createContextMenu}
@@ -313,7 +313,7 @@ The tree supports two context-menu styles: **callback-based** (imperative, share
   import { Tree, ContextMenuItemC, ContextMenuDividerC } from '@keenmate/svelte-treeview';
 </script>
 
-<Tree {data} idMember="path" pathMember="path">
+<Tree nodes={data} idMember="path" pathMember="path">
   {#snippet contextMenu(node, close)}
     <ContextMenuItemC text="Copy" icon="📋" shortcut="C"
       onClick={() => { copy(node); close(); }} />

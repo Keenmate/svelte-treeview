@@ -109,7 +109,7 @@
 			<Tree
 				bind:this={treeRef}
 				treeId="keyboard-nav"
-				data={treeData}
+				nodes={treeData}
 				idMember="id"
 				pathMember="path"
 				orderMember="sortOrder"

@@ -379,7 +379,7 @@ const data = [
 
 // Tree component
 <Tree
-  data={data}
+  nodes={data}
   idMember="id"
   pathMember="path"
   sortCallback={sortByName}
@@ -391,7 +391,7 @@ const data = [
 				<h3>Result</h3>
 				<div class="tree-container">
 					<Tree
-						data={dotSeparatorData}
+						nodes={dotSeparatorData}
 						idMember="id"
 						pathMember="path"
 						sortCallback={sortByName}
@@ -447,7 +447,7 @@ const data = [
 				<h3>With <code>displayValueMember="name"</code></h3>
 				<div class="tree-container">
 					<Tree
-						data={dotSeparatorData}
+						nodes={dotSeparatorData}
 						idMember="id"
 						pathMember="path"
 						displayValueMember="name"
@@ -463,7 +463,7 @@ const data = [
 				<h3>No member / no callback &rarr; fallback</h3>
 				<div class="tree-container">
 					<Tree
-						data={dotSeparatorData}
+						nodes={dotSeparatorData}
 						idMember="id"
 						pathMember="path"
 						labels={{ noDisplayValue: displayValueFallbackText }}
@@ -478,7 +478,7 @@ const data = [
 
 		<div class="code-block">
 			<pre>{`<Tree
-  data={data}
+  nodes={data}
   idMember="id"
   pathMember="path"
   labels={{ noDisplayValue: '${displayValueFallbackText}' }}
@@ -506,7 +506,7 @@ const data = [
 				<h3>Slash Separator (File Paths)</h3>
 				<div class="tree-container">
 					<Tree
-						data={slashSeparatorData}
+						nodes={slashSeparatorData}
 						idMember="id"
 						pathMember="path"
 						sortCallback={sortByName}
@@ -533,7 +533,7 @@ const data = [
 				<h3>Double-Colon Separator (Namespaces)</h3>
 				<div class="tree-container">
 					<Tree
-						data={colonSeparatorData}
+						nodes={colonSeparatorData}
 						idMember="id"
 						pathMember="path"
 						sortCallback={sortByName}
@@ -584,7 +584,7 @@ const data = [
 				<h3>Tree (valid items only)</h3>
 				<div class="tree-container">
 					<Tree
-						data={problematicData}
+						nodes={problematicData}
 						idMember="id"
 						pathMember="path"
 						sortCallback={sortByName}
@@ -622,7 +622,7 @@ const data = [
 ${"<"}/script>
 
 <Tree
-  data={data}
+  nodes={data}
   bind:insertResult
   ...
 />
@@ -712,7 +712,7 @@ treeRef.insertBranch(targetPath, serverResult);`}</pre>
 			<div class="tree-container tree-container-tall">
 				<Tree
 					bind:this={treeRef}
-					data={treeData}
+					nodes={treeData}
 					idMember="id"
 					pathMember="path"
 					sortCallback={sortByOrder}
@@ -808,7 +808,7 @@ treeRef.insertBranch(targetPath, serverResult);`}</pre>
 		<div class="code-block">
 			<pre>{`// Minimal required props
 <Tree
-  data={myData}
+  nodes={myData}
   idMember="id"
   pathMember="path"
   sortCallback={({ nodes: items }) => [...items].sort((a, b) =>

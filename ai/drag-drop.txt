@@ -24,7 +24,7 @@ BASIC DRAG AND DROP
 </script>
 
 <Tree
-  {data}
+  nodes={data}
   idMember="id"
   pathMember="path"
   dragDropMode="both"
@@ -133,7 +133,7 @@ SAME-TREE MOVE (Auto-handled)
 When dropping within the same tree, the move is auto-handled:
 
 <Tree
-  {data}
+  nodes={data}
   orderMember="sortOrder"
   onNodeDrop={(ctx) => {
     // Move already happened! This is for notification only.
@@ -164,8 +164,8 @@ CROSS-TREE DRAG
   }
 </script>
 
-<Tree data={leftData} treeId="left" onNodeDrop={handleLeftDrop} />
-<Tree data={rightData} treeId="right" onNodeDrop={handleRightDrop} />
+<Tree nodes={leftData} treeId="left" onNodeDrop={handleLeftDrop} />
+<Tree nodes={rightData} treeId="right" onNodeDrop={handleRightDrop} />
 
 ASYNC DROP VALIDATION
 ---------------------
@@ -287,7 +287,7 @@ EMPTY TREE DROP
 ---------------
 Custom placeholder for empty trees:
 
-<Tree {data}>
+<Tree nodes={data}>
   {#snippet dropPlaceholder()}
     <div class="drop-here">
       Drop items here to start
@@ -392,8 +392,8 @@ File manager:
 />
 
 Two-tree transfer:
-<Tree data={available} treeId="available" dragDropMode="cross" />
-<Tree data={selected} treeId="selected" dragDropMode="cross" />
+<Tree nodes={available} treeId="available" dragDropMode="cross" />
+<Tree nodes={selected} treeId="selected" dragDropMode="cross" />
 
 With confirmation:
 <Tree

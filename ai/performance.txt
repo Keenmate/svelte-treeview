@@ -125,7 +125,7 @@ RENDER PROGRESS CALLBACKS
 Monitor progressive rendering:
 
 <Tree
-  {data}
+  nodes={data}
   isProgressiveRenderEnabled={true}
   bind:isRendering
   onRenderStart={() => console.log('Render started')}

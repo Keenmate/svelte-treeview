@@ -196,7 +196,7 @@ SVELTEKIT IMPORT
 </script>
 
 <Tree
-  {data}
+  nodes={data}
   idMember="id"
   pathMember="path"
   bind:focusedNode

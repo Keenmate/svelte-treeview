@@ -148,7 +148,7 @@
 	<div style="max-width: 500px; border: 1px solid #ccc;">
 		<Tree
 			bind:this={treeRef}
-			{data}
+			nodes={data}
 			idMember="id"
 			pathMember="path"
 			sortCallback={sortByName}

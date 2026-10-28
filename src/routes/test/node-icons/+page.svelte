@@ -25,7 +25,7 @@
 <h2>default (class on &lt;i&gt; + iconColorMember)</h2>
 <div class="tree" data-testid="tree-default">
 	<Tree
-		{data}
+		nodes={data}
 		idMember="id"
 		pathMember="path"
 		displayValueMember="name"
@@ -41,7 +41,7 @@
 <h2>getIconCallback returning emoji (text, not a class)</h2>
 <div class="tree" data-testid="tree-emoji">
 	<Tree
-		{data}
+		nodes={data}
 		idMember="id"
 		pathMember="path"
 		displayValueMember="name"
@@ -55,7 +55,7 @@
 <h2>icon snippet (receives resolved value)</h2>
 <div class="tree" data-testid="tree-snippet">
 	<Tree
-		{data}
+		nodes={data}
 		idMember="id"
 		pathMember="path"
 		displayValueMember="name"

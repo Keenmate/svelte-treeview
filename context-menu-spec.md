@@ -183,7 +183,7 @@ For Svelte users, two exported components allow declarative context menus inside
   import { ContextMenuItemC, ContextMenuDividerC } from '@keenmate/svelte-treeview';
 </script>
 
-<Tree {data} ...>
+<Tree nodes={data} ...>
   {#snippet contextMenu(node, close)}
     <ContextMenuItemC label="Copy" icon="📋" shortcut="C"
       onclick={() => { copy(node); close(); }} />

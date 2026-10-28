@@ -109,7 +109,7 @@
 		style="border: 1px solid #ccc; padding: 0.5rem; max-width: 480px;"
 	>
 		<Tree
-			{data}
+			nodes={data}
 			idMember="id"
 			pathMember="path"
 			sortCallback={sortByOrder}

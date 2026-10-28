@@ -36,7 +36,7 @@
 
 <div class="narrow" style="width: 240px;">
 	<Tree
-		{data}
+		nodes={data}
 		idMember="id"
 		pathMember="path"
 		sortCallback={sortByPath}

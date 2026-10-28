@@ -21,7 +21,7 @@
 
 <div class="tree" data-testid="tree">
 	<Tree
-		{data}
+		nodes={data}
 		idMember="id"
 		pathMember="path"
 		displayValueMember="name"

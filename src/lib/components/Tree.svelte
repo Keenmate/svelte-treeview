@@ -29,7 +29,7 @@
 		type TreeChange,
 		type ApplyChangesResult
 	} from '../ltree/types.js';
-	import { setContext, onDestroy, type Snippet } from 'svelte';
+	import { setContext, onDestroy, untrack, type Snippet } from 'svelte';
 	import type { RenderStats } from './RenderCoordinator.svelte.js';
 	import { TreeController } from '../core/TreeController.svelte.js';
 	import type { TreeLabels } from '../core/labels.js';
@@ -92,7 +92,10 @@
 		sortCallback?: (ctx: SortContext<T>) => LTreeNode<T>[];
 
 		// DATA
-		data: T[];
+		/** The tree's nodes (flat `T[]` with ltree paths). Input AND current state: after a
+		 *  mutation (move / add / remove / paste / applyChanges…) `bind:nodes` receives the
+		 *  tree's current data. */
+		nodes: T[];
 		focusedNode?: LTreeNode<T> | null | undefined;
 		selectedPaths?: Set<string>;
 		checkedPaths?: Set<string>;
@@ -426,7 +429,7 @@
 		sortCallback,
 
 		// DATA
-		data = $bindable(),
+		nodes = $bindable(),
 		focusedNode = $bindable(),
 		selectedPaths = $bindable(new Set<string>()),
 		checkedPaths = $bindable(new Set<string>()),
@@ -597,7 +600,7 @@
 		sortCallback,
 		treeId,
 		treePathSeparator,
-		data,
+		nodes,
 		focusedNode,
 		selectedPaths,
 		checkedPaths,
@@ -815,8 +818,16 @@
 	});
 
 	// ── Sync props → controller (one-way: parent prop changes flow in) ─
+	// `nodes` is input AND current state: the controller writes the tree's data back after a
+	// mutation (reverse effect below); that echo must not be fed in again as a new input.
+	let isNodesEcho = false;
 	$effect(() => {
-		controller.data = data;
+		const incoming = nodes;
+		if (isNodesEcho) {
+			isNodesEcho = false;
+			return;
+		}
+		controller.nodes = incoming;
 	});
 	$effect(() => {
 		controller.searchTerm = searchTerm;
@@ -1098,6 +1109,14 @@
 		selectedPaths = controller.selectedPaths;
 	});
 	$effect(() => {
+		// Current state after a mutation (the controller's write-back) flows out to bind:nodes.
+		const current = controller.nodes;
+		if (untrack(() => nodes) !== current) {
+			isNodesEcho = true;
+			nodes = current;
+		}
+	});
+	$effect(() => {
 		// The bindable prop exposes the POLICY-PROJECTED selection (rolled-up /
 		// leaves / all), not the internal canonical set. See cascadeCheckPolicy.
 		checkedPaths = controller.emittedPaths;
@@ -1296,10 +1315,6 @@
 		controller.setExpandedPaths(paths);
 	}
 
-	export function getAllData(): T[] {
-		return controller.getAllData();
-	}
-
 	export function closeContextMenu() {
 		controller.closeContextMenu();
 	}
@@ -1411,7 +1426,7 @@
 				| 'orderMember'
 				| 'isSorted'
 				| 'sortCallback'
-				| 'data'
+				| 'nodes'
 				| 'focusedNode'
 				| 'selectedPaths'
 				| 'checkedPaths'
@@ -1534,7 +1549,7 @@
 		if (updates.orderMember !== undefined) orderMember = updates.orderMember;
 		if (updates.isSorted !== undefined) isSorted = updates.isSorted;
 		if (updates.sortCallback !== undefined) sortCallback = updates.sortCallback;
-		if (updates.data !== undefined) data = updates.data;
+		if (updates.nodes !== undefined) nodes = updates.nodes;
 		if (updates.focusedNode !== undefined) focusedNode = updates.focusedNode;
 		if (updates.selectedPaths !== undefined) selectedPaths = updates.selectedPaths;
 		if (updates.checkedPaths !== undefined) checkedPaths = updates.checkedPaths;

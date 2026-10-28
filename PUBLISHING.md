@@ -84,7 +84,7 @@ import '@keenmate/svelte-treeview/styles.css';
 </script>
 
 <Tree 
-  {data} 
+  nodes={data} 
   idMember="path" 
   pathMember="path" 
   displayValueMember="name" 

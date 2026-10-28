@@ -91,7 +91,7 @@ Symmetric `light` selectors (`[data-theme="light"]`, `[data-bs-theme="light"]`, 
 
 ```svelte
 <!-- One dark tree on an otherwise-light page -->
-<Tree theme="dark" {data} idMember="path" pathMember="path" />
+<Tree theme="dark" nodes={data} idMember="path" pathMember="path" />
 ```
 
 Resolution precedence (highest specificity wins):
@@ -133,7 +133,7 @@ The tree emits BEM-style classes (`stv__<element>` / `stv__<element>--<modifier>
 
 ```svelte
 <Tree
-  {data}
+  nodes={data}
   idMember="path"
   pathMember="path"
   checkedNodeClass="stv__selected--bold"
@@ -149,7 +149,7 @@ Pick the expand/collapse glyph with one knob — `iconSet` (`'chevron'` (default
 `.stv__container`); it is **not** a switch between separate CSS classes.
 
 ```svelte
-<Tree {data} idMember="path" pathMember="path" iconSet="plus-minus" />
+<Tree nodes={data} idMember="path" pathMember="path" iconSet="plus-minus" />
 ```
 
 Each set chains its glyph to a shared `--base-icon-*` token

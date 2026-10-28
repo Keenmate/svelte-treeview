@@ -62,7 +62,7 @@
 			<p>No prop, no ancestor class. Expected: <strong>RED</strong>.</p>
 			<div class="wrapper brand-debug">
 				<Tree
-					data={sampleData}
+					nodes={sampleData}
 					idMember="id"
 					pathMember="path"
 					sortCallback={sortByName}
@@ -82,7 +82,7 @@
 			<p>Forwarded as <code>data-theme="dark"</code> on <code>.stv__container</code>. Expected: <strong>GREEN</strong>.</p>
 			<div class="wrapper brand-debug">
 				<Tree
-					data={sampleData}
+					nodes={sampleData}
 					idMember="id"
 					pathMember="path"
 					sortCallback={sortByName}
@@ -103,7 +103,7 @@
 			<p>Force light on a dark page would also use this. Expected: <strong>RED</strong>.</p>
 			<div class="wrapper brand-debug">
 				<Tree
-					data={sampleData}
+					nodes={sampleData}
 					idMember="id"
 					pathMember="path"
 					sortCallback={sortByName}
@@ -124,7 +124,7 @@
 			<p>Generic framework theme convention. Expected: <strong>GREEN</strong>.</p>
 			<div class="wrapper brand-debug" data-theme="dark">
 				<Tree
-					data={sampleData}
+					nodes={sampleData}
 					idMember="id"
 					pathMember="path"
 					sortCallback={sortByName}
@@ -144,7 +144,7 @@
 			<p>Bootstrap 5.3+ convention. Expected: <strong>GREEN</strong>.</p>
 			<div class="wrapper brand-debug" data-bs-theme="dark">
 				<Tree
-					data={sampleData}
+					nodes={sampleData}
 					idMember="id"
 					pathMember="path"
 					sortCallback={sortByName}
@@ -164,7 +164,7 @@
 			<p>Tailwind class-mode dark convention. Expected: <strong>GREEN</strong>.</p>
 			<div class="wrapper brand-debug dark">
 				<Tree
-					data={sampleData}
+					nodes={sampleData}
 					idMember="id"
 					pathMember="path"
 					sortCallback={sortByName}

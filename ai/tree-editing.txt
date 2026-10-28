@@ -32,7 +32,7 @@ ADD NODE
   }
 </script>
 
-<Tree bind:this={treeRef} {data} ... />
+<Tree bind:this={treeRef} nodes={data} ... />
 <button onclick={() => addChild('1.2')}>Add to 1.2</button>
 <button onclick={() => addChild('')}>Add to Root</button>
 
@@ -195,11 +195,15 @@ Save and restore expanded state:
   treeRef.setExpandedPaths(saved);
 </script>
 
-GET ALL DATA
-------------
-Get all tree data as flat array (with any modifications):
+CURRENT DATA (nodes = input AND current state)
+------------------------------------------------
+bind:nodes receives the tree's current data after every mutation (written
+back on a microtask; getAllData() was removed):
 
-const allItems = treeRef.getAllData();
+<Tree bind:nodes={items} ... />
+// after treeRef.addNode / moveNode / applyChanges …:
+await tick();
+const allItems = $state.snapshot(items);
 
 APPLY CHANGES
 -------------
@@ -326,7 +330,7 @@ Edit node name inline:
   }
 </script>
 
-<Tree {data}>
+<Tree nodes={data}>
   {#snippet nodeTemplate(node)}
     {#if editingPath === node.path}
       <input

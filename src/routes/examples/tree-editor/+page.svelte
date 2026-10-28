@@ -517,7 +517,7 @@
 		E: {
 			title: 'Batch Create Then Save',
 			description: 'Build entire tree structure in memory without saving. Use "Save All" to extract and save everything at once.',
-			keyFeature: 'getAllData()'
+			keyFeature: 'bind:nodes (current state)'
 		}
 	};
 
@@ -980,8 +980,8 @@
 	async function saveAllE() {
 		isLoadingE = true;
 
-		const allData = treeRefE.getAllData();
-		addLogE(`Extracting ${allData.length} nodes with getAllData()...`);
+		const allData = $state.snapshot(targetDataE) as ScenarioNode[];
+		addLogE(`Extracting ${allData.length} nodes from bind:nodes...`);
 
 		const delay1 = await simulateLatency();
 		addLogE(`Preparing batch insert (${delay1}ms)...`);
@@ -1064,7 +1064,7 @@
 				<div class="tree-container" class:tree-container-tall={!getTreeProps().isVirtualScrollEnabled}>
 					<Tree
 						bind:this={treeRef}
-						data={treeData}
+						nodes={treeData}
 						idMember="id"
 						pathMember="path"
 						orderMember="sortOrder"
@@ -1278,8 +1278,8 @@
 					<td>Restore expanded state from a saved list of paths</td>
 				</tr>
 				<tr>
-					<td><code>getAllData()</code></td>
-					<td>Get all node data as a flat array</td>
+					<td><code>bind:nodes</code></td>
+					<td>Input AND current state — after a mutation the bound array holds the tree's data</td>
 				</tr>
 			</tbody>
 		</table>
@@ -1292,7 +1292,7 @@
 				calculate new order values when moving nodes.
 			</p>
 			<pre style="margin-top: 0.5rem;">{`<Tree
-  data={data}
+  nodes={data}
   orderMember="sortOrder"
   ...
 />`}</pre>
@@ -1430,7 +1430,7 @@
 
 <Tree
   bind:this={treeRef}
-  data={data}
+  nodes={data}
   orderMember="sortOrder"
   dragDropMode="both"
   onNodeDrop={handleDrop}
@@ -1574,7 +1574,7 @@ function handleKeydown({ event, controller }) {
 					<div class="tree-container">
 						<Tree
 							treeId="source-tree"
-							data={sourceData}
+							nodes={sourceData}
 							idMember="id"
 							pathMember="path"
 							orderMember="sortOrder"
@@ -1606,7 +1606,7 @@ function handleKeydown({ event, controller }) {
 							<Tree
 								bind:this={treeRefA}
 								treeId="tree-a"
-								data={targetDataA}
+								nodes={targetDataA}
 								idMember="id"
 								pathMember="path"
 								orderMember="sortOrder"
@@ -1627,7 +1627,7 @@ function handleKeydown({ event, controller }) {
 							<Tree
 								bind:this={treeRefB}
 								treeId="tree-b"
-								data={targetDataB}
+								nodes={targetDataB}
 								idMember="id"
 								pathMember="path"
 								orderMember="sortOrder"
@@ -1648,7 +1648,7 @@ function handleKeydown({ event, controller }) {
 							<Tree
 								bind:this={treeRefC}
 								treeId="tree-c"
-								data={targetDataC}
+								nodes={targetDataC}
 								idMember="id"
 								pathMember="path"
 								orderMember="sortOrder"
@@ -1671,7 +1671,7 @@ function handleKeydown({ event, controller }) {
 							<Tree
 								bind:this={treeRefD}
 								treeId="tree-d"
-								data={targetDataD}
+								nodes={targetDataD}
 								idMember="id"
 								pathMember="path"
 								orderMember="sortOrder"
@@ -1704,7 +1704,7 @@ function handleKeydown({ event, controller }) {
 							<Tree
 								bind:this={treeRefE}
 								treeId="tree-e"
-								data={targetDataE}
+								bind:nodes={targetDataE}
 								idMember="id"
 								pathMember="path"
 								orderMember="sortOrder"
@@ -1880,8 +1880,8 @@ function handleDrop({ source, target, position }) {
 }
 
 async function saveAll() {
-  // Extract ALL data from tree
-  const allData = treeRef.getAllData();
+  // bind:nodes={data} holds the tree's current data (mutations included)
+  const allData = $state.snapshot(data);
 
   // Batch save to database
   await saveBatchToDatabase(allData);

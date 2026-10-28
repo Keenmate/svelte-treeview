@@ -52,7 +52,7 @@ Load children on demand:
 </script>
 
 <Tree
-  {data}
+  nodes={data}
   hasChildrenMember="hasChildren"
   onNodeClick={handleClick}
 />
@@ -103,7 +103,7 @@ Three independent state tracks:
 </script>
 
 <Tree
-  {data}
+  nodes={data}
   bind:focusedNode
   bind:selectedPaths
   bind:checkedPaths
@@ -286,7 +286,7 @@ Keep full data but show filtered view:
   <option value="file">Files</option>
 </select>
 
-<Tree data={filteredData} ... />
+<Tree nodes={filteredData} ... />
 
 Note: This loses hierarchy for filtered items. Better to use internal search.
 
@@ -325,14 +325,14 @@ DRAG BETWEEN MULTIPLE TREES
 </script>
 
 <Tree
-  data={sourceData}
+  nodes={sourceData}
   treeId="source"
   dragDropMode="cross"
   onNodeDrop={handleSourceDrop}
 />
 
 <Tree
-  data={targetData}
+  nodes={targetData}
   treeId="target"
   dragDropMode="both"
   onNodeDrop={handleTargetDrop}
@@ -355,7 +355,7 @@ Use tree as form input:
 <form onsubmit={handleSubmit}>
   <input type="hidden" name="selectedNodes" value={JSON.stringify(checkedPaths)} />
 
-  <Tree {data}>
+  <Tree nodes={data}>
     {#snippet nodeTemplate(node)}
       <label>
         <input
@@ -496,7 +496,7 @@ Tree works with SSR (SvelteKit):
 </script>
 
 {#if browser}
-  <Tree data={data.items} ... />
+  <Tree nodes={data.items} ... />
 {:else}
   <div class="tree-placeholder">Loading tree...</div>
 {/if}

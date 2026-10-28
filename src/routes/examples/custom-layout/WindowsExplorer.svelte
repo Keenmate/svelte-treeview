@@ -367,7 +367,7 @@
 		<div class="winx__nav">
 			<Tree
 				bind:this={navTreeRef}
-				data={folderData}
+				nodes={folderData}
 				idMember="id"
 				pathMember="path"
 				sortCallback={navSort}
@@ -407,7 +407,7 @@
 
 			<div class="winx-right" aria-label="Folder contents">
 				<Tree
-					data={rightTreeData}
+					nodes={rightTreeData}
 					idMember="id"
 					pathMember="treePath"
 					sortCallback={keepRightOrder}

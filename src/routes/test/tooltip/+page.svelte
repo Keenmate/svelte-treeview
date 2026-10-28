@@ -31,7 +31,7 @@
 <h2>callback (plain text)</h2>
 <div class="tree" data-testid="tree-callback">
 	<Tree
-		{data}
+		nodes={data}
 		idMember="id"
 		pathMember="path"
 		sortCallback={sortByPath}
@@ -47,7 +47,7 @@
 <h2>snippet (rich)</h2>
 <div class="tree" data-testid="tree-snippet">
 	<Tree
-		{data}
+		nodes={data}
 		idMember="id"
 		pathMember="path"
 		sortCallback={sortByPath}

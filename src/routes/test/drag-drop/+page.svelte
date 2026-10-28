@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import Tree from '$lib/components/Tree.svelte';
 	import type { LTreeNode, DropPosition } from '$lib/ltree/types.js';
 	import type {
@@ -542,7 +543,7 @@
 		return ctx.dragged.filter((r) => !r.node?.data?.locked).map((r) => r.path);
 	}
 
-	function onDhDrop({ dropped }: NodeDropContext<DhItem>) {
+	async function onDhDrop({ dropped }: NodeDropContext<DhItem>) {
 		dhDropCount += 1;
 		const folder = dropped?.[0]?.node ?? null; // the moved root (dropped is NodeRef[])
 		dhFolderChildren = folder
@@ -551,8 +552,8 @@
 					.sort()
 					.join(',')
 			: '';
-		const all = dhTreeRef.getAllData();
-		const lockData = all.find((d) => d.name === 'DH-Lock');
+		await tick(); // bind:nodes receives the tree's current data after the move
+		const lockData = dhData.find((d) => d.name === 'DH-Lock');
 		const lockNode = lockData ? dhTreeRef.getNodeByPath(lockData.path) : null;
 		dhLockParent = lockNode ? lockNode.parentPath || '(root)' : '(gone)';
 	}
@@ -766,7 +767,7 @@
 		<div class="tree-box">
 			<Tree
 				treeId="single"
-				data={singleData}
+				nodes={singleData}
 				idMember="id"
 				pathMember="path"
 				orderMember="sortOrder"
@@ -801,7 +802,7 @@
 				<h3>Source</h3>
 				<Tree
 					treeId="two-trees-source"
-					data={sourceData}
+					nodes={sourceData}
 					idMember="id"
 					pathMember="path"
 					orderMember="sortOrder"
@@ -823,7 +824,7 @@
 				<Tree
 					bind:this={targetTreeRef}
 					treeId="two-trees-target"
-					data={targetData}
+					nodes={targetData}
 					idMember="id"
 					pathMember="path"
 					orderMember="sortOrder"
@@ -856,7 +857,7 @@
 		<div class="tree-box">
 			<Tree
 				treeId="restricted-member"
-				data={restrictedMemberData}
+				nodes={restrictedMemberData}
 				idMember="id"
 				pathMember="path"
 				orderMember="sortOrder"
@@ -896,7 +897,7 @@
 		<div class="tree-box">
 			<Tree
 				treeId="restricted-callback"
-				data={restrictedCallbackData}
+				nodes={restrictedCallbackData}
 				idMember="id"
 				pathMember="path"
 				orderMember="sortOrder"
@@ -928,7 +929,7 @@
 		<div class="tree-box">
 			<Tree
 				treeId="copy"
-				data={copyData}
+				nodes={copyData}
 				idMember="id"
 				pathMember="path"
 				orderMember="sortOrder"
@@ -963,7 +964,7 @@
 		<div class="tree-box">
 			<Tree
 				treeId="multi"
-				data={multiData}
+				nodes={multiData}
 				idMember="id"
 				pathMember="path"
 				orderMember="sortOrder"
@@ -998,7 +999,7 @@
 		<div class="tree-box">
 			<Tree
 				treeId="locked"
-				data={lockedData}
+				nodes={lockedData}
 				idMember="id"
 				pathMember="path"
 				orderMember="sortOrder"
@@ -1033,7 +1034,7 @@
 		<div class="tree-box">
 			<Tree
 				treeId="touch"
-				data={touchData}
+				nodes={touchData}
 				idMember="id"
 				pathMember="path"
 				orderMember="sortOrder"
@@ -1065,7 +1066,7 @@
 		<div class="tree-box">
 			<Tree
 				treeId="before-drag"
-				data={bdData}
+				nodes={bdData}
 				idMember="id"
 				pathMember="path"
 				orderMember="sortOrder"
@@ -1102,7 +1103,7 @@
 		<div class="tree-box">
 			<Tree
 				treeId="produce"
-				data={produceData}
+				nodes={produceData}
 				idMember="id"
 				pathMember="path"
 				orderMember="sortOrder"
@@ -1143,7 +1144,7 @@
 			<Tree
 				bind:this={mnTreeRef}
 				treeId="move-nodes"
-				data={mnData}
+				nodes={mnData}
 				idMember="id"
 				pathMember="path"
 				orderMember="sortOrder"
@@ -1174,7 +1175,7 @@
 			<Tree
 				bind:this={dhTreeRef}
 				treeId="drag-hole"
-				data={dhData}
+				bind:nodes={dhData}
 				idMember="id"
 				pathMember="path"
 				orderMember="sortOrder"
@@ -1208,7 +1209,7 @@
 			<Tree
 				bind:this={csTreeRef}
 				treeId="copy-skip"
-				data={csData}
+				nodes={csData}
 				idMember="id"
 				pathMember="path"
 				orderMember="sortOrder"
@@ -1237,7 +1238,7 @@
 			<Tree
 				bind:this={dnTreeRef}
 				treeId="duplicate-nodes"
-				data={dnData}
+				nodes={dnData}
 				idMember="id"
 				pathMember="path"
 				orderMember="sortOrder"
@@ -1265,7 +1266,7 @@
 				<Tree
 					bind:this={xcSrcRef}
 					treeId="xtree-copy-src"
-					data={xcSrcData}
+					nodes={xcSrcData}
 					idMember="id"
 					pathMember="path"
 					orderMember="sortOrder"
@@ -1286,7 +1287,7 @@
 				<Tree
 					bind:this={xcDestRef}
 					treeId="xtree-copy-dest"
-					data={xcDestData}
+					nodes={xcDestData}
 					idMember="id"
 					pathMember="path"
 					orderMember="sortOrder"

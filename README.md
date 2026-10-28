@@ -79,10 +79,10 @@ Pick svelte-treeview in a Svelte 5 app, or when you want recursive rendering (ea
 
 ```svelte
 <!-- Virtual scroll for large trees -->
-<Tree {data} isVirtualScrollEnabled={true} virtualScrollContainerHeight="500px" />
+<Tree nodes={data} isVirtualScrollEnabled={true} virtualScrollContainerHeight="500px" />
 
 <!-- Flat mode (default) with progressive batching -->
-<Tree {data} isProgressiveRenderEnabled={true} initialBatchSize={20} maxBatchSize={500} />
+<Tree nodes={data} isProgressiveRenderEnabled={true} initialBatchSize={20} maxBatchSize={500} />
 ```
 
 ## Features
@@ -138,7 +138,7 @@ import '@keenmate/svelte-treeview/styles.css';
 </script>
 
 <Tree
-  {data}
+  nodes={data}
   idMember="path"
   pathMember="path"
   displayValueMember="name"
@@ -238,7 +238,7 @@ interface InsertArrayResult<T> {
 </script>
 
 <Tree
-  {data}
+  nodes={data}
   idMember="id"
   pathMember="path"
   displayValueMember="name"
@@ -280,7 +280,7 @@ For trees with 10,000+ nodes, enable virtual scroll to keep DOM size constant:
 
 ```svelte
 <Tree
-  {data}
+  nodes={data}
   isVirtualScrollEnabled={true}
   virtualScrollContainerHeight="500px"
   virtualScrollOverscan={5}

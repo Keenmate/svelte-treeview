@@ -38,7 +38,7 @@ const data = [
 ];
 
 <Tree
-  {data}
+  nodes={data}
   idMember="id"
   pathMember="path"
   displayValueMember="name"
@@ -97,7 +97,7 @@ Default separator is "." but can be changed:
 
 // File system style paths
 <Tree
-  {data}
+  nodes={data}
   treePathSeparator="/"
 />
 
@@ -116,7 +116,7 @@ DISPLAY VALUE CALLBACK
 For computed display values:
 
 <Tree
-  {data}
+  nodes={data}
   getDisplayValueCallback={({ node }) => {
     const item = node.data;
     return `${item.name} (${item.count} items)`;
@@ -164,11 +164,11 @@ const sortCallback = (nodes) => {
   });
 };
 
-<Tree {data} sortCallback={sortCallback} />
+<Tree nodes={data} sortCallback={sortCallback} />
 
 Pre-sorted data (skip internal sorting):
 
-<Tree {data} isSorted={true} />
+<Tree nodes={data} isSorted={true} />
 
 DRAGGABLE/DROP CONFIGURATION
 ----------------------------
@@ -181,7 +181,7 @@ const data = [
 ];
 
 <Tree
-  {data}
+  nodes={data}
   isDraggableMember="isDraggable"
   isDropAllowedMember="isDropAllowed"
 />
@@ -245,7 +245,7 @@ Track data insertion success/failure:
   });
 </script>
 
-<Tree {data} bind:insertResult />
+<Tree nodes={data} bind:insertResult />
 
 Common failure: "Could not find parent node"
 - Caused by missing parent in data
@@ -321,7 +321,7 @@ const employees: Employee[] = [
 ];
 
 <Tree
-  data={employees}
+  nodes={employees}
   idMember="employeeId"
   pathMember="orgPath"
   displayValueMember="fullName"

@@ -176,7 +176,7 @@
 
 		<div class="tree-container tree-container-tall">
 			<Tree
-				data={sampleData}
+				nodes={sampleData}
 				idMember="id"
 				pathMember="path"
 				sortCallback={sortByName}
@@ -217,7 +217,7 @@
 
 		<div class="tree-container tree-container-tall">
 			<Tree
-				data={sampleData}
+				nodes={sampleData}
 				idMember="id"
 				pathMember="path"
 				sortCallback={sortByName}
@@ -292,7 +292,7 @@ function getContextMenu({ node, closeMenu: close }: { node: LTreeNode<FileItem>;
   import {"{"} ContextMenuItemC, ContextMenuDividerC {"}"} from '@keenmate/svelte-treeview';
 {'<'}/script{'>'}
 
-{`<Tree {data} ...>
+{`<Tree nodes={data} ...>
   {#snippet contextMenu(node, close)}
     <ContextMenuItemC text="Copy" icon="📋" shortcut="C"
       onClick={() => { copy(node); close(); }} />

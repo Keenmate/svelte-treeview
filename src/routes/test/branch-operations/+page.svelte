@@ -91,19 +91,9 @@
 		};
 	}
 
-	function totalNodes(): number {
-		return treeRef?.getAllData().length ?? 0;
-	}
-
-	// totalNodes is derived from a ref method, not reactive state. Expose a
-	// reactive shadow that recomputes whenever opCallCount changes (i.e. after
-	// every recorded op) so specs can read a steady value.
-	let totalNodeCount = $state(0);
-	$effect(() => {
-		// Read opCallCount to declare reactivity dependency.
-		opCallCount;
-		totalNodeCount = totalNodes();
-	});
+	// bind:nodes is input AND current state — the tree writes its data back after every
+	// mutation, so the count is plain derived state.
+	const totalNodeCount = $derived(treeData.length);
 
 	// ── Op buttons ─────────────────────────────────────────────────────────
 
@@ -384,7 +374,7 @@
 			<Tree
 				bind:this={treeRef}
 				treeId="branch-ops"
-				data={treeData}
+				bind:nodes={treeData}
 				idMember="id"
 				pathMember="path"
 				orderMember="sortOrder"

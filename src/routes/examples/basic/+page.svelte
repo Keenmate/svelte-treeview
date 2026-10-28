@@ -203,7 +203,7 @@
 
 		<div class="tree-container tree-container-tall" bind:this={simpleTreeWrap}>
 			<Tree
-				data={sampleData}
+				nodes={sampleData}
 				idMember="id"
 				pathMember="path"
 				sortCallback={sortByName}
@@ -274,7 +274,7 @@
 		<div class="tree-container">
 			{#key expandLevel}
 				<Tree
-					data={sampleData}
+					nodes={sampleData}
 					idMember="id"
 					pathMember="path"
 					sortCallback={sortByName}
@@ -292,7 +292,7 @@
 
 		<div class="code-block">
 			<pre>{`<Tree
-  data={sampleData}
+  nodes={sampleData}
   idMember="id"
   pathMember="path"
   sortCallback={sortByName}
@@ -315,7 +315,7 @@
 		<div class="tree-container tree-container-tall">
 			<Tree
 				bind:this={scrollTreeRef}
-				data={sampleData}
+				nodes={sampleData}
 				idMember="id"
 				pathMember="path"
 				sortCallback={sortByName}
@@ -350,7 +350,7 @@
 		<div class="tree-container tree-container-tall">
 			<Tree
 				bind:this={expandCollapseTreeRef}
-				data={sampleData}
+				nodes={sampleData}
 				idMember="id"
 				pathMember="path"
 				sortCallback={sortByName}
@@ -407,7 +407,7 @@ treeRef.collapseNodes('1');    // Collapse specific path`}</pre>
 		<div class="tree-container tree-container-tall">
 			<Tree
 				bind:this={arrayTreeRef}
-				data={sampleData}
+				nodes={sampleData}
 				idMember="id"
 				pathMember="path"
 				sortCallback={sortByPath}
@@ -478,7 +478,7 @@ tree.collapseAll(['1', '3']);`}</pre>
 		<div class="tree-container tree-container-tall">
 			<Tree
 				bind:this={focusTreeRef}
-				data={sampleData}
+				nodes={sampleData}
 				idMember="id"
 				pathMember="path"
 				sortCallback={sortByPath}

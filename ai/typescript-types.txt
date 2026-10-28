@@ -24,7 +24,7 @@ BASIC TYPED USAGE
 </script>
 
 <Tree
-  {data}
+  nodes={data}
   idMember="id"
   pathMember="path"
   bind:focusedNode
@@ -410,7 +410,7 @@ GENERIC TREE REFERENCE
   let treeRef: Tree<MyItem>;
 </script>
 
-<Tree bind:this={treeRef} {data} ... />
+<Tree bind:this={treeRef} nodes={data} ... />
 
 <button onclick={() => {
   // Fully typed methods
@@ -466,7 +466,7 @@ function isFolder(item: TreeItem): item is FolderItem {
 
 // Usage in callbacks
 <Tree
-  data={items as TreeItem[]}
+  nodes={items as TreeItem[]}
   getDisplayValueCallback={({ node }) => {
     if (!node.data) return '';
     if (isFile(node.data)) {
@@ -494,7 +494,7 @@ onNodeClick={(ctx) => {
 
 TYPE NARROWING IN TEMPLATES
 ---------------------------
-<Tree {data}>
+<Tree nodes={data}>
   {#snippet nodeTemplate(node)}
     {#if node.data}
       <span>{node.data.name}</span>
@@ -524,7 +524,7 @@ interface ExtendedItem extends BaseItem {
 let data: ExtendedItem[] = $state.raw([]);
 
 <Tree
-  {data}
+  nodes={data}
   idMember="id"
   pathMember="path"
   getDisplayValueCallback={({ node }) => {

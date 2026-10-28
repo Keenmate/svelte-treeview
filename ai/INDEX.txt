@@ -96,7 +96,7 @@ FlexSearch → search-features.txt
 
 G
 -
-getAllData → tree-editing.txt
+nodes (bind:nodes = input AND current state; getAllData removed) → tree-editing.txt
 getAllowedDropPositionsCallback → drag-drop.txt
 getChildren → tree-editing.txt
 getContextMenuItemsCallback → context-menu.txt, events-callbacks.txt
