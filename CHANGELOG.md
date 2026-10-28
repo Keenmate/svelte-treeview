@@ -197,6 +197,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`TreeController` internals marked `@internal`** and stripped from the published types
+  (`stripInternal`): the `on*Handler` / `before*Handler` fields (use the props or `update()`), render /
+  drag / virtual-scroll state (`vs*`, `flat*`, `nodeConfig`, `nodeCallbacks`, `draggedNode`,
+  `hoveredNodeForDrop`, …) and helpers (`startDrag`, `dragOver`, `drop`, `dropAt`,
+  `calculateDropPositionFromEvent`, `handleShortcutKeydown`, `scheduleFlatRenderBatch`, …). The
+  snippet props are typed (`Snippet` / `Snippet<[LTreeNode<T>, () => void]>` for `contextMenu`).
+
 - **BREAKING: defaults aligned with `@keenmate/web-treeview`** — `expandLevel` `2` → **`0`** (only the
   roots are visible; pass `expandLevel={2}` for the old look), `shouldHandleKeyboardShortcuts`
   `false` → **`true`** (built-in Ctrl/Cmd+C/X/V, Delete, Esc on a focused tree; `false` opts out),

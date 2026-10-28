@@ -133,13 +133,20 @@
 		/** Custom icon render for a node. Receives (node, value, ctx) where value is the resolved
 		 *  icon from iconMember/getIconCallback. Wins over the default `<i class={value}>`. */
 		icon?: Snippet<[LTreeNode<T>, string | null | undefined, NodeRenderContext]>;
-		treeHeader?: any;
-		treeBody?: any;
-		treeFooter?: any;
-		noData?: any;
-		contextMenu?: any;
-		dropPlaceholder?: any;
-		loadingPlaceholder?: any;
+		/** Above the tree. */
+		treeHeader?: Snippet;
+		/** Unused by the default renderer (reserved). */
+		treeBody?: Snippet;
+		/** Below the tree. */
+		treeFooter?: Snippet;
+		/** Empty state (no nodes / no search results). */
+		noData?: Snippet;
+		/** Custom context menu: `(node, close)` — an alternative to `getContextMenuItemsCallback`. */
+		contextMenu?: Snippet<[LTreeNode<T>, () => void]>;
+		/** The empty-tree drop zone's content. */
+		dropPlaceholder?: Snippet;
+		/** Shown while `isLoading`. */
+		loadingPlaceholder?: Snippet;
 
 		/** UI strings — a partial object merged per key over the English defaults (`''` = render
 		 *  nothing): `noData` ("No data" — no nodes), `noResults` ("No results found" — the search

@@ -750,7 +750,9 @@ export class TreeController<T> {
 	renderCoordinator!: RenderCoordinator | null;
 
 	// ── Stable callback & config objects for Node context ───────────────
+	/** @internal */
 	nodeCallbacks!: NodeCallbacks<T>;
+	/** @internal */
 	nodeConfig = $state<NodeConfig>({
 		clickBehavior: 'expand-and-focus',
 		isCheckboxesShown: false,
@@ -910,41 +912,75 @@ export class TreeController<T> {
 	shouldHandleKeyboardShortcuts = $state(true);
 
 	// Event handlers (on* = fire-and-forget)
+	/** @internal */
 	onNodeClickHandler: TreeControllerProps<T>['onNodeClick'];
+	/** @internal */
 	onNodeDoubleClickHandler: TreeControllerProps<T>['onNodeDoubleClick'];
+	/** @internal */
 	onSelectionChangeHandler: TreeControllerProps<T>['onSelectionChange'];
+	/** @internal */
 	onCheckedChangeHandler: TreeControllerProps<T>['onCheckedChange'];
+	/** @internal */
 	onNodesReorderHandler: TreeControllerProps<T>['onNodesReorder'];
+	/** @internal */
 	onNodeExpandHandler: TreeControllerProps<T>['onNodeExpand'];
+	/** @internal */
 	onNodeCollapseHandler: TreeControllerProps<T>['onNodeCollapse'];
+	/** @internal */
 	onExpandedChangeHandler: TreeControllerProps<T>['onExpandedChange'];
+	/** @internal */
 	beforeExpandHandler: TreeControllerProps<T>['beforeExpandCallback'];
+	/** @internal */
 	onFocusChangeHandler: TreeControllerProps<T>['onFocusChange'];
+	/** @internal */
 	beforeActionHandler: TreeControllerProps<T>['beforeActionCallback'];
+	/** @internal */
 	onActionHandler: TreeControllerProps<T>['onAction'];
+	/** @internal */
 	onTreeChangeHandler: TreeControllerProps<T>['onTreeChange'];
+	/** @internal */
 	onNodeDragStartHandler: TreeControllerProps<T>['onNodeDragStart'];
+	/** @internal */
 	onNodeDragOverHandler: TreeControllerProps<T>['onNodeDragOver'];
+	/** @internal */
 	onNodeDropHandler: TreeControllerProps<T>['onNodeDrop'];
+	/** @internal */
 	onNodeDragRejectHandler: TreeControllerProps<T>['onNodeDragReject'];
+	/** @internal */
 	onNodeDropRejectHandler: TreeControllerProps<T>['onNodeDropReject'];
+	/** @internal */
 	onNodeCopyHandler: TreeControllerProps<T>['onNodeCopy'];
+	/** @internal */
 	onNodeCutHandler: TreeControllerProps<T>['onNodeCut'];
+	/** @internal */
 	onNodePasteHandler: TreeControllerProps<T>['onNodePaste'];
+	/** @internal */
 	onNodeDeleteHandler: TreeControllerProps<T>['onNodeDelete'];
+	/** @internal */
 	onRenderStartHandler: TreeControllerProps<T>['onRenderStart'];
+	/** @internal */
 	onRenderProgressHandler: TreeControllerProps<T>['onRenderProgress'];
+	/** @internal */
 	onRenderCompleteHandler: TreeControllerProps<T>['onRenderComplete'];
 
 	// Interceptor handlers (before*Callback)
+	/** @internal */
 	beforeDragStartHandler: TreeControllerProps<T>['beforeDragStartCallback'];
+	/** @internal */
 	beforeDropHandler: TreeControllerProps<T>['beforeDropCallback'];
+	/** @internal */
 	beforeCopyHandler: TreeControllerProps<T>['beforeCopyCallback'];
+	/** @internal */
 	beforeCutHandler: TreeControllerProps<T>['beforeCutCallback'];
+	/** @internal */
 	beforePasteHandler: TreeControllerProps<T>['beforePasteCallback'];
+	/** @internal */
 	beforeDeleteHandler: TreeControllerProps<T>['beforeDeleteCallback'];
+	/** @internal */
 	outputTransformHandler: TreeControllerProps<T>['nodeOutputTransformationCallback'];
+	/** @internal */
 	inputTransformHandler: TreeControllerProps<T>['nodeInputTransformationCallback'];
+	/** @internal */
 	beforeCheckboxToggleHandler: TreeControllerProps<T>['beforeCheckboxToggleCallback'];
 
 	// Data provider handlers (get*Callback)
@@ -1025,6 +1061,7 @@ export class TreeController<T> {
 	 *  onNodeDragReject / onNodeDropReject events fire regardless of this flag. */
 	shouldIndicateUndraggable = $state(true);
 
+	/** @internal */
 	hasContextMenuSnippet = $state(false);
 
 	// Virtual scrolling
@@ -1051,12 +1088,14 @@ export class TreeController<T> {
 	} | null = null;
 
 	// Drag and drop
+	/** @internal */
 	draggedNode: LTreeNode<any> | null = $state.raw(null);
 	// Every TRAVELING path in the active drag — the complete placement manifest (lead +
 	// multi-drag members + their descendants, minus any leave-behind holes) — so the dragged
 	// visual dims the whole set in both recursive and flat rendering, not just the roots.
 	// Reassigned wholesale (never mutated) so the Set read stays reactive. Empty when idle.
 	draggedPaths = $state.raw<Set<string>>(new Set());
+	/** @internal */
 	isDragInProgress = $state(false);
 	// Snapshot of selectedPaths taken when the OS-convention selection sync
 	// in _onNodeDragStart replaces the highlight with the dragged node. Restored
@@ -1070,17 +1109,23 @@ export class TreeController<T> {
 	// the consumer's decision drives ctx.dragged, the cross-tree publish, AND the actual move.
 	// Null when no callback ran or it returned void. Cleared on drag end.
 	private _dragSetOverride: string[] | null = null;
+	/** @internal */
 	hoveredNodeForDrop = $state.raw<LTreeNode<any> | null>(null);
+	/** @internal */
 	activeDropPosition = $state<DropPosition | null>(null);
+	/** @internal */
 	currentDropOperation = $state<DropOperation>('move');
 
 	// Floating drop zones (rendered at Tree level with position:fixed)
+	/** @internal */
 	floatingZoneRect = $state<{ top: number; left: number; width: number; height: number } | null>(
 		null
 	);
+	/** @internal */
 	floatingHoveredZone = $state<'before' | 'after' | 'child' | null>(null);
 
 	// Touch drag
+	/** @internal */
 	touchDragState = $state.raw<{
 		node: LTreeNode<any> | null;
 		startX: number;
@@ -1101,6 +1146,7 @@ export class TreeController<T> {
 		ghostElement: null,
 		currentDropTarget: null
 	});
+	/** @internal */
 	touchTimer: ReturnType<typeof setTimeout> | null = null;
 
 	// Held "can't move this" indicator: shown while a locked node stays pressed, torn down on release.
@@ -1108,19 +1154,28 @@ export class TreeController<T> {
 	private _deniedRowEl: HTMLElement | null = null;
 
 	// Progressive flat rendering
+	/** @internal */
 	flatRenderedIds = $state.raw<Set<string>>(new Set());
+	/** @internal */
 	flatRenderQueue = $state.raw<string[]>([]);
+	/** @internal */
 	flatRenderAnimationFrame: number | null = null;
+	/** @internal */
 	currentBatchSize: number = 0;
 
 	// Virtual scrolling state
+	/** @internal */
 	vsScrollTop = $state(0);
+	/** @internal */
 	vsMeasuredRowHeight = $state<number | null>(null);
+	/** @internal */
 	vsContainerRef = $state<HTMLDivElement | undefined>();
+	/** @internal */
 	vsDetectedHeight = $state<string | null>(null);
 	private vsRafPending = false;
 
 	// Drop placeholder
+	/** @internal */
 	isDropPlaceholderActive = $state(false);
 
 	// Whole-tree drop zone (Tree.svelte `isTreeDropZoneEnabled`). When on, a node that
@@ -1138,22 +1193,30 @@ export class TreeController<T> {
 	private lastFlatNodesTracker: Symbol | undefined | null = null;
 
 	// Container element (set by the host component for scrollToPath / debug menu)
+	/** @internal */
 	containerElement: HTMLElement | null = null;
 
 	// ── Derived ─────────────────────────────────────────────────────────
 
 	// Virtual scroll derived computations
+	/** @internal */
 	vsRowHeight = $derived(this.virtualScrollItemHeight ?? this.vsMeasuredRowHeight ?? 32);
+	/** @internal */
 	vsActive = $derived(this.isVirtualScrollEnabled && this.isFlatRenderingEnabled);
+	/** @internal */
 	vsContainerStyle = $derived(this.virtualScrollContainerHeight ?? this.vsDetectedHeight ?? '400px');
 	allFlatNodes = $derived(this.tree?.visibleFlatNodes ?? []);
+	/** @internal */
 	vsTotalCount = $derived(this.allFlatNodes.length);
+	/** @internal */
 	vsTotalHeight = $derived(this.vsTotalCount * this.vsRowHeight);
+	/** @internal */
 	vsStartIndex = $derived(
 		this.vsActive
 			? Math.max(0, Math.floor(this.vsScrollTop / this.vsRowHeight) - this.virtualScrollOverscan)
 			: 0
 	);
+	/** @internal */
 	vsEndIndex = $derived(
 		this.vsActive
 			? Math.min(
@@ -1164,8 +1227,10 @@ export class TreeController<T> {
 				)
 			: this.vsTotalCount
 	);
+	/** @internal */
 	vsOffsetY = $derived(this.vsStartIndex * this.vsRowHeight);
 
+	/** @internal */
 	flatNodesToRender = $derived(
 		this.vsActive
 			? this.allFlatNodes.slice(this.vsStartIndex, this.vsEndIndex)
@@ -1706,6 +1771,7 @@ export class TreeController<T> {
 
 	// ── Virtual scroll handler ──────────────────────────────────────────
 
+	/** @internal */
 	handleVirtualScroll = (event: Event) => {
 		if (this.vsRafPending) return;
 		this.vsRafPending = true;
@@ -3234,6 +3300,7 @@ export class TreeController<T> {
 	 *   Ctrl/Cmd+C copy · Ctrl/Cmd+X cut · Ctrl/Cmd+V paste (into focused node / root,
 	 *   via nodeInputTransformationCallback) · Delete remove selection · Escape cancel cut.
 	 *   Classic CUA aliases too: Ctrl+Insert copy · Shift+Insert paste · Shift+Delete cut.
+	 * @internal
 	 */
 	handleShortcutKeydown(event: KeyboardEvent): boolean {
 		if (!this.shouldHandleKeyboardShortcuts) return false;
@@ -3382,7 +3449,7 @@ export class TreeController<T> {
 
 	// ── Public Drag-and-Drop API for custom renderers ────────────────
 
-	/** Call from ondragstart. Sets up dataTransfer, stores drag state, fires callback. */
+	/** @internal Call from ondragstart. Sets up dataTransfer, stores drag state, fires callback. */
 	startDrag(node: LTreeNode<T>, event: DragEvent): void {
 		dragLogger.debug('startDrag', {
 			path: node.path,
@@ -3398,6 +3465,7 @@ export class TreeController<T> {
 	}
 
 	/** Call from ondragover. preventDefault, calculates drop position, updates hover state.
+	 * @internal
 	 *  Pass `element` for position calculation (before/after/child based on cursor). */
 	dragOver(node: LTreeNode<T>, event: DragEvent, element?: HTMLElement): void {
 		if (!event.dataTransfer?.types.includes('application/svelte-treeview')) {
@@ -3493,7 +3561,7 @@ export class TreeController<T> {
 		}));
 	}
 
-	/** Call from ondragleave. Clears hover state when cursor leaves element bounds. */
+	/** @internal Call from ondragleave. Clears hover state when cursor leaves element bounds. */
 	dragLeave(_node: LTreeNode<T>, event: DragEvent): void {
 		const target = event.currentTarget as HTMLElement;
 		if (!target) return;
@@ -3508,7 +3576,7 @@ export class TreeController<T> {
 		}
 	}
 
-	/** Call from ondrop. Uses calculated position or defaults to 'child'. */
+	/** @internal Call from ondrop. Uses calculated position or defaults to 'child'. */
 	drop(node: LTreeNode<T>, event: DragEvent): void {
 		dragLogger.debug('drop called', {
 			target: node.path,
@@ -3574,7 +3642,7 @@ export class TreeController<T> {
 		this._resetDragState();
 	}
 
-	/** Drop with explicit position (for custom drop zones or floating-style UI). */
+	/** @internal Drop with explicit position (for custom drop zones or floating-style UI). */
 	dropAt(node: LTreeNode<T>, position: DropPosition, event: DragEvent | TouchEvent): void {
 		dragLogger.debug('dropAt', {
 			target: node.path,
@@ -3612,7 +3680,7 @@ export class TreeController<T> {
 		this._resetDragState();
 	}
 
-	/** Get allowed drop positions for a node (proxies LTree method). */
+	/** @internal Get allowed drop positions for a node (proxies LTree method). */
 	getNodeAllowedDropPositions(node: LTreeNode<T>): DropPosition[] | null {
 		return this.tree?.getNodeAllowedDropPositions(node) ?? null;
 	}
@@ -3635,6 +3703,7 @@ export class TreeController<T> {
 	}
 
 	/** Calculate drop position from cursor location within an element (before/after/child).
+	 * @internal
 	 *  Same logic as Node.svelte's calculateGlowPosition, respecting allowed positions. */
 	calculateDropPositionFromEvent(
 		event: DragEvent | MouseEvent,
@@ -5941,6 +6010,7 @@ export class TreeController<T> {
 
 	// ── Helpers ──────────────────────────────────────────────────────────
 
+	/** @internal */
 	scheduleFlatRenderBatch() {
 		if (this.flatRenderAnimationFrame) return;
 
@@ -6049,7 +6119,7 @@ export class TreeController<T> {
 		this.navigation.navSelectPageUp();
 	}
 
-	/** Create the default flat-list navigation strategy (used by the HTML tree renderer) */
+	/** @internal Create the default flat-list navigation strategy (used by the HTML tree renderer) */
 	createDefaultNavigation(): TreeNavigation<T> {
 		return {
 			navTo: (path: string) => {
@@ -6311,6 +6381,7 @@ export class TreeController<T> {
 		this.tree.refresh();
 	}
 
+	/** @internal */
 	findScrollableAncestor(element: HTMLElement): HTMLElement | null {
 		let parent = element.parentElement;
 		while (parent) {
