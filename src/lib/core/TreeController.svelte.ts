@@ -26,7 +26,9 @@ import {
 	type ExpandOptions,
 	type InsertPosition,
 	type NodeContext,
-	type SortContext
+	type SortContext,
+	type SortOptions,
+	type NodesReorderContext
 } from '../ltree/types.js';
 import { tick } from 'svelte';
 import {
@@ -425,6 +427,11 @@ export interface TreeControllerProps<T> {
 	getIsCollapsibleCallback?: (ctx: NodeContext<T>) => boolean;
 	hasChildrenMember?: string | null | undefined;
 	isSorted?: boolean | null | undefined;
+	/** `false` = never auto-sort: input order kept, `addNode` appends, `insertNode` /
+	 *  `insertBranch` / `moveNode` / drop keep the exact position (with `orderMember` the order
+	 *  values are still computed between the neighbours). `sortNodes` / `sortAll` still sort.
+	 *  Default `true`. */
+	isSortingEnabled?: boolean;
 
 	displayValueMember?: string | null | undefined;
 	getDisplayValueCallback?: (ctx: NodeContext<T>) => string;
@@ -544,6 +551,10 @@ export interface TreeControllerProps<T> {
 	onNodeDropReject?: (ctx: NodeEventContext<T>) => void;
 	onSelectionChange?: (ctx: SelectionChangeContext<T>) => void;
 	onCheckedChange?: (ctx: SelectionChangeContext<T>) => void;
+	/** `sortNodes` / `sortAll` rewrote the `orderMember` values of one parent's children (custom
+	 *  `compareCallback` or `direction: 'desc'` with `orderMember` set) — persist `changes`.
+	 *  Once per affected parent; skipped with `isSilent`. */
+	onNodesReorder?: (ctx: NodesReorderContext<T>) => void;
 	// Post-operation clipboard notifications (fired AFTER the op succeeds). Symmetric
 	// with the before*Callback interceptors: onNodeCopy/onNodeCut/onNodeDelete carry the final paths
 	// plus resolved nodes (pre-removal snapshots for cut/delete); onNodePaste the PasteResult.
@@ -812,6 +823,7 @@ export class TreeController<T> {
 	onNodeDoubleClickHandler: TreeControllerProps<T>['onNodeDoubleClick'];
 	onSelectionChangeHandler: TreeControllerProps<T>['onSelectionChange'];
 	onCheckedChangeHandler: TreeControllerProps<T>['onCheckedChange'];
+	onNodesReorderHandler: TreeControllerProps<T>['onNodesReorder'];
 	onNodeDragStartHandler: TreeControllerProps<T>['onNodeDragStart'];
 	onNodeDragOverHandler: TreeControllerProps<T>['onNodeDragOver'];
 	onNodeDropHandler: TreeControllerProps<T>['onNodeDrop'];
@@ -1168,6 +1180,7 @@ export class TreeController<T> {
 		this.onNodeDoubleClickHandler = props.onNodeDoubleClick;
 		this.onSelectionChangeHandler = props.onSelectionChange;
 		this.onCheckedChangeHandler = props.onCheckedChange;
+		this.onNodesReorderHandler = props.onNodesReorder;
 		this.onNodeDragStartHandler = props.onNodeDragStart;
 		this.onNodeDragOverHandler = props.onNodeDragOver;
 		this.onNodeDropHandler = props.onNodeDrop;
@@ -1227,6 +1240,7 @@ export class TreeController<T> {
 			props.indexerTimeout,
 			{
 				isSorted: props.isSorted,
+				isSortingEnabled: props.isSortingEnabled ?? true,
 				sortCallback: props.sortCallback,
 				displayValueFallback: resolveLabel(props.labels, 'noDisplayValue')
 			}
@@ -1763,6 +1777,39 @@ export class TreeController<T> {
 
 	refreshSiblings(parentPath: string): void {
 		this.tree?.refreshSiblings(parentPath);
+	}
+
+	/** Auto-sort on/off (see the `isSortingEnabled` prop). Lives on the tree engine. */
+	get isSortingEnabled(): boolean {
+		return this.tree?.isSortingEnabled ?? true;
+	}
+	set isSortingEnabled(value: boolean) {
+		if (this.tree) this.tree.isSortingEnabled = value;
+	}
+
+	/** Sort the children of each node — one level (`''` = the root level). Default rule = the
+	 *  tree's own (`orderMember` → `sortCallback` → `Intl.Collator(numeric)` by display value);
+	 *  `compareCallback` / `direction` override it. Runs even with `isSortingEnabled = false`. */
+	sortNodes(paths: string | string[], options?: SortOptions<T>): void {
+		this._runSort(() => this.tree?.sortNodes(paths, options) ?? [], options);
+	}
+
+	/** Sort whole subtrees — the given nodes' children at every depth; `null` / omitted = the
+	 *  whole tree. Same rule / options as `sortNodes`. */
+	sortAll(paths?: string | string[] | null, options?: SortOptions<T>): void {
+		this._runSort(() => this.tree?.sortAll(paths, options) ?? [], options);
+	}
+
+	private _runSort(run: () => NodesReorderContext<T>[], options?: SortOptions<T>): void {
+		this._skipInsertArray = true;
+		this._markNodesChanged();
+		const reorders = run();
+		tick().then(() => {
+			this._skipInsertArray = false;
+			this._markNodesChanged();
+		});
+		if (options?.isSilent || !this.onNodesReorderHandler) return;
+		for (const ctx of reorders) this.onNodesReorderHandler(ctx);
 	}
 
 	refreshNode(path: string): void {
@@ -3455,6 +3502,8 @@ export class TreeController<T> {
 		if (updates.touchDragDelay !== undefined)
 			this.touchDragDelay = updates.touchDragDelay ?? 300;
 		if (updates.labels !== undefined) this.labels = updates.labels;
+		if (updates.isSortingEnabled !== undefined)
+			this.isSortingEnabled = updates.isSortingEnabled ?? true;
 		if (updates.shouldIndicateUndraggable !== undefined)
 			this.shouldIndicateUndraggable = updates.shouldIndicateUndraggable ?? true;
 
@@ -3495,6 +3544,7 @@ export class TreeController<T> {
 			this.onSelectionChangeHandler = updates.onSelectionChange;
 		if (updates.onCheckedChange !== undefined)
 			this.onCheckedChangeHandler = updates.onCheckedChange;
+		if (updates.onNodesReorder !== undefined) this.onNodesReorderHandler = updates.onNodesReorder;
 	}
 
 	// ── Internal event handlers ─────────────────────────────────────────

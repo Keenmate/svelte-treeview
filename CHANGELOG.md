@@ -11,6 +11,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`isSortingEnabled` prop (default `true`)** — `false` = never auto-sort: the input order is
+  kept, `addNode` / `addBranch` append at the end, `insertNode` / `insertBranch` / `moveNode` / drop
+  keep the exact before / after position (with `orderMember` the order values are still computed
+  between the neighbours, for persistence). `isSorted` (the "input is already sorted" hint) stays.
+  Also on `TreeController` / `update()`.
+- **`sortNodes(paths, options?)` / `sortAll(paths?, options?)`** — explicit sorting: `sortNodes`
+  sorts the children of each node (one level; `''` = the root level), `sortAll` whole subtrees
+  (`null` / omitted = the whole tree). Both run regardless of `isSortingEnabled`. `SortOptions {
+  compareCallback?: ({ a, b }) => number; direction?: 'asc' | 'desc'; isSilent? }` — default rule =
+  the tree's own (`orderMember` → `sortCallback` → `Intl.Collator(numeric)` by display value);
+  `direction: 'desc'` reverses whichever rule applies. With `orderMember` set, a custom compare (or
+  `'desc'`) rewrites the order values (10, 20, 30…) and fires the **new `onNodesReorder`** callback
+  once per affected parent: `{ parentPath, nodes, changes: [{ path, oldOrder, newOrder }] }`
+  (`isSilent` suppresses it; the tree always re-renders). New exported types `SortOptions`,
+  `SortCompareContext`, `NodesReorderContext`. Same API as `@keenmate/web-treeview`.
 - **`selectedNodeClass` (renamed to `checkedNodeClass` in the rc16 selection rename below) — opt-in CSS class for checked rows, completing the class-override family (`highlightedNodeClass` / `focusedNodeClass` / `selectedNodeClass`).** Checked rows carry no default row treatment — the checkbox is the signal — so set this prop when you want to style the checked rows themselves. Threaded through `<Tree>` + `update()` + `TreeController`; `Node.svelte` applies it whenever `node.isSelected`. Mirrored in `@keenmate/web-treeview`.
 
 ### Changed
@@ -33,6 +48,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `controller.nodes` returns it synchronously. The write-back is not re-inserted (no rebuild, expand /
   selection state kept); assigning a new array still reloads the tree. `node.data` (your object)
   is unchanged. Same as `@keenmate/web-treeview` (`tree.nodes`).
+- **Sibling sort rule unified** — the automatic re-sort (`addNode`, `moveNode`, `updateNode` of the
+  order value, `addBranch`, `refreshSiblings`) and `sortNodes` / `sortAll` share one rule:
+  `orderMember` first (it used to lose to `sortCallback` in sibling re-sorts), then `sortCallback`,
+  then the display value compared with `Intl.Collator(undefined, { numeric: true })` (was
+  `localeCompare` — `'Item 2'` now sorts before `'Item 10'`; also the initial load's tie-break).
 - **BREAKING: `silent` → `isSilent` in every options object** (`TreeMutationOptions` of the
   selection / checked / focus mutators, `ExpandOptions`). `isSilent` suppresses events / callbacks
   ONLY — the tree always re-renders: `expandNodes(p, { isSilent: true })` (and `collapseNodes` /

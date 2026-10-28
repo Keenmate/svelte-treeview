@@ -27,6 +27,8 @@
 		type InsertPosition,
 		type NodeContext,
 		type SortContext,
+		type SortOptions,
+		type NodesReorderContext,
 		type TreeChange,
 		type ApplyChangesResult
 	} from '../ltree/types.js';
@@ -78,6 +80,11 @@
 		getIsCollapsibleCallback?: (ctx: NodeContext<T>) => boolean;
 		hasChildrenMember?: string | null | undefined;
 		isSorted?: boolean | null | undefined;
+		/** `false` = never auto-sort: input order kept, `addNode` appends, `insertNode` /
+		 *  `insertBranch` / `moveNode` / drop keep the exact position (with `orderMember` the order
+		 *  values are still computed between the neighbours). `sortNodes` / `sortAll` still sort.
+		 *  Default `true`. */
+		isSortingEnabled?: boolean;
 
 		displayValueMember?: string | null | undefined;
 		getDisplayValueCallback?: (ctx: NodeContext<T>) => string;
@@ -225,6 +232,9 @@
 		onNodeDoubleClick?: (ctx: NodeEventContext<T>) => void;
 		onSelectionChange?: (ctx: SelectionChangeContext<T>) => void;
 		onCheckedChange?: (ctx: SelectionChangeContext<T>) => void;
+		/** `sortNodes` / `sortAll` rewrote one parent's `orderMember` values (custom compare /
+		 *  `direction: 'desc'`) — persist `changes`. Skipped with `isSilent`. */
+		onNodesReorder?: (ctx: NodesReorderContext<T>) => void;
 		onNodeDragStart?: (ctx: NodeDragContext<T>) => void;
 		onNodeDragOver?: (ctx: NodeDragContext<T>) => void;
 		onNodeDrop?: (ctx: NodeDropContext<T>) => void;
@@ -427,6 +437,7 @@
 		getSearchValueCallback,
 		orderMember,
 		isSorted,
+		isSortingEnabled,
 		sortCallback,
 
 		// DATA
@@ -502,6 +513,7 @@
 		onNodeDoubleClick,
 		onSelectionChange,
 		onCheckedChange,
+		onNodesReorder,
 		onNodeDragStart,
 		onNodeDragOver,
 		onNodeDrop,
@@ -598,6 +610,7 @@
 		getSearchValueCallback,
 		orderMember,
 		isSorted,
+		isSortingEnabled,
 		sortCallback,
 		treeId,
 		treePathSeparator,
@@ -646,6 +659,7 @@
 		onNodeDoubleClick,
 		onSelectionChange,
 		onCheckedChange,
+		onNodesReorder,
 		onNodeDragStart,
 		onNodeDragOver,
 		onNodeDrop,
@@ -1039,6 +1053,12 @@
 		controller.onCheckedChangeHandler = onCheckedChange;
 	});
 	$effect(() => {
+		controller.onNodesReorderHandler = onNodesReorder;
+	});
+	$effect(() => {
+		controller.isSortingEnabled = isSortingEnabled ?? true;
+	});
+	$effect(() => {
 		controller.onNodeDragStartHandler = onNodeDragStart;
 	});
 	$effect(() => {
@@ -1214,6 +1234,18 @@
 
 	export function refreshSiblings(parentPath: string): void {
 		controller.refreshSiblings(parentPath);
+	}
+
+	/** Sort the children of each node — one level (`''` = the root level). Default rule = the
+	 *  tree's own (`orderMember` → `sortCallback` → `Intl.Collator(numeric)` by display value);
+	 *  `compareCallback` / `direction` override it. Runs even with `isSortingEnabled={false}`. */
+	export function sortNodes(paths: string | string[], options?: SortOptions<T>): void {
+		controller.sortNodes(paths, options);
+	}
+
+	/** Sort whole subtrees (`null` / omitted = the whole tree). Same rule / options as `sortNodes`. */
+	export function sortAll(paths?: string | string[] | null, options?: SortOptions<T>): void {
+		controller.sortAll(paths, options);
 	}
 
 	export function refreshNode(path: string): void {
@@ -1442,6 +1474,7 @@
 				| 'getIsCollapsibleCallback'
 				| 'orderMember'
 				| 'isSorted'
+				| 'isSortingEnabled'
 				| 'sortCallback'
 				| 'nodes'
 				| 'focusedNode'
@@ -1465,6 +1498,7 @@
 				| 'onNodeDoubleClick'
 				| 'onSelectionChange'
 				| 'onCheckedChange'
+				| 'onNodesReorder'
 				| 'onNodeDragStart'
 				| 'onNodeDragOver'
 				| 'onNodeDrop'
@@ -1565,6 +1599,7 @@
 			getIsCollapsibleCallback = updates.getIsCollapsibleCallback;
 		if (updates.orderMember !== undefined) orderMember = updates.orderMember;
 		if (updates.isSorted !== undefined) isSorted = updates.isSorted;
+		if (updates.isSortingEnabled !== undefined) isSortingEnabled = updates.isSortingEnabled;
 		if (updates.sortCallback !== undefined) sortCallback = updates.sortCallback;
 		if (updates.nodes !== undefined) nodes = updates.nodes;
 		if (updates.focusedNode !== undefined) focusedNode = updates.focusedNode;
@@ -1594,6 +1629,7 @@
 		if (updates.onNodeDoubleClick !== undefined) onNodeDoubleClick = updates.onNodeDoubleClick;
 		if (updates.onSelectionChange !== undefined) onSelectionChange = updates.onSelectionChange;
 		if (updates.onCheckedChange !== undefined) onCheckedChange = updates.onCheckedChange;
+		if (updates.onNodesReorder !== undefined) onNodesReorder = updates.onNodesReorder;
 		if (updates.onNodeDragStart !== undefined) onNodeDragStart = updates.onNodeDragStart;
 		if (updates.onNodeDragOver !== undefined) onNodeDragOver = updates.onNodeDragOver;
 		if (updates.onNodeDrop !== undefined) onNodeDrop = updates.onNodeDrop;

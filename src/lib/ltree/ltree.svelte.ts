@@ -10,7 +10,7 @@ import {
 	getRelativePath
 } from '../helpers/ltree-helpers.js';
 
-import type { Ltree, InsertArrayResult, InsertBranchResult, RemoveBranchResult, NodeContext, SortContext, ExpandOptions, InsertPosition } from './types.js';
+import type { Ltree, InsertArrayResult, InsertBranchResult, RemoveBranchResult, NodeContext, SortContext, ExpandOptions, InsertPosition, SortOptions, NodesReorderContext } from './types.js';
 import { createSearchIndex } from './flex.js';
 import { Indexer } from './indexer.js';
 import { perfStart, perfEnd, perfSummary } from '../perf-logger.js';
@@ -83,6 +83,9 @@ export function createLTree<T>(
 	// this is absolutely crucial to keep order of sorted items. Segments are just numbers and numbers as properties are always sorted
 	// see https://stackoverflow.com/questions/33351816/how-to-prevent-automatic-sort-of-object-numeric-property/51497854#51497854
 	const segmentPrefix = 'x';
+
+	// Display-value comparison of the default sibling rule (numeric-aware: 'Item 2' < 'Item 10').
+	const displayCollator = new Intl.Collator(undefined, { numeric: true });
 
 	// Private state variables
 	let root = createLTreeNode<T>();
@@ -186,6 +189,7 @@ export function createLTree<T>(
 		getIsCollapsibleCallback: _getIsCollapsibleCallback,
 		orderMember: _orderMember,
 		isSorted: false,
+		isSortingEnabled: true,
 
 		// Properties for filtering
 		filteredTree,
@@ -377,7 +381,8 @@ export function createLTree<T>(
 
 			perfStart(`[${_treeId}] insertArray:sort`);
 			if (!this.isSorted) {
-				if (this.sortCallback) mappedData = this.sortCallback({ nodes: mappedData });
+				if (!this.isSortingEnabled) mappedData = this._sortByLevel(mappedData);
+				else if (this.sortCallback) mappedData = this.sortCallback({ nodes: mappedData });
 				else mappedData = this._defaultSort(this, mappedData);
 			}
 
@@ -1029,7 +1034,8 @@ export function createLTree<T>(
 		},
 
 		/**
-		 * Re-sort siblings under a parent path using sortCallback or default sort
+		 * Re-sort siblings under a parent path by the tree's sibling rule (`_sortSiblings`).
+		 * Explicit — runs even with `isSortingEnabled = false` (the automatic re-sorts skip it).
 		 * This reorders the children object to reflect updated order values
 		 * @param parentPath - Path to parent node (empty string for root)
 		 */
@@ -1041,25 +1047,7 @@ export function createLTree<T>(
 			const children = Object.values(parent.children) as LTreeNode<T>[];
 			if (children.length === 0) return;
 
-			// Sort using sortCallback or default sort
-			let sorted: LTreeNode<T>[];
-			if (this.sortCallback) {
-				sorted = this.sortCallback({ nodes: children });
-			} else {
-				// Use a simplified sort for siblings only (all same level/parent)
-				sorted = [...children].sort((a, b) => {
-					// If orderMember is provided, use it
-					if (this.orderMember && a.data && b.data) {
-						const aOrder = getField(a.data, this.orderMember) ?? 0;
-						const bOrder = getField(b.data, this.orderMember) ?? 0;
-						if (aOrder !== bOrder) {
-							return aOrder - bOrder;
-						}
-					}
-					// Fall back to display value
-					return this.getNodeDisplayValue(a).localeCompare(this.getNodeDisplayValue(b));
-				});
-			}
+			const sorted = this._sortSiblings(children);
 
 			// Rebuild children object in sorted order
 			const newChildren: Record<string, LTreeNode<T>> = {};
@@ -1191,6 +1179,13 @@ export function createLTree<T>(
 				(newParent.data as any)[_hasChildrenMember] = true;
 			}
 
+			// Sorting disabled: keep the exact position (order values still computed for persistence).
+			if (!this.isSortingEnabled && position !== 'child') {
+				this._placeNextTo([sourceNode], targetNode, position);
+				this._emitTreeChanged();
+				return { success: true };
+			}
+
 			// If orderMember is defined and position is before/after, calculate order
 			if (this.orderMember && position !== 'child' && sourceNode.data) {
 				const om = this.orderMember;
@@ -1218,8 +1213,9 @@ export function createLTree<T>(
 				}
 			}
 
-			// Re-sort siblings if needed
-			this.refreshSiblings(newParentPath);
+			// Re-sort siblings if needed (sorting disabled: a 'child' move appends at the end)
+			if (this.isSortingEnabled) this.refreshSiblings(newParentPath);
+			else this._emitTreeChanged();
 
 			return { success: true };
 		},
@@ -1432,8 +1428,8 @@ export function createLTree<T>(
 				indexer.addItem({ node: newNode, index: flatTreeNodes.length - 1 });
 			}
 
-			// Re-sort siblings to place new node in correct position
-			this.refreshSiblings(parentPath);
+			// Re-sort siblings to place new node in correct position (sorting disabled: appended)
+			if (this.isSortingEnabled) this.refreshSiblings(parentPath);
 
 			this._emitTreeChanged();
 			return { success: true, node: newNode };
@@ -1473,7 +1469,7 @@ export function createLTree<T>(
 			}
 
 			// Re-sort siblings if order was updated
-			if (orderMemberUpdated) {
+			if (orderMemberUpdated && this.isSortingEnabled) {
 				this.refreshSiblings(node.parentPath || '');
 			}
 
@@ -1628,37 +1624,14 @@ export function createLTree<T>(
 			// Handle positioning relative to sibling if specified
 			if (siblingPath && position && rootNode.data) {
 				const siblingNode = this.getNodeByPath(siblingPath);
-				if (siblingNode && this.orderMember) {
-					// Get the parent to access siblings
-					const parent = targetParentPath ? this.getNodeByPath(targetParentPath) : root;
-					if (parent) {
-						const siblings = Object.values(parent.children) as LTreeNode<T>[];
-						const oKey = this.orderMember!;
-						const siblingOrder = (siblingNode.data as any)?.[oKey] ?? 0;
-
-						if (position === 'before') {
-							// Find order value just before sibling
-							const siblingOrders = siblings
-								.filter((s) => s !== rootNode && (s.data as any)?.[oKey] !== undefined)
-								.map((s) => (s.data as any)[oKey] as number)
-								.filter((o) => o < siblingOrder)
-								.sort((a, b) => b - a);
-							const prevOrder = siblingOrders[0] ?? siblingOrder - 20;
-							(rootNode.data as any)[oKey] = Math.floor((prevOrder + siblingOrder) / 2);
-						} else {
-							// Find order value just after sibling
-							const siblingOrders = siblings
-								.filter((s) => s !== rootNode && (s.data as any)?.[oKey] !== undefined)
-								.map((s) => (s.data as any)[oKey] as number)
-								.filter((o) => o > siblingOrder)
-								.sort((a, b) => a - b);
-							const nextOrder = siblingOrders[0] ?? siblingOrder + 20;
-							(rootNode.data as any)[oKey] = Math.floor((siblingOrder + nextOrder) / 2);
-						}
-
-						// Re-sort siblings
-						this.refreshSiblings(targetParentPath);
-					}
+				// orderMember: order value between the neighbours; sorting disabled: exact position.
+				if (
+					siblingNode &&
+					(siblingNode.parentPath || '') === targetParentPath &&
+					(this.orderMember || !this.isSortingEnabled)
+				) {
+					this._placeNextTo([rootNode], siblingNode, position);
+					this._emitTreeChanged();
 				}
 			}
 
@@ -1799,10 +1772,12 @@ export function createLTree<T>(
 					const v = lo + ((hi - lo) * (i + 1)) / (n + 1);
 					(node.data as any)[om] = isWholeStep ? Math.floor(v) : v;
 				});
-				this.refreshSiblings(parentPath);
-				return;
+				if (this.isSortingEnabled) {
+					this.refreshSiblings(parentPath);
+					return;
+				}
 			}
-			// No orderMember: place directly next to the target.
+			// No orderMember / sorting disabled: place directly next to the target.
 			const reordered: Record<string, LTreeNode<T>> = {};
 			const putBlock = () => {
 				for (const b of nodes) reordered[segmentPrefix + b.pathSegment] = b;
@@ -1904,7 +1879,8 @@ export function createLTree<T>(
 
 			// Sort to ensure parents come before children
 			if (!this.isSorted) {
-				if (this.sortCallback) mappedData = this.sortCallback({ nodes: mappedData });
+				if (!this.isSortingEnabled) mappedData = this._sortByLevel(mappedData);
+				else if (this.sortCallback) mappedData = this.sortCallback({ nodes: mappedData });
 				else mappedData = this._defaultSort(this, mappedData);
 			}
 
@@ -1927,26 +1903,14 @@ export function createLTree<T>(
 				}
 			}
 
-			// Re-sort each affected parent's children (without emitting)
-			for (const pp of affectedParents) {
+			// Re-sort each affected parent's children (without emitting; sorting disabled: appended)
+			for (const pp of this.isSortingEnabled ? affectedParents : []) {
 				const parent = pp ? this.getNodeByPath(pp) : root;
 				if (!parent) continue;
 				const children = Object.values(parent.children) as LTreeNode<T>[];
 				if (children.length === 0) continue;
 
-				let sorted: LTreeNode<T>[];
-				if (this.sortCallback) {
-					sorted = this.sortCallback({ nodes: children });
-				} else {
-					sorted = [...children].sort((a, b) => {
-						if (this.orderMember && a.data && b.data) {
-							const aOrder = getField(a.data, this.orderMember) ?? 0;
-							const bOrder = getField(b.data, this.orderMember) ?? 0;
-							if (aOrder !== bOrder) return aOrder - bOrder;
-						}
-						return this.getNodeDisplayValue(a).localeCompare(this.getNodeDisplayValue(b));
-					});
-				}
+				const sorted = this._sortSiblings(children);
 				const newChildren: Record<string, LTreeNode<T>> = {};
 				sorted.forEach((child) => {
 					newChildren[segmentPrefix + child.pathSegment] = child;
@@ -2146,6 +2110,99 @@ export function createLTree<T>(
 			}
 		},
 
+		/** Stable sort by level only (parents before children, input order kept among siblings). */
+		_sortByLevel(items: LTreeNode<T>[]): LTreeNode<T>[] {
+			return items.sort((a, b) => (a.level || 0) - (b.level || 0));
+		},
+
+		/**
+		 * The sibling rule: `compareCallback` (when given) → `orderMember` (display value breaks
+		 * ties) → `sortCallback` → `Intl.Collator(numeric)` by display value. `direction: 'desc'`
+		 * reverses whichever rule applied. Returns a new array.
+		 */
+		_sortSiblings(
+			children: LTreeNode<T>[],
+			options?: Pick<SortOptions<T>, 'compareCallback' | 'direction'>
+		): LTreeNode<T>[] {
+			const byDisplay = (a: LTreeNode<T>, b: LTreeNode<T>) =>
+				displayCollator.compare(this.getNodeDisplayValue(a), this.getNodeDisplayValue(b));
+			const om = this.orderMember;
+			let sorted: LTreeNode<T>[];
+			if (options?.compareCallback) {
+				const cb = options.compareCallback;
+				sorted = [...children].sort((a, b) => cb({ a, b }));
+			} else if (om) {
+				sorted = [...children].sort((a, b) => {
+					if (a.data && b.data) {
+						const aOrder = getField(a.data, om) ?? 0;
+						const bOrder = getField(b.data, om) ?? 0;
+						if (aOrder !== bOrder) return aOrder - bOrder;
+					}
+					return byDisplay(a, b);
+				});
+			} else if (this.sortCallback) {
+				sorted = [...this.sortCallback({ nodes: [...children] })];
+			} else {
+				sorted = [...children].sort(byDisplay);
+			}
+			if (options?.direction === 'desc') sorted.reverse();
+			return sorted;
+		},
+
+		/** Sort one parent's children; collects the orderMember rewrite (if any) into `out`. */
+		_sortChildrenOf(
+			parent: LTreeNode<T>,
+			options: SortOptions<T> | undefined,
+			out: NodesReorderContext<T>[]
+		): void {
+			const children = Object.values(parent.children) as LTreeNode<T>[];
+			if (children.length === 0) return;
+			const sorted = this._sortSiblings(children, options);
+			const newChildren: Record<string, LTreeNode<T>> = {};
+			for (const child of sorted) newChildren[segmentPrefix + child.pathSegment] = child;
+			parent.children = newChildren;
+			// A custom compare / reversed order no longer matches the orderMember values —
+			// rewrite them (10, 20, 30…) so the new order persists.
+			const om = this.orderMember;
+			if (!om || (!options?.compareCallback && options?.direction !== 'desc')) return;
+			const changes: NodesReorderContext<T>['changes'] = [];
+			sorted.forEach((node, i) => {
+				if (!node.data) return;
+				const oldOrder = getField(node.data, om) as number | undefined;
+				const newOrder = (i + 1) * 10;
+				if (oldOrder === newOrder) return;
+				(node.data as any)[om] = newOrder;
+				changes.push({ path: node.path, oldOrder, newOrder });
+			});
+			if (changes.length > 0) out.push({ parentPath: parent.path || '', nodes: sorted, changes });
+		},
+
+		sortNodes(paths: string | string[], options?: SortOptions<T>): NodesReorderContext<T>[] {
+			const out: NodesReorderContext<T>[] = [];
+			for (const p of Array.isArray(paths) ? paths : [paths]) {
+				const node = isEmptyString(p) ? root : this.getNodeByPath(p);
+				if (node) this._sortChildrenOf(node, options, out);
+			}
+			this._emitTreeChanged();
+			return out;
+		},
+
+		sortAll(paths?: string | string[] | null, options?: SortOptions<T>): NodesReorderContext<T>[] {
+			const out: NodesReorderContext<T>[] = [];
+			const list =
+				paths == null
+					? []
+					: (Array.isArray(paths) ? paths : [paths]).filter((p) => !isEmptyString(p));
+			const targets = list.length === 0 ? [root] : list.map((p) => this.getNodeByPath(p));
+			const walk = (node: LTreeNode<T>) => {
+				this._sortChildrenOf(node, options, out);
+				for (const child of Object.values(node.children) as LTreeNode<T>[]) walk(child);
+			};
+			for (const t of targets) if (t) walk(t);
+			this._emitTreeChanged();
+			return out;
+		},
+
 		_defaultSort: function (self: Ltree<T>, items: LTreeNode<T>[]): LTreeNode<T>[] {
 			return items.sort((a, b) => {
 				// First, sort by level (shallower levels first)
@@ -2172,7 +2229,7 @@ export function createLTree<T>(
 				}
 
 				// Finally sort by display value
-				return self.getNodeDisplayValue(a).localeCompare(self.getNodeDisplayValue(b));
+				return displayCollator.compare(self.getNodeDisplayValue(a), self.getNodeDisplayValue(b));
 			});
 		},
 

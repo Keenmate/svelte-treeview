@@ -56,7 +56,7 @@ describe('insertNode', () => {
 		expect(tree.insertNode('2', { id: 9, name: 'Z' }, 'before').success).toBe(true);
 		expect(names(tree)).toEqual(['A', 'Z', 'B', 'C']);
 		// NOTE: a later add/move re-sorts siblings by display value (refreshSiblings) — without
-		// orderMember a direct placement only holds until the next re-sort.
+		// orderMember a direct placement only holds until the next re-sort (unless isSortingEnabled = false).
 	});
 
 	it('with orderMember computes an order value between the neighbours', () => {

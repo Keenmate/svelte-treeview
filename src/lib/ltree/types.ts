@@ -15,6 +15,35 @@ export interface SortContext<T> {
 	nodes: LTreeNode<T>[];
 }
 
+/** ctx of `SortOptions.compareCallback`: two siblings. */
+export interface SortCompareContext<T> {
+	a: LTreeNode<T>;
+	b: LTreeNode<T>;
+}
+
+/** Options of `sortNodes` / `sortAll`. */
+export interface SortOptions<T = any> {
+	/** Ascending comparator (negative = `a` first). Default: the tree's own rule — `orderMember`
+	 *  → `sortCallback` → `Intl.Collator(numeric)` by display value. With `orderMember` set, a
+	 *  custom compare rewrites the order values (10, 20, 30…) and fires `onNodesReorder`. */
+	compareCallback?: (ctx: SortCompareContext<T>) => number;
+	/** `'desc'` reverses whichever rule applies (with `orderMember`: values rewritten, like a
+	 *  custom compare). Default `'asc'`. */
+	direction?: 'asc' | 'desc';
+	/** Suppress `onNodesReorder` only — the tree always re-renders. */
+	isSilent?: boolean;
+}
+
+/** ctx of `onNodesReorder`: one parent whose children's `orderMember` values were rewritten. */
+export interface NodesReorderContext<T> {
+	/** The parent ('' = root). */
+	parentPath: string;
+	/** All its children, in the new order. */
+	nodes: LTreeNode<T>[];
+	/** Only the children whose order value changed. */
+	changes: Array<{ path: string; oldOrder: number | undefined; newOrder: number }>;
+}
+
 export type DragDropMode = 'none' | 'self' | 'cross' | 'both';
 export type ToggleIconMode = 'rotate' | 'swap';
 /**
@@ -232,6 +261,9 @@ export interface Ltree<T> {
 	orderMember?: string | null | undefined;
 
 	isSorted: boolean | null | undefined;
+	/** `false` = never auto-sort: input order kept, added nodes appended, positioned inserts /
+	 *  moves keep their exact position. Explicit `sortNodes` / `sortAll` / `refreshSiblings` still sort. */
+	isSortingEnabled: boolean;
 	sortCallback?: (ctx: SortContext<T>) => LTreeNode<T>[];
 
 	// Filtering properties
@@ -309,6 +341,20 @@ export interface Ltree<T> {
 	getNodeSearchValue(node: LTreeNode<T>): string;
 
 	_defaultSort(self: Ltree<T>, items: LTreeNode<T>[]): LTreeNode<T>[];
+	_sortByLevel(items: LTreeNode<T>[]): LTreeNode<T>[];
+	_sortSiblings(
+		children: LTreeNode<T>[],
+		options?: Pick<SortOptions<T>, 'compareCallback' | 'direction'>
+	): LTreeNode<T>[];
+	_sortChildrenOf(
+		parent: LTreeNode<T>,
+		options: SortOptions<T> | undefined,
+		out: NodesReorderContext<T>[]
+	): void;
+	/** Sort the children of each node (one level; '' = root). Returns the orderMember rewrites. */
+	sortNodes(paths: string | string[], options?: SortOptions<T>): NodesReorderContext<T>[];
+	/** Sort whole subtrees (`null` / omitted = the whole tree). Returns the orderMember rewrites. */
+	sortAll(paths?: string | string[] | null, options?: SortOptions<T>): NodesReorderContext<T>[];
 
 	_emitTreeChanged(): void;
 
