@@ -10,7 +10,7 @@ import {
 	getRelativePath
 } from '../helpers/ltree-helpers.js';
 
-import type { Ltree, InsertArrayResult, InsertBranchResult, RemoveBranchResult, NodeContext, SortContext, ExpandOptions, InsertPosition, SortOptions, NodesReorderContext } from './types.js';
+import type { Ltree, InsertArrayResult, InsertBranchResult, ReplaceBranchResult, RemoveBranchResult, NodeContext, SortContext, ExpandOptions, InsertPosition, SortOptions, NodesReorderContext } from './types.js';
 import { createSearchIndex } from './flex.js';
 import { Indexer } from './indexer.js';
 import { perfStart, perfEnd, perfSummary } from '../perf-logger.js';
@@ -1725,7 +1725,7 @@ export function createLTree<T>(
 		 */
 		insertBranch(targetPath: string, data: T[], position: InsertPosition): InsertBranchResult<T> {
 			const target = this.getNodeByPath(targetPath);
-			if (!target) return { success: false, count: 0, failed: [], parentNode: null };
+			if (!target) return { success: false, count: 0, failed: [], parentNode: null, error: 'Target not found: ' + targetPath };
 			if (position === 'child') return this.addBranch(targetPath, data);
 			const parentPath = target.parentPath || '';
 			const result = this.addBranch(parentPath, data);
@@ -1795,7 +1795,7 @@ export function createLTree<T>(
 		addBranch(parentPath: string, data: T[]): InsertBranchResult<T> {
 			const targetParent = parentPath ? this.getNodeByPath(parentPath) : root;
 			if (!targetParent && parentPath) {
-				return { success: false, count: 0, failed: [], parentNode: null };
+				return { success: false, count: 0, failed: [], parentNode: null, error: 'Parent not found: ' + parentPath };
 			}
 			const parentNode = targetParent || root;
 
@@ -1961,10 +1961,10 @@ export function createLTree<T>(
 			return { success: true, count: insertedCount, failed, parentNode };
 		},
 
-		replaceBranch(parentPath: string, data: T[]): InsertBranchResult<T> {
+		replaceBranch(parentPath: string, data: T[]): ReplaceBranchResult<T> {
 			const targetParent = parentPath ? this.getNodeByPath(parentPath) : root;
 			if (!targetParent && parentPath) {
-				return { success: false, count: 0, failed: [], parentNode: null };
+				return { success: false, count: 0, failed: [], parentNode: null, removed: 0, added: 0, error: 'Parent not found: ' + parentPath };
 			}
 			const parentNode = targetParent || root;
 
@@ -2000,7 +2000,8 @@ export function createLTree<T>(
 			nodeCount -= removedCount;
 
 			// Delegate to addBranch for the new data
-			return this.addBranch(parentPath, data);
+			const result = this.addBranch(parentPath, data);
+			return { ...result, removed: removedCount, added: result.count };
 		},
 
 		removeBranch(path: string, keepParent: boolean = false): RemoveBranchResult<T> {
@@ -2023,13 +2024,13 @@ export function createLTree<T>(
 				// Keep the node, clear its children
 				const node = path ? this.getNodeByPath(path) : root;
 				if (!node && path) {
-					return { success: false, removedCount: 0, error: `Node not found: ${path}` };
+					return { success: false, count: 0, error: `Node not found: ${path}` };
 				}
 				const targetNode = node || root;
 
 				const removedCount = countDescendants(targetNode);
 				if (removedCount === 0) {
-					return { success: true, removedCount: 0 };
+					return { success: true, count: 0 };
 				}
 
 				// Remove from flatTreeNodes
@@ -2057,22 +2058,22 @@ export function createLTree<T>(
 				}
 
 				this._emitTreeChanged();
-				return { success: true, removedCount };
+				return { success: true, count: removedCount };
 			} else {
 				// Remove the node itself + all descendants
 				if (path === '') {
-					return { success: false, removedCount: 0, error: 'Cannot delete root node' };
+					return { success: false, count: 0, error: 'Cannot delete root node' };
 				}
 
 				const node = this.getNodeByPath(path);
 				if (!node) {
-					return { success: false, removedCount: 0, error: `Node not found: ${path}` };
+					return { success: false, count: 0, error: `Node not found: ${path}` };
 				}
 
 				const parentPath = node.parentPath || '';
 				const parent = parentPath ? this.getNodeByPath(parentPath) : root;
 				if (!parent) {
-					return { success: false, removedCount: 0, error: `Parent not found: ${parentPath}` };
+					return { success: false, count: 0, error: `Parent not found: ${parentPath}` };
 				}
 
 				const removedCount = 1 + countDescendants(node);
@@ -2106,7 +2107,7 @@ export function createLTree<T>(
 				}
 
 				this._emitTreeChanged();
-				return { success: true, removedCount };
+				return { success: true, count: removedCount };
 			}
 		},
 

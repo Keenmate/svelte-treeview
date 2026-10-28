@@ -34,7 +34,6 @@
 	let treeRef: Tree<LocationItem>;
 	let searchResults = $state<LTreeNode<LocationItem>[]>([]);
 	let currentResultIndex = $state(-1);
-	let useContainerScroll = $state(true);
 
 	function sortByName({ nodes: items }: { nodes: LTreeNode<LocationItem>[] }) {
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
@@ -51,10 +50,9 @@
 		const node = searchResults[idx];
 		if (node?.path) {
 			treeRef?.scrollToPath(node.path, {
-				expand: true,
-				highlight: true,
-				scrollOptions: { behavior: 'smooth', block: 'center' },
-				containerScroll: useContainerScroll
+				shouldExpandAncestors: true,
+				shouldHighlight: true,
+				behavior: 'smooth', block: 'center'
 			});
 		}
 	}
@@ -143,10 +141,6 @@
 				<button class="search-nav-btn" title="Clear (Esc)" aria-label="Clear search" onclick={clearSearch}>×</button>
 			{/if}
 
-			<label class="scroll-option">
-				<input type="checkbox" bind:checked={useContainerScroll} />
-				Container scroll
-			</label>
 		</div>
 
 		<div class="panes">

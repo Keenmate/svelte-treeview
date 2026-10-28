@@ -85,7 +85,7 @@
 			name,
 			success: String(result.success),
 			count: '',
-			removedCount: String(result.removedCount),
+			removedCount: String(result.count),
 			failedCount: '',
 			error: result.error ?? ''
 		};

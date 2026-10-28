@@ -138,7 +138,7 @@
 	}
 
 	function scrollToPath() {
-		scrollTreeRef?.scrollToPath(scrollPath, { scrollOptions: { behavior: 'smooth', block: 'center' } });
+		scrollTreeRef?.scrollToPath(scrollPath, { shouldHighlight: true, behavior: 'smooth', block: 'center' });
 	}
 </script>
 

@@ -401,7 +401,7 @@ BREADCRUMB NAVIGATION
 
   function navigateTo(node) {
     selectedNode = node;
-    treeRef.scrollToPath(node.path, { expand: true, highlight: true });
+    treeRef.scrollToPath(node.path, { shouldHighlight: true });
   }
 </script>
 

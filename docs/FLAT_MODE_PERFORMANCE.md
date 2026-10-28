@@ -124,8 +124,7 @@ Similar to callbacks, configuration values that are the same for all nodes are m
 ```typescript
 // Tree.svelte
 const nodeConfig = {
-  expandIconClass,
-  collapseIconClass,
+  iconSet,
   leafIconClass,
   dropZoneMode,
   // ... other stable config

@@ -123,9 +123,8 @@ SEARCH RESULTS NAVIGATION
   async function goToResult(index) {
     currentIndex = index;
     await treeRef.scrollToPath(results[index].path, {
-      expand: true,
-      highlight: true,
-      containerScroll: true
+      shouldExpandAncestors: true,
+      shouldHighlight: true
     });
   }
 

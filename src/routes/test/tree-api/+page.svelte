@@ -53,6 +53,7 @@
 			displayValueMember="name"
 			getIsDropAllowedCallback={(ctx) => { ctxInfo('getIsDropAllowed', ctx); return !ctx.node.data?.isLocked; }}
 			expandLevel={1}
+			flatIndentSize="24px"
 			selectionMode="multiple"
 			getContextMenuItemsCallback={(ctx) => [{ id: 'x', text: `Menu for ${ctx.path}` }]}
 			onNodeClick={(ctx) => ctxInfo('onNodeClick', ctx)}

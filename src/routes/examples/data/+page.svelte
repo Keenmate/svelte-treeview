@@ -249,7 +249,7 @@
 
 			addLog(
 				`Moved "${sourceName}" under "${targetName}": ` +
-					`deleted ${deleteResult.removedCount}, inserted ${insertBranchResult.count} nodes. ` +
+					`deleted ${deleteResult.count}, inserted ${insertBranchResult.count} nodes. ` +
 					`Server: ${serverTime}ms, total: ${totalTime}ms`
 			);
 		} catch (err) {
@@ -327,7 +327,7 @@
 			isDisabled: isProcessing,
 			onClick: () => {
 				const result = treeRef.removeBranch(node.path);
-				addLog(`removeBranch: Removed "${node.data?.name}" (${result.removedCount} nodes)`);
+				addLog(`removeBranch: Removed "${node.data?.name}" (${result.count} nodes)`);
 				selectedNode = null;
 				close();
 			}
@@ -340,7 +340,7 @@
 				isDisabled: isProcessing,
 				onClick: () => {
 					const result = treeRef.removeBranch(node.path, true);
-					addLog(`Cleared ${result.removedCount} children from "${node.data?.name}"`);
+					addLog(`Cleared ${result.count} children from "${node.data?.name}"`);
 					close();
 				}
 			});
@@ -681,7 +681,7 @@ ${"<"}/script>
 
 		<div class="code-block">
 			<pre>{`// addBranch(parentPath, nodes)  → { success, count }
-// removeBranch(path, childrenOnly?) → { success, removedCount }
+// removeBranch(path, childrenOnly?) → { success, count }
 // replaceBranch(path, nodes)        → swap a subtree's contents in place
 
 // 1. User cuts a branch via context menu

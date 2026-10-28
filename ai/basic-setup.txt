@@ -198,9 +198,9 @@ SCROLL TO NODE
 
   async function goToNode() {
     await treeRef.scrollToPath('1.2.3', {
-      expand: true,      // Expand parents first
-      highlight: true,   // Highlight the node
-      containerScroll: true  // Scroll only within container
+      shouldExpandAncestors: true, // Expand parents first (default)
+      shouldHighlight: true,       // Flash scrollHighlightClass (default false)
+      behavior: 'smooth', block: 'center'   // native ScrollIntoViewOptions
     });
   }
 </script>

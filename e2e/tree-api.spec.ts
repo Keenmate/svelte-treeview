@@ -58,3 +58,8 @@ test('event ctxs carry a non-enumerable controller', async ({ page }) => {
 	await page.getByTestId('tree-host').getByText('C', { exact: true }).click();
 	await expect.poll(() => ctxLog(page)).toEqual(expect.arrayContaining(['onNodeClick:ctrl:hidden', 'onSelectionChange:ctrl:hidden']));
 });
+
+test('flatIndentSize sets the per-level indent in flat rendering', async ({ page }) => {
+	const ml = await page.locator('.stv__node[data-tree-path="1.1"]').evaluate((el) => getComputedStyle(el).marginLeft);
+	expect(ml).toBe('24px');
+});

@@ -9,6 +9,7 @@
 		type InsertArrayResult,
 		type InsertBranchResult,
 		type RemoveBranchResult,
+		type ReplaceBranchResult,
 		type DropPosition,
 		type DragDropMode,
 		type DropOperation,
@@ -51,7 +52,8 @@
 		KeydownContext,
 		NodeRef,
 		PasteResult,
-		TreeCallbackContext
+		TreeCallbackContext,
+		ScrollToPathOptions
 	} from '../core/TreeController.svelte.js';
 	import { uiLogger } from '../logger.js';
 	import { createTreeController } from '../core/createTreeController.js';
@@ -385,18 +387,14 @@
 		 *  set (glyph-swaps regardless of `toggleIconMode`). Each set chains to a shared
 		 *  `--base-icon-*` token, so a theme reskins every KeenMate component at once. */
 		iconSet?: 'chevron' | 'triangle' | 'plus-minus' | 'arrow';
-		/** @deprecated Use `iconSet` instead. Escape hatch to override the expand
-		 *  glyph's CSS class; the canonical class is `stv__toggle-icon--expand`. */
-		expandIconClass?: string | null | undefined;
-		/** @deprecated No longer consumed at render time — swap between expand/collapse
-		 *  is CSS-driven (see `iconSet` / `toggleIconMode`). Retained for back-compat. */
-		collapseIconClass?: string | null | undefined;
 		leafIconClass?: string | null | undefined;
 		toggleIconMode?: 'rotate' | 'swap';
 		/** How the built-in node label behaves when wider than the row: `wrap` (multi-line),
 		 *  `ellipsis` (default — single-line clip; fixed row heights for virtual scroll), or `info` (ellipsis + a trailing ⓘ
 		 *  on clipped rows that reveals the full label on click). See NodeTitleOverflow. */
 		nodeTitleOverflow?: NodeTitleOverflow;
+		/** Indent per level in flat rendering (a CSS length). Default `var(--stv-indent-size)`. */
+		flatIndentSize?: string | null;
 		/** Enable hover/focus tooltips on node rows. Content comes from the `tooltip`
 		 *  snippet (preferred) or `getNodeTooltipCallback`; no content ⇒ no tooltip. */
 		isNodeTooltipsShown?: boolean;
@@ -592,11 +590,10 @@
 		theme,
 		bodyClass,
 		iconSet = 'chevron',
-		expandIconClass = 'stv__toggle-icon--expand',
-		collapseIconClass = 'stv__toggle-icon--collapse',
 		leafIconClass = 'stv__toggle-icon--leaf',
 		toggleIconMode = 'rotate',
 		nodeTitleOverflow = 'ellipsis',
+		flatIndentSize,
 		isNodeTooltipsShown = false,
 		getNodeTooltipCallback,
 		tooltipPlacement = 'top-start',
@@ -747,11 +744,10 @@
 		getNodeContentClassCallback,
 		dragOverNodeClass,
 		draggedNodeClass,
-		expandIconClass,
-		collapseIconClass,
 		leafIconClass,
 		toggleIconMode,
 		nodeTitleOverflow,
+		flatIndentSize,
 		isNodeTooltipsShown,
 		getNodeTooltipCallback,
 		tooltipPlacement,
@@ -997,12 +993,6 @@
 		controller.rangeSelectionMode = rangeSelectionMode ?? 'visual';
 	});
 	$effect(() => {
-		controller.expandIconClass = expandIconClass ?? 'stv__toggle-icon--expand';
-	});
-	$effect(() => {
-		controller.collapseIconClass = collapseIconClass ?? 'stv__toggle-icon--collapse';
-	});
-	$effect(() => {
 		controller.leafIconClass = leafIconClass ?? 'stv__toggle-icon--leaf';
 	});
 	$effect(() => {
@@ -1010,6 +1000,7 @@
 	});
 	$effect(() => {
 		controller.nodeTitleOverflow = nodeTitleOverflow ?? 'ellipsis';
+		controller.flatIndentSize = flatIndentSize || 'var(--stv-indent-size)';
 	});
 	$effect(() => {
 		controller.isNodeTooltipsShown = isNodeTooltipsShown ?? false;
@@ -1371,9 +1362,10 @@
 		paths: string[],
 		targetPath: string,
 		position: 'before' | 'after' | 'child',
-		transform?: NodeTransformCallback<T> | null
+		transform?: NodeTransformCallback<T> | null,
+		sourceTree?: Ltree<T>
 	): { success: boolean; copiedNodes: LTreeNode<T>[]; skipped: number; error?: string } {
-		return controller.duplicateNodes(paths, targetPath, position, transform);
+		return controller.duplicateNodes(paths, targetPath, position, transform, sourceTree);
 	}
 
 	export function removeNode(
@@ -1427,7 +1419,7 @@
 		return controller.insertBranch(targetPath, data, position);
 	}
 
-	export function replaceBranch(parentPath: string, data: T[]): InsertBranchResult<T> {
+	export function replaceBranch(parentPath: string, data: T[]): ReplaceBranchResult<T> {
 		return controller.replaceBranch(parentPath, data);
 	}
 
@@ -1610,16 +1602,8 @@
 		return controller.isNodeChecked(path);
 	}
 
-	export async function scrollToPath(
-		path: string,
-		options?: {
-			expand?: boolean;
-			expandTarget?: boolean;
-			highlight?: boolean;
-			scrollOptions?: ScrollIntoViewOptions;
-			containerScroll?: boolean;
-		}
-	): Promise<boolean> {
+	/** Scroll the node at `path` into view (see `ScrollToPathOptions`); resolves `true` when found. */
+	export async function scrollToPath(path: string, options?: ScrollToPathOptions): Promise<boolean> {
 		return controller.scrollToPath(path, options);
 	}
 
@@ -1718,11 +1702,10 @@
 				| 'labels'
 				| 'bodyClass'
 				| 'iconSet'
-				| 'expandIconClass'
-				| 'collapseIconClass'
 				| 'leafIconClass'
 				| 'toggleIconMode'
 				| 'nodeTitleOverflow'
+				| 'flatIndentSize'
 				| 'isNodeTooltipsShown'
 				| 'getNodeTooltipCallback'
 				| 'tooltipPlacement'
@@ -1869,11 +1852,10 @@
 		if (updates.labels !== undefined) labels = updates.labels;
 		if (updates.bodyClass !== undefined) bodyClass = updates.bodyClass;
 		if (updates.iconSet !== undefined) iconSet = updates.iconSet;
-		if (updates.expandIconClass !== undefined) expandIconClass = updates.expandIconClass;
-		if (updates.collapseIconClass !== undefined) collapseIconClass = updates.collapseIconClass;
 		if (updates.leafIconClass !== undefined) leafIconClass = updates.leafIconClass;
 		if (updates.toggleIconMode !== undefined) toggleIconMode = updates.toggleIconMode;
 		if (updates.nodeTitleOverflow !== undefined) nodeTitleOverflow = updates.nodeTitleOverflow;
+		if (updates.flatIndentSize !== undefined) flatIndentSize = updates.flatIndentSize;
 		if (updates.isNodeTooltipsShown !== undefined)
 			isNodeTooltipsShown = updates.isNodeTooltipsShown;
 		if (updates.getNodeTooltipCallback !== undefined)

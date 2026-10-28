@@ -207,7 +207,6 @@
 	let treeRef: Tree<LocationItem>;
 	let searchResults = $state<LTreeNode<LocationItem>[]>([]);
 	let currentResultIndex = $state(-1);
-	let useContainerScroll = $state(true);
 
 	function sortByName({ nodes: items }: { nodes: LTreeNode<LocationItem>[] }) {
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
@@ -230,10 +229,9 @@
 		const node = searchResults[idx];
 		if (node?.path) {
 			treeRef?.scrollToPath(node.path, {
-				expand: true,
-				highlight: true,
-				scrollOptions: { behavior: 'smooth', block: 'center' },
-				containerScroll: useContainerScroll
+				shouldExpandAncestors: true,
+				shouldHighlight: true,
+				behavior: 'smooth', block: 'center'
 			});
 		}
 	}
@@ -354,10 +352,6 @@
 				</button>
 			{/if}
 
-			<label class="scroll-option" title="When enabled, scrolls only within the tree container. When disabled, scrolls the entire page.">
-				<input type="checkbox" bind:checked={useContainerScroll} />
-				Container scroll
-			</label>
 		</div>
 
 		<div class="grid-2">
@@ -438,7 +432,7 @@
     if (results.length > 0) {
       currentIndex = 0;
       treeRef.scrollToPath(results[0].path, {
-        expand: true, highlight: true
+        shouldExpandAncestors: true, shouldHighlight: true
       });
     }
   }
@@ -447,7 +441,7 @@
     const next = (currentIndex + 1) % results.length;
     currentIndex = next;
     treeRef.scrollToPath(results[next].path, {
-      expand: true, highlight: true
+      shouldExpandAncestors: true, shouldHighlight: true
     });
   }
 ${"<"}/script>
@@ -704,27 +698,6 @@ ${"<"}/script>
 		padding: 0.1em 0.4em;
 		font-size: 0.9em;
 		font-family: inherit;
-	}
-
-	.scroll-option {
-		display: flex;
-		align-items: center;
-		gap: 0.35rem;
-		font-size: 0.875rem;
-		color: #4a5568;
-		cursor: pointer;
-		padding: 0.25rem 0.5rem;
-		border-radius: 4px;
-		background: #f7fafc;
-		border: 1px solid #e2e8f0;
-	}
-
-	.scroll-option:hover {
-		background: #edf2f7;
-	}
-
-	.scroll-option input {
-		margin: 0;
 	}
 
 	.location-node {

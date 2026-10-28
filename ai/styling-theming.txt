@@ -115,24 +115,13 @@ Custom drag-over style:
 
 ICON CLASSES
 ------------
-<Tree
-  expandIconClass="stv__toggle-icon--expand"
-  collapseIconClass="stv__toggle-icon--collapse"
-  leafIconClass="stv__toggle-icon--leaf"
-/>
+<Tree iconSet="chevron" toggleIconMode="rotate" leafIconClass="stv__toggle-icon--leaf" />
 
-(These are the defaults — omit them to keep the built-in icons.)
-
-Custom icons with CSS:
-.my-expand::before { content: '▶'; }
-.my-collapse::before { content: '▼'; }
+The disclosure glyph comes from `iconSet` (chevron | triangle | plus-minus | arrow) + the
+--stv-icon-* variables; `toggleIconMode` rotates or swaps it. (expandIconClass /
+collapseIconClass were removed in rc16.) Custom leaf marker:
 .my-leaf::before { content: '•'; }
-
-<Tree
-  expandIconClass="my-expand"
-  collapseIconClass="my-collapse"
-  leafIconClass="my-leaf"
-/>
+<Tree leafIconClass="my-leaf" />
 
 SCROLL HIGHLIGHT CLASSES
 ------------------------

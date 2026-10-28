@@ -228,9 +228,9 @@
 		// 3. Scroll the tree into view. scrollToPath itself never fires
 		//    selection callbacks, only the visual scroll-flash highlight.
 		await silentTreeRef.scrollToPath(pathFromUrl, {
-			expand: true,
-			highlight: true,
-			scrollOptions: { behavior: 'smooth', block: 'center' }
+			shouldExpandAncestors: true,
+			shouldHighlight: true,
+			behavior: 'smooth', block: 'center'
 		});
 	}
 
@@ -714,7 +714,7 @@ function restoreFromUrl(nodePath: string) {
   tree.selectNode(nodePath, 'replace', { isSilent: true });
 
   // 3. Scroll into view (scrollToPath never fires selection events).
-  tree.scrollToPath(nodePath, { expand: true, highlight: true });
+  tree.scrollToPath(nodePath, { shouldExpandAncestors: true, shouldHighlight: true });
 }`}</pre>
 		</div>
 

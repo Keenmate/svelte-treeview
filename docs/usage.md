@@ -181,9 +181,8 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `dragOverNodeClass` | `string \| null` | `undefined` | CSS class for nodes being dragged over |
 | `iconSet` | `'chevron' \| 'triangle' \| 'plus-minus' \| 'arrow'` | `'chevron'` | Disclosure glyph — one knob that re-points the `--stv-icon-*` set (chains to `--base-icon-*`). See [theming](./theming.md#disclosure-glyph-iconset). |
 | `toggleIconMode` | `'rotate' \| 'swap'` | `'rotate'` | Whether the glyph rotates or swaps to the collapse glyph on expand (`plus-minus` always swaps) |
-| `expandIconClass` | `string \| null` | `"stv__toggle-icon--expand"` | **Deprecated** — prefer `iconSet`. Escape hatch to override the toggle glyph with a custom class (e.g. FontAwesome) |
-| `collapseIconClass` | `string \| null` | `"stv__toggle-icon--collapse"` | **Deprecated** — only used with a *custom* `expandIconClass` in `swap` mode (built-in swap is CSS-driven) |
 | `leafIconClass` | `string \| null` | `"stv__toggle-icon--leaf"` | CSS class for leaf node icons |
+| `flatIndentSize` | `string \| null` | `var(--stv-indent-size)` | Indent per level in flat rendering (a CSS length, e.g. `'24px'`) |
 | `nodeTitleOverflow` | `'wrap' \| 'ellipsis' \| 'info'` | `'ellipsis'` | A built-in label wider than the row: `ellipsis` clips on one line (fixed row heights — what virtual scroll needs), `wrap` grows the row, `info` = ellipsis + a trailing ⓘ on clipped rows that reveals the full label (accessible name: `labels.showFullLabel`) |
 | `scrollHighlightTimeout` | `number \| null` | `4000` | Duration (ms) for scroll highlight animation |
 | `scrollHighlightClass` | `string \| null` | `'stv__scroll-highlight'` | CSS class to apply for scroll highlight effect |
@@ -297,29 +296,25 @@ Read-side helpers: `getSelectedNodes()` / `isNodeSelected(path)` / `getCheckedNo
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `expand` | `boolean` | `true` | Automatically expand parent nodes to make target visible |
-| `expandTarget` | `boolean` | `false` | Also expand the target node itself (not just its ancestors) |
-| `highlight` | `boolean` | `true` | Apply temporary highlight animation to the target node |
-| `scrollOptions` | `ScrollIntoViewOptions` | `{ behavior: 'smooth', block: 'center' }` | Native browser scroll options |
-| `containerScroll` | `boolean` | `false` | Scroll only within nearest scrollable ancestor (prevents page scroll) |
-| `containerElement` | `HTMLElement` | `undefined` | Explicit scrollable container element to use for scrolling |
+| `shouldExpandAncestors` | `boolean` | `true` | Expand the node's collapsed ancestors first so its row exists |
+| `shouldHighlight` | `boolean` | `false` | Flash `scrollHighlightClass` (for `scrollHighlightTimeout`) on the row |
+| `behavior` | `ScrollBehavior` | `'smooth'` | Native `ScrollIntoViewOptions.behavior` |
+| `block` | `ScrollLogicalPosition` | `'center'` | Native `ScrollIntoViewOptions.block` |
+| `inline` | `ScrollLogicalPosition` | `'nearest'` | Native `ScrollIntoViewOptions.inline` |
+
+`ScrollToPathOptions` is the same as web-treeview's. Returns `Promise<boolean>` (`false` when the path doesn't exist).
 
 ```typescript
 // Basic usage — scroll to path with default options
 await tree.scrollToPath('1.2.3');
 
-// Advanced usage — custom options
+// Custom options
 await tree.scrollToPath('1.2.3', {
-  expand: false,           // Don't auto-expand parent nodes
-  highlight: false,        // Skip highlight animation
-  scrollOptions: {         // Custom scroll behavior
-    behavior: 'instant',
-    block: 'start'
-  }
+  shouldExpandAncestors: false, // the row must already be visible
+  shouldHighlight: true,        // flash scrollHighlightClass
+  behavior: 'instant',
+  block: 'start'
 });
-
-// Scroll within a scrollable container (prevents page scroll)
-await tree.scrollToPath('1.2.3', { containerScroll: true });
 ```
 
 ```svelte
@@ -389,7 +384,7 @@ treeElement.update({ searchTerm: 'new search' });
 - Data and state: `data`, `searchTerm`, `focusedNode`, `expandLevel`
 - Members: `idMember`, `pathMember`, `displayValueMember`, `searchValueMember`
 - Callbacks: `sortCallback`, `getDisplayValueCallback`, `onNodeClick`, etc.
-- Visual: `bodyClass`, `focusedNodeClass`, `expandIconClass`, etc.
+- Visual: `bodyClass`, `focusedNodeClass`, `iconSet`, etc.
 - Context menu: `getContextMenuItemsCallback`, `beforeActionCallback`, `onAction`, `contextMenuXOffset`, `contextMenuYOffset`
 - Behavior: `clickBehavior`, `shouldUseInternalSearchIndex`, etc.
 

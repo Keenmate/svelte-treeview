@@ -6,6 +6,7 @@ import {
 	type InsertArrayResult,
 	type InsertBranchResult,
 	type RemoveBranchResult,
+	type ReplaceBranchResult,
 	type DropPosition,
 	type DragDropMode,
 	type DropOperation,
@@ -291,6 +292,18 @@ export interface SelectionChangeContext<T> extends TreeCallbackContext<T> {
 	nodes: LTreeNode<T>[];
 }
 
+/** Options of `scrollToPath` (same as web-treeview). */
+export interface ScrollToPathOptions {
+	/** Expand the node's collapsed ancestors first so its row exists. Default `true`. */
+	shouldExpandAncestors?: boolean;
+	/** Flash `scrollHighlightClass` (for `scrollHighlightTimeout`) on the row. Default `false`. */
+	shouldHighlight?: boolean;
+	/** Native ScrollIntoViewOptions. Defaults `'smooth'` / `'center'` / `'nearest'`. */
+	behavior?: ScrollBehavior;
+	block?: ScrollLogicalPosition;
+	inline?: ScrollLogicalPosition;
+}
+
 /** The `controller` every callback / event context carries (web-treeview parity: its
  *  details carry `controller` + `element`; svelte has no element). */
 export interface TreeCallbackContext<T> {
@@ -385,11 +398,11 @@ export interface NodeConfig {
 	isCheckboxesShown: boolean;
 	checkboxMode: CheckboxMode;
 	shouldClickToggleCheckbox: boolean;
-	expandIconClass: string;
-	collapseIconClass: string;
 	leafIconClass: string;
 	toggleIconMode: ToggleIconMode;
 	nodeTitleOverflow: NodeTitleOverflow;
+	/** Indent per level in flat rendering (CSS length). */
+	flatIndentSize: string;
 	// Hover/focus tooltip per node. The `tooltip` SNIPPET (rich content) travels via
 	// the 'NodeTooltip' context, not here; these are the plain-config knobs. A string
 	// from getNodeTooltipCallback is the fallback when no snippet is given.
@@ -703,15 +716,11 @@ export interface TreeControllerProps<T> {
 	getNodeContentClassCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
 	dragOverNodeClass?: string | null | undefined;
 	draggedNodeClass?: string | null | undefined;
-	/** @deprecated Prefer the `iconSet` prop on `<Tree>`. Escape hatch to override
-	 *  the expand glyph's CSS class; canonical is `stv__toggle-icon--expand`. */
-	expandIconClass?: string | null | undefined;
-	/** @deprecated No longer consumed at render time — expand/collapse swap is
-	 *  CSS-driven (`data-toggle-icon-mode` / `data-icon-set`). Kept for back-compat. */
-	collapseIconClass?: string | null | undefined;
 	leafIconClass?: string | null | undefined;
 	toggleIconMode?: ToggleIconMode;
 	nodeTitleOverflow?: NodeTitleOverflow;
+	/** Indent per level in flat rendering (a CSS length). Default `var(--stv-indent-size)`. */
+	flatIndentSize?: string | null;
 	isNodeTooltipsShown?: boolean;
 	getNodeTooltipCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
 	tooltipPlacement?: TooltipPlacement;
@@ -747,8 +756,6 @@ export class TreeController<T> {
 		isCheckboxesShown: false,
 		checkboxMode: 'independent',
 		shouldClickToggleCheckbox: false,
-		expandIconClass: 'stv__toggle-icon--expand',
-		collapseIconClass: 'stv__toggle-icon--collapse',
 		leafIconClass: 'stv__toggle-icon--leaf',
 		selectedNodeClass: undefined,
 		focusedNodeClass: undefined,
@@ -764,6 +771,7 @@ export class TreeController<T> {
 		dropZoneStart: 33,
 		toggleIconMode: 'rotate',
 		nodeTitleOverflow: 'ellipsis',
+		flatIndentSize: 'var(--stv-indent-size)',
 		isNodeTooltipsShown: false,
 		getNodeTooltipCallback: undefined,
 		tooltipPlacement: 'top-start',
@@ -970,11 +978,10 @@ export class TreeController<T> {
 		this._notifyCheckedChanged();
 	}
 	shouldClickToggleCheckbox = $state(false);
-	expandIconClass = $state('stv__toggle-icon--expand');
-	collapseIconClass = $state('stv__toggle-icon--collapse');
 	leafIconClass = $state('stv__toggle-icon--leaf');
 	toggleIconMode = $state<ToggleIconMode>('rotate');
 	nodeTitleOverflow = $state<NodeTitleOverflow>('ellipsis');
+	flatIndentSize = $state<string>('var(--stv-indent-size)');
 	isNodeTooltipsShown = $state<boolean>(false);
 	getNodeTooltipCallback = $state<TreeControllerProps<T>['getNodeTooltipCallback']>(
 		undefined
@@ -1229,11 +1236,10 @@ export class TreeController<T> {
 		this.cascadeCheckPolicy = props.cascadeCheckPolicy ?? 'rolled-up';
 		this.shouldClickToggleCheckbox = props.shouldClickToggleCheckbox ?? false;
 		this.beforeCheckboxToggleHandler = props.beforeCheckboxToggleCallback;
-		this.expandIconClass = props.expandIconClass ?? 'stv__toggle-icon--expand';
-		this.collapseIconClass = props.collapseIconClass ?? 'stv__toggle-icon--collapse';
 		this.leafIconClass = props.leafIconClass ?? 'stv__toggle-icon--leaf';
 		this.toggleIconMode = props.toggleIconMode ?? 'rotate';
 		this.nodeTitleOverflow = props.nodeTitleOverflow ?? 'ellipsis';
+		this.flatIndentSize = props.flatIndentSize || 'var(--stv-indent-size)';
 		this.isNodeTooltipsShown = props.isNodeTooltipsShown ?? false;
 		this.getNodeTooltipCallback = props.getNodeTooltipCallback;
 		this.tooltipPlacement = props.tooltipPlacement ?? 'top-start';
@@ -1385,11 +1391,10 @@ export class TreeController<T> {
 			isCheckboxesShown: this.isCheckboxesShown,
 			checkboxMode: this.checkboxMode,
 			shouldClickToggleCheckbox: this.shouldClickToggleCheckbox,
-			expandIconClass: this.expandIconClass,
-			collapseIconClass: this.collapseIconClass,
 			leafIconClass: this.leafIconClass,
 			toggleIconMode: this.toggleIconMode,
 			nodeTitleOverflow: this.nodeTitleOverflow,
+			flatIndentSize: this.flatIndentSize,
 			isNodeTooltipsShown: this.isNodeTooltipsShown,
 			getNodeTooltipCallback: this._withController(this.getNodeTooltipCallback),
 			tooltipPlacement: this.tooltipPlacement,
@@ -1444,11 +1449,10 @@ export class TreeController<T> {
 				clickBehavior: this.clickBehavior,
 				isCheckboxesShown: this.isCheckboxesShown,
 				shouldClickToggleCheckbox: this.shouldClickToggleCheckbox,
-				expandIconClass: this.expandIconClass,
-				collapseIconClass: this.collapseIconClass,
 				leafIconClass: this.leafIconClass,
 				toggleIconMode: this.toggleIconMode,
 				nodeTitleOverflow: this.nodeTitleOverflow,
+				flatIndentSize: this.flatIndentSize,
 				isNodeTooltipsShown: this.isNodeTooltipsShown,
 				getNodeTooltipCallback: this._withController(this.getNodeTooltipCallback),
 				tooltipPlacement: this.tooltipPlacement,
@@ -1798,6 +1802,18 @@ export class TreeController<T> {
 	/** The underlying LTree (advanced use). */
 	getTree(): Ltree<T> {
 		return this.tree;
+	}
+
+	/** Every ancestor of `node` is expanded (its row can be rendered). */
+	private _isAncestryExpanded(node: LTreeNode<T>): boolean {
+		let parentPath = node.parentPath;
+		while (parentPath) {
+			const p = this.tree?.getNodeByPath(parentPath);
+			if (!p) return false;
+			if (!p.isExpanded) return false;
+			parentPath = p.parentPath;
+		}
+		return true;
 	}
 
 	/** Whether `path` has an async `beforeExpandCallback` in flight (it shows the loading state). */
@@ -2647,14 +2663,17 @@ export class TreeController<T> {
 		return result;
 	}
 
-	replaceBranch(parentPath: string, data: T[]): InsertBranchResult<T> {
+	replaceBranch(parentPath: string, data: T[]): ReplaceBranchResult<T> {
 		this._skipInsertArray = true;
 		this._markNodesChanged();
-		const result = this.tree?.replaceBranch(parentPath, data) || {
+		const result: ReplaceBranchResult<T> = this.tree?.replaceBranch(parentPath, data) || {
 			success: false,
 			count: 0,
 			failed: [],
-			parentNode: null
+			parentNode: null,
+			removed: 0,
+			added: 0,
+			error: 'Tree not initialized'
 		};
 		tick().then(() => {
 			this._skipInsertArray = false;
@@ -2668,7 +2687,7 @@ export class TreeController<T> {
 		this._markNodesChanged();
 		const result = this.tree?.removeBranch(path, keepParent) || {
 			success: false,
-			removedCount: 0,
+			count: 0,
 			error: 'Tree not initialized'
 		};
 		tick().then(() => {
@@ -3661,26 +3680,33 @@ export class TreeController<T> {
 		return allowedPositions[0];
 	}
 
-	async scrollToPath(
+	/**
+	 * Scroll the node at `path` into view. Resolves `true` when it was found and scrolled.
+	 * `shouldExpandAncestors` (default true) opens its collapsed ancestors first;
+	 * `shouldHighlight` (default false) flashes `scrollHighlightClass`; `behavior` / `block` /
+	 * `inline` = native ScrollIntoViewOptions (defaults `'smooth'` / `'center'` / `'nearest'`).
+	 */
+	async scrollToPath(path: string, options?: ScrollToPathOptions): Promise<boolean> {
+		return this._scrollToPath(path, options, false);
+	}
+
+	/** scrollToPath + `isContainerScroll` (keyboard nav: scroll only the tree's scroll container,
+	 *  never the page). */
+	private async _scrollToPath(
 		path: string,
-		options?: {
-			expand?: boolean;
-			expandTarget?: boolean;
-			highlight?: boolean;
-			scrollOptions?: ScrollIntoViewOptions;
-			containerScroll?: boolean;
-			containerElement?: HTMLElement;
-		}
+		options: ScrollToPathOptions | undefined,
+		isContainerScroll: boolean
 	): Promise<boolean> {
 		perfStart(`[${this.treeId}] scrollToPath`);
 		const {
-			expand = true,
-			expandTarget = false,
-			highlight = true,
-			scrollOptions = { behavior: 'smooth', block: 'center' },
-			containerScroll = false,
-			containerElement
+			shouldExpandAncestors: expand = true,
+			shouldHighlight: highlight = false,
+			behavior = 'smooth',
+			block = 'center',
+			inline = 'nearest'
 		} = options || {};
+		const scrollOptions: ScrollIntoViewOptions = { behavior, block, inline };
+		const containerScroll = isContainerScroll;
 
 		const node = this.tree.getNodeByPath(path);
 		if (!node || !node.id) {
@@ -3689,15 +3715,9 @@ export class TreeController<T> {
 			return false;
 		}
 
-		if (expand && node.parentPath) {
-			this.tree.expandNodes(node.parentPath);
-		}
-
-		if (expandTarget) {
-			this.tree.expandNodes(path);
-		}
-
-		if (expand || expandTarget) {
+		const parent = node.parentPath ? this.tree.getNodeByPath(node.parentPath) : null;
+		if (expand && parent && !this._isAncestryExpanded(node)) {
+			await this.expandNodes(node.parentPath!);
 			await tick();
 		}
 
@@ -3740,7 +3760,7 @@ export class TreeController<T> {
 		}
 
 		const elementId = `${this.treeId}-${node.id}`;
-		const rootEl = containerElement || this.containerElement;
+		const rootEl = this.containerElement;
 		const findContent = (): HTMLElement | null => {
 			const el = rootEl
 				? rootEl.querySelector(`#${CSS.escape(elementId)}`)
@@ -3868,10 +3888,6 @@ export class TreeController<T> {
 			this.shouldClickToggleCheckbox = updates.shouldClickToggleCheckbox ?? false;
 		if (updates.beforeCheckboxToggleCallback !== undefined)
 			this.beforeCheckboxToggleHandler = updates.beforeCheckboxToggleCallback;
-		if (updates.expandIconClass !== undefined)
-			this.expandIconClass = updates.expandIconClass ?? 'stv__toggle-icon--expand';
-		if (updates.collapseIconClass !== undefined)
-			this.collapseIconClass = updates.collapseIconClass ?? 'stv__toggle-icon--collapse';
 		if (updates.leafIconClass !== undefined)
 			this.leafIconClass = updates.leafIconClass ?? 'stv__toggle-icon--leaf';
 		if (updates.selectedNodeClass !== undefined)
@@ -6040,7 +6056,7 @@ export class TreeController<T> {
 				const node = this.getNodeByPath(path);
 				if (!node) return;
 				this.selectNode(path, 'replace');
-				this.scrollToPath(path, { expand: false, highlight: false, containerScroll: true });
+				this._scrollToPath(path, { shouldExpandAncestors: false, behavior: 'smooth', block: 'center' }, true);
 			},
 
 			navNext: () => {
@@ -6291,7 +6307,7 @@ export class TreeController<T> {
 		// Move focus to the target without clearing highlights
 		const node = this.tree.getNodeByPath(path);
 		if (node) this._setFocusedNode(node);
-		this.scrollToPath(path, { expand: false, highlight: false, containerScroll: true });
+		this._scrollToPath(path, { shouldExpandAncestors: false, behavior: 'smooth', block: 'center' }, true);
 		this.tree.refresh();
 	}
 

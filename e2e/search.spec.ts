@@ -231,19 +231,3 @@ test.describe('Mode toggle', () => {
 		await expect(resultsContainer(page)).toContainText('Tokyo');
 	});
 });
-
-test.describe('Container scroll setting', () => {
-	test('toggling "Container scroll" is reflected in the checkbox state', async ({ page }) => {
-		await gotoSearch(page);
-
-		const cb = searchBar(page).getByLabel('Container scroll');
-		// Default is on (useContainerScroll = true).
-		await expect(cb).toBeChecked();
-
-		await cb.uncheck();
-		await expect(cb).not.toBeChecked();
-
-		await cb.check();
-		await expect(cb).toBeChecked();
-	});
-});

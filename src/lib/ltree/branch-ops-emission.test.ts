@@ -108,7 +108,7 @@ describe('branch operations — single-emission guarantee', () => {
 		const result = tree.removeBranch('2.1');
 
 		expect(result.success).toBe(true);
-		expect(result.removedCount).toBe(3);
+		expect(result.count).toBe(3);
 		expect(spy).toHaveBeenCalledTimes(1);
 	});
 
@@ -121,7 +121,7 @@ describe('branch operations — single-emission guarantee', () => {
 		const result = tree.removeBranch('2.1', true);
 
 		expect(result.success).toBe(true);
-		expect(result.removedCount).toBe(2);
+		expect(result.count).toBe(2);
 		expect(spy).toHaveBeenCalledTimes(1);
 	});
 
@@ -166,5 +166,23 @@ describe('isSilent on expand / collapse — never skips the re-render', () => {
 
 		tree.collapseAll(null, { isSilent: true });
 		expect(spy).toHaveBeenCalledTimes(4);
+	});
+});
+
+describe('branch operation results (same shapes as web-treeview)', () => {
+	it('replaceBranch → ReplaceBranchResult { removed, added }', () => {
+		const tree = createTree();
+		tree.insertArray(seed);
+		const result = tree.replaceBranch('2', [{ id: 300, path: '2.300', name: 'Only' }]);
+		expect(result).toMatchObject({ success: true, count: 1, removed: 3, added: 1 });
+	});
+
+	it('a missing parent / target reports error', () => {
+		const tree = createTree();
+		tree.insertArray(seed);
+		expect(tree.addBranch('9', []).error).toBe('Parent not found: 9');
+		expect(tree.insertBranch('9', [], 'after').error).toBe('Target not found: 9');
+		expect(tree.replaceBranch('9', [])).toMatchObject({ success: false, removed: 0, added: 0, error: 'Parent not found: 9' });
+		expect(tree.removeBranch('9')).toMatchObject({ success: false, count: 0 });
 	});
 });

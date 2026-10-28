@@ -58,7 +58,6 @@ ContextMenuDividerC → context-menu.txt
 copyNodes → tree-editing.txt
 cutNodes → tree-editing.txt
 cutPaths → tree-editing.txt
-collapseIconClass → styling-theming.txt
 collapseNodes → basic-setup.txt
 Context menu → context-menu.txt
 contextMenuXOffset → context-menu.txt
@@ -86,7 +85,6 @@ E
 -
 Events → events-callbacks.txt
 expandAll → basic-setup.txt, tree-editing.txt
-expandIconClass → styling-theming.txt
 expandLevel → basic-setup.txt, data-handling.txt
 expandNodes → basic-setup.txt
 

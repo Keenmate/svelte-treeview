@@ -163,6 +163,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   callbacks (`getNodeClassCallback`, `getIconCallback`, `getNodeTooltipCallback`, …), `onRenderStart` /
   `onRenderProgress` / `onRenderComplete`, `onContainerResize`. Non-enumerable (like web-treeview's
   component context): destructuring works, `JSON.stringify` / `Object.keys` / a spread skip it.
+- **`flatIndentSize`** prop (CSS length per level in flat rendering; default `var(--stv-indent-size)`) —
+  same as web-treeview.
+- **`ReplaceBranchResult`** (exported) — `replaceBranch` returns the insert result plus `removed`
+  (descendants dropped) and `added` (= `count`); `InsertBranchResult` gained `error?` (set when the
+  parent / target wasn't found). Same shapes as web-treeview.
+- **`duplicateNodes(paths, target, position, transform?, sourceTree?)`** on `<Tree>` (the controller
+  had it) — same signature as web-treeview.
 - **`onFocusChange({ focusedNode, controller })`** — the focused node changed (click, keyboard,
   `focusNode` / `clearFocus`, removal); `focusNode` / `clearFocus` now honour `{ isSilent: true }`
   (the option used to be ignored). Assigning `bind:focusedNode` stays silent. **`onTreeChange({
@@ -387,6 +394,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Drop placeholder no longer triggers a horizontal scrollbar.** `.stv__drop-placeholder` is `box-sizing: border-box` (the 2px dashed border no longer overruns the container width), and `--stv-drop-placeholder-hover-scale` now defaults to `1` (was `1.015`, which spilled past both edges).
 
 ### Removed
+
+- **BREAKING: `scrollToPath(path, options)` options = web-treeview's `ScrollToPathOptions`** —
+  `{ shouldExpandAncestors = true, shouldHighlight = false, behavior, block, inline }` (native
+  ScrollIntoViewOptions fields). Removed: `expand`, `expandTarget`, `highlight` (default was `true`),
+  `scrollOptions`, `containerScroll`, `containerElement`. Keyboard navigation still scrolls only the
+  tree's scroll container.
+- **BREAKING: `RemoveBranchResult.removedCount` → `count`** (`{ success, count, error? }`, like web).
+- **BREAKING: `expandIconClass` / `collapseIconClass` removed** (were deprecated) — `iconSet` +
+  `toggleIconMode` cover them.
 
 - **BREAKING: `TreeController.nodeRef()` → `getNodeRef()`**; `getNodeIsDropAllowed(node)` →
   **`isNodeDropAllowed(path)`**; `isFloatingPositionAllowed` is internal now (`_isFloatingPositionAllowed`).

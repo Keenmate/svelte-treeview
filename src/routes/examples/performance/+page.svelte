@@ -395,7 +395,7 @@
     currentSearchIdx = idx;
     const node = searchResults[idx];
     if (node?.path) {
-      treeRef?.scrollToPath(node.path, { expand: true, highlight: true, scrollOptions: { behavior: 'smooth', block: 'center' }, containerScroll: true });
+      treeRef?.scrollToPath(node.path, { shouldExpandAncestors: true, shouldHighlight: true, behavior: 'smooth', block: 'center' });
     }
   }
 

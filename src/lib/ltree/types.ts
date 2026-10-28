@@ -176,12 +176,23 @@ export interface InsertBranchResult<T> {
 	success: boolean;
 	count: number;
 	failed: Array<{ data: T; error: string }>;
+	/** The parent the branch went under (the root for ''); null when it wasn't found. */
 	parentNode: LTreeNode<T> | null;
+	/** Set when the whole call failed (e.g. the parent wasn't found). */
+	error?: string;
 }
 
-export interface RemoveBranchResult<T> {
+/** Result of `replaceBranch`: the insert result plus `removed` descendants and `added` (= `count`). */
+export interface ReplaceBranchResult<T> extends InsertBranchResult<T> {
+	removed: number;
+	added: number;
+}
+
+/** Result of `removeBranch`: `count` = nodes removed. Same as web-treeview. */
+export interface RemoveBranchResult<T = any> {
 	success: boolean;
-	removedCount: number;
+	count: number;
+	/** Set when nothing was removed (e.g. the path wasn't found). */
 	error?: string;
 }
 
@@ -350,7 +361,7 @@ export interface Ltree<T> {
 		data: T,
 		position: InsertPosition
 	): { success: boolean; node?: LTreeNode<T>; error?: string };
-	replaceBranch(parentPath: string, data: T[]): InsertBranchResult<T>;
+	replaceBranch(parentPath: string, data: T[]): ReplaceBranchResult<T>;
 	removeBranch(path: string, keepParent?: boolean): RemoveBranchResult<T>;
 
 	// Cross-tree copy method

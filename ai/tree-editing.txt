@@ -415,7 +415,7 @@ insertBranch(targetPath: string, data: T[], position: 'before'|'after'|'child'):
   keeping their internal order; with orderMember they get order values spread between
   the target and its neighbour
 
-replaceBranch(parentPath: string, data: T[]): InsertBranchResult<T>
+replaceBranch(parentPath: string, data: T[]): ReplaceBranchResult<T>   // + removed, added
 - Removes the node at parentPath and all descendants, then inserts new nodes
 - Useful for server-driven updates where a subtree is replaced wholesale
 - Returns { success, count, failed, parentNode }
@@ -423,7 +423,7 @@ replaceBranch(parentPath: string, data: T[]): InsertBranchResult<T>
 removeBranch(path: string, keepParent?: boolean): RemoveBranchResult<T>
 - Removes the node at path and all its descendants in one operation
 - keepParent: keep the node itself, remove only its descendants
-- Returns { success, removedCount, error? }
+- Returns { success, count, error? }  (count = nodes removed)
 
 Example: server-driven cut/paste
 <script>

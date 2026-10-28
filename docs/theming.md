@@ -192,10 +192,8 @@ token reskins the disclosure glyph across every KeenMate component at once:
 `toggleIconMode` (`'rotate'` (default) | `'swap'`) controls whether the glyph
 rotates or swaps to the collapse glyph on expand. `plus-minus` always swaps.
 
-> **Deprecated:** `expandIconClass` / `collapseIconClass` are superseded by `iconSet`
-> for picking a built-in glyph, but remain a working escape hatch for a *custom* glyph
-> class (e.g. FontAwesome): in `swap` mode the class name is swapped, and a custom glyph
-> still rotates in `rotate` mode. Prefer `iconSet`.
+> `expandIconClass` / `collapseIconClass` were removed in 5.0.0-rc16 — `iconSet` +
+> `toggleIconMode` (and the `--stv-icon-*` variables for a custom glyph) cover them.
 
 ## See also
 

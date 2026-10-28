@@ -65,14 +65,7 @@
 	// rotates or swaps on expand) is decided by CSS via the --stv-icon-* variables +
 	// data-icon-set / data-toggle-icon-mode on .stv__container — the template just
 	// renders the single `stv__toggle-icon--expand` class + an `.expanded` marker.
-	// A CUSTOM expandIconClass (e.g. FontAwesome) is a deprecated escape hatch: it
-	// isn't a CSS mask, so swap mode has to swap the class NAME here (see template).
-	const expandIconClass = $derived(config.expandIconClass);
-	const collapseIconClass = $derived(config.collapseIconClass);
 	const leafIconClass = $derived(config.leafIconClass);
-	const toggleIconMode = $derived(config.toggleIconMode);
-	// True when a custom (non-default) expand class is in play — the escape hatch.
-	const isCustomGlyph = $derived(expandIconClass !== 'stv__toggle-icon--expand');
 	const selectedNodeClass = $derived(config.selectedNodeClass);
 	const focusedNodeClass = $derived(config.focusedNodeClass);
 	// Opt-in class for checked (isChecked) rows — the checkbox is the default signal.
@@ -282,7 +275,7 @@
 	// — only applied before first-child nodes (where level > previous node's level).
 	const indentStyle = $derived(
 		flatMode
-			? `margin-left: calc(${Math.max(0, (node?.level || 1) - 1)} * var(--stv-indent-size))${flatGap ? '; margin-top: 2px' : ''}`
+			? `margin-left: calc(${Math.max(0, (node?.level || 1) - 1)} * ${config.flatIndentSize || 'var(--stv-indent-size)'})${flatGap ? '; margin-top: 2px' : ''}`
 			: `margin-left: ${(node?.level || 1) <= 1 ? '0px' : 'var(--stv-indent-size)'}`,
 	)
 
@@ -422,11 +415,7 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		{#if hasChildren && isCollapsible}
 			<span
-				class="stv__toggle-icon stv__clickable {isCustomGlyph && toggleIconMode === 'swap'
-					? node.isExpanded
-						? collapseIconClass
-						: expandIconClass
-					: expandIconClass}"
+				class="stv__toggle-icon stv__clickable stv__toggle-icon--expand"
 				class:expanded={node.isExpanded}
 				class:stv__toggle-icon--loading={isExpandPending}
 				onclick={toggleExpanded}
