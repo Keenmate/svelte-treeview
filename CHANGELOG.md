@@ -51,6 +51,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BREAKING: defaults aligned with `@keenmate/web-treeview`** — `expandLevel` `2` → **`0`** (only the
+  roots are visible; pass `expandLevel={2}` for the old look), `shouldHandleKeyboardShortcuts`
+  `false` → **`true`** (built-in Ctrl/Cmd+C/X/V, Delete, Esc on a focused tree; `false` opts out),
+  `shouldAlignNodeIcons` `false` → **`true`** (the icon column is reserved on every row).
+  `shouldUseInternalSearchIndex` stays `true` (web-treeview moved to `true`).
+
 - **BREAKING: mutation vocabulary — `add` / `insert` / `update` / `remove`** (same as
   `@keenmate/web-treeview`). `applyChanges` operations: `'create'` → `'add'` `{ parentPath, data,
   pathSegment? }`, `'delete'` → `'remove'` `{ path }`, **new `'insert'`** `{ targetPath, position, data }`.

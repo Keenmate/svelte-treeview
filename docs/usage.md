@@ -69,7 +69,9 @@ Without both requirements, no search indexing will occur.
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `expandLevel` | `number \| null` | `2` | Automatically expand nodes up to this level |
+| `expandLevel` | `number \| null` | `0` | Automatically expand nodes up to this level (`0` = only the roots are visible, nothing expanded) |
+| `shouldHandleKeyboardShortcuts` | `boolean` | `true` | Built-in clipboard / delete shortcuts (Ctrl/Cmd+C/X/V, Delete, Esc, Ctrl+Insert / Shift+Insert / Shift+Delete), focus-scoped to the tree. `false` = opt out |
+| `shouldAlignNodeIcons` | `boolean` | `true` | Reserve the icon column so labels align on rows without an icon |
 | `clickBehavior` | `ClickBehavior` | `'expand-and-focus'` | Node click behavior: `'select'` (click selects, dblclick expands), `'expand'` (click expands only), `'expand-and-focus'` (click selects + expands) |
 | `isCheckboxesShown` | `boolean` | `false` | Show selection checkboxes before each node. Clicking a checkbox toggles the node's selection (same as Ctrl+click). |
 | `orderMember` | `string \| null` | `null` | Property name for sort order (enables before/after positioning in drag-drop) |
@@ -143,7 +145,7 @@ Every `on*` event receives a **single context object** mirroring the clipboard c
 
 ### Clipboard interceptor properties
 
-The clipboard operations live on the `TreeController` (`copyNodes` / `cutNodes` / `pasteNodes` / `cancelCut`). You can opt into built-in key bindings with `shouldHandleKeyboardShortcuts`, or wire your own via `beforeKeydownCallback(ctx)` (ctx = `{ event, focusedNode, selectedNodes, controller }`). The `before*` interceptors can rewrite or block an operation; `onNodeCopy` / `onNodeCut` / `onNodePaste` above are the post-operation notifications.
+The clipboard operations live on the `TreeController` (`copyNodes` / `cutNodes` / `pasteNodes` / `cancelCut`). Built-in key bindings are on by default (`shouldHandleKeyboardShortcuts`, set `false` to opt out), or wire your own via `beforeKeydownCallback(ctx)` (ctx = `{ event, focusedNode, selectedNodes, controller }`). The `before*` interceptors can rewrite or block an operation; `onNodeCopy` / `onNodeCut` / `onNodePaste` above are the post-operation notifications.
 
 > **Keyboard shortcuts are focus-scoped.** Both the built-in shortcuts and `beforeKeydownCallback` are bound to the tree's `.stv__container` (which is `tabindex="0"`), so they only fire when focus is **inside** the tree — the standard DOM keyboard model for a component-scoped widget (there is no OS-clipboard fallback; it's a synthetic `keydown` handler). If the user touches a control *outside* the tree first (a toolbar button, checkbox, search box, dropdown), or hasn't clicked into the tree yet, a following `Ctrl/Cmd+C/X/V` or `Delete` never reaches the tree and silently does nothing. To make shortcuts work regardless of where the user last clicked, either (1) re-focus the container (`containerEl.focus()`) after your external control's handler, (2) auto-focus on hover/pointer-down — this ships for the empty-tree case via `isEmptyDropPlaceholderShown`, or (3) attach your own document/window-level `keydown` and forward to `controller.copyNodes` / `pasteNodes` / `runDeleteCommand` (you then own deciding whether a given key is meant for the tree).
 

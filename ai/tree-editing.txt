@@ -482,7 +482,7 @@ Returns: PasteResult = { success, count, skipped, error? }
 
 BUILT-IN KEYBOARD SHORTCUTS
 ---------------------------
-Set shouldHandleKeyboardShortcuts (default false) to enable Ctrl/Cmd+C/X/V,
+shouldHandleKeyboardShortcuts (default true; false = opt out) enables Ctrl/Cmd+C/X/V,
 Delete, Esc (cancel cut), plus classic aliases Ctrl+Insert / Shift+Insert /
 Shift+Delete. Shortcuts are FOCUS-SCOPED to the tree's .stv__container
 (tabindex=0): they only fire when focus is inside the tree.

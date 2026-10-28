@@ -225,7 +225,7 @@
 		shouldAutoHandleCopy?: boolean; // Auto-handle same-tree copy operations (default: true). Set to false for external DB/API handling.
 		shouldAutoHandleMove?: boolean; // Auto-handle same-tree move operations (default: true). Set to false for database-first workflow.
 		shouldAutoHandlePaste?: boolean; // Auto-handle paste operations (default: true). Set to false for database-first workflow.
-		/** Opt into built-in keyboard shortcuts (default false): Ctrl/Cmd+C/X/V (copy/cut/paste),
+		/** Built-in keyboard shortcuts (default true; false = opt out): Ctrl/Cmd+C/X/V (copy/cut/paste),
 		 *  Delete (remove selection), Escape (cancel cut), plus classic CUA aliases Ctrl+Insert
 		 *  (copy) / Shift+Insert (paste) / Shift+Delete (cut). A consumer `beforeKeydownCallback` still runs
 		 *  first and can override or suppress any of these. Paste targets the focused node (root
@@ -404,7 +404,7 @@
 		iconColorMember?: string | null | undefined;
 		/** Per-node icon COLOR from a callback (overrides iconColorMember). */
 		getIconColorCallback?: (ctx: NodeContext<T>) => string | null | undefined;
-		/** Reserve the icon column so labels align even on rows with no icon. Default `false`. */
+		/** Reserve the icon column so labels align even on rows with no icon. Default `true`. */
 		shouldAlignNodeIcons?: boolean;
 		scrollHighlightTimeout?: number | null | undefined;
 		scrollHighlightClass?: string | null | undefined;
@@ -486,7 +486,7 @@
 		labels = undefined,
 
 		// BEHAVIOUR
-		expandLevel = 2,
+		expandLevel = 0,
 
 		clickBehavior = 'expand-and-focus',
 		selectionMode = 'single',
@@ -533,7 +533,7 @@
 		shouldAutoHandleCopy = true,
 		shouldAutoHandleMove = true,
 		shouldAutoHandlePaste = true,
-		shouldHandleKeyboardShortcuts = false,
+		shouldHandleKeyboardShortcuts = true,
 		shouldExpandAsAccordion = false,
 
 		// EVENTS
@@ -591,7 +591,7 @@
 		getIconCallback,
 		iconColorMember,
 		getIconColorCallback,
-		shouldAlignNodeIcons = false,
+		shouldAlignNodeIcons = true,
 		icon,
 		selectedNodeClass,
 		focusedNodeClass,
@@ -943,7 +943,7 @@
 		controller.shouldAutoHandlePaste = shouldAutoHandlePaste ?? true;
 	});
 	$effect(() => {
-		controller.shouldHandleKeyboardShortcuts = shouldHandleKeyboardShortcuts ?? false;
+		controller.shouldHandleKeyboardShortcuts = shouldHandleKeyboardShortcuts ?? true;
 	});
 	$effect(() => {
 		controller.shouldExpandAsAccordion = shouldExpandAsAccordion ?? false;
@@ -1023,7 +1023,7 @@
 		controller.getIconColorCallback = getIconColorCallback;
 	});
 	$effect(() => {
-		controller.shouldAlignNodeIcons = shouldAlignNodeIcons ?? false;
+		controller.shouldAlignNodeIcons = shouldAlignNodeIcons ?? true;
 	});
 	$effect(() => {
 		controller.selectedNodeClass = selectedNodeClass;

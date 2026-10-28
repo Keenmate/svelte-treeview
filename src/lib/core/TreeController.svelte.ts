@@ -622,7 +622,7 @@ export interface TreeControllerProps<T> {
 	onNodeDelete?: (ctx: ClipboardEventContext<T>) => void;
 
 	/**
-	 * Opt into built-in keyboard shortcuts (default false): Ctrl/Cmd+C/X/V (copy/cut/paste),
+	 * Built-in keyboard shortcuts (default true; false = opt out): Ctrl/Cmd+C/X/V (copy/cut/paste),
 	 * Delete (remove selection), Escape (cancel a pending cut), plus the classic CUA aliases
 	 * Ctrl+Insert (copy) / Shift+Insert (paste) / Shift+Delete (cut). Off by default so it
 	 * never hijacks keys; a consumer `beforeKeydownCallback` still runs first and can override or
@@ -889,7 +889,7 @@ export class TreeController<T> {
 	shouldAutoHandleCopy = $state(true);
 	shouldAutoHandleMove = $state(true);
 	shouldAutoHandlePaste = $state(true);
-	shouldHandleKeyboardShortcuts = $state(false);
+	shouldHandleKeyboardShortcuts = $state(true);
 
 	// Event handlers (on* = fire-and-forget)
 	onNodeClickHandler: TreeControllerProps<T>['onNodeClick'];
@@ -979,7 +979,7 @@ export class TreeController<T> {
 	getIconColorCallback = $state<((ctx: NodeContext<any>) => string | null | undefined) | undefined>(
 		undefined
 	);
-	shouldAlignNodeIcons = $state<boolean>(false);
+	shouldAlignNodeIcons = $state<boolean>(true);
 	selectedNodeClass = $state<string | null | undefined>(undefined);
 	focusedNodeClass = $state<string | null | undefined>(undefined);
 	checkedNodeClass = $state<string | null | undefined>(undefined);
@@ -1232,7 +1232,7 @@ export class TreeController<T> {
 		this.getIconCallback = props.getIconCallback;
 		this.iconColorMember = props.iconColorMember;
 		this.getIconColorCallback = props.getIconColorCallback;
-		this.shouldAlignNodeIcons = props.shouldAlignNodeIcons ?? false;
+		this.shouldAlignNodeIcons = props.shouldAlignNodeIcons ?? true;
 		this.selectedNodeClass = props.selectedNodeClass;
 		this.focusedNodeClass = props.focusedNodeClass;
 		this.checkedNodeClass = props.checkedNodeClass;
@@ -1285,7 +1285,7 @@ export class TreeController<T> {
 		this.beforeCutHandler = props.beforeCutCallback;
 		this.beforePasteHandler = props.beforePasteCallback;
 		this.beforeDeleteHandler = props.beforeDeleteCallback;
-		this.shouldHandleKeyboardShortcuts = props.shouldHandleKeyboardShortcuts ?? false;
+		this.shouldHandleKeyboardShortcuts = props.shouldHandleKeyboardShortcuts ?? true;
 		this.outputTransformHandler = props.nodeOutputTransformationCallback;
 		this.inputTransformHandler = props.nodeInputTransformationCallback;
 		this.getContextMenuItemsHandler = props.getContextMenuItemsCallback;
@@ -3756,7 +3756,7 @@ export class TreeController<T> {
 		if (updates.getIconColorCallback !== undefined)
 			this.getIconColorCallback = updates.getIconColorCallback;
 		if (updates.shouldAlignNodeIcons !== undefined)
-			this.shouldAlignNodeIcons = updates.shouldAlignNodeIcons ?? false;
+			this.shouldAlignNodeIcons = updates.shouldAlignNodeIcons ?? true;
 		if (updates.dropZoneMode !== undefined) this.dropZoneMode = updates.dropZoneMode ?? 'glow';
 		if (updates.dropZoneLayout !== undefined)
 			this.dropZoneLayout = updates.dropZoneLayout ?? 'around';
@@ -3771,7 +3771,7 @@ export class TreeController<T> {
 		if (updates.shouldAutoHandlePaste !== undefined)
 			this.shouldAutoHandlePaste = updates.shouldAutoHandlePaste ?? true;
 		if (updates.shouldHandleKeyboardShortcuts !== undefined)
-			this.shouldHandleKeyboardShortcuts = updates.shouldHandleKeyboardShortcuts ?? false;
+			this.shouldHandleKeyboardShortcuts = updates.shouldHandleKeyboardShortcuts ?? true;
 		if (updates.dragDropMode !== undefined) this.dragDropMode = updates.dragDropMode ?? 'none';
 		if (updates.scrollHighlightTimeout !== undefined)
 			this.scrollHighlightTimeout = updates.scrollHighlightTimeout ?? 4000;
