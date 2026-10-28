@@ -80,7 +80,7 @@ Without both requirements, no search indexing will occur.
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `isFlatRenderingEnabled` | `boolean` | `true` | Use flat rendering mode (faster for large trees) |
-| `isProgressiveRender` | `boolean` | `true` | Progressively render nodes in batches |
+| `isProgressiveRenderEnabled` | `boolean` | `true` | Progressively render nodes in batches |
 | `initialBatchSize` | `number` | `20` | First batch size for progressive rendering |
 | `maxBatchSize` | `number` | `500` | Maximum batch size cap |
 | `isVirtualScrollEnabled` | `boolean` | `false` | Enable virtual scrolling (flat mode only, renders visible + overscan rows) |

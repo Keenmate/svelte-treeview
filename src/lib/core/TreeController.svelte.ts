@@ -393,7 +393,7 @@ export interface NodeConfig {
 	dropZoneStart: number | string;
 	dropZoneMaxWidth: number;
 	isCopyAllowed: boolean;
-	isAccordionExpand: boolean;
+	shouldExpandAsAccordion: boolean;
 }
 
 // ─── Controller props ─────────────────────────────────────────────────────
@@ -486,7 +486,7 @@ export interface TreeControllerProps<T> {
 	isLoading?: boolean;
 
 	// Progressive rendering
-	isProgressiveRender?: boolean;
+	isProgressiveRenderEnabled?: boolean;
 	initialBatchSize?: number;
 	maxBatchSize?: number;
 	onRenderStart?: () => void;
@@ -516,7 +516,7 @@ export interface TreeControllerProps<T> {
 	shouldAutoHandleCopy?: boolean;
 	shouldAutoHandleMove?: boolean;
 	shouldAutoHandlePaste?: boolean;
-	isAccordionExpand?: boolean;
+	shouldExpandAsAccordion?: boolean;
 
 	// EVENTS (on* = fire-and-forget notifications). Each carries a context object mirroring
 	// the clipboard callbacks: single-node events get a NodeRef (node + live parent/siblings);
@@ -692,7 +692,7 @@ export class TreeController<T> {
 		shouldAlignNodeIcons: false,
 		dropZoneMaxWidth: 120,
 		isCopyAllowed: false,
-		isAccordionExpand: false
+		shouldExpandAsAccordion: false
 	});
 
 	// ── Props stored as reactive state ──────────────────────────────────
@@ -759,7 +759,7 @@ export class TreeController<T> {
 	rangeSelectionMode = $state<'visual' | 'logical'>('visual');
 	isLoading = $state(false);
 	isFlatRenderingEnabled = $state(true);
-	isProgressiveRender = $state(true);
+	isProgressiveRenderEnabled = $state(true);
 	initialBatchSize = $state(20);
 	maxBatchSize = $state(500);
 	bodyClass = $state<string | null | undefined>(undefined);
@@ -767,7 +767,7 @@ export class TreeController<T> {
 	// DRAG AND DROP
 	dragDropMode = $state<DragDropMode>('none');
 	isCopyAllowed = $state(false);
-	isAccordionExpand = $state(false);
+	shouldExpandAsAccordion = $state(false);
 	shouldAutoHandleCopy = $state(true);
 	shouldAutoHandleMove = $state(true);
 	shouldAutoHandlePaste = $state(true);
@@ -1025,7 +1025,7 @@ export class TreeController<T> {
 	flatNodesToRender = $derived(
 		this.vsActive
 			? this.allFlatNodes.slice(this.vsStartIndex, this.vsEndIndex)
-			: this.isFlatRenderingEnabled && this.isProgressiveRender
+			: this.isFlatRenderingEnabled && this.isProgressiveRenderEnabled
 				? (this.tree?.visibleFlatNodes?.filter((n) => this.flatRenderedIds.has(String(n.id))) ?? [])
 				: (this.tree?.visibleFlatNodes ?? [])
 	);
@@ -1055,7 +1055,7 @@ export class TreeController<T> {
 		this.isLoading = props.isLoading ?? false;
 
 		this.isFlatRenderingEnabled = props.isFlatRenderingEnabled ?? true;
-		this.isProgressiveRender = props.isProgressiveRender ?? true;
+		this.isProgressiveRenderEnabled = props.isProgressiveRenderEnabled ?? true;
 		this.initialBatchSize = props.initialBatchSize ?? 20;
 		this.maxBatchSize = props.maxBatchSize ?? 500;
 		this.bodyClass = props.bodyClass;
@@ -1065,7 +1065,7 @@ export class TreeController<T> {
 		this.shouldAutoHandleCopy = props.shouldAutoHandleCopy ?? true;
 		this.shouldAutoHandleMove = props.shouldAutoHandleMove ?? true;
 		this.shouldAutoHandlePaste = props.shouldAutoHandlePaste ?? true;
-		this.isAccordionExpand = props.isAccordionExpand ?? false;
+		this.shouldExpandAsAccordion = props.shouldExpandAsAccordion ?? false;
 
 		this.clickBehavior = props.clickBehavior ?? 'expand-and-focus';
 		this.selectionMode = props.selectionMode ?? 'single';
@@ -1185,7 +1185,7 @@ export class TreeController<T> {
 		);
 
 		// ── Create render coordinator ───────────────────────────────────
-		this.renderCoordinator = this.isProgressiveRender
+		this.renderCoordinator = this.isProgressiveRenderEnabled
 			? createRenderCoordinator(2, {
 					onStart: () => {
 						this.isRendering = true;
@@ -1246,7 +1246,7 @@ export class TreeController<T> {
 			dropZoneStart: this.dropZoneStart,
 			dropZoneMaxWidth: this.dropZoneMaxWidth,
 			isCopyAllowed: this.isCopyAllowed,
-			isAccordionExpand: this.isAccordionExpand
+			shouldExpandAsAccordion: this.shouldExpandAsAccordion
 		};
 
 		// ── Initialize default navigation strategy ─────────────────────
@@ -1297,7 +1297,7 @@ export class TreeController<T> {
 				dropZoneStart: this.dropZoneStart,
 				dropZoneMaxWidth: this.dropZoneMaxWidth,
 				isCopyAllowed: this.isCopyAllowed,
-				isAccordionExpand: this.isAccordionExpand
+				shouldExpandAsAccordion: this.shouldExpandAsAccordion
 			});
 		});
 
@@ -1337,7 +1337,7 @@ export class TreeController<T> {
 
 		// Progressive rendering for flat mode
 		$effect(() => {
-			if (!this.isFlatRenderingEnabled || !this.isProgressiveRender || !this.tree?.visibleFlatNodes)
+			if (!this.isFlatRenderingEnabled || !this.isProgressiveRenderEnabled || !this.tree?.visibleFlatNodes)
 				return;
 
 			const tracker = this.tree.changeTracker;

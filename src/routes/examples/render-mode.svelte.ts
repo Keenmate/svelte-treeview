@@ -18,7 +18,7 @@ let _renderMode = $state<RenderMode>(loadMode());
 
 const _treeProps = $derived({
 	isFlatRenderingEnabled: _renderMode === 'progressive' || _renderMode === 'virtual',
-	isProgressiveRender: _renderMode === 'progressive',
+	isProgressiveRenderEnabled: _renderMode === 'progressive',
 	isVirtualScrollEnabled: _renderMode === 'virtual',
 });
 

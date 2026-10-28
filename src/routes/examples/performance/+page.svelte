@@ -25,7 +25,7 @@
   // Test configuration with localStorage defaults
   let expandLevel = $state(savedConfig.expandLevel ?? 1);
   let isSorted = $state(savedConfig.isSorted ?? true);
-  let isProgressiveRender = $state(savedConfig.isProgressiveRender ?? false);
+  let isProgressiveRenderEnabled = $state(savedConfig.isProgressiveRenderEnabled ?? false);
   let initialBatchSize = $state(savedConfig.initialBatchSize ?? 20);
   let maxBatchSize = $state(savedConfig.maxBatchSize ?? 500);
   let indexerBatchSize = $state(savedConfig.indexerBatchSize ?? 25);
@@ -43,7 +43,7 @@
       renderMode,
       expandLevel,
       isSorted,
-      isProgressiveRender,
+      isProgressiveRenderEnabled,
       initialBatchSize,
       maxBatchSize,
       indexerBatchSize,
@@ -60,7 +60,7 @@
     renderMode = 'flat';
     expandLevel = 1;
     isSorted = true;
-    isProgressiveRender = false;
+    isProgressiveRenderEnabled = false;
     initialBatchSize = 20;
     maxBatchSize = 500;
     indexerBatchSize = 25;
@@ -594,10 +594,10 @@
     {#if renderMode !== 'virtual'}
       <div class="mode-options">
         <label>
-          <input type="checkbox" bind:checked={isProgressiveRender} />
+          <input type="checkbox" bind:checked={isProgressiveRenderEnabled} />
           Progressive Render
         </label>
-        {#if isProgressiveRender}
+        {#if isProgressiveRenderEnabled}
           <label>
             Initial Batch:
             <input type="number" bind:value={initialBatchSize} min="5" max="200" step="5" />
@@ -694,7 +694,7 @@
           <span class="label">Search/Filter</span>
         </div>
       {/if}
-      {#if isProgressiveRender}
+      {#if isProgressiveRenderEnabled}
         <div class="metric" class:rendering={isRendering}>
           <span class="value">
             {#if isRendering}
@@ -790,7 +790,7 @@
             {sortCallback}
             {isSorted}
             {expandLevel}
-            {isProgressiveRender}
+            {isProgressiveRenderEnabled}
             {initialBatchSize}
             {maxBatchSize}
             {indexerBatchSize}

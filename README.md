@@ -82,7 +82,7 @@ Pick svelte-treeview in a Svelte 5 app, or when you want recursive rendering (ea
 <Tree {data} isVirtualScrollEnabled={true} virtualScrollContainerHeight="500px" />
 
 <!-- Flat mode (default) with progressive batching -->
-<Tree {data} isProgressiveRender={true} initialBatchSize={20} maxBatchSize={500} />
+<Tree {data} isProgressiveRenderEnabled={true} initialBatchSize={20} maxBatchSize={500} />
 ```
 
 ## Features

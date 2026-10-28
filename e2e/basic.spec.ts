@@ -6,7 +6,7 @@ import { test, expect, Page, Locator } from '@playwright/test';
  *
  * Four trees, one per card:
  *   1. "Simple Tree"                    — click focus → outputs
- *   2. "Expand Controls"                — expandLevel input + isAccordionExpand
+ *   2. "Expand Controls"                — expandLevel input + shouldExpandAsAccordion
  *   3. "Scroll to Path"                 — text input + button → scrollToPath
  *   4. "Programmatic Expand/Collapse"   — 4 buttons hitting public methods
  *
@@ -144,7 +144,7 @@ test.describe('Expand Controls card', () => {
 		await expect(treeIn(card).locator('.stv__node[data-tree-path]')).toHaveCount(15);
 	});
 
-	test('isAccordionExpand collapses sibling subtrees when a new node is expanded', async ({
+	test('shouldExpandAsAccordion collapses sibling subtrees when a new node is expanded', async ({
 		page
 	}) => {
 		await gotoBasic(page);

@@ -191,7 +191,7 @@ pathMember → data-handling.txt, basic-setup.txt
 Performance → performance.txt
 Position restrictions → drag-drop.txt
 Progressive rendering → performance.txt
-isProgressiveRender → performance.txt
+isProgressiveRenderEnabled → performance.txt
 
 R
 -

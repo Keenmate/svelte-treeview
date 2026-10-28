@@ -150,7 +150,7 @@
 		isLoading?: boolean;
 
 		// Progressive rendering (exponential batching: 20 → 40 → 80 → 160...)
-		isProgressiveRender?: boolean;
+		isProgressiveRenderEnabled?: boolean;
 		initialBatchSize?: number;
 		maxBatchSize?: number;
 		isRendering?: boolean; // Bindable: true while progressive rendering is active
@@ -208,7 +208,7 @@
 		 *  first and can override or suppress any of these. Paste targets the focused node (root
 		 *  when none) and uses `nodeInputTransformationCallback`. */
 		shouldHandleKeyboardShortcuts?: boolean;
-		isAccordionExpand?: boolean; // Expanding a node auto-collapses its siblings (default: false)
+		shouldExpandAsAccordion?: boolean; // Expanding a node auto-collapses its siblings (default: false)
 
 		// EVENTS (on* = fire-and-forget notifications). Each carries a context object mirroring
 		// the clipboard callbacks: single-node events get a NodeRef (node + live parent/siblings),
@@ -458,7 +458,7 @@
 		isLoading = false,
 
 		// Progressive rendering (exponential batching: 20 → 40 → 80 → 160...)
-		isProgressiveRender = true,
+		isProgressiveRenderEnabled = true,
 		initialBatchSize = 20,
 		maxBatchSize = 500,
 		isRendering = $bindable(false),
@@ -488,7 +488,7 @@
 		shouldAutoHandleMove = true,
 		shouldAutoHandlePaste = true,
 		shouldHandleKeyboardShortcuts = false,
-		isAccordionExpand = false,
+		shouldExpandAsAccordion = false,
 
 		// EVENTS
 		onNodeClick,
@@ -613,7 +613,7 @@
 		indexerBatchSize,
 		indexerTimeout,
 		isLoading,
-		isProgressiveRender,
+		isProgressiveRenderEnabled,
 		initialBatchSize,
 		maxBatchSize,
 		onRenderStart,
@@ -634,7 +634,7 @@
 		shouldAutoHandleMove,
 		shouldAutoHandlePaste,
 		shouldHandleKeyboardShortcuts,
-		isAccordionExpand,
+		shouldExpandAsAccordion,
 		onNodeClick,
 		onNodeDoubleClick,
 		onSelectionChange,
@@ -849,7 +849,7 @@
 		controller.virtualScrollContainerHeight = virtualScrollContainerHeight;
 	});
 	$effect(() => {
-		controller.isProgressiveRender = isProgressiveRender ?? true;
+		controller.isProgressiveRenderEnabled = isProgressiveRenderEnabled ?? true;
 	});
 	$effect(() => {
 		controller.initialBatchSize = initialBatchSize ?? 20;
@@ -876,7 +876,7 @@
 		controller.shouldHandleKeyboardShortcuts = shouldHandleKeyboardShortcuts ?? false;
 	});
 	$effect(() => {
-		controller.isAccordionExpand = isAccordionExpand ?? false;
+		controller.shouldExpandAsAccordion = shouldExpandAsAccordion ?? false;
 	});
 	$effect(() => {
 		controller.hasContextMenuSnippet = !!contextMenu;
@@ -1503,7 +1503,7 @@
 				| 'contextMenuYOffset'
 				| 'touchDragDelay'
 				| 'shouldIndicateUndraggable'
-				| 'isAccordionExpand'
+				| 'shouldExpandAsAccordion'
 			>
 		>
 	) {
@@ -1654,7 +1654,7 @@
 		if (updates.touchDragDelay !== undefined) touchDragDelay = updates.touchDragDelay;
 		if (updates.shouldIndicateUndraggable !== undefined)
 			shouldIndicateUndraggable = updates.shouldIndicateUndraggable;
-		if (updates.isAccordionExpand !== undefined) isAccordionExpand = updates.isAccordionExpand;
+		if (updates.shouldExpandAsAccordion !== undefined) shouldExpandAsAccordion = updates.shouldExpandAsAccordion;
 	}
 
 	// ── Arrow key navigation ─────────────────────────────────────────────
@@ -1915,7 +1915,7 @@
 								<Node
 									{node}
 									children={nodeTemplate}
-									isProgressiveRender={false}
+									isProgressiveRenderEnabled={false}
 									isDragInProgress={controller.isDragInProgress}
 									hoveredNodeForDropPath={controller.hoveredNodeForDrop?.path}
 									activeDropPosition={controller.activeDropPosition}
@@ -1937,7 +1937,7 @@
 						<Node
 							{node}
 							children={nodeTemplate}
-							isProgressiveRender={false}
+							isProgressiveRenderEnabled={false}
 							isDragInProgress={controller.isDragInProgress}
 							hoveredNodeForDropPath={controller.hoveredNodeForDrop?.path}
 							activeDropPosition={controller.activeDropPosition}
@@ -1957,7 +1957,7 @@
 							<Node
 								{node}
 								children={nodeTemplate}
-								isProgressiveRender={controller.isProgressiveRender}
+								isProgressiveRenderEnabled={controller.isProgressiveRenderEnabled}
 								renderBatchSize={controller.initialBatchSize}
 								isDragInProgress={controller.isDragInProgress}
 								hoveredNodeForDropPath={controller.hoveredNodeForDrop?.path}

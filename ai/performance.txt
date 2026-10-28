@@ -53,7 +53,7 @@ PROGRESSIVE RENDERING
 Renders nodes in batches to prevent UI freeze:
 
 <Tree
-  isProgressiveRender={true}    <!-- Default -->
+  isProgressiveRenderEnabled={true}    <!-- Default -->
   initialBatchSize={20}       <!-- First batch (instant) -->
   maxBatchSize={500}          <!-- Maximum batch size -->
 />
@@ -126,7 +126,7 @@ Monitor progressive rendering:
 
 <Tree
   {data}
-  isProgressiveRender={true}
+  isProgressiveRenderEnabled={true}
   bind:isRendering
   onRenderStart={() => console.log('Render started')}
   onRenderProgress={(stats) =>
@@ -221,7 +221,7 @@ For very large datasets (10,000+ nodes):
 let data = $state.raw<Item[]>([]);
 
 2. Enable progressive render:
-<Tree isProgressiveRender={true} />
+<Tree isProgressiveRenderEnabled={true} />
 
 3. Limit initial expand:
 <Tree expandLevel={1} />
@@ -302,7 +302,7 @@ Issue: Tree takes forever to render
 Fix: Use $state.raw() instead of $state()
 
 Issue: UI freezes during load
-Fix: Enable isProgressiveRender={true}
+Fix: Enable isProgressiveRenderEnabled={true}
 
 Issue: Slow search
 Fix: Simplify getSearchValueCallback, use debouncing
@@ -329,7 +329,7 @@ Common bottlenecks:
 BEST PRACTICES
 --------------
 ✅ Use $state.raw() for 1000+ items
-✅ Keep isProgressiveRender={true}
+✅ Keep isProgressiveRenderEnabled={true}
 ✅ Keep isFlatRenderingEnabled={true}
 ✅ Limit expandLevel for large trees
 ✅ Debounce search input

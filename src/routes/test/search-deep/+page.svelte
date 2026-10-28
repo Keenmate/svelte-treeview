@@ -104,7 +104,7 @@
 			shouldUseInternalSearchIndex={true}
 			searchValueMember="name"
 			isFlatRenderingEnabled={true}
-			isProgressiveRender={true}
+			isProgressiveRenderEnabled={true}
 			initialBatchSize={5}
 			maxBatchSize={500}
 		>

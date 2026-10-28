@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BREAKING: canonical boolean names** — `isProgressiveRender` → `isProgressiveRenderEnabled`;
+  `isAccordionExpand` → `shouldExpandAsAccordion` (props, `update()`, `TreeController`). Same as
+  `@keenmate/web-treeview` (`enable-progressive-render` / `expand-as-accordion`).
 - **BREAKING: ctx nouns (no bare `index`, `item` reserved for action items)** — same as
   `@keenmate/web-treeview`: `sortCallback({ items })` → `sortCallback({ nodes })`; the node-transform
   ctx `index` → `rootIndex`; `applyChanges()` `failed[].index` → `failed[].changeIndex`.

@@ -17,7 +17,7 @@
 		children?: Snippet<[LTreeNode<T>, NodeRenderContext]>; // nodeTemplate — (node, ctx)
 
 		// Progressive rendering
-		isProgressiveRender?: boolean;
+		isProgressiveRenderEnabled?: boolean;
 		renderBatchSize?: number;
 
 		// Drag state (passed as props for efficient Svelte diffing).
@@ -40,7 +40,7 @@
 		children = undefined,
 
 		// Progressive rendering
-		isProgressiveRender = false,
+		isProgressiveRenderEnabled = false,
 		renderBatchSize = 50,
 
 		// Drag state
@@ -98,11 +98,11 @@
 	// Indeterminate state: driven by controller's _updateAncestorVisualStates
 	const isIndeterminate = $derived(checkboxMode === 'cascade' && node.visualState === 'indeterminate');
 
-	// Read dropZoneMode and isAccordionExpand through the proxy each time (not
+	// Read dropZoneMode and shouldExpandAsAccordion through the proxy each time (not
 	// destructured) so they stay reactive in flat mode where nodes are NOT
 	// recreated on config change.
 	const dropZoneMode = $derived(config.dropZoneMode);
-	const isAccordionExpand = $derived(config.isAccordionExpand);
+	const shouldExpandAsAccordion = $derived(config.shouldExpandAsAccordion);
 
 	// Compute if THIS node is the one being hovered for drop.
 	// Single source of truth from the controller — guarantees exactly one highlighted
@@ -293,12 +293,12 @@
 
 	// Get the children to render (all or progressive slice) - only used in recursive mode
 	const childrenToRender = $derived(
-		!flatMode && isProgressiveRender && renderCoordinator
+		!flatMode && isProgressiveRenderEnabled && renderCoordinator
 			? childrenArray.slice(0, renderedCount)
 			: childrenArray
 	);
 	const hasMoreToRender = $derived(
-		!flatMode && isProgressiveRender && renderCoordinator && renderedCount < childrenArray.length
+		!flatMode && isProgressiveRenderEnabled && renderCoordinator && renderedCount < childrenArray.length
 	);
 
 	// Handle expansion state changes - use coordinator for progressive rendering
@@ -308,7 +308,7 @@
 
 		const isExpanded = node?.isExpanded ?? false;
 		const childCount = childrenArray.length;
-		const shouldRenderProgressively = isProgressiveRender && renderCoordinator && childCount > 0;
+		const shouldRenderProgressively = isProgressiveRenderEnabled && renderCoordinator && childCount > 0;
 
 		// Only act on actual state changes
 		if (isExpanded !== lastExpandedState || childCount !== lastChildrenLength) {
@@ -367,9 +367,9 @@
 			const newState = !node.isExpanded
 
 			// Accordion: collapse siblings when expanding
-			if (newState && isAccordionExpand) {
+			if (newState && shouldExpandAsAccordion) {
 				const siblings = tree.getSiblings(node.path)
-				uiLogger.debug(`[accordion] expanding ${node.path}, checking ${siblings.length} siblings, isAccordionExpand=${isAccordionExpand}`)
+				uiLogger.debug(`[accordion] expanding ${node.path}, checking ${siblings.length} siblings, shouldExpandAsAccordion=${shouldExpandAsAccordion}`)
 				for (const sibling of siblings) {
 					if (sibling.path !== node.path && sibling.isExpanded && tree.getNodeIsCollapsible(sibling)) {
 						uiLogger.debug(`[accordion] collapsing sibling: ${sibling.path}`)
@@ -556,7 +556,7 @@
 				<Node
 					node={item}
 					{children}
-					{isProgressiveRender}
+					{isProgressiveRenderEnabled}
 					{renderBatchSize}
 					{isDragInProgress}
 					{hoveredNodeForDropPath}
