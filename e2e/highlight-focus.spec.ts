@@ -162,3 +162,18 @@ test.describe('focused node styling', () => {
 		await expect(work).not.toHaveClass(new RegExp(`(^|\\s)${MARKER}(\\s|$)`));
 	});
 });
+
+// ── Assigning the bindable replaces the set ──────────────────────────────────
+
+test.describe('bind:selectedPaths assignment', () => {
+	test('assigning an empty set clears the row markers (node flags follow, no setSelectedPaths)', async ({ page }) => {
+		await goto(page);
+
+		const work = nodeContent(page, '1.1');
+		await work.click();
+		await expect(work).toHaveClass(new RegExp(`(^|\\s)${MARKER}(\\s|$)`));
+
+		await page.getByRole('button', { name: 'Clear' }).click();
+		await expect(work).not.toHaveClass(new RegExp(`(^|\\s)${MARKER}(\\s|$)`));
+	});
+});

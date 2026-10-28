@@ -215,12 +215,10 @@ Three independent concerns, each with the same method shape. `opts` is always `T
 |--------|------------|-------------|
 | `selectNode` | `path: string, mode?: SelectMode, opts?` | Select one node. `mode`: `'replace'` (plain click, default), `'toggle'` (Ctrl+click), `'range'` (Shift+click from cursor) |
 | `selectNodes` | `paths: string[], opts?` | Add nodes to the selection (**additive**) |
-| `setSelectedPaths` | `paths: string[], opts?` | Replace the entire selection |
 | `selectAll` | `opts?` | Select every visible node (Ctrl+A) |
 | `clearSelection` | `paths?: string[], opts?` | Clear the given paths, or all when omitted |
 | `checkNode` | `path: string, opts?` | Check one node (cascades to descendants in cascade mode) |
 | `checkNodes` | `paths: string[], opts?` | Check nodes (**additive**) |
-| `setCheckedPaths` | `paths: string[], opts?` | Replace the entire checkbox set |
 | `checkAll` | `opts?` | Check every selectable node |
 | `uncheckNode` | `path: string, opts?` | Uncheck one node (cascades in cascade mode) |
 | `uncheckNodes` | `paths: string[], opts?` | Uncheck nodes (cascades in cascade mode) |

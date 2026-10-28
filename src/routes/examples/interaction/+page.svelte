@@ -326,7 +326,10 @@
 			</label>
 			<button
 				class="btn"
-				onclick={() => clickTreeRef?.setSelectedPaths(['1.1.1', '1.1.3', '1.2.1'])}
+				onclick={() => {
+					clickTreeRef?.clearSelection();
+					clickTreeRef?.selectNodes(['1.1.1', '1.1.3', '1.2.1']);
+				}}
 				>Highlight 1.1.1, 1.1.3, 1.2.1</button
 			>
 			<button

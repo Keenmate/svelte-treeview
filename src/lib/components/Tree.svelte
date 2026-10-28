@@ -1117,7 +1117,8 @@
 		const hp = selectedPaths;
 		const cp = controller.selectedPaths;
 		if (hp.size !== cp.size || [...hp].some((p) => !cp.has(p))) {
-			controller.selectedPaths = new Set(hp);
+			// Assigning the bindable replaces the set (node flags too) — silent, no event.
+			controller._replaceSelectedPaths(hp);
 		}
 	});
 	$effect(() => {
@@ -1126,7 +1127,7 @@
 		if (sp.size !== cp.size || [...sp].some((p) => !cp.has(p))) {
 			// Incoming set is a projection; expand it (cascade-down) into the canonical
 			// checked state. Silent — the parent set this, so don't echo onCheckedChange.
-			controller.setCheckedPaths([...sp], { silent: true });
+			controller._replaceCheckedPaths(sp);
 		}
 	});
 
@@ -1320,10 +1321,6 @@
 		controller.selectNodes(paths, options);
 	}
 
-	export function setSelectedPaths(paths: string[], options?: TreeMutationOptions) {
-		controller.setSelectedPaths(paths, options);
-	}
-
 	export function selectAll(options?: TreeMutationOptions) {
 		controller.selectAll(options);
 	}
@@ -1339,10 +1336,6 @@
 
 	export function checkNodes(paths: string[], options?: TreeMutationOptions) {
 		controller.checkNodes(paths, options);
-	}
-
-	export function setCheckedPaths(paths: string[], options?: TreeMutationOptions) {
-		controller.setCheckedPaths(paths, options);
 	}
 
 	export function checkAll(options?: TreeMutationOptions) {

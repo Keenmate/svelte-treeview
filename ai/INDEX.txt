@@ -208,8 +208,7 @@ CSS / styles.css → styling-theming.txt, import-patterns.txt
 checkAll → tree-editing.txt, advanced-patterns.txt
 checkNode → tree-editing.txt, advanced-patterns.txt
 setExpandedPaths → tree-editing.txt
-setSelectedPaths → advanced-patterns.txt
-setCheckedPaths → tree-editing.txt, advanced-patterns.txt
+selectedPaths / checkedPaths (assign = replace) → advanced-patterns.txt
 scrollHighlightClass → styling-theming.txt
 scrollHighlightTimeout → styling-theming.txt
 scrollToPath → basic-setup.txt, tree-editing.txt

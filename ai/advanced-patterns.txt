@@ -138,14 +138,14 @@ Access via bind:this on <Tree> (treeRef) — every method below is on the contro
 SELECTION (UI multi-select set = selectedPaths):
 - treeRef.selectNode(path, mode?, opts?)   // mode: 'replace' | 'toggle' | 'range'
 - treeRef.selectNodes(paths, opts?)        // additive
-- treeRef.setSelectedPaths(paths, opts?)   // replace whole set
+- replace the whole set: assign bind:selectedPaths (silent, no event)
 - treeRef.selectAll(opts?)
 - treeRef.clearSelection(paths?, opts?)
 
 CHECKED (checkbox data set = checkedPaths):
 - treeRef.checkNode(path, opts?)
 - treeRef.checkNodes(paths, opts?)           // additive
-- treeRef.setCheckedPaths(paths, opts?)      // replace whole set
+- replace the whole set: assign bind:checkedPaths (silent, no event)
 - treeRef.checkAll(opts?)
 - treeRef.uncheckNode(path, opts?)
 - treeRef.uncheckNodes(paths, opts?)

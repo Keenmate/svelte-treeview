@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BREAKING: `setSelectedPaths()` / `setCheckedPaths()` removed** (`<Tree>` and `TreeController`).
+  To replace a whole set, assign the bindable `selectedPaths` / `checkedPaths` (or
+  `controller.updateProps({ selectedPaths })`) — silent, no event, like any bound prop. Assigning
+  `selectedPaths` now also updates the rows (it used to replace the set without clearing the
+  previous rows' selected markers). Additive / event-emitting changes stay `selectNodes()` /
+  `clearSelection()` / `checkNodes()` / `uncheckAll()`. Same as `@keenmate/web-treeview`.
 - **BREAKING: `labels` prop for the UI strings; `noDataText` and `displayValueFallback` removed** —
   `labels?: Partial<TreeLabels>` (props, `update()`, `TreeController.labels` / `getLabel(key)`) merged
   per key over the English defaults: `noData` "No data" (the tree has no nodes), `noResults` "No results

@@ -3269,11 +3269,11 @@ export class TreeController<T> {
 		if (updates.data !== undefined) this.data = updates.data;
 		if (updates.focusedNode !== undefined) this._setFocusedNode(updates.focusedNode ?? null);
 		if (updates.selectedPaths !== undefined)
-			this.selectedPaths = updates.selectedPaths ?? new Set();
+			this._replaceSelectedPaths(updates.selectedPaths ?? []);
 		if (updates.checkedPaths !== undefined)
 			// Incoming set is a projection intent — expand it (cascade-down) into the
 			// canonical checked state rather than storing it raw.
-			this.setCheckedPaths([...(updates.checkedPaths ?? new Set<string>())], { silent: true });
+			this._replaceCheckedPaths(updates.checkedPaths ?? []);
 		if (updates.cascadeCheckPolicy !== undefined)
 			this.cascadeCheckPolicy = updates.cascadeCheckPolicy ?? 'rolled-up';
 		if (updates.searchTerm !== undefined) this.searchTerm = updates.searchTerm;
@@ -4020,7 +4020,7 @@ export class TreeController<T> {
 	}
 
 	/** Add nodes to the highlight set (additive — existing highlights are kept).
-	 *  Use setSelectedPaths() to replace the whole set instead.
+	 *  To replace the whole set, assign `selectedPaths` (the bindable prop / `updateProps`).
 	 *  Pass `{ silent: true }` to skip `onSelectionChange`. */
 	selectNodes(paths: string[], options?: TreeMutationOptions) {
 		const newPaths = new Set(this.selectedPaths);
@@ -4046,18 +4046,13 @@ export class TreeController<T> {
 		this.tree.refresh();
 	}
 
-	/** Replace the entire highlight set with the given paths.
-	 *  Equivalent to clearSelection() + selectNodes(paths).
-	 *  Pass `{ silent: true }` to skip `onSelectionChange`. */
-	setSelectedPaths(paths: string[], options?: TreeMutationOptions) {
+	/** @internal Replace the entire selection set (node flags included), silently — the
+	 *  path behind an assigned `selectedPaths` (bindable prop / `updateProps`). No event. */
+	_replaceSelectedPaths(paths: Iterable<string>) {
 		this._clearAllSelectionFlags();
 		this.selectedPaths = new Set();
 		this._shiftCursor = null;
-		this.selectNodes(paths, { silent: true });
-		if (!options?.silent) {
-			this._notifySelectionChanged();
-			this._mirrorSelectedToChecked();
-		}
+		this.selectNodes([...paths], { silent: true });
 		this.tree.refresh();
 	}
 
@@ -4210,7 +4205,7 @@ export class TreeController<T> {
 	}
 
 	/** Check multiple nodes (additive — existing checks are kept).
-	 *  Use setCheckedPaths() to replace the whole set instead.
+	 *  To replace the whole set, assign `checkedPaths` (the bindable prop / `updateProps`).
 	 *  Pass `{ silent: true }` to skip `onCheckedChange`. */
 	checkNodes(paths: string[], options?: TreeMutationOptions) {
 		const changed = this._applyCheckboxState(paths, true);
@@ -4218,14 +4213,13 @@ export class TreeController<T> {
 		this.tree.refresh();
 	}
 
-	/** Replace the entire checkbox set with the given paths.
-	 *  Equivalent to uncheckAll() + checkNodes(paths).
-	 *  Pass `{ silent: true }` to skip `onCheckedChange`. */
-	setCheckedPaths(paths: string[], options?: TreeMutationOptions) {
+	/** @internal Replace the entire checked set silently — the path behind an assigned
+	 *  `checkedPaths` (bindable prop / `updateProps`). The incoming set is a projection
+	 *  intent; it is expanded (cascade-down) into the canonical checked state. No event. */
+	_replaceCheckedPaths(paths: Iterable<string>) {
 		this._clearAllCheckedFlags();
 		this.checkedPaths = new Set();
-		this._applyCheckboxState(paths, true);
-		if (!options?.silent) this._notifyCheckedChanged();
+		this._applyCheckboxState([...paths], true);
 		this.tree.refresh();
 	}
 
