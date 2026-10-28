@@ -2,7 +2,8 @@
 	import Tree from '$lib/components/Tree.svelte';
 	import ContextMenuItemC from '$lib/components/ContextMenuItem.svelte';
 	import ContextMenuDividerC from '$lib/components/ContextMenuDivider.svelte';
-	import type { LTreeNode, ContextMenuEntry } from '$lib/ltree/types.js';
+	import type { LTreeNode } from '$lib/ltree/types.js';
+	import type { TreeMenuContext, TreeMenuEntry } from '$lib/core/menu.js';
 
 	// Deterministic e2e fixture for the context-menu feature. Targeted by
 	// e2e/context-menu.spec.ts. Mirrors the menu logic from
@@ -54,10 +55,11 @@
 		snippetLog = [];
 	}
 
-	function getContextMenu({ node, closeMenu: close }: { node: LTreeNode<FileItem>; closeMenu: () => void }): ContextMenuEntry[] {
+	function getContextMenu({ node, controller }: TreeMenuContext<FileItem>): TreeMenuEntry<FileItem>[] {
+		const close = () => controller.closeContextMenu();
 		const isFolder = node.data?.type === 'folder';
 		const isReadonly = node.data?.readonly;
-		const entries: ContextMenuEntry[] = [];
+		const entries: TreeMenuEntry<FileItem>[] = [];
 
 		if (isFolder) {
 			entries.push({

@@ -51,10 +51,11 @@ import type {
   TreeMutationOptions, // { isSilent? } — passed to selection/checked/focus mutators
 
   // Context menu (unified types)
-  ContextMenuEntry,    // ContextMenuItem | ContextMenuDivider
-  ContextMenuItem,     // { text, icon?, shortcut?, onClick?, cssClass?, isDanger?, isToggled?, children?, ... }
+  TreeMenuEntry,       // TreeMenuItem | MenuDivider | TreeAction (built-in name)
+  TreeMenuItem,        // core MenuItem: { action?, id?, text, icon?, shortcut?, onClick?(detail), isDanger?, isToggled?, children?, ... }
   ContextMenuDivider,  // { divider: true, text?: string }
-  ContextMenuContext,  // { node, selectedNodes, checkedNodes, closeMenu }
+  TreeMenuContext,     // { node, path, parent, siblings, controller }
+  TreeActionEventDetail, // menu ctx + { action, id?, item, source, ... }
 
   // Event / callback context types (single-object args)
   NodeRef,                 // { path, node, parent, siblings }
@@ -140,39 +141,37 @@ function getAllowedPositions(node: LTreeNode<MyItem>): DropPosition[] | null {
 
 CONTEXT MENU TYPES
 ------------------
-interface ContextMenuContext<T> {
-  node: LTreeNode<T>;          // the node the menu opened on
-  selectedNodes: LTreeNode<T>[]; // click selection when the menu opened
-  checkedNodes: LTreeNode<T>[];  // checkbox set when the menu opened
-  closeMenu: () => void;
+interface TreeMenuContext<T> extends NodeRef<T> {
+  node: LTreeNode<T>;            // the node the menu opened on (+ path, parent, siblings)
+  controller: TreeController<T>;
 }
 
-interface ContextMenuItem<T = any> {
+type TreeAction = 'copy' | 'cut' | 'paste' | 'delete' | 'expand' | 'collapse' | 'expand-subtree'
+  | 'collapse-subtree' | 'expand-all' | 'collapse-all' | 'sort' | 'sort-subtree' | 'sort-all';
+
+interface TreeMenuItem<T = any> {  // core MenuItem<TreeMenuContext<T>, TreeAction>
+  action?: TreeAction | 'custom';
   id?: string;
-  text: string;               // rc16 (was "label"; core ActionItem name)
-  tooltip?: string;
+  text?: string;
   icon?: string;
-  shortcut?: string;          // e.g. "Ctrl+C", "F2"
-  isDisabled?: boolean;
+  tooltip?: string;
+  shortcut?: string;
+  cssClass?: string;
   isVisible?: boolean;
-  isDanger?: boolean;         // destructive styling (.stv__context-menu-item--danger)
-  isToggled?: boolean;        // toggle item: role=menuitemcheckbox + aria-checked
-  cssClass?: string;          // extra classes (rc16, was "className")
-  onClick?: (ctx: ContextMenuContext<T>) => void | Promise<void>;  // rc16, was "onclick"
-  shouldCloseOnClick?: boolean;   // default true; false keeps menu open (handler closes via close())
-  children?: ContextMenuEntry[];  // submenu items
+  isDisabled?: boolean;
+  isDanger?: boolean;
+  isToggled?: boolean;
+  get*Callback?(ctx: TreeMenuContext<T>);   // getTextCallback, getIsDisabledCallback, … win over statics
+  onClick?: (detail: TreeActionEventDetail<T>) => void | Promise<void>;
+  children?: TreeMenuEntry<T>[];  // submenu items (or getChildrenCallback)
+  shouldCloseOnClick?: boolean;   // default true
 }
 
-interface ContextMenuDivider {
-  divider: true;              // was "isDivider" flag in old API
-  text?: string;              // named divider: ──── [text] ────
-}
-
-type ContextMenuEntry = ContextMenuItem | ContextMenuDivider;
+type TreeMenuEntry<T = any> = TreeMenuItem<T> | MenuDivider | TreeAction;   // menuDivider(text?)
 
 Usage:
 function createMenu(
-  { node, closeMenu: close }: { node: LTreeNode<MyItem>; closeMenu: () => void }): ContextMenuEntry[] {
+  { node }: TreeMenuContext<MyItem>): TreeMenuEntry<MyItem>[] {
   return [
     { text: 'Open', icon: '📂', shortcut: 'Enter', onClick: () => openItem(node.data) },
     { divider: true, text: 'Edit' },
@@ -298,8 +297,10 @@ getDisplayValueCallback?: (ctx: NodeContext<T>) => string;
 getSearchValueCallback?: (ctx: NodeContext<T>) => string;
 getAllowedDropPositionsCallback?: (ctx: NodeContext<T>) => DropPosition[] | null | undefined;
 
-// Context menu (text/onClick/divider API — core ActionItem names). ctx.closeMenu closes the menu.
-getContextMenuItemsCallback?: (ctx: ContextMenuContext<T>) => ContextMenuEntry<T>[];
+// Context menu (core action items + menuDivider() + built-in names; same model as web-treeview)
+getContextMenuItemsCallback?: (ctx: TreeMenuContext<T>) => TreeMenuEntry<T>[];
+beforeActionCallback?: (detail: TreeActionEventDetail<T>) => boolean | void | Promise<boolean | void>;
+onAction?: (detail: TreeActionEventDetail<T>) => void;
 
 // Sort
 sortCallback?: (ctx: SortContext<T>) => LTreeNode<T>[];

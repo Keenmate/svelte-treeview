@@ -6,8 +6,6 @@ import {
 	type InsertArrayResult,
 	type InsertBranchResult,
 	type RemoveBranchResult,
-	type ContextMenuEntry,
-	type ContextMenuContext,
 	type DropPosition,
 	type DragDropMode,
 	type DropOperation,
@@ -55,6 +53,9 @@ import {
 	clearDragSet
 } from './clipboard.js';
 import type { TreeNavigation } from './navigation.js';
+import type { TreeMenuContext, TreeMenuEntry, TreeMenuItem, TreeAction, TreeActionEventDetail } from './menu.js';
+import type { ResolvedActionItem } from '../vendor/actions/types.js';
+import { runAction } from '../vendor/actions/resolve.js';
 
 // Re-register global API (safe to import multiple times)
 import '../global-api.js';
@@ -433,6 +434,7 @@ export interface NodeConfig {
 	shouldExpandAsAccordion: boolean;
 	/** Resolved `labels.loading` — the progressive "more children" row. */
 	loadingLabel: string;
+	showFullLabel: string;
 }
 
 // ─── Controller props ─────────────────────────────────────────────────────
@@ -680,7 +682,14 @@ export interface TreeControllerProps<T> {
 	nodeInputTransformationCallback?: NodeTransformCallback<T>;
 
 	// DATA PROVIDERS (get*Callback = returns data the system uses)
-	getContextMenuItemsCallback?: (ctx: ContextMenuContext<T>) => ContextMenuEntry<T>[];
+	/** The context menu's entries for the node it opened on: action items, `menuDivider()`s and
+	 *  built-in action names (`'copy'`, `'expand-subtree'`, …). No menu when unset (or empty). */
+	getContextMenuItemsCallback?: (ctx: TreeMenuContext<T>) => TreeMenuEntry<T>[];
+	/** Runs before a menu item activates (`false` cancels — no `onClick`, built-in or `onAction`;
+	 *  async OK). `detail` = the menu ctx + `{ action, id, item, source, sourceEvent, … }`. */
+	beforeActionCallback?: (detail: TreeActionEventDetail<T>) => boolean | void | Promise<boolean | void>;
+	/** A menu item ran (after its `onClick` and the built-in) — a notification after the fact. */
+	onAction?: (detail: TreeActionEventDetail<T>) => void;
 
 	// Tells the controller whether a context menu snippet exists (set by Tree.svelte)
 	hasContextMenuSnippet?: boolean;
@@ -769,7 +778,8 @@ export class TreeController<T> {
 		dropZoneMaxWidth: 120,
 		isCopyAllowed: false,
 		shouldExpandAsAccordion: false,
-		loadingLabel: 'Loading…'
+		loadingLabel: 'Loading…',
+		showFullLabel: 'Show full label'
 	});
 
 	// ── Props stored as reactive state ──────────────────────────────────
@@ -902,6 +912,8 @@ export class TreeController<T> {
 	onExpandedChangeHandler: TreeControllerProps<T>['onExpandedChange'];
 	beforeExpandHandler: TreeControllerProps<T>['beforeExpandCallback'];
 	onFocusChangeHandler: TreeControllerProps<T>['onFocusChange'];
+	beforeActionHandler: TreeControllerProps<T>['beforeActionCallback'];
+	onActionHandler: TreeControllerProps<T>['onAction'];
 	onTreeChangeHandler: TreeControllerProps<T>['onTreeChange'];
 	onNodeDragStartHandler: TreeControllerProps<T>['onNodeDragStart'];
 	onNodeDragOverHandler: TreeControllerProps<T>['onNodeDragOver'];
@@ -1269,6 +1281,8 @@ export class TreeController<T> {
 		this.onExpandedChangeHandler = props.onExpandedChange;
 		this.beforeExpandHandler = props.beforeExpandCallback;
 		this.onFocusChangeHandler = props.onFocusChange;
+		this.beforeActionHandler = props.beforeActionCallback;
+		this.onActionHandler = props.onAction;
 		this.onTreeChangeHandler = props.onTreeChange;
 		this.onNodeDragStartHandler = props.onNodeDragStart;
 		this.onNodeDragOverHandler = props.onNodeDragOver;
@@ -1402,7 +1416,8 @@ export class TreeController<T> {
 			dropZoneMaxWidth: this.dropZoneMaxWidth,
 			isCopyAllowed: this.isCopyAllowed,
 			shouldExpandAsAccordion: this.shouldExpandAsAccordion,
-			loadingLabel: this.getLabel('loading')
+			loadingLabel: this.getLabel('loading'),
+			showFullLabel: this.getLabel('showFullLabel')
 		};
 
 		// ── Initialize default navigation strategy ─────────────────────
@@ -1460,7 +1475,8 @@ export class TreeController<T> {
 				dropZoneMaxWidth: this.dropZoneMaxWidth,
 				isCopyAllowed: this.isCopyAllowed,
 				shouldExpandAsAccordion: this.shouldExpandAsAccordion,
-				loadingLabel: this.getLabel('loading')
+				loadingLabel: this.getLabel('loading'),
+			showFullLabel: this.getLabel('showFullLabel')
 			});
 		});
 
@@ -3206,12 +3222,101 @@ export class TreeController<T> {
 		return false;
 	}
 
-	/** Open the context menu at the given screen coordinates (offsets are applied automatically). */
-	openContextMenu(node: LTreeNode<T>, screenX: number, screenY: number) {
+	/** Open the context menu for the node at `path` at the given viewport coordinates (the
+	 *  `contextMenuXOffset` / `contextMenuYOffset` are applied). No-op for an unknown path. */
+	openContextMenu(path: string, screenX: number, screenY: number) {
+		const node = this.tree?.getNodeByPath(path);
+		if (!node) return;
 		this.contextMenuNode = node;
 		this.contextMenuX = screenX + this.contextMenuXOffset;
 		this.contextMenuY = screenY + this.contextMenuYOffset;
 		this.contextMenuVisible = true;
+	}
+
+	/** @internal The context menu's surface ctx: the node with its live parent / siblings + controller. */
+	menuContext(node: LTreeNode<T>): TreeMenuContext<T> {
+		return this._ctx({ ...this.nodeRef(node), node }) as TreeMenuContext<T>;
+	}
+
+	/** @internal The built-in state (text from `labels`, disabled, danger) of a built-in action item. */
+	menuItemDefaults(
+		item: TreeMenuItem<T>,
+		ctx: TreeMenuContext<T>
+	): Partial<ResolvedActionItem<TreeAction>> | undefined {
+		const label = (key: Parameters<TreeController<T>['getLabel']>[0]) => this.getLabel(key);
+		const targets = () =>
+			this._actionTargets(ctx.node)
+				.map((p) => this.tree?.getNodeByPath(p))
+				.filter((n): n is LTreeNode<T> => !!n && !!n.hasChildren);
+		switch (item.action) {
+			case 'copy': return { text: label('copy') };
+			case 'cut': return { text: label('cut') };
+			case 'paste': return { text: label('paste'), isDisabled: !this.hasClipboardContent() };
+			case 'delete': return { text: label('delete'), isDanger: true };
+			case 'expand': return { text: label('expand'), isDisabled: !targets().some((n) => !n.isExpanded) };
+			case 'collapse': return { text: label('collapse'), isDisabled: !targets().some((n) => n.isExpanded) };
+			case 'expand-subtree': return { text: label('expandSubtree'), isDisabled: targets().length === 0 };
+			case 'collapse-subtree': return { text: label('collapseSubtree'), isDisabled: targets().length === 0 };
+			case 'expand-all': return { text: label('expandAll') };
+			case 'collapse-all': return { text: label('collapseAll') };
+			case 'sort': return { text: label('sort'), isDisabled: targets().length === 0 };
+			case 'sort-subtree': return { text: label('sortSubtree'), isDisabled: targets().length === 0 };
+			case 'sort-all': return { text: label('sortAll') };
+			default: return undefined;
+		}
+	}
+
+	/**
+	 * @internal Activate a menu item (core `runAction`): `beforeActionCallback` (false cancels)
+	 * → item `onClick(detail)` → built-in → `onAction(detail)`. Resolves false when cancelled.
+	 */
+	activateMenuItem(
+		item: TreeMenuItem<T>,
+		ctx: TreeMenuContext<T>,
+		trigger?: HTMLElement,
+		event?: Event
+	): Promise<boolean> {
+		const detail = {
+			...ctx,
+			action: item.action ?? 'custom',
+			...(item.id !== undefined ? { id: item.id } : {}),
+			item,
+			source: 'context-menu',
+			sourceEvent: event,
+			triggerElement: trigger,
+			dataset: {}
+		} as TreeActionEventDetail<T>;
+		return runAction({
+			detail,
+			beforeActionCallback: this.beforeActionHandler,
+			emitAction: (d) => this.onActionHandler?.(d),
+			runBuiltIn: (d) => this._runBuiltInAction(d.action, ctx.node)
+		});
+	}
+
+	/** Targets of a built-in menu action: the whole selection when `node` is in it, else just `node`. */
+	private _actionTargets(node: LTreeNode<T>): string[] {
+		return this.selectedPaths.has(node.path) ? [...this.selectedPaths] : [node.path];
+	}
+
+	/** The built-in menu actions act on the node — or on the whole selection when the node is in it. */
+	private async _runBuiltInAction(action: string, node: LTreeNode<T>): Promise<void> {
+		const paths = this._actionTargets(node);
+		switch (action) {
+			case 'copy': this.copyNodes(paths); break;
+			case 'cut': this.cutNodes(paths); break;
+			case 'paste': this.pasteNodes(node.path); break;
+			case 'delete': this.runDeleteCommand(paths); break;
+			case 'expand': await this.expandNodes(paths); break;
+			case 'collapse': await this.collapseNodes(paths); break;
+			case 'expand-subtree': this.expandAll(paths); break;
+			case 'collapse-subtree': this.collapseAll(paths); break;
+			case 'expand-all': this.expandAll(null); break;
+			case 'collapse-all': this.collapseAll(null); break;
+			case 'sort': this.sortNodes(paths); break;
+			case 'sort-subtree': this.sortAll(paths); break;
+			case 'sort-all': this.sortAll(null); break;
+		}
 	}
 
 	// svelte-ignore non_reactive_update
@@ -3833,6 +3938,8 @@ export class TreeController<T> {
 		if (updates.onExpandedChange !== undefined) this.onExpandedChangeHandler = updates.onExpandedChange;
 		if (updates.beforeExpandCallback !== undefined) this.beforeExpandHandler = updates.beforeExpandCallback;
 		if (updates.onFocusChange !== undefined) this.onFocusChangeHandler = updates.onFocusChange;
+		if (updates.beforeActionCallback !== undefined) this.beforeActionHandler = updates.beforeActionCallback;
+		if (updates.onAction !== undefined) this.onActionHandler = updates.onAction;
 		if (updates.onTreeChange !== undefined) this.onTreeChangeHandler = updates.onTreeChange;
 	}
 
@@ -4730,7 +4837,7 @@ export class TreeController<T> {
 		// the node passed to their getContextMenuItemsCallback.
 		uiLogger.debug(`Context menu opened: ${node.path}`);
 		event.preventDefault();
-		this.openContextMenu(node, event.clientX, event.clientY);
+		this.openContextMenu(node.path, event.clientX, event.clientY);
 	}
 
 	// ── Drag and drop ───────────────────────────────────────────────────

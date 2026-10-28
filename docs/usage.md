@@ -78,7 +78,7 @@ Without both requirements, no search indexing will occur.
 | `indexerBatchSize` | `number \| null` | `25` | Number of nodes to process per batch during search indexing |
 | `indexerTimeout` | `number \| null` | `50` | Maximum time (ms) to wait for idle callback before forcing indexing |
 | `isLoading` | `boolean` | `false` | Show loading placeholder instead of tree content |
-| `labels` | `Partial<TreeLabels>` | English defaults | UI strings merged per key: `noData` "No data" (no nodes), `noResults` "No results found" (search filter matched nothing), `dropHere` "Drop here", `noDisplayValue` "[N/A]" (node without a display value), `loading` "Loading…" (overlay aria-label). `''` = render nothing |
+| `labels` | `Partial<TreeLabels>` | English defaults | UI strings merged per key: `noData` "No data" (no nodes), `noResults` "No results found" (search filter matched nothing), `dropHere` "Drop here", `noDisplayValue` "[N/A]" (node without a display value), `loading` "Loading…" (overlay aria-label), `showFullLabel` "Show full label" (the `nodeTitleOverflow: 'info'` button), and the built-in menu texts `copy` `cut` `paste` `delete` `expand` `collapse` `expandSubtree` `collapseSubtree` `expandAll` `collapseAll` `sort` `sortSubtree` `sortAll`. `''` = render nothing. Defaults: `DEFAULT_LABELS` |
 
 ### Rendering properties
 
@@ -143,6 +143,18 @@ Every `on*` event receives a **single context object** mirroring the clipboard c
 | `onNodeDelete` | `(ctx: ClipboardEventContext<T>) => void` | `undefined` | Fired after the built-in Delete (or `controller.runDeleteCommand()`) removes nodes. `ctx = { paths, nodes }` — `nodes` are **pre-removal snapshots** (captured before removal, since the tree no longer holds them). |
 | `onNodePaste` | `(result: PasteResult) => void` | `undefined` | Fired after `controller.pasteNodes()` runs, with the paste result (`success`, `count`, `skipped`, `error`). |
 
+### Context menu
+
+Same model as `@keenmate/web-treeview` (core `/actions`, vendored). No menu by default — the menu is what the callback returns.
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `getContextMenuItemsCallback` | `(ctx: TreeMenuContext<T>) => TreeMenuEntry<T>[]` | `undefined` | The menu for the node it opened on. `ctx = { node, path, parent, siblings, controller }`. Entries: action items (`{ id, text, icon, tooltip, shortcut, cssClass, isVisible, isDisabled, isDanger, isToggled, get*Callback(ctx), children / getChildrenCallback, onClick(detail), shouldCloseOnClick }`), `menuDivider(text?)`, and **built-in action names** (`'copy' 'cut' 'paste' 'delete' 'expand' 'collapse' 'expand-subtree' 'collapse-subtree' 'expand-all' 'collapse-all' 'sort' 'sort-subtree' 'sort-all'`, or `{ action: 'copy', …overrides }`). Built-ins take their text from `labels`, act on the **selection when the clicked node is in it, else on the clicked node** (`paste` pastes into the clicked node; `delete` = `runDeleteCommand`, `isDanger`; `paste` disabled with an empty clipboard; expand / collapse / sort disabled when nothing applies). |
+| `beforeActionCallback` | `(detail: TreeActionEventDetail<T>) => boolean \| void \| Promise<…>` | `undefined` | Runs before an item activates; `false` cancels (no `onClick`, built-in or `onAction`). |
+| `onAction` | `(detail: TreeActionEventDetail<T>) => void` | `undefined` | An item ran — after its `onClick` and the built-in. `detail` = the menu ctx + `{ action ('custom' for consumer items), id, item, source: 'context-menu', sourceEvent, triggerElement, dataset }`. |
+
+Order: `beforeActionCallback` → item `onClick(detail)` → built-in → `onAction(detail)`. The menu closes after an item runs (`shouldCloseOnClick: false` keeps it open — close with `ctx.controller.closeContextMenu()`). A matching item `shortcut` (e.g. `'Ctrl+D'`) activates while the menu is open.
+
 ### Clipboard interceptor properties
 
 The clipboard operations live on the `TreeController` (`copyNodes` / `cutNodes` / `pasteNodes` / `cancelCut`). Built-in key bindings are on by default (`shouldHandleKeyboardShortcuts`, set `false` to opt out), or wire your own via `beforeKeydownCallback(ctx)` (ctx = `{ event, focusedNode, selectedNodes, controller }`). The `before*` interceptors can rewrite or block an operation; `onNodeCopy` / `onNodeCut` / `onNodePaste` above are the post-operation notifications.
@@ -185,7 +197,7 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `noData` | | Content shown when tree has no data (falls back to `labels.noData` "No data", or `labels.noResults` "No results found" when the search filter matched nothing) |
 | `dropPlaceholder` | | Content shown in empty drop target tree |
 | `loadingPlaceholder` | | Content shown while `isLoading` is true |
-| `contextMenu` | `(node, closeMenu)` | Context menu template |
+| `contextMenu` | `(node, closeMenu)` | Context menu template (an alternative to `getContextMenuItemsCallback`; use `ContextMenuItemC` / `ContextMenuDividerC`) |
 
 ## Public methods
 
@@ -366,7 +378,7 @@ treeElement.update({ searchTerm: 'new search' });
 - Members: `idMember`, `pathMember`, `displayValueMember`, `searchValueMember`
 - Callbacks: `sortCallback`, `getDisplayValueCallback`, `onNodeClick`, etc.
 - Visual: `bodyClass`, `focusedNodeClass`, `expandIconClass`, etc.
-- Context menu: `getContextMenuItemsCallback`, `contextMenuXOffset`, `contextMenuYOffset`
+- Context menu: `getContextMenuItemsCallback`, `beforeActionCallback`, `onAction`, `contextMenuXOffset`, `contextMenuYOffset`
 - Behavior: `clickBehavior`, `shouldUseInternalSearchIndex`, etc.
 
 ## Debug logging

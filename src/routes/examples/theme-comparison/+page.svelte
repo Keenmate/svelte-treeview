@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import Tree from '$lib/components/Tree.svelte';
-	import type { LTreeNode, ContextMenuEntry } from '$lib/ltree/types.js';
+	import type { LTreeNode } from '$lib/ltree/types.js';
+	import type { TreeMenuContext, TreeMenuEntry } from '$lib/core/menu.js';
 	import './cobalt2.css';
 	import './dracula.css';
 	import './corporate.css';
@@ -38,7 +39,7 @@
 	// token set (icons, shortcuts, a named divider, a submenu, a danger item) so
 	// right-clicking any row shows how each theme styles the menu surface, hover,
 	// dividers and the accent/danger text.
-	const contextMenuItems = ({ node }: { node: LTreeNode<Item> }): ContextMenuEntry[] => [
+	const contextMenuItems = ({ node }: TreeMenuContext<Item>): TreeMenuEntry<Item>[] => [
 		{ text: 'Open', icon: '📂', shortcut: 'Enter', onClick: () => {} },
 		{ text: 'Rename', icon: '✏️', shortcut: 'F2', onClick: () => {} },
 		{ divider: true, text: 'Move to' },

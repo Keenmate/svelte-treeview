@@ -272,7 +272,8 @@ The tree supports two context-menu styles: **callback-based** (imperative, share
 ```svelte
 <script lang="ts">
   import { Tree } from '@keenmate/svelte-treeview';
-  import type { ContextMenuEntry } from '@keenmate/svelte-treeview';
+  import { menuDivider } from '@keenmate/svelte-treeview';
+  import type { TreeMenuContext, TreeMenuEntry } from '@keenmate/svelte-treeview';
 
   const data = [
     { path: '1', name: 'Documents', type: 'folder', canEdit: true, canDelete: true },
@@ -280,20 +281,20 @@ The tree supports two context-menu styles: **callback-based** (imperative, share
     { path: '2', name: 'Images', type: 'folder', canEdit: false, canDelete: true }
   ];
 
-  function createContextMenu({ node, closeMenu: close }): ContextMenuEntry[] {
+  // The menu closes after an item runs. Built-in names ('copy', 'paste', 'expand-subtree', …)
+  // take their text from `labels` and act on the selection when the clicked node is in it.
+  function createContextMenu({ node }: TreeMenuContext<any>): TreeMenuEntry<any>[] {
     return [
-      { text: 'Open', icon: '📂', shortcut: 'O',
-        onClick: () => { alert(`Opening ${node.data?.name}`); close(); } },
-      { text: 'Edit', icon: '✏️', shortcut: 'E', isVisible: node.data?.canEdit,
-        onClick: () => { alert(`Editing ${node.data?.name}`); close(); } },
+      { id: 'open', text: 'Open', icon: '📂', shortcut: 'O', onClick: () => alert(`Opening ${node.data?.name}`) },
+      { id: 'edit', text: 'Edit', icon: '✏️', shortcut: 'E', isVisible: node.data?.canEdit,
+        onClick: () => alert(`Editing ${node.data?.name}`) },
       { text: 'Export As...', icon: '📤', children: [
-          { text: 'JSON', shortcut: 'J', onClick: () => { exportAs(node, 'json'); close(); } },
-          { text: 'XML', shortcut: 'X', onClick: () => { exportAs(node, 'xml'); close(); } },
+          { id: 'json', text: 'JSON', shortcut: 'J', onClick: () => exportAs(node, 'json') },
+          { id: 'xml', text: 'XML', shortcut: 'X', onClick: () => exportAs(node, 'xml') },
       ]},
-      { divider: true, text: 'Danger zone' },
-      { text: 'Delete', icon: '🗑️', isDanger: true,
-        isDisabled: !node.data?.canDelete,
-        onClick: () => { confirm(`Delete?`) && alert('Deleted!'); close(); } },
+      'copy', 'paste',
+      menuDivider('Danger zone'),
+      { action: 'delete', isDisabled: !node.data?.canDelete },
     ];
   }
 </script>
@@ -302,7 +303,8 @@ The tree supports two context-menu styles: **callback-based** (imperative, share
   nodes={data}
   idMember="path"
   pathMember="path"
-  contextMenuCallback={createContextMenu}
+  getContextMenuItemsCallback={createContextMenu}
+  beforeActionCallback={(d) => d.action !== 'delete' || confirm('Delete?')}
 />
 ```
 
@@ -335,7 +337,7 @@ The tree supports two context-menu styles: **callback-based** (imperative, share
 
 ### Context menu features
 
-- **Unified types** — `ContextMenuItem`, `ContextMenuDivider`, `ContextMenuEntry` shared across svelte-treeview and canvas-tree
+- **Unified types** — `TreeMenuItem`, `MenuDivider`, `TreeMenuEntry` — core action items, shared with web-treeview and canvas-tree
 - **Keyboard shortcuts** — `shortcut` field renders a hint and activates on keypress when menu is open (supports `Ctrl+`, `Shift+`, `Alt+` modifiers)
 - **Submenus** — `children` array opens nested menus on hover
 - **Named dividers** — `{ divider: true, text: 'Section' }` renders as `---- Section ----`

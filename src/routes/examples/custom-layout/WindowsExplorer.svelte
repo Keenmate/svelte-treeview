@@ -9,7 +9,8 @@
 	//             shares the same track template inside one sticky-header scroll area.
 	import { tick, onMount } from 'svelte';
 	import { Tree } from '$lib/index.js';
-	import type { LTreeNode, ContextMenuEntry } from '$lib/ltree/types.js';
+	import type { LTreeNode } from '$lib/ltree/types.js';
+	import type { TreeMenuContext, TreeMenuEntry } from '$lib/core/menu.js';
 	import { explorerData, DEFAULT_PATH, type FsNode } from './explorer-data.js';
 
 	const SEP = '.';
@@ -293,7 +294,8 @@
 	// Library context menu for the right pane. Acts on the current selection when the
 	// right-clicked row is part of it, otherwise on just that row (Explorer behaviour).
 	function rightMenu(
-		{ node, closeMenu: _close, selectedNodes: selected }: { node: LTreeNode<RightItem>; closeMenu: () => void; selectedNodes: LTreeNode<RightItem>[] }): ContextMenuEntry[] {
+		{ node, controller }: TreeMenuContext<RightItem>): TreeMenuEntry<RightItem>[] {
+		const selected = controller.getSelectedNodes();
 		const data = node.data!;
 		const inSel = rightSel.has(data.treePath);
 		const targets: FsNode[] = inSel && selected?.length ? selected.map((s) => s.data!) : [data];

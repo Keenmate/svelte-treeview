@@ -8,8 +8,6 @@
 		type InsertArrayResult,
 		type InsertBranchResult,
 		type RemoveBranchResult,
-		type ContextMenuEntry,
-		type ContextMenuContext,
 		type DropPosition,
 		type DragDropMode,
 		type DropOperation,
@@ -54,6 +52,8 @@
 	import { uiLogger } from '../logger.js';
 	import { createTreeController } from '../core/createTreeController.js';
 	import type { TreeNavigationOverrides } from '../core/navigation.js';
+	import type { TreeMenuContext, TreeMenuEntry, TreeMenuItem, TreeActionEventDetail } from '../core/menu.js';
+	import { resolveMenuEntries } from '../vendor/actions/resolve.js';
 	import { containerSize as trackContainerSize, environmentState } from '../core/responsive.svelte.js';
 	import { classifyDevice, getEnvironment } from '../vendor/environment/environment.js';
 	import type { ElementSize } from '../vendor/environment/element-size.js';
@@ -339,7 +339,18 @@
 		nodeInputTransformationCallback?: NodeTransformCallback<T>;
 
 		// DATA PROVIDERS (get*Callback = returns data the system uses)
-		getContextMenuItemsCallback?: (ctx: ContextMenuContext<T>) => ContextMenuEntry<T>[];
+		/** The context menu's entries for the node it opened on: action items (`{ id, text, icon,
+		 *  isDisabled, isDanger, isToggled, isVisible, children, onClick(detail) }`), `menuDivider()`s
+		 *  and built-in action names (`'copy'`, `'cut'`, `'paste'`, `'delete'`, `'expand'`,
+		 *  `'collapse'`, `'expand-subtree'`, `'collapse-subtree'`, `'expand-all'`,
+		 *  `'collapse-all'`, `'sort'`, `'sort-subtree'`, `'sort-all'`). `ctx = { node, path, parent,
+		 *  siblings, controller }`. No menu when unset. */
+		getContextMenuItemsCallback?: (ctx: TreeMenuContext<T>) => TreeMenuEntry<T>[];
+		/** Runs before a menu item activates — `false` cancels (no `onClick`, built-in or
+		 *  `onAction`); async OK. */
+		beforeActionCallback?: (detail: TreeActionEventDetail<T>) => boolean | void | Promise<boolean | void>;
+		/** A menu item ran (after its `onClick` and the built-in). */
+		onAction?: (detail: TreeActionEventDetail<T>) => void;
 
 		// VISUALS
 		/** Per-instance theme override. Forwarded to the root `.stv__container`
@@ -570,6 +581,8 @@
 		nodeInputTransformationCallback,
 		// DATA PROVIDERS
 		getContextMenuItemsCallback,
+		beforeActionCallback,
+		onAction,
 
 		// VISUALS
 		theme,
@@ -719,6 +732,8 @@
 		nodeOutputTransformationCallback,
 		nodeInputTransformationCallback,
 		getContextMenuItemsCallback,
+		beforeActionCallback,
+		onAction,
 		hasContextMenuSnippet: !!contextMenu,
 		bodyClass,
 		selectedNodeClass,
@@ -1110,6 +1125,12 @@
 	});
 	$effect(() => {
 		controller.onFocusChangeHandler = onFocusChange;
+	});
+	$effect(() => {
+		controller.beforeActionHandler = beforeActionCallback;
+	});
+	$effect(() => {
+		controller.onActionHandler = onAction;
 	});
 	$effect(() => {
 		controller.onTreeChangeHandler = onTreeChange;
@@ -1588,6 +1609,8 @@
 				| 'nodeOutputTransformationCallback'
 				| 'nodeInputTransformationCallback'
 				| 'getContextMenuItemsCallback'
+				| 'beforeActionCallback'
+				| 'onAction'
 				| 'isVirtualScrollEnabled'
 				| 'virtualScrollItemHeight'
 				| 'virtualScrollOverscan'
@@ -1733,6 +1756,8 @@
 			nodeInputTransformationCallback = updates.nodeInputTransformationCallback;
 		if (updates.getContextMenuItemsCallback !== undefined)
 			getContextMenuItemsCallback = updates.getContextMenuItemsCallback;
+		if (updates.beforeActionCallback !== undefined) beforeActionCallback = updates.beforeActionCallback;
+		if (updates.onAction !== undefined) onAction = updates.onAction;
 		if (updates.isVirtualScrollEnabled !== undefined)
 			isVirtualScrollEnabled = updates.isVirtualScrollEnabled;
 		if (updates.virtualScrollItemHeight !== undefined) virtualScrollItemHeight = updates.virtualScrollItemHeight;
@@ -1909,15 +1934,20 @@
 		};
 	}
 
-	function findEntryByShortcut(
-		entries: ContextMenuEntry[],
+	/** A visible, enabled item (this level or a static submenu) whose `shortcut` matches. */
+	function findItemByShortcut(
+		entries: TreeMenuEntry<T>[],
+		menuCtx: TreeMenuContext<T>,
 		event: KeyboardEvent
-	): import('../ltree/types.js').ContextMenuItem | null {
-		for (const entry of entries) {
-			if ('divider' in entry) continue;
-			if (entry.isVisible === false || entry.isDisabled) continue;
-			if (entry.shortcut) {
-				const parsed = parseShortcut(entry.shortcut);
+	): TreeMenuItem<T> | null {
+		const resolved = resolveMenuEntries(entries, menuCtx, (item) =>
+			controller.menuItemDefaults(item, menuCtx)
+		);
+		for (const entry of resolved) {
+			if (entry.kind !== 'item' || entry.resolved.isDisabled) continue;
+			const shortcut = entry.resolved.shortcut;
+			if (shortcut) {
+				const parsed = parseShortcut(shortcut);
 				const eventKey = event.key.length === 1 ? event.key.toLowerCase() : event.key;
 				if (
 					eventKey === parsed.key &&
@@ -1925,26 +1955,16 @@
 					event.shiftKey === parsed.shift &&
 					event.altKey === parsed.alt
 				) {
-					return entry;
+					return entry.item;
 				}
 			}
-			// Search children (submenus) too
-			if (entry.children) {
-				const found = findEntryByShortcut(entry.children, event);
+			// Search static submenus too
+			if (entry.item.children?.length) {
+				const found = findItemByShortcut(entry.item.children as TreeMenuEntry<T>[], menuCtx, event);
 				if (found) return found;
 			}
 		}
 		return null;
-	}
-
-	/** The ctx handed to getContextMenuItemsCallback and every item's onClick. */
-	function contextMenuContext(node: LTreeNode<T>): ContextMenuContext<T> {
-		return {
-			node,
-			selectedNodes: controller.getSelectedNodes(),
-			checkedNodes: controller.getCheckedNodes(),
-			closeMenu: controller.closeContextMenu.bind(controller)
-		};
 	}
 
 	async function handleContextMenuKeydown(event: KeyboardEvent) {
@@ -1960,16 +1980,12 @@
 			return;
 		}
 
-		const menuCtx = contextMenuContext(controller.contextMenuNode);
-		const entries = getContextMenuItemsCallback(menuCtx);
-		const match = findEntryByShortcut(entries, event);
+		const menuCtx = controller.menuContext(controller.contextMenuNode);
+		const match = findItemByShortcut(getContextMenuItemsCallback(menuCtx), menuCtx, event);
 		if (match) {
 			event.preventDefault();
-			try {
-				await match.onClick?.(menuCtx);
-			} catch (error) {
-				console.error('Context menu shortcut error:', error);
-			}
+			await controller.activateMenuItem(match, menuCtx, undefined, event);
+			if (match.shouldCloseOnClick !== false) controller.closeContextMenu();
 		}
 	}
 </script>
@@ -2155,11 +2171,12 @@
 	{#if controller.contextMenuVisible && controller.contextMenuNode}
 		<div bind:this={contextMenuEl} class="stv__context-menu" role="menu">
 			{#if getContextMenuItemsCallback}
-				{@const menuCtx = contextMenuContext(controller.contextMenuNode)}
+				{@const menuCtx = controller.menuContext(controller.contextMenuNode)}
 				{@const menuEntries = getContextMenuItemsCallback(menuCtx)}
 				<ContextMenuLevel
 					entries={menuEntries}
 					{menuCtx}
+					{controller}
 					closeContextMenu={controller.closeContextMenu.bind(controller)}
 				/>
 			{:else if contextMenu}

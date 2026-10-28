@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Tree from '$lib/components/Tree.svelte';
-	import type { LTreeNode, InsertArrayResult, ContextMenuEntry } from '$lib/ltree/types.js';
+	import type { LTreeNode, InsertArrayResult } from '$lib/ltree/types.js';
+	import type { TreeMenuContext, TreeMenuEntry } from '$lib/core/menu.js';
 	import RenderModeSwitch from '../RenderModeSwitch.svelte';
 	import { getTreeProps } from '../render-mode.svelte.js';
 
@@ -259,8 +260,9 @@
 		}
 	}
 
-	function getContextMenu({ node, closeMenu: close }: { node: LTreeNode<DemoNode>; closeMenu: () => void }): ContextMenuEntry[] {
-		const items: ContextMenuEntry[] = [];
+	function getContextMenu({ node, controller }: TreeMenuContext<DemoNode>): TreeMenuEntry<DemoNode>[] {
+		const close = () => controller.closeContextMenu();
+		const items: TreeMenuEntry<DemoNode>[] = [];
 
 		// Cut
 		items.push({

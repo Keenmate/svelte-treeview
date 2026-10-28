@@ -50,7 +50,9 @@ clipboard → tree-editing.txt
 closeContextMenu → context-menu.txt
 collapseAll → basic-setup.txt, tree-editing.txt
 ContextMenuDivider → context-menu.txt, typescript-types.txt
-ContextMenuEntry → context-menu.txt, typescript-types.txt
+TreeMenuEntry / TreeMenuContext / TreeAction → context-menu.txt, typescript-types.txt
+menuDivider → context-menu.txt
+beforeActionCallback / onAction → context-menu.txt, events-callbacks.txt
 ContextMenuItemC → context-menu.txt
 ContextMenuDividerC → context-menu.txt
 copyNodes → tree-editing.txt

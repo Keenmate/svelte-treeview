@@ -34,7 +34,8 @@ import type {
   LTreeNode,
   Ltree,
   DropPosition,
-  ContextMenuEntry,
+  TreeMenuEntry,
+  TreeMenuContext,
   InsertArrayResult,
   NodeRef,
   NodeDropContext,
@@ -124,7 +125,9 @@ Full type imports:
 import type {
   LTreeNode,             // Tree node interface
   Ltree,                 // Tree instance interface
-  ContextMenuEntry,      // Context menu item | divider
+  TreeMenuEntry,         // Context menu item | divider | built-in action name
+  TreeMenuContext,       // { node, path, parent, siblings, controller }
+  TreeActionEventDetail, // onAction / beforeActionCallback / item onClick detail
   DropPosition,          // 'before' | 'after' | 'child'
   InsertArrayResult,     // Insert operation result
   NodeRef,               // { path, node, parent, siblings } — shared event shape

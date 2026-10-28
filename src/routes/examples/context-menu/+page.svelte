@@ -2,7 +2,8 @@
 	import Tree from '$lib/components/Tree.svelte';
 	import ContextMenuItemC from '$lib/components/ContextMenuItem.svelte';
 	import ContextMenuDividerC from '$lib/components/ContextMenuDivider.svelte';
-	import type { LTreeNode, ContextMenuEntry } from '$lib/ltree/types.js';
+	import type { LTreeNode } from '$lib/ltree/types.js';
+	import type { TreeMenuContext, TreeMenuEntry } from '$lib/core/menu.js';
 	import RenderModeSwitch from '../RenderModeSwitch.svelte';
 	import { getTreeProps } from '../render-mode.svelte.js';
 
@@ -51,12 +52,13 @@
 		snippetLog = [];
 	}
 
-	// Context menu callback using the new unified ContextMenuEntry type
-	function getContextMenu({ node, closeMenu: close }: { node: LTreeNode<FileItem>; closeMenu: () => void }): ContextMenuEntry[] {
+	// Context menu callback: items, menuDivider()s and built-in action names (TreeMenuEntry)
+	function getContextMenu({ node, controller }: TreeMenuContext<FileItem>): TreeMenuEntry<FileItem>[] {
+		const close = () => controller.closeContextMenu();
 		const isFolder = node.data?.type === 'folder';
 		const isReadonly = node.data?.readonly;
 
-		const entries: ContextMenuEntry[] = [];
+		const entries: TreeMenuEntry<FileItem>[] = [];
 
 		if (isFolder) {
 			entries.push({
@@ -262,23 +264,23 @@
 		<p class="description">Use <code>getContextMenuItemsCallback</code> to dynamically generate menu entries based on the node.</p>
 
 		<div class="code-block">
-			<pre>{`import type { ContextMenuEntry } from '@keenmate/svelte-treeview';
+			<pre>{`import { menuDivider } from '@keenmate/svelte-treeview';
+import type { TreeMenuContext, TreeMenuEntry } from '@keenmate/svelte-treeview';
 
-function getContextMenu({ node, closeMenu: close }: { node: LTreeNode<FileItem>; closeMenu: () => void }): ContextMenuEntry[] {
+// ctx = { node, path, parent, siblings, controller }; the menu closes after an item runs.
+function getContextMenu({ node }: TreeMenuContext<FileItem>): TreeMenuEntry<FileItem>[] {
   return [
-    { text: 'Copy', icon: '📋', shortcut: 'C',
-      onClick: () => { copy(node); close(); } },
-    { text: 'Edit', icon: '✏️',
-      onClick: () => { edit(node); close(); } },
+    { id: 'edit', text: 'Edit', icon: '✏️', onClick: () => edit(node) },
     { text: 'Export As...', icon: '📤', children: [
-        { text: 'JSON', shortcut: 'J', onClick: () => { exportAs(node, 'json'); close(); } },
-        { text: 'XML', shortcut: 'X', onClick: () => { exportAs(node, 'xml'); close(); } },
+        { id: 'json', text: 'JSON', shortcut: 'J', onClick: () => exportAs(node, 'json') },
+        { id: 'xml', text: 'XML', shortcut: 'X', onClick: () => exportAs(node, 'xml') },
     ]},
-    { divider: true, text: 'Danger zone' },
-    { text: 'Delete', isDanger: true, isDisabled: node.data.readonly,
-      onClick: () => { del(node); close(); } },
+    'copy', 'cut', 'paste',            // built-in names: texts from labels
+    menuDivider('Danger zone'),
+    { action: 'delete', isDisabled: node.data.readonly },
   ];
-}`}</pre>
+}
+// Order: beforeActionCallback(detail) → item onClick(detail) → built-in → onAction(detail)`}</pre>
 		</div>
 	</div>
 
@@ -313,32 +315,38 @@ function getContextMenu({ node, closeMenu: close }: { node: LTreeNode<FileItem>;
 		</div>
 	</div>
 
-	<!-- ContextMenuEntry Types -->
+	<!-- TreeMenuEntry Types -->
 	<div class="card">
-		<h2>CM05 · ContextMenuEntry Types</h2>
+		<h2>CM05 · TreeMenuEntry Types</h2>
 		<p class="description">The unified type definition shared across svelte-treeview and canvas-tree.</p>
 
 		<div class="code-block">
-			<pre>{`// Divider (simple or named)
-interface ContextMenuDivider {
-  divider: true;
-  label?: string;  // named: ──── [label] ────
-}
+			<pre>{`// Divider (simple or named) — create with menuDivider(text?)
+interface MenuDivider { divider: true; text?: string; }
 
-// Menu item
-interface ContextMenuItem {
+// Menu item — core MenuItem (same model as @keenmate/web-treeview)
+interface TreeMenuItem<T> {
+  action?: TreeAction | 'custom';   // a built-in, or omit for your own item
   id?: string;
-  label: string;
+  text?: string;
   icon?: string;
+  tooltip?: string;
   shortcut?: string;
+  cssClass?: string;
+  isVisible?: boolean;
   isDisabled?: boolean;
-  isVisible?: boolean;       // false = skip rendering
-  className?: string;        // e.g. "danger"
-  onclick?: () => void | Promise<void>;
-  children?: ContextMenuEntry[];  // nested submenus
+  isDanger?: boolean;
+  isToggled?: boolean;
+  onClick?: (detail: TreeActionEventDetail<T>) => void | Promise<void>;
+  children?: TreeMenuEntry<T>[];
+  shouldCloseOnClick?: boolean;   // default true
 }
 
-type ContextMenuEntry = ContextMenuItem | ContextMenuDivider;`}</pre>
+// An entry: an item, a divider or a built-in action name
+type TreeMenuEntry<T> = TreeMenuItem<T> | MenuDivider | TreeAction;
+type TreeAction = 'copy' | 'cut' | 'paste' | 'delete' | 'expand' | 'collapse'
+  | 'expand-subtree' | 'collapse-subtree' | 'expand-all' | 'collapse-all'
+  | 'sort' | 'sort-subtree' | 'sort-all';`}</pre>
 		</div>
 
 		<table>
@@ -387,7 +395,7 @@ type ContextMenuEntry = ContextMenuItem | ContextMenuDivider;`}</pre>
 				</tr>
 				<tr>
 					<td><code>children</code></td>
-					<td><code>ContextMenuEntry[]</code></td>
+					<td><code>TreeMenuEntry[]</code></td>
 					<td>Nested submenu items (opens on hover)</td>
 				</tr>
 				<tr>

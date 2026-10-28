@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveLabel, DEFAULT_TREE_LABELS } from './labels.js';
+import { resolveLabel, DEFAULT_LABELS } from './labels.js';
 
 describe('resolveLabel', () => {
 	it('falls back to the English default for a missing / undefined key', () => {
@@ -16,6 +16,6 @@ describe('resolveLabel', () => {
 		);
 	});
 	it('defaults use the single … character', () => {
-		for (const v of Object.values(DEFAULT_TREE_LABELS)) expect(v).not.toContain('...');
+		for (const v of Object.values(DEFAULT_LABELS)) expect(v).not.toContain('...');
 	});
 });

@@ -423,13 +423,13 @@ PERMISSION-BASED ACTIONS
     canCreate: true
   };
 
-  function createContextMenu({ node, closeMenu: closeMenuCallback }) {
-    const items: ContextMenuEntry[] = [];
+  function createContextMenu({ node }: TreeMenuContext<MyItem>) {
+    const items: TreeMenuEntry<MyItem>[] = [];
 
     items.push({
       icon: '📂',
       text: 'Open',
-      onClick: () => { openItem(node); closeMenuCallback(); }
+      onClick: () => openItem(node)   // the menu closes after onClick
     });
 
     if (permissions.canEdit) {

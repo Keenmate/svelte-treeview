@@ -11,7 +11,7 @@ export { createTreeController } from "./core/createTreeController.js"
 
 // Export types
 export type { LTreeNode, NodeId, VisualState } from "./ltree/ltree-node.svelte"
-export type { Ltree, DropPosition, DragDropMode, DropOperation, ToggleIconMode, IconSet, NodeTitleOverflow, TooltipPlacement, TooltipDelay, NodeRenderContext, ClickBehavior, CheckboxMode, CascadeCheckPolicy, SelectionMode, SelectMode, TreeMutationOptions, ExpandOptions, InsertPosition, NodeContext, SortContext, SortCompareContext, SortOptions, NodesReorderContext, ContextMenuItem, ContextMenuDivider, ContextMenuEntry, ContextMenuContext, InsertArrayResult, InsertBranchResult, RemoveBranchResult, TreeChange, ApplyChangesResult } from "./ltree/types.js"
+export type { Ltree, DropPosition, DragDropMode, DropOperation, ToggleIconMode, IconSet, NodeTitleOverflow, TooltipPlacement, TooltipDelay, NodeRenderContext, ClickBehavior, CheckboxMode, CascadeCheckPolicy, SelectionMode, SelectMode, TreeMutationOptions, ExpandOptions, InsertPosition, NodeContext, SortContext, SortCompareContext, SortOptions, NodesReorderContext, InsertArrayResult, InsertBranchResult, RemoveBranchResult, TreeChange, ApplyChangesResult } from "./ltree/types.js"
 
 // Tooltip action (use:tooltip) — the hover/focus tooltip primitive the Tree uses
 // internally; exported so consumers can reuse it on their own markup.
@@ -23,7 +23,10 @@ export type { ClipboardEntry, TreeClipboard } from "./core/clipboard.js"
 export { setClipboard, getClipboard, clearClipboard, hasClipboard, getClipboardOperation, uniqueName } from "./core/clipboard.js"
 export type { TreeNavigation, TreeNavigationOverrides } from "./core/navigation.js"
 export type { RenderStats } from "./components/RenderCoordinator.svelte"
-export { DEFAULT_TREE_LABELS, resolveLabel } from "./core/labels.js"
+export { DEFAULT_LABELS, resolveLabel } from "./core/labels.js"
+// Context-menu model (same as @keenmate/web-treeview; core /actions vendored)
+export { menuDivider, isMenuDivider } from "./core/menu.js"
+export type { TreeMenuContext, TreeMenuItem, TreeMenuEntry, TreeAction, TreeActionEventDetail, ActionItem, MenuItem, MenuEntry, MenuDivider, ActionEventDetail, ActionInvocation, ActionSource, ResolvedActionItem } from "./core/menu.js"
 export type { TreeLabels } from "./core/labels.js"
 export type { NodeCallbacks, NodeConfig, SelectionModifiers } from "./core/TreeController.svelte"
 

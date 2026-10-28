@@ -16,14 +16,44 @@ export interface TreeLabels {
 	noDisplayValue: string;
 	/** Data loading — the `isLoading` overlay's aria-label and the progressive "more children" row. */
 	loading: string;
+	/** Accessible label of the trailing info button on a clipped node label (`nodeTitleOverflow: 'info'`). */
+	showFullLabel: string;
+	/** Built-in context-menu items (texts of the built-in action names). */
+	copy: string;
+	cut: string;
+	paste: string;
+	delete: string;
+	expand: string;
+	collapse: string;
+	expandSubtree: string;
+	collapseSubtree: string;
+	expandAll: string;
+	collapseAll: string;
+	sort: string;
+	sortSubtree: string;
+	sortAll: string;
 }
 
-export const DEFAULT_TREE_LABELS: Readonly<TreeLabels> = Object.freeze({
+export const DEFAULT_LABELS: Readonly<TreeLabels> = Object.freeze({
 	noData: 'No data',
 	noResults: 'No results found',
 	dropHere: 'Drop here',
 	noDisplayValue: '[N/A]',
-	loading: 'Loading…'
+	loading: 'Loading…',
+	showFullLabel: 'Show full label',
+	copy: 'Copy',
+	cut: 'Cut',
+	paste: 'Paste',
+	delete: 'Delete',
+	expand: 'Expand',
+	collapse: 'Collapse',
+	expandSubtree: 'Expand subtree',
+	collapseSubtree: 'Collapse subtree',
+	expandAll: 'Expand all',
+	collapseAll: 'Collapse all',
+	sort: 'Sort',
+	sortSubtree: 'Sort subtree',
+	sortAll: 'Sort all'
 });
 
 export function resolveLabel(
@@ -32,7 +62,7 @@ export function resolveLabel(
 	params?: Record<string, string | number>
 ): string {
 	const own = labels?.[key];
-	let text = own === undefined || own === null ? DEFAULT_TREE_LABELS[key] : String(own);
+	let text = own === undefined || own === null ? DEFAULT_LABELS[key] : String(own);
 	if (params && text) {
 		text = text.replace(/\{(\w+)\}/g, (m, name: string) =>
 			name in params ? String(params[name]) : m

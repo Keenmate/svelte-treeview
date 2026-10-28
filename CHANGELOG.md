@@ -24,6 +24,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   through `toggleNodeExpanded` (accordion + gate in one place); the expand methods' Promise
   settles after an async gate. New types `ExpandedChangeContext`, `BeforeExpandContext`,
   `TreeCallbackContext`.
+- **Context-menu model = `@keenmate/web-treeview`'s (core `/actions`, vendored in
+  `src/lib/vendor/actions` from web-components-core v1.0.0-rc14)** — `getContextMenuItemsCallback(ctx)`
+  gets `TreeMenuContext { node, path, parent, siblings, controller }` and returns entries: core
+  action items (`{ id, text, icon, isDisabled, isDanger, isToggled, isVisible, children, onClick(detail),
+  get*Callback(ctx), … }`), `menuDivider(text?)` (exported) and **built-in action names** `copy cut
+  paste delete expand collapse expand-subtree collapse-subtree expand-all collapse-all sort sort-subtree
+  sort-all` (texts from `labels`; act on the selection when the clicked node is in it, else on the
+  clicked node). **New `beforeActionCallback`** (`false` cancels) and **`onAction`** — order
+  `beforeActionCallback` → item `onClick(detail)` → built-in → `onAction(detail)`. 14 new `labels`
+  keys: the 13 built-in texts + `showFullLabel` (the `nodeTitleOverflow: 'info'` button's accessible
+  name, was hardcoded). New types `TreeMenuContext`, `TreeMenuItem`, `TreeMenuEntry`, `TreeAction`,
+  `TreeActionEventDetail` (+ core `ActionItem`, `MenuItem`, `MenuEntry`, `MenuDivider`, …).
 - **`onFocusChange({ focusedNode, controller })`** — the focused node changed (click, keyboard,
   `focusNode` / `clearFocus`, removal); `focusNode` / `clearFocus` now honour `{ isSilent: true }`
   (the option used to be ignored). Assigning `bind:focusedNode` stays silent. **`onTreeChange({
@@ -237,6 +249,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Drop placeholder no longer triggers a horizontal scrollbar.** `.stv__drop-placeholder` is `box-sizing: border-box` (the 2px dashed border no longer overruns the container width), and `--stv-drop-placeholder-hover-scale` now defaults to `1` (was `1.015`, which spilled past both edges).
 
 ### Removed
+
+- **BREAKING: the old context-menu ctx / types** — `ContextMenuContext` (`{ node, selectedNodes,
+  checkedNodes, closeMenu }`), `ContextMenuItem`, `ContextMenuDivider`, `ContextMenuEntry` (types) →
+  `TreeMenuContext` / `TreeMenuItem` / `MenuDivider` (`menuDivider()`) / `TreeMenuEntry`. Item
+  `onClick` receives the action detail (menu ctx + `{ action, id, item, source, … }`). Read the
+  selection via `ctx.controller.getSelectedNodes()`, close via `ctx.controller.closeContextMenu()`.
+- **BREAKING: `DEFAULT_TREE_LABELS` → `DEFAULT_LABELS`** (same name as web-treeview).
 
 - **BREAKING: `getExpandedPaths()` / `setExpandedPaths(paths)`** (component + `TreeController`) —
   read / assign `bind:expandedPaths` (or `controller.expandedPaths` / `update({ expandedPaths })`).

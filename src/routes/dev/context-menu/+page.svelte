@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Tree } from '$lib/index.js';
-	import type { ContextMenuEntry } from '$lib/ltree/types.js';
+	import type { TreeMenuContext, TreeMenuEntry } from '$lib/core/menu.js';
 
 	// Sample data for context menu testing
 	const contextMenuData = [
@@ -60,8 +60,9 @@
 		console.log('Node clicked:', node);
 	}
 
-	function createContextMenu({ node, closeMenu: closeMenuCallback }: { node: any; closeMenu: () => void }): ContextMenuEntry[] {
-		const menuItems: ContextMenuEntry[] = [];
+	function createContextMenu({ node, controller }: TreeMenuContext<any>): TreeMenuEntry<any>[] {
+		const closeMenuCallback = () => controller.closeContextMenu();
+		const menuItems: TreeMenuEntry<any>[] = [];
 
 		// Open action - always available
 		menuItems.push({
@@ -175,8 +176,9 @@
 	}
 
 	// Advanced context menu callback - demonstrates more complex scenarios
-	function createAdvancedContextMenu({ node, closeMenu: closeMenuCallback }: { node: any; closeMenu: () => void }): ContextMenuEntry[] {
-		const menuItems: ContextMenuEntry[] = [];
+	function createAdvancedContextMenu({ node, controller }: TreeMenuContext<any>): TreeMenuEntry<any>[] {
+		const closeMenuCallback = () => controller.closeContextMenu();
+		const menuItems: TreeMenuEntry<any>[] = [];
 
 		// Status-based actions
 		if (node.data.status === 'running') {

@@ -511,7 +511,7 @@
 					<button
 						type="button"
 						class="stv__node-info"
-						aria-label="Show full label"
+						aria-label={config.showFullLabel}
 						bind:this={infoBtnEl}
 						onpointerdown={(e) => e.stopPropagation()}
 						onclick={toggleReveal}

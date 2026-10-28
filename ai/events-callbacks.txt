@@ -221,31 +221,14 @@ CONTEXT MENU CALLBACK
 Generate context menu items dynamically:
 
 <Tree
-  getContextMenuItemsCallback={({ node, closeMenu: closeMenuCallback }) => {
-    return [
-      {
-        icon: '📂',
-        text: 'Open',
-        onClick: () => {
-          openItem(node.data);
-          closeMenuCallback();
-        }
-      },
-      { divider: true },
-      {
-        icon: '🗑️',
-        text: 'Delete',
-        isDanger: true,
-        isDisabled: node.data.isProtected,
-        onClick: async () => {
-          if (await confirmDelete()) {
-            deleteItem(node.data);
-            closeMenuCallback();
-          }
-        }
-      }
-    ];
-  }}
+  getContextMenuItemsCallback={({ node }) => [
+    { id: 'open', icon: '📂', text: 'Open', onClick: () => openItem(node.data) },   // menu auto-closes
+    menuDivider(),
+    'copy', 'paste',                                  // built-in action names (texts from labels)
+    { action: 'delete', isDisabled: node.data.isProtected }   // built-in with an override
+  ]}
+  beforeActionCallback={async (d) => d.action !== 'delete' || await confirmDelete()}  // false cancels
+  onAction={(d) => console.log(d.action, d.id, d.path)}   // after onClick + built-in
 />
 
 SORT CALLBACK
@@ -397,7 +380,15 @@ getAllowedDropPositionsCallback:
 (ctx: NodeContext<T>) => DropPosition[] | null | undefined
 
 getContextMenuItemsCallback:
-(ctx: ContextMenuContext<T> = { node, selectedNodes, checkedNodes, closeMenu }) => ContextMenuEntry[]
+(ctx: TreeMenuContext<T> = { node, path, parent, siblings, controller }) => TreeMenuEntry<T>[]
+  // entries: items, menuDivider(text?), built-in names (see context-menu.txt)
+
+beforeActionCallback (interceptor, async OK):
+(detail: TreeActionEventDetail<T>) => boolean | void | Promise<boolean | void>   // false cancels
+
+onAction:
+(detail: TreeActionEventDetail<T>) => void
+  // detail = menu ctx + { action, id?, item, source: 'context-menu', sourceEvent?, triggerElement?, dataset }
 
 sortCallback:
 (nodes: LTreeNode<T>[]) => LTreeNode<T>[]
@@ -418,13 +409,11 @@ beforeDropCallback={async (drop, drag, pos) => {
   return allowed;
 }}
 
-Example async context menu:
+Example async context menu item (the menu closes after onClick settles):
 {
+  id: 'save',
   text: 'Save',
-  onClick: async () => {
-    await saveToServer();
-    closeMenu();
-  }
+  onClick: async () => { await saveToServer(); }
 }
 
 ERROR HANDLING
@@ -443,14 +432,15 @@ beforeDropCallback={async (drop, drag, pos) => {
 
 Context menu with error handling:
 {
+  id: 'delete-remote',
   text: 'Delete',
-  onClick: async () => {
+  shouldCloseOnClick: false,          // keep the menu open on failure
+  onClick: async (d) => {
     try {
-      await deleteItem(node.data);
-      closeMenu();
+      await deleteItem(d.node.data);
+      d.controller.closeContextMenu();
     } catch (error) {
       showError('Failed to delete');
-      // Menu stays open
     }
   }
 }

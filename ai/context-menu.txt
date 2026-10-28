@@ -1,83 +1,63 @@
 CONTEXT MENU
 ============
+Same model as @keenmate/web-treeview (core /actions, vendored in src/lib/vendor/actions).
+Two approaches:
+- Callback-based (recommended): getContextMenuItemsCallback prop → entries
+- Snippet-based: contextMenu snippet with ContextMenuItemC / ContextMenuDividerC components
+No menu is shown by default — the menu is whatever the callback returns.
 
-CRITICAL: Two approaches for context menus
-- Callback-based (recommended): getContextMenuItemsCallback prop
-- Snippet-based: ContextMenuItemC / ContextMenuDividerC components inside contextMenu snippet
-- Both support dynamic items, icons, keyboard shortcuts, submenus, disabled/hidden states
+TYPES
+-----
+import { menuDivider } from '@keenmate/svelte-treeview';
+import type { TreeMenuContext, TreeMenuEntry, TreeMenuItem, TreeAction, TreeActionEventDetail } from '@keenmate/svelte-treeview';
 
-TYPES (v5.0.0-rc03+)
----------------------
-import type { ContextMenuEntry, ContextMenuItem, ContextMenuDivider, ContextMenuContext } from '@keenmate/svelte-treeview';
+// ctx of getContextMenuItemsCallback and of every item get*Callback:
+interface TreeMenuContext<T> { node: LTreeNode<T>; path; parent; siblings; controller }
 
-// rc16: field names follow @keenmate/web-components-core's ActionItem (text / onClick / cssClass)
+// An entry: an item, a divider, or a built-in action name
+type TreeMenuEntry<T> = TreeMenuItem<T> | MenuDivider | TreeAction;
 
-interface ContextMenuItem {
-  id?: string;
-  text: string;               // Menu item text (was "label")
-  tooltip?: string;
-  icon?: string;              // Optional icon (emoji, text, or Font Awesome class)
-  shortcut?: string;          // Keyboard shortcut hint (e.g. "Ctrl+C", "F2")
-  isDisabled?: boolean;       // Disable the item
-  isVisible?: boolean;        // Hide the item (default true)
-  isDanger?: boolean;         // Destructive styling
-  isToggled?: boolean;        // Toggle item (role=menuitemcheckbox, aria-checked)
-  cssClass?: string;          // Extra CSS classes (was "className")
-  onClick?: (ctx: ContextMenuContext<T>) => void | Promise<void>;  // Action (was "onclick")
-  shouldCloseOnClick?: boolean;   // Default true; false keeps menu open (handler closes via close())
-  children?: ContextMenuEntry[];  // Submenu items
+interface TreeMenuItem<T> {        // core MenuItem
+  action?: TreeAction | 'custom';  // a built-in (text/state from the tree) — or a string entry
+  id?: string;                     // identifies a custom item (reported in onAction)
+  text?: string; icon?: string; tooltip?: string; shortcut?: string; cssClass?: string;
+  isVisible?: boolean; isDisabled?: boolean; isDanger?: boolean; isToggled?: boolean;
+  getTextCallback?(ctx); getIsDisabledCallback?(ctx); getIsVisibleCallback?(ctx); ...  // win over statics
+  onClick?(detail: TreeActionEventDetail<T>): void | Promise<void>;
+  children?: TreeMenuEntry<T>[];   // submenu (or getChildrenCallback(ctx), may be async)
+  shouldCloseOnClick?: boolean;    // default true
 }
+menuDivider(text?)                 // { divider: true, text? } — named divider: ──── text ────
 
-interface ContextMenuDivider {
-  divider: true;              // Discriminator (was "isDivider" in old API)
-  text?: string;              // Named divider: ──── [text] ────
-}
+BUILT-IN ACTION NAMES (texts from `labels`, act on the selection when the clicked node is in it,
+else on the clicked node): copy, cut, paste (into the clicked node; disabled with an empty
+clipboard), delete (isDanger; runDeleteCommand — beforeDeleteCallback applies), expand, collapse
+(one level), expand-subtree, collapse-subtree (targets + descendants), expand-all, collapse-all
+(whole tree), sort (children, one level), sort-subtree, sort-all.
 
-type ContextMenuEntry = ContextMenuItem | ContextMenuDivider;
+ACTIVATION ORDER: beforeActionCallback(detail) (false cancels everything; async OK) → item
+onClick(detail) → built-in → onAction(detail). detail = menu ctx + { action, id?, item, source:
+'context-menu', sourceEvent?, triggerElement?, dataset }.
 
-CALLBACK-BASED CONTEXT MENU
-----------------------------
-<script>
-  import type { ContextMenuEntry, LTreeNode } from '@keenmate/svelte-treeview';
+CALLBACK-BASED EXAMPLE
+----------------------
+<script lang="ts">
+  import { Tree, menuDivider } from '@keenmate/svelte-treeview';
+  import type { TreeMenuContext, TreeMenuEntry } from '@keenmate/svelte-treeview';
 
-  function createContextMenu(
-    { node, closeMenu: closeMenuCallback, selectedNodes }: { node: LTreeNode<MyItem>; closeMenu: () => void; selectedNodes: LTreeNode<MyItem>[] }): ContextMenuEntry[] {
+  function createContextMenu({ node, controller }: TreeMenuContext<MyItem>): TreeMenuEntry<MyItem>[] {
+    const selected = controller.getSelectedNodes();
     return [
-      // Basic item with icon and shortcut
-      {
-        text: 'Open',
-        icon: '📂',
-        shortcut: 'Enter',
-        onClick: () => openItem(node.data)
-      },
-      // Named divider
-      { divider: true, text: 'Edit' },
-      // Submenu
-      {
-        text: 'Move to...',
-        icon: '📁',
-        children: [
-          { text: 'Inbox', onClick: () => moveTo(node, 'inbox') },
-          { text: 'Archive', onClick: () => moveTo(node, 'archive') },
-        ]
-      },
-      // Divider
-      { divider: true },
-      // Danger item
-      {
-        text: 'Delete',
-        icon: '🗑️',
-        shortcut: 'Del',
-        isDanger: true,
-        isDisabled: node.data?.isProtected,
-        onClick: () => deleteItem(node.data)
-      },
-      // Selection-aware item (rc03+)
-      ...(selectedNodes && selectedNodes.length > 1 ? [{
-        text: `Export ${selectedNodes.length} items`,
-        icon: '📤',
-        onClick: () => exportItems(selectedNodes)
-      }] : [])
+      { id: 'open', text: 'Open', icon: '📂', shortcut: 'Enter', onClick: () => openItem(node.data) },
+      menuDivider('Edit'),
+      'copy', 'cut', 'paste',
+      { id: 'rename', text: 'Rename', shortcut: 'F2', isDisabled: !node.data?.canEdit, onClick: () => rename(node) },
+      'delete',
+      menuDivider(),
+      'expand-subtree', 'collapse-subtree',
+      ...(selected.length > 1
+        ? [{ id: 'export', text: `Export ${selected.length} items`, onClick: () => exportItems(selected) }]
+        : [])
     ];
   }
 </script>
@@ -85,6 +65,8 @@ CALLBACK-BASED CONTEXT MENU
 <Tree
   nodes={data}
   getContextMenuItemsCallback={createContextMenu}
+  beforeActionCallback={(d) => d.action !== 'delete' || confirm('Delete?')}
+  onAction={(d) => console.log('ran', d.action, d.id, d.path)}
 />
 
 SNIPPET-BASED CONTEXT MENU
@@ -121,11 +103,10 @@ Nested menus via children array:
 {
   text: 'Sort by',
   children: [
-    { text: 'Name', onClick: () => sortBy('name') },
-    { text: 'Date', onClick: () => sortBy('date') },
-    { divider: true },
-    { text: 'Ascending', onClick: () => sortDir('asc') },
-    { text: 'Descending', onClick: () => sortDir('desc') },
+    { id: 'by-name', text: 'Name', onClick: () => sortBy('name') },
+    { id: 'by-date', text: 'Date', onClick: () => sortBy('date') },
+    menuDivider(),
+    'sort-all',
   ]
 }
 
@@ -141,8 +122,8 @@ Supported modifiers: Ctrl, Shift, Alt. Escape closes the menu.
 
 NAMED DIVIDERS
 --------------
-{ divider: true, text: 'Actions' }    // ──── Actions ────
-{ divider: true }                       // ──────────────────
+menuDivider('Actions')    // ──── Actions ────
+menuDivider()             // ──────────────────
 
 VISIBILITY CONTROL
 ------------------
@@ -175,7 +156,7 @@ STYLING
 -------
 CSS classes:
 - .stv__context-menu - Menu container
-- .stv__context-menu-item - Menu item (modifiers: --disabled, --has-children)
+- .stv__context-menu-item - Menu item (modifiers: --disabled, --danger, --toggled, --has-children; data-action / data-id)
 - .stv__context-menu-divider - Divider line
 - .stv__context-menu-divider-label - Named divider text
 - .stv__context-menu-label - Item label
@@ -191,8 +172,9 @@ BEST PRACTICES
 ✅ Group related items with named dividers
 ✅ Use isDanger: true for destructive actions
 ✅ Use isVisible to hide items contextually
-✅ Use selectedNodes parameter for bulk actions
+✅ Use ctx.controller.getSelectedNodes() for bulk actions (built-ins already target the selection)
+✅ Close a shouldCloseOnClick:false menu with ctx.controller.closeContextMenu()
 
-❌ Don't use old API (title, callback, isDivider) — use new types
+❌ Don't use the pre-rc16 API (ContextMenuContext with selectedNodes/checkedNodes/closeMenu) — removed
 ❌ Don't create menus with too many items (>10)
 ❌ Don't forget to handle async onClick errors

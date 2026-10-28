@@ -1,18 +1,44 @@
 <script lang="ts" generics="T">
-	import type { ContextMenuEntry, ContextMenuItem, ContextMenuContext } from '../ltree/types.js';
+	import type { TreeMenuContext, TreeMenuEntry, TreeMenuItem, TreeAction } from '../core/menu.js';
+	import type { TreeController } from '../core/TreeController.svelte.js';
+	import {
+		resolveMenuEntries,
+		getMenuChildren,
+		type ResolvedMenuEntry
+	} from '../vendor/actions/resolve.js';
 	import { computePosition, autoUpdate, offset, flip, shift } from '@floating-ui/dom';
 	import Self from './ContextMenuLevel.svelte';
 
 	interface Props {
-		entries: ContextMenuEntry<T>[];
-		/** Passed to every item's onClick. */
-		menuCtx: ContextMenuContext<T>;
+		/** This level's raw entries (items, dividers, built-in names) — resolved here. */
+		entries: TreeMenuEntry<T>[];
+		/** The menu's surface ctx (node, path, parent, siblings, controller). */
+		menuCtx: TreeMenuContext<T>;
+		controller: TreeController<T>;
 		closeContextMenu: () => void;
 		/** Called by a child submenu to keep this level open while the cursor crosses into it. */
 		cancelParentHide?: () => void;
 	}
 
-	let { entries, menuCtx, closeContextMenu, cancelParentHide }: Props = $props();
+	let { entries, menuCtx, controller, closeContextMenu, cancelParentHide }: Props = $props();
+
+	const resolved = $derived<ResolvedMenuEntry<TreeMenuContext<T>, TreeAction>[]>(
+		resolveMenuEntries<TreeMenuContext<T>, TreeAction>(entries, menuCtx, (item) =>
+			controller.menuItemDefaults(item, menuCtx)
+		)
+	);
+	// The open submenu's entries (children / getChildrenCallback, which may be async).
+	let submenuEntries = $state<TreeMenuEntry<T>[] | null>(null);
+
+	async function activate(item: TreeMenuItem<T>, el: HTMLElement, event: Event) {
+		try {
+			await controller.activateMenuItem(item, menuCtx, el, event);
+		} finally {
+			// Selecting an entry dismisses the menu, like every native menu. Opt out with
+			// shouldCloseOnClick: false (the handler closes via ctx.controller.closeContextMenu()).
+			if (item.shouldCloseOnClick !== false) closeContextMenu();
+		}
+	}
 
 	let openIdx = $state<number | null>(null);
 	let hideTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -31,9 +57,15 @@
 		hideTimeout = setTimeout(() => { openIdx = null; hideTimeout = null; }, 150);
 	}
 
-	function showSubmenu(idx: number) {
+	async function showSubmenu(idx: number) {
 		cancelHide();
+		if (openIdx === idx) return;
 		openIdx = idx;
+		submenuEntries = null;
+		const entry = resolved[idx];
+		if (entry?.kind !== 'item') return;
+		const children = await getMenuChildren(entry.item, menuCtx);
+		if (openIdx === idx) submenuEntries = children as TreeMenuEntry<T>[];
 	}
 
 	$effect(() => {
@@ -59,65 +91,52 @@
 	});
 </script>
 
-{#each entries as entry, i (i)}
-	{#if 'divider' in entry && entry.divider}
+{#each resolved as entry, i (i)}
+	{#if entry.kind === 'divider'}
 		<div class="stv__context-menu-divider" role="separator">
 			{#if entry.text}
 				<span class="stv__context-menu-divider-label">{entry.text}</span>
 			{/if}
 		</div>
-	{:else if (entry as ContextMenuItem<T>).isVisible !== false}
-		{@const item = entry as ContextMenuItem<T>}
-		{@const hasChildren = !!item.children && item.children.length > 0}
+	{:else}
+		{@const item = entry.item}
+		{@const r = entry.resolved}
+		{@const hasChildren = entry.hasChildren}
+		{@const isToggle = item.isToggled !== undefined || typeof item.getIsToggledCallback === 'function'}
 		<!-- svelte-ignore a11y_no_noninteractive_tabindex (role is menuitem | menuitemcheckbox) -->
 		<div
 			bind:this={itemEls[i]}
-			class="stv__context-menu-item {item.cssClass || ''}"
-			class:stv__context-menu-item--disabled={item.isDisabled}
-			class:stv__context-menu-item--danger={item.isDanger}
-			class:stv__context-menu-item--toggled={item.isToggled}
+			class="stv__context-menu-item {r.cssClass}"
+			class:stv__context-menu-item--disabled={r.isDisabled}
+			class:stv__context-menu-item--danger={r.isDanger}
+			class:stv__context-menu-item--toggled={r.isToggled}
 			class:stv__context-menu-item--has-children={hasChildren}
-			role={item.isToggled !== undefined ? 'menuitemcheckbox' : 'menuitem'}
-			aria-checked={item.isToggled !== undefined ? item.isToggled : undefined}
-			aria-disabled={item.isDisabled || undefined}
-			title={item.tooltip}
-			tabindex={item.isDisabled ? -1 : 0}
+			role={isToggle ? 'menuitemcheckbox' : 'menuitem'}
+			aria-checked={isToggle ? r.isToggled : undefined}
+			aria-disabled={r.isDisabled || undefined}
+			data-action={r.action !== 'custom' ? r.action : undefined}
+			data-id={r.id}
+			title={r.tooltip}
+			tabindex={r.isDisabled ? -1 : 0}
 			onmouseenter={() => { if (hasChildren) showSubmenu(i); else cancelHide(); }}
 			onmouseleave={() => { if (hasChildren) scheduleHide(); }}
-			onclick={async () => {
-				if (item.isDisabled || hasChildren) return;
-				try {
-					await item.onClick?.(menuCtx);
-				} catch (error) {
-					console.error('Context menu callback error:', error);
-				} finally {
-					// Auto-close after activating a leaf item — selecting an entry dismisses
-					// the menu, like every native/desktop menu. Consumers no longer need to
-					// call the close callback themselves (doing so anyway is harmless).
-					// Opt out with shouldCloseOnClick: false to keep the menu open for incremental
-					// actions; the handler then dismisses it via its captured close callback.
-					if (item.shouldCloseOnClick !== false) closeContextMenu();
-				}
+			onclick={(e) => {
+				if (r.isDisabled || hasChildren) return;
+				activate(item, e.currentTarget as HTMLElement, e);
 			}}
-			onkeydown={async (e) => {
-				if ((e.key === 'Enter' || e.key === ' ') && !item.isDisabled && !hasChildren) {
+			onkeydown={(e) => {
+				if ((e.key === 'Enter' || e.key === ' ') && !r.isDisabled && !hasChildren) {
 					e.preventDefault();
-					try {
-						await item.onClick?.(menuCtx);
-					} catch (error) {
-						console.error('Context menu callback error:', error);
-					} finally {
-						if (item.shouldCloseOnClick !== false) closeContextMenu();
-					}
+					activate(item, e.currentTarget as HTMLElement, e);
 				}
 			}}
 		>
-			{#if item.icon}
-				<span class="stv__context-menu-icon">{item.icon}</span>
+			{#if r.icon}
+				<span class="stv__context-menu-icon">{r.icon}</span>
 			{/if}
-			<span class="stv__context-menu-label">{item.text}</span>
-			{#if item.shortcut}
-				<span class="stv__context-menu-shortcut">{item.shortcut}</span>
+			<span class="stv__context-menu-label">{r.text}</span>
+			{#if r.shortcut}
+				<span class="stv__context-menu-shortcut">{r.shortcut}</span>
 			{/if}
 			{#if hasChildren}
 				<span class="stv__context-menu-arrow" aria-hidden="true"></span>
@@ -126,23 +145,21 @@
 	{/if}
 {/each}
 
-{#if openIdx !== null}
-	{@const openItem = entries[openIdx] as ContextMenuItem<T>}
-	{#if openItem && openItem.children}
-		<div
-			bind:this={submenuEl}
-			class="stv__context-menu stv__context-submenu"
-			role="menu"
-			tabindex="-1"
-			onmouseenter={cancelHide}
-			onmouseleave={scheduleHide}
-		>
-			<Self
-				entries={openItem.children}
-				{menuCtx}
-				{closeContextMenu}
-				cancelParentHide={cancelHide}
-			/>
-		</div>
-	{/if}
+{#if openIdx !== null && submenuEntries}
+	<div
+		bind:this={submenuEl}
+		class="stv__context-menu stv__context-submenu"
+		role="menu"
+		tabindex="-1"
+		onmouseenter={cancelHide}
+		onmouseleave={scheduleHide}
+	>
+		<Self
+			entries={submenuEntries}
+			{menuCtx}
+			{controller}
+			{closeContextMenu}
+			cancelParentHide={cancelHide}
+		/>
+	</div>
 {/if}
