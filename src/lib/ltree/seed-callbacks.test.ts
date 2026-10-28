@@ -4,7 +4,7 @@ import type { LTreeNode } from './ltree-node.svelte.js';
 
 // Regression test for the seed-time callback ordering bug:
 //
-//   insertArray (and insertBranch) used to call _getIsDraggableCallback(node)
+//   insertArray (and addBranch) used to call _getIsDraggableCallback(node)
 //   etc BEFORE assigning `node.data = row`, so consumer callbacks reading
 //   `node.data?.X` saw `undefined` and returned whatever their default branch
 //   produced (typically `true` for `node.data?.isDraggable !== false`).
@@ -124,13 +124,13 @@ describe('insertArray seed-time get*Callback', () => {
 	});
 });
 
-describe('insertBranch seed-time get*Callback', () => {
+describe('addBranch seed-time get*Callback', () => {
 	const ltree = buildTree({ withCallbacks: true });
 	// Seed an empty parent first
 	ltree.insertArray([{ id: 'root', path: '1', name: 'Root' }]);
 
 	// Insert a branch with callback-driven flags
-	ltree.insertBranch('1', [
+	ltree.addBranch('1', [
 		{ id: 'a', path: '1.1', name: 'BranchPinned', isDraggable: false },
 		{ id: 'b', path: '1.2', name: 'BranchNormal' }
 	]);
@@ -145,7 +145,7 @@ describe('insertBranch seed-time get*Callback', () => {
 });
 
 // Regression for the cross-tree drop bug: addNode (and therefore
-// copyNodeWithDescendants / applyChanges 'create') created nodes via
+// copyNodeWithDescendants / applyChanges 'add') created nodes via
 // createLTreeNode WITHOUT running the seed callbacks, so the new node kept the
 // defaults isDraggable=false / isDropAllowed=false. The DOM `draggable` attr and
 // the drop gates read those raw properties, so a node dropped into a target tree

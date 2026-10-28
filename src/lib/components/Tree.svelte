@@ -24,6 +24,7 @@
 		type SelectMode,
 		type TreeMutationOptions,
 		type ExpandOptions,
+		type InsertPosition,
 		type NodeContext,
 		type SortContext,
 		type TreeChange,
@@ -1279,8 +1280,24 @@
 		return controller.applyChanges(changes);
 	}
 
-	export function insertBranch(parentPath: string, data: T[]): InsertBranchResult<T> {
-		return controller.insertBranch(parentPath, data);
+	export function insertNode(
+		targetPath: string,
+		nodeData: T,
+		position: InsertPosition
+	): { success: boolean; node?: LTreeNode<T>; error?: string } {
+		return controller.insertNode(targetPath, nodeData, position);
+	}
+
+	export function addBranch(parentPath: string, data: T[]): InsertBranchResult<T> {
+		return controller.addBranch(parentPath, data);
+	}
+
+	export function insertBranch(
+		targetPath: string,
+		data: T[],
+		position: InsertPosition
+	): InsertBranchResult<T> {
+		return controller.insertBranch(targetPath, data, position);
 	}
 
 	export function replaceBranch(parentPath: string, data: T[]): InsertBranchResult<T> {

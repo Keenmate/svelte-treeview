@@ -192,6 +192,9 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `scrollToPath` | `path: string, options?: ScrollToPathOptions` | Scroll to and highlight a specific node |
 | `update` | `updates: Partial<Props>` | Programmatically update component props from external JavaScript |
 | `addNode` | `parentPath: string, data: T, pathSegment?: string` | Add a new node under the specified parent |
+| `insertNode` | `targetPath: string, data: T, position: 'before' \| 'after' \| 'child'` | Insert a node next to (or under) the target; `orderMember` → order value between the neighbours |
+| `addBranch` | `parentPath: string, data: T[]` | Add a subtree (flat rows with ltree paths) under the parent, one emission |
+| `insertBranch` | `targetPath: string, data: T[], position` | Insert a subtree block before / after / under the target (block keeps its order) |
 | `moveNode` | `sourcePath: string, targetPath: string, position: 'before' \| 'after' \| 'child'` | Move a node to a new location |
 | `moveNodes` | `paths: string[], targetPath: string, position: DropPosition` | Batch-move a complete manifest; a descendant omitted from the manifest is left behind (re-homed to its moved root's old parent). Returns `{ success, movedNodes, leftBehind }` |
 | `duplicateNodes` | `paths: string[], targetPath: string, position: DropPosition, transform?, sourceTree?` | Batch-copy the copy-side twin of `moveNodes`; an omitted descendant is simply not copied. `sourceTree` copies another tree's nodes in (cross-tree). Returns `{ success, copiedNodes, skipped }` |
@@ -206,7 +209,7 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `refreshSiblings` | `path: string` | Force re-render of a node's siblings |
 | `getExpandedPaths` | | Get array of all currently expanded node paths |
 | `setExpandedPaths` | `paths: string[]` | Restore expanded state from saved paths |
-| `applyChanges` | | Apply pending changes and refresh the tree |
+| `applyChanges` | `changes: TreeChange<T>[]` | Batch: `add` {parentPath, data, pathSegment?} / `insert` {targetPath, position, data} / `update` {path, data} / `remove` {path} |
 | `closeContextMenu` | | Programmatically close the context menu |
 
 ### Selection / checked / focus methods

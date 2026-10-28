@@ -10,7 +10,7 @@ import {
 	getRelativePath
 } from '../helpers/ltree-helpers.js';
 
-import type { Ltree, InsertArrayResult, InsertBranchResult, RemoveBranchResult, NodeContext, SortContext, ExpandOptions } from './types.js';
+import type { Ltree, InsertArrayResult, InsertBranchResult, RemoveBranchResult, NodeContext, SortContext, ExpandOptions, InsertPosition } from './types.js';
 import { createSearchIndex } from './flex.js';
 import { Indexer } from './indexer.js';
 import { perfStart, perfEnd, perfSummary } from '../perf-logger.js';
@@ -1373,7 +1373,7 @@ export function createLTree<T>(
 
 			// Seed the resolved per-node flags exactly as insertArray does. Nodes
 			// added here (addNode, and therefore copyNodeWithDescendants and
-			// applyChanges 'create') otherwise keep createLTreeNode's defaults —
+			// applyChanges 'add') otherwise keep createLTreeNode's defaults —
 			// notably isDraggable=false and isDropAllowed=false — which the DOM
 			// `draggable` attribute and the drag-over / drop gates read directly
 			// (not via the dynamic getNodeIs* resolvers). Without this, a copied or
@@ -1501,7 +1501,7 @@ export function createLTree<T>(
 				let result: { success: boolean; error?: string };
 
 				switch (change.operation) {
-					case 'create':
+					case 'add':
 						result = this.addNode(change.parentPath, change.data, change.pathSegment);
 						if (result.success) {
 							successCount++;
@@ -1527,7 +1527,20 @@ export function createLTree<T>(
 							});
 						}
 						break;
-					case 'delete':
+					case 'insert':
+						result = this.insertNode(change.targetPath, change.data, change.position);
+						if (result.success) {
+							successCount++;
+						} else {
+							failures.push({
+								changeIndex: i,
+								operation: change.operation,
+								path: change.targetPath,
+								error: result.error || 'Unknown error'
+							});
+						}
+						break;
+					case 'remove':
 						result = this.removeNode(change.path);
 						if (result.success) {
 							successCount++;
@@ -1715,7 +1728,101 @@ export function createLTree<T>(
 
 		// ── Bulk subtree operations (single emission) ─────────────────────────
 
-		insertBranch(parentPath: string, data: T[]): InsertBranchResult<T> {
+		/**
+		 * Insert one node before / after `targetPath`, or as its child. With `orderMember` the new
+		 * node gets an order value between its neighbours (like `moveNode`); without it the node is
+		 * placed directly next to the target.
+		 */
+		insertNode(
+			targetPath: string,
+			data: T,
+			position: InsertPosition
+		): { success: boolean; node?: LTreeNode<T>; error?: string } {
+			const target = this.getNodeByPath(targetPath);
+			if (!target) return { success: false, error: `Target node not found: ${targetPath}` };
+			if (position === 'child') return this.addNode(targetPath, data);
+			const result = this.addNode(target.parentPath || '', data);
+			if (result.success && result.node) {
+				this._placeNextTo([result.node], target, position);
+				this._emitTreeChanged();
+			}
+			return result;
+		},
+
+		/**
+		 * Insert a branch (flat rows with ltree paths, like `addBranch`) before / after
+		 * `targetPath`, or under it (`'child'` = `addBranch(targetPath, data)`). The block's
+		 * top-level rows keep their order; with `orderMember` they get order values spread
+		 * between the target and its neighbour.
+		 */
+		insertBranch(targetPath: string, data: T[], position: InsertPosition): InsertBranchResult<T> {
+			const target = this.getNodeByPath(targetPath);
+			if (!target) return { success: false, count: 0, failed: [], parentNode: null };
+			if (position === 'child') return this.addBranch(targetPath, data);
+			const parentPath = target.parentPath || '';
+			const result = this.addBranch(parentPath, data);
+			const blockRoots: LTreeNode<T>[] = [];
+			for (const row of data) {
+				const p = _pathMember ? getField(row, _pathMember) : undefined;
+				const node = typeof p === 'string' ? this.getNodeByPath(p) : null;
+				if (node && node.data === row && (node.parentPath || '') === parentPath) blockRoots.push(node);
+			}
+			if (blockRoots.length > 0) {
+				this._placeNextTo(blockRoots, target, position);
+				this._emitTreeChanged();
+			}
+			return result;
+		},
+
+		/** Position `nodes` (already children of the target's parent) right before / after `target`. */
+		_placeNextTo(nodes: LTreeNode<T>[], target: LTreeNode<T>, position: 'before' | 'after'): void {
+			const parentPath = target.parentPath || '';
+			const parent = parentPath ? this.getNodeByPath(parentPath) : root;
+			if (!parent || nodes.length === 0) return;
+			const block = new Set(nodes);
+			const om = this.orderMember;
+			if (om && nodes.every((n) => n.data)) {
+				// Order values between the target and its neighbour (same rule as moveNode).
+				const targetOrder = (target.data ? (getField(target.data, om) as number) : 0) ?? 0;
+				const others = (Object.values(parent.children) as LTreeNode<T>[])
+					.filter((s) => !block.has(s) && s !== target && s.data && getField(s.data, om) !== undefined)
+					.map((s) => getField(s.data!, om) as number);
+				const n = nodes.length;
+				let lo: number;
+				let hi: number;
+				if (position === 'before') {
+					hi = targetOrder;
+					const prev = others.filter((o) => o < targetOrder).sort((a, b) => b - a)[0];
+					lo = prev ?? targetOrder - 20 * n;
+				} else {
+					lo = targetOrder;
+					const next = others.filter((o) => o > targetOrder).sort((a, b) => a - b)[0];
+					hi = next ?? targetOrder + 20 * n;
+				}
+				const isWholeStep = Number.isInteger(lo) && Number.isInteger(hi) && hi - lo > n;
+				nodes.forEach((node, i) => {
+					const v = lo + ((hi - lo) * (i + 1)) / (n + 1);
+					(node.data as any)[om] = isWholeStep ? Math.floor(v) : v;
+				});
+				this.refreshSiblings(parentPath);
+				return;
+			}
+			// No orderMember: place directly next to the target.
+			const reordered: Record<string, LTreeNode<T>> = {};
+			const putBlock = () => {
+				for (const b of nodes) reordered[segmentPrefix + b.pathSegment] = b;
+			};
+			for (const child of Object.values(parent.children) as LTreeNode<T>[]) {
+				if (block.has(child)) continue;
+				if (child === target && position === 'before') putBlock();
+				reordered[segmentPrefix + child.pathSegment] = child;
+				if (child === target && position === 'after') putBlock();
+			}
+			parent.children = reordered;
+			parent._rev = (parent._rev || 0) + 1;
+		},
+
+		addBranch(parentPath: string, data: T[]): InsertBranchResult<T> {
 			const targetParent = parentPath ? this.getNodeByPath(parentPath) : root;
 			if (!targetParent && parentPath) {
 				return { success: false, count: 0, failed: [], parentNode: null };
@@ -1933,8 +2040,8 @@ export function createLTree<T>(
 			}
 			nodeCount -= removedCount;
 
-			// Delegate to insertBranch for the new data
-			return this.insertBranch(parentPath, data);
+			// Delegate to addBranch for the new data
+			return this.addBranch(parentPath, data);
 		},
 
 		removeBranch(path: string, keepParent: boolean = false): RemoveBranchResult<T> {

@@ -24,6 +24,7 @@ import {
 	type SelectMode,
 	type TreeMutationOptions,
 	type ExpandOptions,
+	type InsertPosition,
 	type NodeContext,
 	type SortContext
 } from '../ltree/types.js';
@@ -2206,10 +2207,49 @@ export class TreeController<T> {
 
 	// ── Bulk subtree operations ─────────────────────────────────────────
 
-	insertBranch(parentPath: string, data: T[]): InsertBranchResult<T> {
+	/** Insert one node before / after `targetPath`, or as its child (`orderMember`: an order value
+	 *  between the neighbours; otherwise placed directly next to the target). */
+	insertNode(
+		targetPath: string,
+		nodeData: T,
+		position: InsertPosition
+	): { success: boolean; node?: LTreeNode<T>; error?: string } {
 		this._skipInsertArray = true;
 		this._markNodesChanged();
-		const result = this.tree?.insertBranch(parentPath, data) || {
+		const result = this.tree?.insertNode(targetPath, nodeData, position) || {
+			success: false,
+			error: 'Tree not initialized'
+		};
+		tick().then(() => {
+			this._skipInsertArray = false;
+			this._markNodesChanged();
+		});
+		return result;
+	}
+
+	/** Insert a branch (flat rows with ltree paths) before / after `targetPath`, or under it.
+	 *  The block keeps its internal order. */
+	insertBranch(targetPath: string, data: T[], position: InsertPosition): InsertBranchResult<T> {
+		this._skipInsertArray = true;
+		this._markNodesChanged();
+		const result = this.tree?.insertBranch(targetPath, data, position) || {
+			success: false,
+			count: 0,
+			failed: [],
+			parentNode: null
+		};
+		tick().then(() => {
+			this._skipInsertArray = false;
+			this._markNodesChanged();
+		});
+		return result;
+	}
+
+	/** Add a branch (flat rows with ltree paths) under `parentPath` ('' = root), sorted. */
+	addBranch(parentPath: string, data: T[]): InsertBranchResult<T> {
+		this._skipInsertArray = true;
+		this._markNodesChanged();
+		const result = this.tree?.addBranch(parentPath, data) || {
 			success: false,
 			count: 0,
 			failed: [],

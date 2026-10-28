@@ -73,7 +73,7 @@
 			href: '/examples/data',
 			icon: '📊',
 			title: 'Data Structures',
-			description: 'Path-based data structure, custom separators, insert-result validation, and bulk branch operations (insertBranch / removeBranch).'
+			description: 'Path-based data structure, custom separators, insert-result validation, and bulk branch operations (addBranch / removeBranch).'
 		},
 		{
 			href: '/examples/tree-editor',

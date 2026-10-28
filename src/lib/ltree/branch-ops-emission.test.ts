@@ -4,7 +4,7 @@ import { createLTree } from './ltree.svelte.js';
 /**
  * Verifies the single-emission guarantee for bulk subtree operations.
  *
- * insertBranch / replaceBranch / removeBranch each mutate many nodes but must
+ * addBranch / replaceBranch / removeBranch each mutate many nodes but must
  * fire _emitTreeChanged exactly once per public call. Counting per-call
  * emissions is impossible from outside the lib (there is no public hook), so
  * this is verified by spying on the internal method at the unit level.
@@ -59,7 +59,7 @@ const seed = [
 ];
 
 describe('branch operations — single-emission guarantee', () => {
-	it('insertBranch fires _emitTreeChanged exactly once for an N-node batch', () => {
+	it('addBranch fires _emitTreeChanged exactly once for an N-node batch', () => {
 		const tree = createTree();
 		tree.insertArray(seed);
 
@@ -71,7 +71,7 @@ describe('branch operations — single-emission guarantee', () => {
 			{ id: 102, path: '1.100.2', name: 'New-Child-B' },
 			{ id: 103, path: '1.100.3', name: 'New-Child-C' }
 		];
-		const result = tree.insertBranch('1', newNodes);
+		const result = tree.addBranch('1', newNodes);
 
 		expect(result.success).toBe(true);
 		expect(result.count).toBe(4);
@@ -131,7 +131,7 @@ describe('branch operations — single-emission guarantee', () => {
 
 		const spy = vi.spyOn(tree, '_emitTreeChanged');
 
-		const insRes = tree.insertBranch('999.999', [
+		const insRes = tree.addBranch('999.999', [
 			{ id: 300, path: '999.999.1', name: 'X' }
 		]);
 		const repRes = tree.replaceBranch('999.999', [

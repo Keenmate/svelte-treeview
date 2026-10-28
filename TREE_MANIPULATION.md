@@ -180,13 +180,14 @@ applyChanges(changes: TreeChange<T>[]): ApplyChangesResult
 **Types:**
 ```typescript
 type TreeChange<T> =
-  | { operation: 'create'; parentPath: string; data: T; pathSegment?: string }
+  | { operation: 'add'; parentPath: string; data: T; pathSegment?: string }
+  | { operation: 'insert'; targetPath: string; position: 'before' | 'after' | 'child'; data: T }
   | { operation: 'update'; path: string; data: Partial<T> }
-  | { operation: 'delete'; path: string }
+  | { operation: 'remove'; path: string }
 
 interface ApplyChangesResult {
   successful: number;
-  failed: Array<{ index: number; operation: string; path: string; error: string }>
+  failed: Array<{ changeIndex: number; operation: string; path: string; error: string }>
 }
 ```
 
@@ -682,9 +683,10 @@ const removeResult = treeRef.removeNode('1.3', true);
 
 // Batch operations
 const batchResult = treeRef.applyChanges([
-  { operation: 'create', parentPath: '1', data: { id: 'n1', name: 'Item 1' } },
+  { operation: 'add', parentPath: '1', data: { id: 'n1', name: 'Item 1' } },
+  { operation: 'insert', targetPath: '1.2', position: 'before', data: { id: 'n2', name: 'Item 2' } },
   { operation: 'update', path: '1.1', data: { name: 'Updated' } },
-  { operation: 'delete', path: '2.1' }
+  { operation: 'remove', path: '2.1' }
 ]);
 console.log(`${batchResult.successful} succeeded, ${batchResult.failed.length} failed`);
 ```

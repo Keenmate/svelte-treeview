@@ -6,7 +6,7 @@
 		RemoveBranchResult
 	} from '$lib/ltree/types.js';
 
-	// Deterministic e2e fixture for bulk subtree operations: insertBranch,
+	// Deterministic e2e fixture for bulk subtree operations: addBranch,
 	// replaceBranch, removeBranch, plus a minimal cut/paste flow and failure
 	// cases. Targeted by e2e/branch-operations.spec.ts.
 	//
@@ -106,8 +106,8 @@
 			{ id: childA, path: `${parentPath}.${rootId}.1`, name: 'New-Child-A', sortOrder: 10 },
 			{ id: childB, path: `${parentPath}.${rootId}.2`, name: 'New-Child-B', sortOrder: 20 }
 		];
-		const result = treeRef.insertBranch(parentPath, branch);
-		recordInsertResult('insertBranch', result);
+		const result = treeRef.addBranch(parentPath, branch);
+		recordInsertResult('addBranch', result);
 	}
 
 	function doReplaceUnder(parentPath: string) {
@@ -232,7 +232,7 @@
 
 		const delResult = treeRef.removeBranch(sourcePath);
 		recordDeleteResult('paste:delete', delResult);
-		const insResult = treeRef.insertBranch(targetParentPath, rewritten);
+		const insResult = treeRef.addBranch(targetParentPath, rewritten);
 		recordInsertResult('paste:insert', insResult);
 		clipboard = null;
 		void sourceName;
@@ -245,10 +245,10 @@
 	// ── Failure cases ─────────────────────────────────────────────────────
 
 	function failInsertInvalidParent() {
-		const result = treeRef.insertBranch('999.999', [
+		const result = treeRef.addBranch('999.999', [
 			{ id: nextId++, path: '999.999.1', name: 'X', sortOrder: 10 }
 		]);
-		recordInsertResult('insertBranch(invalid-parent)', result);
+		recordInsertResult('addBranch(invalid-parent)', result);
 	}
 
 	function failInsertInvalidItems() {
@@ -263,8 +263,8 @@
 			// Non-string path — should fail.
 			{ id: base + 3, path: null as unknown as string, name: 'Invalid-null', sortOrder: 40 }
 		];
-		const result = treeRef.insertBranch('1', items);
-		recordInsertResult('insertBranch(mixed-validity)', result);
+		const result = treeRef.addBranch('1', items);
+		recordInsertResult('addBranch(mixed-validity)', result);
 	}
 
 	function failDeleteInvalidPath() {
@@ -313,7 +313,7 @@
 			<button data-testid="btn-reset" onclick={resetTree}>Reset Tree</button>
 		</div>
 		<div class="btn-row">
-			<strong>insertBranch:</strong>
+			<strong>addBranch:</strong>
 			<button data-testid="btn-insert-under-1" onclick={() => doInsertUnder('1')}
 				>Insert 3 under '1'</button
 			>
@@ -354,10 +354,10 @@
 		<div class="btn-row">
 			<strong>Failure cases:</strong>
 			<button data-testid="btn-fail-insert-parent" onclick={failInsertInvalidParent}
-				>insertBranch invalid parent</button
+				>addBranch invalid parent</button
 			>
 			<button data-testid="btn-fail-insert-items" onclick={failInsertInvalidItems}
-				>insertBranch mixed validity</button
+				>addBranch mixed validity</button
 			>
 			<button data-testid="btn-fail-replace-parent" onclick={failReplaceInvalidParent}
 				>replaceBranch invalid parent</button

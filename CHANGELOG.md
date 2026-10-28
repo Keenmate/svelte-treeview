@@ -15,6 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BREAKING: mutation vocabulary — `add` / `insert` / `update` / `remove`** (same as
+  `@keenmate/web-treeview`). `applyChanges` operations: `'create'` → `'add'` `{ parentPath, data,
+  pathSegment? }`, `'delete'` → `'remove'` `{ path }`, **new `'insert'`** `{ targetPath, position, data }`.
+  `insertBranch(parentPath, data[])` → **`addBranch`**; **new positioned `insertBranch(targetPath,
+  data[], position)`** (`'before' | 'after' | 'child'`; the block's top-level rows keep their order;
+  with `orderMember` they get order values spread between the target and its neighbour). **New
+  `insertNode(targetPath, data, position)`** — positioned like `moveNode` (`orderMember`: an order value
+  between the neighbours; otherwise placed directly next to the target — note that without
+  `orderMember` siblings are re-sorted by display value on the next add / move). New exported type
+  `InsertPosition`. The context-menu / keyboard Delete command keeps its name (`runDeleteCommand`,
+  `onNodeDelete`).
 - **BREAKING: `data` → `nodes`; `getAllData()` removed** (`<Tree>`, `<TreeProvider>`, `update()`,
   `TreeController`). `nodes` is the input AND the current state: after a mutation (move / add /
   remove / paste / `applyChanges` / branch ops) the tree writes its current data back — `bind:nodes`

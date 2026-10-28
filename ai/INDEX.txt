@@ -11,7 +11,7 @@ data-handling.txt        - Path-based hierarchy, LTree data structure
 drag-drop.txt            - Drag and drop, positions, touch support, restrictions
 search-features.txt      - FlexSearch, async indexing, filtering
 context-menu.txt         - Callback-based and snippet-based menus (unified types: label/onclick/divider)
-tree-editing.txt         - addNode, moveNode, removeNode, bulk ops (insertBranch/removeBranch), clipboard
+tree-editing.txt         - addNode, moveNode, removeNode, bulk ops (addBranch/insertBranch/removeBranch), insertNode, clipboard
 styling-theming.txt      - CSS variables, styles.css, classes
 events-callbacks.txt     - Events, callbacks, handlers
 typescript-types.txt     - Types and interfaces
@@ -121,7 +121,7 @@ Import → import-patterns.txt
 indexerBatchSize → search-features.txt, performance.txt
 indexerTimeout → search-features.txt
 initialBatchSize → performance.txt
-insertBranch → tree-editing.txt
+addBranch / insertBranch / insertNode → tree-editing.txt
 insertResult → data-handling.txt
 Installation → basic-setup.txt
 isCollapsibleMember → data-handling.txt
@@ -306,7 +306,7 @@ Q: How do I implement clipboard copy/cut/paste?
 A: → tree-editing.txt (Clipboard API)
 
 Q: How do I insert/delete an entire subtree at once?
-A: → tree-editing.txt (insertBranch, removeBranch, replaceBranch)
+A: → tree-editing.txt (addBranch, insertBranch, removeBranch, replaceBranch)
 
 Q: How do I select multiple nodes?
 A: → advanced-patterns.txt (Multi-select)
@@ -348,7 +348,7 @@ TREE EDITING
 - Move nodes → tree-editing.txt
 - Remove nodes → tree-editing.txt
 - Order management → tree-editing.txt
-- Bulk subtree ops → tree-editing.txt (insertBranch, replaceBranch, removeBranch)
+- Bulk subtree ops → tree-editing.txt (addBranch, insertBranch, replaceBranch, removeBranch)
 - Clipboard (copy/cut/paste) → tree-editing.txt
 - Multi-select → advanced-patterns.txt
 

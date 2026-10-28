@@ -3,7 +3,7 @@ import { test, expect, Page, Locator } from '@playwright/test';
 /**
  * E2E coverage for the branch-operations test fixture at /test/branch-operations.
  *
- * Exercises insertBranch / replaceBranch / removeBranch plus a minimal
+ * Exercises addBranch / replaceBranch / removeBranch plus a minimal
  * cut/paste flow and failure-path buttons.
  *
  * The fixture exposes the last operation's return value via data-testid spans
@@ -51,16 +51,16 @@ test.describe('initial state', () => {
 	});
 });
 
-// ── insertBranch ───────────────────────────────────────────────────────────
+// ── addBranch ───────────────────────────────────────────────────────────
 
-test.describe('insertBranch', () => {
+test.describe('addBranch', () => {
 	test('inserts a 3-node branch under "1" — one API call, count=3', async ({ page }) => {
 		const before = await readCount(page, 'op-call-count');
 		const totalBefore = await readCount(page, 'total-node-count');
 
 		await page.getByTestId('btn-insert-under-1').click();
 
-		await expect(page.getByTestId('last-op-name')).toHaveText('insertBranch');
+		await expect(page.getByTestId('last-op-name')).toHaveText('addBranch');
 		await expect(page.getByTestId('last-op-success')).toHaveText('true');
 		await expect(page.getByTestId('last-op-count')).toHaveText('3');
 		await expect(page.getByTestId('last-op-failed-count')).toHaveText('0');
@@ -219,28 +219,28 @@ test.describe('cut/paste workflow', () => {
 // ── Failure cases ─────────────────────────────────────────────────────────
 
 test.describe('failure cases', () => {
-	test('insertBranch on a missing parent returns success=false, parentNode=null', async ({
+	test('addBranch on a missing parent returns success=false, parentNode=null', async ({
 		page
 	}) => {
 		const totalBefore = await readCount(page, 'total-node-count');
 
 		await page.getByTestId('btn-fail-insert-parent').click();
 
-		await expect(page.getByTestId('last-op-name')).toHaveText('insertBranch(invalid-parent)');
+		await expect(page.getByTestId('last-op-name')).toHaveText('addBranch(invalid-parent)');
 		await expect(page.getByTestId('last-op-success')).toHaveText('false');
 		await expect(page.getByTestId('last-op-count')).toHaveText('0');
 		// Tree unchanged.
 		await expect(page.getByTestId('total-node-count')).toHaveText(String(totalBefore));
 	});
 
-	test('insertBranch with mixed-validity items succeeds and surfaces failed[] entries', async ({
+	test('addBranch with mixed-validity items succeeds and surfaces failed[] entries', async ({
 		page
 	}) => {
 		const totalBefore = await readCount(page, 'total-node-count');
 
 		await page.getByTestId('btn-fail-insert-items').click();
 
-		await expect(page.getByTestId('last-op-name')).toHaveText('insertBranch(mixed-validity)');
+		await expect(page.getByTestId('last-op-name')).toHaveText('addBranch(mixed-validity)');
 		await expect(page.getByTestId('last-op-success')).toHaveText('true');
 		// 2 valid items in (1 with empty path, 1 with null path are rejected).
 		await expect(page.getByTestId('last-op-count')).toHaveText('2');

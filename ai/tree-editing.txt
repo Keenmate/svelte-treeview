@@ -210,7 +210,18 @@ APPLY CHANGES
 Apply a batch of tracked changes in one reactive update:
 
 const result = treeRef.applyChanges(changes);   // changes: TreeChange<T>[]
-// result: ApplyChangesResult = { successful: number, failed: [...] }
+// result: ApplyChangesResult = { successful: number, failed: [{ changeIndex, operation, path, error }] }
+// TreeChange<T>:
+//   { operation: 'add', parentPath, data, pathSegment? }              // child of parentPath
+//   { operation: 'insert', targetPath, position: 'before'|'after'|'child', data }
+//   { operation: 'update', path, data: Partial<T> }
+//   { operation: 'remove', path }
+
+INSERT NEXT TO A NODE
+---------------------
+treeRef.insertNode(targetPath, data, position)   // 'before' | 'after' | 'child'
+// orderMember set: the new node gets an order value between its neighbours (like moveNode);
+// otherwise it is placed directly next to the target (until the next sibling re-sort).
 
 COPY NODE (low-level)
 ---------------------
@@ -351,10 +362,15 @@ BULK SUBTREE OPERATIONS (rc04+)
 -------------------------------
 Insert, replace, or delete entire subtrees with a single tree emission:
 
-insertBranch(parentPath: string, data: T[]): InsertBranchResult<T>
-- Inserts an array of nodes as a subtree under parentPath
+addBranch(parentPath: string, data: T[]): InsertBranchResult<T>
+- Adds an array of nodes (ltree paths) as a subtree under parentPath ('' = root)
 - All nodes are inserted in one batch, triggering a single reactive update
 - Returns { success, count, failed, parentNode }
+
+insertBranch(targetPath: string, data: T[], position: 'before'|'after'|'child'): InsertBranchResult<T>
+- Positioned: the block's top-level rows land before / after targetPath (or under it),
+  keeping their internal order; with orderMember they get order values spread between
+  the target and its neighbour
 
 replaceBranch(parentPath: string, data: T[]): InsertBranchResult<T>
 - Removes the node at parentPath and all descendants, then inserts new nodes
@@ -372,7 +388,7 @@ Example: server-driven cut/paste
     const response = await api.paste(clipboardData, targetPath);
     // Server returns the updated subtree
     treeRef.removeBranch(clipboardData.sourcePath);
-    treeRef.insertBranch(targetPath, response.newNodes);
+    treeRef.addBranch(targetPath, response.newNodes);
   }
 </script>
 

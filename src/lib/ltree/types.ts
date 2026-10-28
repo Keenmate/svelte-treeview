@@ -111,9 +111,15 @@ export type DropOperation = 'move' | 'copy';
 
 // Incremental update types
 export type TreeChange<T> =
-	| { operation: 'create'; parentPath: string; data: T; pathSegment?: string }
+	/** Add `data` as a child of `parentPath` ('' = root); sorted like any added node. */
+	| { operation: 'add'; parentPath: string; data: T; pathSegment?: string }
+	/** Insert `data` before / after `targetPath`, or as its child — positioned like `insertNode`. */
+	| { operation: 'insert'; targetPath: string; position: InsertPosition; data: T }
 	| { operation: 'update'; path: string; data: Partial<T> }
-	| { operation: 'delete'; path: string };
+	| { operation: 'remove'; path: string };
+
+/** Where `insertNode` / `insertBranch` place the new node(s) relative to the target. */
+export type InsertPosition = 'before' | 'after' | 'child';
 
 export interface ApplyChangesResult {
 	successful: number;
@@ -335,7 +341,13 @@ export interface Ltree<T> {
 	applyChanges(changes: TreeChange<T>[]): ApplyChangesResult;
 
 	// Bulk subtree operations (single emission)
-	insertBranch(parentPath: string, data: T[]): InsertBranchResult<T>;
+	addBranch(parentPath: string, data: T[]): InsertBranchResult<T>;
+	insertBranch(targetPath: string, data: T[], position: InsertPosition): InsertBranchResult<T>;
+	insertNode(
+		targetPath: string,
+		data: T,
+		position: InsertPosition
+	): { success: boolean; node?: LTreeNode<T>; error?: string };
 	replaceBranch(parentPath: string, data: T[]): InsertBranchResult<T>;
 	removeBranch(path: string, keepParent?: boolean): RemoveBranchResult<T>;
 
@@ -355,4 +367,5 @@ export interface Ltree<T> {
 
 	// Internal helpers
 	_updateDescendantPaths(node: LTreeNode<T>, oldBasePath: string, newBasePath: string): void;
+	_placeNextTo(nodes: LTreeNode<T>[], target: LTreeNode<T>, position: 'before' | 'after'): void;
 }
