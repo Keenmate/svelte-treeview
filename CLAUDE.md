@@ -113,7 +113,7 @@ TREE_PROPS_KEY:
 - Cross-tree cut auto-removes source: module-level controller registry in clipboard.ts (registerClipboardTree/unregisterClipboardTree/getClipboardTree, keyed by treeId); pasteNodes reaches back to clipboard.sourceTreeId's tree. Same-tree path unchanged.
 
 PUBLIC_METHODS:
-- expandNodes(path), collapseNodes(path), expandAll(), collapseAll()
+- expandNodes(paths, opts?), collapseNodes(paths, opts?), toggleNodeExpanded(path, opts?), expandAll(paths?, opts?), collapseAll(paths?, opts?) — ExpandOptions { isExclusive?, silent? }
 - searchNodes(searchTerm) - search nodes using internal index and return matching nodes
 - scrollToPath(path, options) - options: { expand?, highlight?, scrollOptions?, containerScroll? }
   - containerScroll: true scrolls only within nearest scrollable ancestor (prevents page scroll)

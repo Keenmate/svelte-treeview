@@ -10,7 +10,7 @@ import {
 	getRelativePath
 } from '../helpers/ltree-helpers.js';
 
-import type { Ltree, InsertArrayResult, InsertBranchResult, RemoveBranchResult, NodeContext, SortContext } from './types.js';
+import type { Ltree, InsertArrayResult, InsertBranchResult, RemoveBranchResult, NodeContext, SortContext, ExpandOptions } from './types.js';
 import { createSearchIndex } from './flex.js';
 import { Indexer } from './indexer.js';
 import { perfStart, perfEnd, perfSummary } from '../perf-logger.js';
@@ -678,12 +678,12 @@ export function createLTree<T>(
 
 		expandAll(
 			nodePath?: string | string[] | null | undefined,
-			options?: { exclusive?: boolean; noEmit?: boolean }
+			options?: ExpandOptions
 		): void {
 			perfStart(`[${_treeId}] expandAll`);
 			const self = this;
-			const exclusive = options?.exclusive ?? false;
-			const noEmit = options?.noEmit ?? false;
+			const exclusive = options?.isExclusive ?? false;
+			const noEmit = options?.silent ?? false;
 
 			function setExpandedRecursive(node: LTreeNode<T>, value: boolean) {
 				if (node.isExpanded !== value) {
@@ -766,11 +766,11 @@ export function createLTree<T>(
 
 		collapseAll(
 			nodePath?: string | string[] | null | undefined,
-			options?: { noEmit?: boolean }
+			options?: ExpandOptions
 		): void {
 			perfStart(`[${_treeId}] collapseAll`);
 			const self = this;
-			const noEmit = options?.noEmit ?? false;
+			const noEmit = options?.silent ?? false;
 
 			function collapseRecursive(node: LTreeNode<T>) {
 				if (node.isExpanded && self.getNodeIsCollapsible(node)) {
@@ -824,12 +824,12 @@ export function createLTree<T>(
 
 		expandNodes: function (
 			path: string | string[],
-			options?: { exclusive?: boolean; noEmit?: boolean }
+			options?: ExpandOptions
 		) {
 			perfStart(`[${_treeId}] expandNodes`);
 			const self = this;
-			const exclusive = options?.exclusive ?? false;
-			const noEmit = options?.noEmit ?? false;
+			const exclusive = options?.isExclusive ?? false;
+			const noEmit = options?.silent ?? false;
 			const rootNode = this.isFiltered ? filteredRoot : root;
 			const paths = Array.isArray(path) ? path : [path];
 			let hasChanges = false;
@@ -891,8 +891,8 @@ export function createLTree<T>(
 			return this;
 		},
 
-		collapseNodes: function (path: string | string[], options?: { noEmit?: boolean }) {
-			const noEmit = options?.noEmit ?? false;
+		collapseNodes: function (path: string | string[], options?: ExpandOptions) {
+			const noEmit = options?.silent ?? false;
 			const rootNode = this.isFiltered ? filteredRoot : this.root;
 			const paths = Array.isArray(path) ? path : [path];
 			let hasChanges = false;

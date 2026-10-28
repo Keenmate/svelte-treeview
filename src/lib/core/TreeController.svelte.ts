@@ -23,6 +23,7 @@ import {
 	type SelectionMode,
 	type SelectMode,
 	type TreeMutationOptions,
+	type ExpandOptions,
 	type NodeContext,
 	type SortContext
 } from '../ltree/types.js';
@@ -1541,26 +1542,32 @@ export class TreeController<T> {
 
 	// ── Public API methods ──────────────────────────────────────────────
 
-	async expandNodes(
-		nodePath: string | string[],
-		options?: { exclusive?: boolean; noEmit?: boolean }
-	) {
-		this.tree.expandNodes(nodePath, options);
+	/** Expand the nodes one level (their ancestors are opened too). */
+	async expandNodes(paths: string | string[], options?: ExpandOptions) {
+		this.tree.expandNodes(paths, options);
 	}
 
-	async collapseNodes(nodePath: string | string[], options?: { noEmit?: boolean }) {
-		this.tree.collapseNodes(nodePath, options);
+	/** Collapse the nodes (one level — descendants keep their own state). */
+	async collapseNodes(paths: string | string[], options?: ExpandOptions) {
+		this.tree.collapseNodes(paths, options);
 	}
 
-	expandAll(
-		nodePath?: string | string[] | null | undefined,
-		options?: { exclusive?: boolean; noEmit?: boolean }
-	) {
-		this.tree?.expandAll(nodePath, options);
+	/** Expand a collapsed node / collapse an expanded one. */
+	async toggleNodeExpanded(path: string, options?: ExpandOptions) {
+		const node = this.tree?.getNodeByPath(path);
+		if (!node) return;
+		if (node.isExpanded) this.tree.collapseNodes(path, options);
+		else this.tree.expandNodes(path, options);
 	}
 
-	collapseAll(nodePath?: string | string[] | null | undefined, options?: { noEmit?: boolean }) {
-		this.tree?.collapseAll(nodePath, options);
+	/** Expand the whole tree (`null` / omitted), or the given nodes + all their descendants. */
+	expandAll(paths?: string | string[] | null, options?: ExpandOptions) {
+		this.tree?.expandAll(paths, options);
+	}
+
+	/** Collapse the whole tree (`null` / omitted), or the given nodes + all their descendants. */
+	collapseAll(paths?: string | string[] | null, options?: ExpandOptions) {
+		this.tree?.collapseAll(paths, options);
 	}
 
 	filterNodes(term: string, searchOptions?: SearchOptions): void {

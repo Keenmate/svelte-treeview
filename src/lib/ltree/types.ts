@@ -91,6 +91,16 @@ export type SelectionMode = 'single' | 'multiple';
 /** Gesture mode for selectNode(): replace = plain click, toggle = Ctrl+click, range = Shift+click. */
 export type SelectMode = 'replace' | 'toggle' | 'range';
 /** Options shared by every imperative selection/checked/focus mutator. */
+/** Options of the expand / collapse methods (`expandNodes`, `collapseNodes`, `toggleNodeExpanded`,
+ *  `expandAll`, `collapseAll`). */
+export interface ExpandOptions {
+	/** Expand only: collapse every expanded branch that isn't an ancestor of (or, for
+	 *  `expandAll`, inside) the targets — focus the tree on them. Default `false`. */
+	isExclusive?: boolean;
+	/** Skip the tree-changed notification (no re-render) — batch several calls, then refresh. */
+	silent?: boolean;
+}
+
 export interface TreeMutationOptions {
 	/** Update state without firing onNodeClick / onSelectionChange / onCheckedChange
 	 *  (e.g. when restoring state from URL params or other external sources). */
@@ -268,12 +278,12 @@ export interface Ltree<T> {
 	clearFilter(): void;
 
 	expandAll(
-		nodePath?: string | string[] | null | undefined,
-		options?: { exclusive?: boolean; noEmit?: boolean }
+		paths?: string | string[] | null | undefined,
+		options?: ExpandOptions
 	): void;
 	collapseAll(
-		nodePath?: string | string[] | null | undefined,
-		options?: { noEmit?: boolean }
+		paths?: string | string[] | null | undefined,
+		options?: ExpandOptions
 	): void;
 
 	insert(path: string, data: T, noEmitChanges?: boolean): void;
@@ -281,11 +291,11 @@ export interface Ltree<T> {
 	getNodeByPath(path: string, _root?: LTreeNode<T> | null | undefined): LTreeNode<T> | null;
 
 	expandNodes(
-		path: string | string[],
-		options?: { exclusive?: boolean; noEmit?: boolean }
+		paths: string | string[],
+		options?: ExpandOptions
 	): Ltree<T>;
 
-	collapseNodes(path: string | string[], options?: { noEmit?: boolean }): Ltree<T>;
+	collapseNodes(paths: string | string[], options?: ExpandOptions): Ltree<T>;
 
 	getNodeDisplayValue(node: LTreeNode<T>): string;
 

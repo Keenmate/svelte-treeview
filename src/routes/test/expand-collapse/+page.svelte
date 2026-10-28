@@ -54,13 +54,13 @@
 		</button>
 		<button
 			data-testid="expand-nodes-exclusive"
-			onclick={() => treeRef?.expandNodes('1.1.1', { exclusive: true })}
+			onclick={() => treeRef?.expandNodes('1.1.1', { isExclusive: true })}
 		>
 			expandNodes('1.1.1', exclusive)
 		</button>
 		<button
 			data-testid="expand-nodes-array-exclusive"
-			onclick={() => treeRef?.expandNodes(['1.1.1', '3.1.1'], { exclusive: true })}
+			onclick={() => treeRef?.expandNodes(['1.1.1', '3.1.1'], { isExclusive: true })}
 		>
 			expandNodes(['1.1.1','3.1.1'], exclusive)
 		</button>
@@ -83,7 +83,7 @@
 		</button>
 		<button
 			data-testid="expand-all-exclusive"
-			onclick={() => treeRef?.expandAll('1.1', { exclusive: true })}
+			onclick={() => treeRef?.expandAll('1.1', { isExclusive: true })}
 		>
 			expandAll('1.1', exclusive)
 		</button>
@@ -93,6 +93,10 @@
 		</button>
 		<button data-testid="collapse-all-array" onclick={() => treeRef?.collapseAll(['1', '2'])}>
 			collapseAll(['1','2'])
+		</button>
+
+		<button data-testid="toggle-node" onclick={() => treeRef?.toggleNodeExpanded('2')}>
+			toggleNodeExpanded('2')
 		</button>
 	</div>
 

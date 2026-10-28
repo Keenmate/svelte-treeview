@@ -165,6 +165,10 @@ Programmatic control:
 <button onclick={() => treeRef.expandAll()}>Expand All</button>
 <button onclick={() => treeRef.collapseAll()}>Collapse All</button>
 <button onclick={() => treeRef.expandNodes('1.2')}>Expand 1.2</button>
+<button onclick={() => treeRef.toggleNodeExpanded('1.2')}>Toggle 1.2</button>
+<!-- ExpandOptions { isExclusive?, silent? }: expandNodes('1.2', { isExclusive: true })
+     collapses every other open branch; expandAll/collapseAll(paths?) — null = whole tree,
+     paths = those nodes + all descendants -->
 
 CLICK HANDLING
 --------------

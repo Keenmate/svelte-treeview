@@ -232,10 +232,12 @@ interface Ltree<T> {
   // Methods
   insertArray(data: T[]): InsertArrayResult<T>;
   getNodeByPath(path: string): LTreeNode<T> | null;
-  expandNodes(path: string): Ltree<T>;
-  collapseNodes(path: string): Ltree<T>;
-  expandAll(path?: string): void;
-  collapseAll(path?: string): void;
+  expandNodes(paths: string | string[], options?: ExpandOptions): Ltree<T>;
+  collapseNodes(paths: string | string[], options?: ExpandOptions): Ltree<T>;
+  expandAll(paths?: string | string[] | null, options?: ExpandOptions): void;
+  collapseAll(paths?: string | string[] | null, options?: ExpandOptions): void;
+  // ExpandOptions = { isExclusive?: boolean; silent?: boolean }
+  // <Tree> / TreeController also: toggleNodeExpanded(path, options?)
   filterNodes(searchTerm: string): void;
   searchNodes(searchTerm: string): LTreeNode<T>[];
 

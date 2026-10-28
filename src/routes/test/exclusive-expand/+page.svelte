@@ -6,7 +6,7 @@
 	//
 	// Three top-level branches (A1, A2, A3), each with two children. expandLevel=0
 	// so all branches start collapsed. The spec manually expands A3 (via the
-	// toggle), then triggers an API call to expandNodes('2', { exclusive: true }).
+	// toggle), then triggers an API call to expandNodes('2', { isExclusive: true }).
 	// The assertion is that A3's toggle UI flips back to the collapsed state —
 	// the API mutation must propagate to the toggle icon, not just the data.
 
@@ -31,7 +31,7 @@
 	}
 
 	function exclusiveExpandA2() {
-		treeRef?.expandNodes('2', { exclusive: true });
+		treeRef?.expandNodes('2', { isExclusive: true });
 	}
 </script>
 

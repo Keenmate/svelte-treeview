@@ -180,10 +180,13 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 
 | Method | Parameters | Description |
 |--------|------------|-------------|
-| `expandNodes` | `nodePath: string` | Expand nodes at specified path |
-| `collapseNodes` | `nodePath: string` | Collapse nodes at specified path |
-| `expandAll` | `nodePath?: string` | Expand all nodes or nodes under path |
-| `collapseAll` | `nodePath?: string` | Collapse all nodes or nodes under path |
+| `expandNodes` | `paths: string \| string[], opts?: ExpandOptions` | Expand the nodes one level (ancestors opened) |
+| `collapseNodes` | `paths: string \| string[], opts?: ExpandOptions` | Collapse the nodes (one level) |
+| `toggleNodeExpanded` | `path: string, opts?: ExpandOptions` | Expand a collapsed node / collapse an expanded one |
+| `expandAll` | `paths?: string \| string[] \| null, opts?: ExpandOptions` | Whole tree (`null`/omitted), or the given nodes + all descendants |
+| `collapseAll` | `paths?: string \| string[] \| null, opts?: ExpandOptions` | Whole tree (`null`/omitted), or the given nodes + all descendants |
+
+`ExpandOptions = { isExclusive?: boolean; silent?: boolean }` — `isExclusive` (expand only) collapses every open branch off the targets' spine; `silent` skips the tree-changed notification (batch, then `refresh()`).
 | `filterNodes` | `searchTerm: string, searchOptions?: SearchOptions` | Filter the tree display using internal search index with optional FlexSearch options |
 | `searchNodes` | `searchTerm: string \| null \| undefined, searchOptions?: SearchOptions` | Search nodes using internal search index and return matching nodes with optional FlexSearch options |
 | `scrollToPath` | `path: string, options?: ScrollToPathOptions` | Scroll to and highlight a specific node |

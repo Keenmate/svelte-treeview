@@ -264,3 +264,16 @@ test.describe('collapseAll', () => {
 		expect(await visiblePaths(page)).toEqual(sorted(['1', '2', '3', '3.1', '3.1.1', '3.2']));
 	});
 });
+
+test.describe('toggleNodeExpanded', () => {
+	test('expands a collapsed node one level, then collapses it again', async ({ page }) => {
+		await goto(page);
+		expect(await visiblePaths(page)).toEqual(['1', '2', '3']);
+
+		await page.getByTestId('toggle-node').click();
+		await expect.poll(() => visiblePaths(page)).toEqual(['1', '2', '2.1', '2.2', '3']);
+
+		await page.getByTestId('toggle-node').click();
+		await expect.poll(() => visiblePaths(page)).toEqual(['1', '2', '3']);
+	});
+});

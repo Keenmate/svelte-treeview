@@ -23,6 +23,7 @@
 		type SelectionMode,
 		type SelectMode,
 		type TreeMutationOptions,
+		type ExpandOptions,
 		type NodeContext,
 		type SortContext,
 		type TreeChange,
@@ -1152,29 +1153,24 @@
 	}
 
 	// ── Export public methods (thin proxies) ────────────────────────────
-	export async function expandNodes(
-		nodePath: string | string[],
-		options?: { exclusive?: boolean; noEmit?: boolean }
-	) {
-		controller.expandNodes(nodePath, options);
+	export async function expandNodes(paths: string | string[], options?: ExpandOptions) {
+		controller.expandNodes(paths, options);
 	}
 
-	export async function collapseNodes(nodePath: string | string[], options?: { noEmit?: boolean }) {
-		controller.collapseNodes(nodePath, options);
+	export async function collapseNodes(paths: string | string[], options?: ExpandOptions) {
+		controller.collapseNodes(paths, options);
 	}
 
-	export function expandAll(
-		nodePath?: string | string[] | null | undefined,
-		options?: { exclusive?: boolean; noEmit?: boolean }
-	) {
-		controller.expandAll(nodePath, options);
+	export async function toggleNodeExpanded(path: string, options?: ExpandOptions) {
+		controller.toggleNodeExpanded(path, options);
 	}
 
-	export function collapseAll(
-		nodePath?: string | string[] | null | undefined,
-		options?: { noEmit?: boolean }
-	) {
-		controller.collapseAll(nodePath, options);
+	export function expandAll(paths?: string | string[] | null, options?: ExpandOptions) {
+		controller.expandAll(paths, options);
+	}
+
+	export function collapseAll(paths?: string | string[] | null, options?: ExpandOptions) {
+		controller.collapseAll(paths, options);
 	}
 
 	export function filterNodes(term: string, searchOptions?: SearchOptions): void {

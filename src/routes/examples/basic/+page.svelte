@@ -440,7 +440,7 @@ tree.collapseAll(['1', '3']);`}</pre>
 	<div class="card">
 		<h2>BU06 · Exclusive Focus</h2>
 		<p class="description">
-			Pass <code>{`{ exclusive: true }`}</code> to <code>expandNodes</code> or
+			Pass <code>{`{ isExclusive: true }`}</code> to <code>expandNodes</code> or
 			<code>expandAll</code> to open the target path <em>and</em> collapse everything currently
 			open that isn't on its spine. Equivalent to <code>collapseAll() + expandNodes(path)</code> —
 			but in a single pass with one emit, so listeners and CSS animations don't see the
@@ -451,25 +451,25 @@ tree.collapseAll(['1', '3']);`}</pre>
 			<button class="btn" onclick={() => focusTreeRef?.expandAll()}>Open everything (reset)</button>
 			<button
 				class="btn"
-				onclick={() => focusTreeRef?.expandNodes('1.1.1', { exclusive: true })}
+				onclick={() => focusTreeRef?.expandNodes('1.1.1', { isExclusive: true })}
 			>
 				Focus on 1.1.1
 			</button>
 			<button
 				class="btn"
-				onclick={() => focusTreeRef?.expandNodes(['1.1.1', '3.1.2'], { exclusive: true })}
+				onclick={() => focusTreeRef?.expandNodes(['1.1.1', '3.1.2'], { isExclusive: true })}
 			>
 				Focus on 1.1.1 + 3.1.2
 			</button>
 			<button
 				class="btn"
-				onclick={() => focusTreeRef?.expandAll('1', { exclusive: true })}
+				onclick={() => focusTreeRef?.expandAll('1', { isExclusive: true })}
 			>
 				Focus on whole "Documents" subtree
 			</button>
 			<button
 				class="btn"
-				onclick={() => focusTreeRef?.expandAll('3.1', { exclusive: true })}
+				onclick={() => focusTreeRef?.expandAll('3.1', { isExclusive: true })}
 			>
 				Focus on "Web App" subtree
 			</button>
@@ -494,24 +494,24 @@ tree.collapseAll(['1', '3']);`}</pre>
 
 		<div class="code-block">
 			<pre>{`// "Focus" — open this path, close everything else. Single emit.
-tree.expandNodes('1.1.1', { exclusive: true });
+tree.expandNodes('1.1.1', { isExclusive: true });
 
 // Multi-focus — union of spines stays open, rest collapses.
-tree.expandNodes(['1.1.1', '3.1.2'], { exclusive: true });
+tree.expandNodes(['1.1.1', '3.1.2'], { isExclusive: true });
 
 // "Focus on whole subtree" — opens the spine to the target AND its
 // full subtree; collapses everything outside.
-tree.expandAll('1', { exclusive: true });`}</pre>
+tree.expandAll('1', { isExclusive: true });`}</pre>
 		</div>
 
 		<div class="note">
-			<p class="note-title">When to use exclusive</p>
+			<p class="note-title">When to use isExclusive</p>
 			<p>
 				Best for "spotlight" or "drill-in" UX where you want a single branch in focus. Without
-				<code>exclusive</code>, doing the same thing with <code>collapseAll()</code> followed by
+				<code>isExclusive</code>, doing the same thing with <code>collapseAll()</code> followed by
 				<code>expandNodes(path)</code> works, but emits twice — downstream listeners (transition
 				animations, sync to a URL, virtualized renderers) see the intermediate fully-collapsed
-				state. <code>exclusive: true</code> walks only currently-expanded nodes (cheap) and
+				state. <code>isExclusive: true</code> walks only currently-expanded nodes (cheap) and
 				emits once.
 			</p>
 		</div>
@@ -521,14 +521,17 @@ tree.expandAll('1', { exclusive: true });`}</pre>
 	<div class="card">
 		<h2>BU07 · Expand / Collapse API</h2>
 		<div class="code-block">
-			<pre>{`expandNodes(path: string | string[], options?: { exclusive?: boolean; noEmit?: boolean })
-collapseNodes(path: string | string[], options?: { noEmit?: boolean })
+			<pre>{`interface ExpandOptions { isExclusive?: boolean; silent?: boolean }
 
-expandAll(nodePath?: string | string[] | null, options?: { exclusive?: boolean; noEmit?: boolean })
-collapseAll(nodePath?: string | string[] | null, options?: { noEmit?: boolean })`}</pre>
+expandNodes(paths: string | string[], options?: ExpandOptions)   // one level, ancestors opened
+collapseNodes(paths: string | string[], options?: ExpandOptions)
+toggleNodeExpanded(path: string, options?: ExpandOptions)
+
+expandAll(paths?: string | string[] | null, options?: ExpandOptions)   // null = whole tree,
+collapseAll(paths?: string | string[] | null, options?: ExpandOptions) // paths = those + descendants`}</pre>
 		</div>
 		<p class="description">
-			<code>noEmit: true</code> suppresses the change notification — handy when you want to batch
+			<code>silent: true</code> suppresses the change notification — handy when you want to batch
 			several calls and emit once at the end via <code>tree.refresh()</code>.
 		</p>
 	</div>

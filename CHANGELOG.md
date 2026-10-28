@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BREAKING: expand API options are `ExpandOptions { isExclusive?, silent? }`** (was `{ exclusive?,
+  noEmit? }`) on `expandNodes` / `collapseNodes` / `expandAll` / `collapseAll` (`<Tree>`,
+  `TreeController`, `Ltree`); the type is exported. Parameters are `paths` (`string | string[]`;
+  `expandAll` / `collapseAll`: `null` / omitted = whole tree, paths = those nodes + all descendants).
+  **New `toggleNodeExpanded(path, options?)`**. Same expand vocabulary as `@keenmate/web-treeview` /
+  `@keenmate/web-grid` (svelte-treeview has no built-in menu items, so the menu actions don't apply).
 - **BREAKING: `setSelectedPaths()` / `setCheckedPaths()` removed** (`<Tree>` and `TreeController`).
   To replace a whole set, assign the bindable `selectedPaths` / `checkedPaths` (or
   `controller.updateProps({ selectedPaths })`) — silent, no event, like any bound prop. Assigning

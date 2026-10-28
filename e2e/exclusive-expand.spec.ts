@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Regression: an API call to `expandNodes(path, { exclusive: true })` must
+ * Regression: an API call to `expandNodes(path, { isExclusive: true })` must
  * collapse off-spine branches *visually*, including flipping their toggle
  * icon back to the collapsed state. A pure data-only mutation that leaves the
  * toggle UI showing the previous expanded chevron is a bug — the user
@@ -30,7 +30,7 @@ test('exclusive expand of A2 collapses previously-expanded A3 in the UI', async 
 	await expect(page.locator('.stv__node[data-tree-path="3.1"]').first()).toBeVisible();
 	await expect(page.locator('.stv__node[data-tree-path="3.2"]').first()).toBeVisible();
 
-	// Trigger the API call: expandNodes('2', { exclusive: true }).
+	// Trigger the API call: expandNodes('2', { isExclusive: true }).
 	await page.getByTestId('exclusive-expand-a2').click();
 
 	// A2 should now be expanded, A3's children gone, A3's toggle no longer
