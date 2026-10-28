@@ -287,6 +287,7 @@ Bindable props (two-way):
 - focusedNode (single focused node)
 - selectedPaths (Set<string>, Ctrl/Shift+click selection)
 - checkedPaths (Set<string>, checkbox data state)
+- expandedPaths (Set<string>, expanded nodes; assign = replace, silent)
 - insertResult
 
 Callback props (one-way notification):
@@ -297,6 +298,8 @@ Callback props (one-way notification):
 - onNodeDragOver
 - onSelectionChange
 - onCheckedChange
+- onNodeExpand / onNodeCollapse / onExpandedChange
+- beforeExpandCallback (interceptor; Promise = lazy load with loading state)
 - onNodeCopy / onNodeCut / onNodePaste / onNodeDelete
 - beforeKeydownCallback (interceptor)
 
@@ -345,6 +348,16 @@ onNodeDrop:
 onSelectionChange / onCheckedChange:
 (ctx: SelectionChangeContext<T>) => void
   // SelectionChangeContext = { paths: Set<string>, nodes: LTreeNode<T>[] }
+
+onNodeExpand / onNodeCollapse:
+(ctx: NodeRef<T> & { controller }) => void   // per node; not expandAll / collapseAll
+
+onExpandedChange:
+(ctx: { paths: Set<string>, controller }) => void   // whole new expanded set
+
+beforeExpandCallback (interceptor):
+(ctx: NodeRef<T> & { controller }) => boolean | void | Promise<boolean | void>
+  // false = stay collapsed; Promise = loading state until it settles (lazy loading)
 
 onNodeCopy / onNodeCut / onNodeDelete:
 (ctx: ClipboardEventContext<T>) => void

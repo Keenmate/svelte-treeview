@@ -62,6 +62,7 @@ Without both requirements, no search indexing will occur.
 | `treeId` | `string \| null` | auto-generated | Unique identifier for the tree |
 | `treePathSeparator` | `string \| null` | `"."` | Separator character for hierarchical paths (e.g., "." for "1.2.3" or "/" for "1/2/3") |
 | `focusedNode` | `LTreeNode<T>` (bindable) | `undefined` | Currently focused node (single-focus family; click / arrow keys) |
+| `expandedPaths` | `Set<string>` (bindable) | `new Set()` | Paths of the expanded nodes — read it to save the expanded state, assign it to restore (replaces the state silently; given before the data it applies after the first load, overriding `expandLevel`). Replaces `getExpandedPaths()` / `setExpandedPaths()` |
 | `insertResult` | `InsertArrayResult<T>` (bindable) | `undefined` | Result of the last data insertion including failed nodes |
 
 ### Behavior properties
@@ -128,6 +129,10 @@ Every `on*` event receives a **single context object** mirroring the clipboard c
 | `onNodeDrop` | `(ctx: NodeDropContext<T>) => void` | `undefined` | Drop event. `ctx = { source, target, dragged, dropped, position, operation, event }`. `source` is the lead dragged node's `NodeRef`; `target` is the drop node's `NodeRef` **or `null`** (empty tree/root). `dragged` is the **full top-level dragged set** — a drop fires once even for a multi-drag, so this is how you see the whole set. `dropped` is the nodes the **library** placed (move: the moved nodes; copy: the fresh copies), or **`null`** when the library didn't place them (cross-tree drop, or `shouldAutoHandleMove`/`Copy=false`) and the consumer owns insertion. Position is `'before'`/`'after'`/`'child'`; operation is `'move'`/`'copy'`. Symmetric with `NodeTransformContext`. (Its twin `beforeDropCallback` remains the older 5-arg positional signature.) |
 | `onSelectionChange` | `(ctx: SelectionChangeContext<T>) => void` | `undefined` | UI multi-select set (`selectedPaths`) changed. `ctx = { paths: Set<string>, nodes }`. Suppressed by `{ isSilent: true }` mutations. |
 | `onCheckedChange` | `(ctx: SelectionChangeContext<T>) => void` | `undefined` | Checkbox set (`checkedPaths`) changed. Same shape as `onSelectionChange`. Suppressed by `{ isSilent: true }`. |
+| `onNodeExpand` | `(ctx: NodeRef<T> & { controller }) => void` | `undefined` | A node expanded (toggle, keyboard, `expandNodes` — collapsed ancestors included —, after any `beforeExpandCallback` load). NOT `expandAll` / expand-level seeding. Suppressed by `isSilent`. |
+| `onNodeCollapse` | `(ctx: NodeRef<T> & { controller }) => void` | `undefined` | A node collapsed (toggle, keyboard, `collapseNodes`, an accordion sibling). NOT `collapseAll`. Suppressed by `isSilent`. |
+| `onExpandedChange` | `(ctx: ExpandedChangeContext<T>) => void` | `undefined` | The expanded set changed (any cause: toggle, keyboard, expand/collapse methods, `expandAll` / `collapseAll`, accordion, data changes). `ctx = { paths: Set<string>, controller }` — the whole new set (same as `expandedPaths`). Fires after the per-node events. Not fired for `isSilent` operations nor for assigning `bind:expandedPaths`. |
+| `beforeExpandCallback` | `(ctx: BeforeExpandContext<T>) => boolean \| void \| Promise<boolean \| void>` | `undefined` | Runs before a collapsed node with children expands (toggle, keyboard, `expandNodes` — not `expandAll` / seeding / accordion; it also runs for `isSilent`). `false` keeps it collapsed. A **Promise defers the expand**: the node shows its loading state (spinner toggle, `aria-busy` + `data-loading` on the row; repeat toggles are ignored) until it settles — lazy loading: `ctx.controller.addBranch(ctx.path, children)` then resolve. A throw / rejection keeps it collapsed and is logged. `ctx` = the node's `NodeRef` + `controller`. |
 | `onNodesReorder` | `(ctx: NodesReorderContext<T>) => void` | `undefined` | `sortNodes` / `sortAll` rewrote one parent's `orderMember` values (custom `compareCallback` or `direction: 'desc'`). `ctx = { parentPath, nodes, changes: [{ path, oldOrder, newOrder }] }` — persist `changes`. Suppressed by `{ isSilent: true }`. |
 | `onNodeCopy` | `(ctx: ClipboardEventContext<T>) => void` | `undefined` | Fired after `controller.copyNodes()` succeeds. `ctx = { operation: 'copy', paths, nodes }` (nodes live). |
 | `onNodeCut` | `(ctx: ClipboardEventContext<T>) => void` | `undefined` | Fired after `controller.cutNodes()` succeeds. `ctx = { operation: 'cut', paths, nodes }` (nodes still live — cut only dims until paste). |
@@ -184,7 +189,7 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 |--------|------------|-------------|
 | `expandNodes` | `paths: string \| string[], opts?: ExpandOptions` | Expand the nodes one level (ancestors opened) |
 | `collapseNodes` | `paths: string \| string[], opts?: ExpandOptions` | Collapse the nodes (one level) |
-| `toggleNodeExpanded` | `path: string, opts?: ExpandOptions` | Expand a collapsed node / collapse an expanded one |
+| `toggleNodeExpanded` | `path: string, opts?: ExpandOptions` | Expand a collapsed node / collapse an expanded one (the toggle UI path: accordion + `beforeExpandCallback`; leaves / non-collapsible / pending nodes are ignored). The expand methods return a Promise that settles after an async `beforeExpandCallback` |
 | `expandAll` | `paths?: string \| string[] \| null, opts?: ExpandOptions` | Whole tree (`null`/omitted), or the given nodes + all descendants |
 | `collapseAll` | `paths?: string \| string[] \| null, opts?: ExpandOptions` | Whole tree (`null`/omitted), or the given nodes + all descendants |
 | `filterNodes` | `searchTerm: string, searchOptions?: SearchOptions` | Filter the tree display using internal search index with optional FlexSearch options |
@@ -209,8 +214,6 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `refreshSiblings` | `parentPath: string` | Re-sort a parent's children by the tree's rule (= `sortNodes(parentPath)`) |
 | `sortNodes` | `paths: string \| string[], options?: SortOptions` | Sort the children of each node — one level (`''` = root level) |
 | `sortAll` | `paths?: string \| string[] \| null, options?: SortOptions` | Sort whole subtrees (`null` / omitted = the whole tree) |
-| `getExpandedPaths` | | Get array of all currently expanded node paths |
-| `setExpandedPaths` | `paths: string[]` | Restore expanded state from saved paths |
 | `applyChanges` | `changes: TreeChange<T>[]` | Batch: `add` {parentPath, data, pathSegment?} / `insert` {targetPath, position, data} / `update` {path, data} / `remove` {path} |
 | `closeContextMenu` | | Programmatically close the context menu |
 

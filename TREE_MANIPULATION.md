@@ -314,51 +314,24 @@ Recursively updates all descendant paths after a move operation:
 
 These methods help with scenarios where you need to preserve tree state across full redraws or extract data for saving.
 
-### getExpandedPaths() - Get Expanded State
+### `expandedPaths` - Expanded State (bindable)
 
-**Location:** `ltree.svelte.ts:1142-1154`, exposed in `Tree.svelte:305-307`
+`bind:expandedPaths` (`Set<string>`, also `controller.expandedPaths`) is the tree's expanded set,
+kept in sync on every change (`onExpandedChange` announces it). Read it to save, assign it to
+restore — assigning replaces the expanded state (every other node collapses) silently. Given
+before the data, it applies after the first non-empty load. Replaces the removed
+`getExpandedPaths()` / `setExpandedPaths()`.
 
-```typescript
-getExpandedPaths(): string[]
+```svelte
+<Tree bind:this={treeRef} bind:expandedPaths={expanded} ... />
 ```
 
-**Returns:** Array of paths for all currently expanded nodes.
-
-**Use case:** Save expanded state before a full tree redraw.
-
 ```typescript
-// Before updating data
-const expandedPaths = treeRef.getExpandedPaths();
-console.log('Expanded:', expandedPaths);
-// ['1', '1.2', '2', '2.1.3']
-```
-
----
-
-### setExpandedPaths() - Restore Expanded State
-
-**Location:** `ltree.svelte.ts:1161-1173`, exposed in `Tree.svelte:309-311`
-
-```typescript
-setExpandedPaths(paths: string[]): void
-```
-
-**Parameters:**
-- `paths` - Array of paths to expand (all other nodes will be collapsed)
-
-**Use case:** Restore expanded state after a full tree redraw.
-
-```typescript
-// After data update and tick()
+const saved = new Set(expanded);   // save
+// ... full redraw ...
 await tick();
-treeRef.setExpandedPaths(expandedPaths);
+expanded = saved;                  // restore
 ```
-
-**How it works:**
-1. Creates a Set from the paths array
-2. Traverses entire tree
-3. Sets `isExpanded = true` for nodes in set, `false` for others
-4. Emits tree change
 
 ---
 
@@ -387,12 +360,11 @@ await saveToDatabase($state.snapshot(items));
 Here's a complete example showing how to preserve expanded state across a full redraw:
 
 ```typescript
-let treeRef: Tree<MyData>;
-let expandedPaths: string[] = [];
+let expanded = $state(new Set<string>()); // <Tree bind:expandedPaths={expanded} ... />
 
 async function reloadFromDatabase() {
   // 1. Save current expanded state
-  expandedPaths = treeRef.getExpandedPaths();
+  const expandedPaths = new Set(expanded);
   console.log('Saved expanded state:', expandedPaths);
 
   // 2. Fetch fresh data from database
@@ -405,7 +377,7 @@ async function reloadFromDatabase() {
   await tick();
 
   // 5. Restore expanded state
-  treeRef.setExpandedPaths(expandedPaths);
+  expanded = expandedPaths;
   console.log('Restored expanded state');
 }
 ```
@@ -812,4 +784,4 @@ This documentation reflects `@keenmate/svelte-treeview` v4.6.0+ with:
 - Glow and floating drop zone modes
 - `copyNodeWithDescendants()` for cross-tree hierarchy copies
 - `_skipInsertArray` mechanism with `tick()` reset for reliable internal mutations
-- State persistence methods: `getExpandedPaths()`, `setExpandedPaths()`, `bind:nodes` (current state)
+- State persistence: `bind:expandedPaths`, `bind:nodes` (current state)

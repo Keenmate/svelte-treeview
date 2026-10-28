@@ -212,14 +212,30 @@ GET/SET EXPANDED STATE
 Save and restore expanded state:
 
 <script>
-  // Save expanded state
-  const expandedPaths = treeRef.getExpandedPaths();
-  localStorage.setItem('expandedPaths', JSON.stringify(expandedPaths));
+  let expanded = $state(new Set<string>());
+  // <Tree bind:expandedPaths={expanded} onExpandedChange={...} ... />
 
-  // Restore expanded state
-  const saved = JSON.parse(localStorage.getItem('expandedPaths') || '[]');
-  treeRef.setExpandedPaths(saved);
+  // Save expanded state
+  localStorage.setItem('expandedPaths', JSON.stringify([...expanded]));
+
+  // Restore expanded state (assigning replaces it, silently)
+  expanded = new Set(JSON.parse(localStorage.getItem('expandedPaths') || '[]'));
 </script>
+(getExpandedPaths() / setExpandedPaths() were removed — use bind:expandedPaths.)
+
+EXPAND EVENTS + LAZY LOADING
+----------------------------
+onNodeExpand / onNodeCollapse (ctx = NodeRef + controller) fire per node (toggle, keyboard,
+expandNodes / collapseNodes, accordion siblings; not expandAll / collapseAll).
+onExpandedChange({ paths, controller }) fires once per change of the expanded set.
+beforeExpandCallback(ctx): false keeps the node collapsed; a Promise defers the expand and shows
+the node's loading state (spinner toggle, aria-busy) — lazy loading:
+
+  beforeExpandCallback={async (ctx) => {
+    if (ctx.node?.data?.isLoaded) return;
+    const kids = await api.children(ctx.node!.data!.id);
+    ctx.controller.addBranch(ctx.path, kids);
+  }}
 
 CURRENT DATA (nodes = input AND current state)
 ------------------------------------------------

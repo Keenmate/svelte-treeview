@@ -21,6 +21,7 @@
 	const folderData = $derived(fs.filter((n) => n.kind === 'folder'));
 
 	let navTreeRef: Tree<FsNode>;
+	let navExpanded = $state<Set<string>>(new Set());
 	let focusedFolder = $state<LTreeNode<FsNode> | null>(null);
 
 	let currentPath = $state(DEFAULT_PATH); // C:\Windows
@@ -239,10 +240,10 @@
 	}
 	// Reassigning `fs` re-inits the nav tree, so snapshot + restore its expansion.
 	async function withTreeState(mutate: () => void) {
-		const expanded = navTreeRef?.getExpandedPaths() ?? [];
+		const expanded = new Set(navExpanded);
 		mutate();
 		await tick();
-		navTreeRef?.setExpandedPaths(expanded);
+		navExpanded = expanded;
 		for (const a of ancestorPaths(currentPath)) await navTreeRef?.expandNodes(a);
 		navTreeRef?.focusNode(currentPath);
 	}
@@ -367,6 +368,7 @@
 		<div class="winx__nav">
 			<Tree
 				bind:this={navTreeRef}
+				bind:expandedPaths={navExpanded}
 				nodes={folderData}
 				idMember="id"
 				pathMember="path"

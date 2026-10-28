@@ -115,3 +115,23 @@
 	mask-image: var(--stv-icon-leaf);
 }
 */
+
+/* Per-node loading state: an async beforeExpandCallback is pending (lazy load). The
+   toggle glyph becomes a small spinning ring; the row carries aria-busy + data-loading. */
+.stv__toggle-icon.stv__toggle-icon--loading,
+.stv__toggle-icon.stv__clickable.stv__toggle-icon--loading {
+	transform: none;
+}
+.stv__toggle-icon.stv__toggle-icon--loading::before {
+	content: '';
+	-webkit-mask-image: none;
+	mask-image: none;
+	background: none;
+	box-sizing: border-box;
+	width: var(--stv-icon-size-glyph, 1em);
+	height: var(--stv-icon-size-glyph, 1em);
+	border: 2px solid var(--stv-spinner-track);
+	border-top-color: var(--stv-spinner-color);
+	border-radius: 50%;
+	animation: stv-spin 0.8s linear infinite;
+}

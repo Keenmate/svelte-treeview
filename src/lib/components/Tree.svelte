@@ -42,6 +42,8 @@
 		NodeDropContext,
 		ClipboardEventContext,
 		SelectionChangeContext,
+		ExpandedChangeContext,
+		BeforeExpandContext,
 		BeforeCheckboxToggleContext,
 		NodeTransformCallbackContext,
 		NodeTransformCallback,
@@ -107,6 +109,10 @@
 		focusedNode?: LTreeNode<T> | null | undefined;
 		selectedPaths?: Set<string>;
 		checkedPaths?: Set<string>;
+		/** Paths of the expanded nodes (bindable). Assigning replaces the expanded state
+		 *  (silently — no onExpandedChange); given before the data, it applies after the
+		 *  first non-empty load (overriding expandLevel / isExpandedMember). */
+		expandedPaths?: Set<string>;
 		insertResult?: InsertArrayResult<T> | null | undefined;
 
 		// SLOTS
@@ -232,6 +238,19 @@
 		onNodeDoubleClick?: (ctx: NodeEventContext<T>) => void;
 		onSelectionChange?: (ctx: SelectionChangeContext<T>) => void;
 		onCheckedChange?: (ctx: SelectionChangeContext<T>) => void;
+		/** A node expanded (toggle, keyboard, `expandNodes`, after any `beforeExpandCallback`
+		 *  load; NOT `expandAll` / expand-level seeding). Skipped with `isSilent`. */
+		onNodeExpand?: (ctx: NodeEventContext<T>) => void;
+		/** A node collapsed (toggle, keyboard, `collapseNodes`, an accordion sibling; NOT
+		 *  `collapseAll`). Skipped with `isSilent`. */
+		onNodeCollapse?: (ctx: NodeEventContext<T>) => void;
+		/** The expanded set changed (any cause) — `paths` = the whole new set (same as
+		 *  `expandedPaths`). Not fired for `isSilent` operations nor for assigning `expandedPaths`. */
+		onExpandedChange?: (ctx: ExpandedChangeContext<T>) => void;
+		/** Runs before a node expands (toggle, keyboard, `expandNodes` — not `expandAll` /
+		 *  seeding / accordion): `false` keeps it collapsed; a Promise defers the expand and
+		 *  shows the node's loading state (lazy loading). A throw / rejection keeps it collapsed. */
+		beforeExpandCallback?: (ctx: BeforeExpandContext<T>) => boolean | void | Promise<boolean | void>;
 		/** `sortNodes` / `sortAll` rewrote one parent's `orderMember` values (custom compare /
 		 *  `direction: 'desc'`) — persist `changes`. Skipped with `isSilent`. */
 		onNodesReorder?: (ctx: NodesReorderContext<T>) => void;
@@ -445,6 +464,7 @@
 		focusedNode = $bindable(),
 		selectedPaths = $bindable(new Set<string>()),
 		checkedPaths = $bindable(new Set<string>()),
+		expandedPaths = $bindable(new Set<string>()),
 		insertResult = $bindable(),
 
 		// SLOTS
@@ -513,6 +533,10 @@
 		onNodeDoubleClick,
 		onSelectionChange,
 		onCheckedChange,
+		onNodeExpand,
+		onNodeCollapse,
+		onExpandedChange,
+		beforeExpandCallback,
 		onNodesReorder,
 		onNodeDragStart,
 		onNodeDragOver,
@@ -618,6 +642,7 @@
 		focusedNode,
 		selectedPaths,
 		checkedPaths,
+		expandedPaths,
 		expandLevel,
 		clickBehavior,
 		selectionMode,
@@ -659,6 +684,10 @@
 		onNodeDoubleClick,
 		onSelectionChange,
 		onCheckedChange,
+		onNodeExpand,
+		onNodeCollapse,
+		onExpandedChange,
+		beforeExpandCallback,
 		onNodesReorder,
 		onNodeDragStart,
 		onNodeDragOver,
@@ -1056,6 +1085,18 @@
 		controller.onNodesReorderHandler = onNodesReorder;
 	});
 	$effect(() => {
+		controller.onNodeExpandHandler = onNodeExpand;
+	});
+	$effect(() => {
+		controller.onNodeCollapseHandler = onNodeCollapse;
+	});
+	$effect(() => {
+		controller.onExpandedChangeHandler = onExpandedChange;
+	});
+	$effect(() => {
+		controller.beforeExpandHandler = beforeExpandCallback;
+	});
+	$effect(() => {
 		controller.isSortingEnabled = isSortingEnabled ?? true;
 	});
 	$effect(() => {
@@ -1143,6 +1184,9 @@
 		checkedPaths = controller.emittedPaths;
 	});
 	$effect(() => {
+		expandedPaths = controller.expandedPaths;
+	});
+	$effect(() => {
 		insertResult = controller.insertResult;
 	});
 	$effect(() => {
@@ -1169,6 +1213,14 @@
 			// Incoming set is a projection; expand it (cascade-down) into the canonical
 			// checked state. Silent — the parent set this, so don't echo onCheckedChange.
 			controller._replaceCheckedPaths(sp);
+		}
+	});
+	$effect(() => {
+		const ep = expandedPaths;
+		const cp = untrack(() => controller.expandedPaths);
+		if (ep !== cp && (ep.size !== cp.size || [...ep].some((p) => !cp.has(p)))) {
+			// Assigning the bindable replaces the expanded state — silent, no event.
+			controller._replaceExpandedPaths(ep);
 		}
 	});
 
@@ -1356,14 +1408,6 @@
 		);
 	}
 
-	export function getExpandedPaths(): string[] {
-		return controller.getExpandedPaths();
-	}
-
-	export function setExpandedPaths(paths: string[]): void {
-		controller.setExpandedPaths(paths);
-	}
-
 	export function closeContextMenu() {
 		controller.closeContextMenu();
 	}
@@ -1480,6 +1524,7 @@
 				| 'focusedNode'
 				| 'selectedPaths'
 				| 'checkedPaths'
+				| 'expandedPaths'
 				| 'expandLevel'
 				| 'clickBehavior'
 				| 'selectionMode'
@@ -1498,6 +1543,10 @@
 				| 'onNodeDoubleClick'
 				| 'onSelectionChange'
 				| 'onCheckedChange'
+				| 'onNodeExpand'
+				| 'onNodeCollapse'
+				| 'onExpandedChange'
+				| 'beforeExpandCallback'
 				| 'onNodesReorder'
 				| 'onNodeDragStart'
 				| 'onNodeDragOver'
@@ -1605,6 +1654,7 @@
 		if (updates.focusedNode !== undefined) focusedNode = updates.focusedNode;
 		if (updates.selectedPaths !== undefined) selectedPaths = updates.selectedPaths;
 		if (updates.checkedPaths !== undefined) checkedPaths = updates.checkedPaths;
+		if (updates.expandedPaths !== undefined) expandedPaths = updates.expandedPaths;
 		if (updates.expandLevel !== undefined) expandLevel = updates.expandLevel;
 		if (updates.clickBehavior !== undefined) clickBehavior = updates.clickBehavior;
 		if (updates.selectionMode !== undefined) selectionMode = updates.selectionMode;
@@ -1630,6 +1680,10 @@
 		if (updates.onSelectionChange !== undefined) onSelectionChange = updates.onSelectionChange;
 		if (updates.onCheckedChange !== undefined) onCheckedChange = updates.onCheckedChange;
 		if (updates.onNodesReorder !== undefined) onNodesReorder = updates.onNodesReorder;
+		if (updates.onNodeExpand !== undefined) onNodeExpand = updates.onNodeExpand;
+		if (updates.onNodeCollapse !== undefined) onNodeCollapse = updates.onNodeCollapse;
+		if (updates.onExpandedChange !== undefined) onExpandedChange = updates.onExpandedChange;
+		if (updates.beforeExpandCallback !== undefined) beforeExpandCallback = updates.beforeExpandCallback;
 		if (updates.onNodeDragStart !== undefined) onNodeDragStart = updates.onNodeDragStart;
 		if (updates.onNodeDragOver !== undefined) onNodeDragOver = updates.onNodeDragOver;
 		if (updates.onNodeDrop !== undefined) onNodeDrop = updates.onNodeDrop;

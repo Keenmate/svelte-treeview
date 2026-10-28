@@ -101,7 +101,9 @@ getAllowedDropPositionsCallback → drag-drop.txt
 getChildren → tree-editing.txt
 getContextMenuItemsCallback → context-menu.txt, events-callbacks.txt
 getDisplayValueCallback → data-handling.txt
-getExpandedPaths → tree-editing.txt
+expandedPaths (bindable) → tree-editing.txt
+beforeExpandCallback → tree-editing.txt, events-callbacks.txt
+onNodeExpand / onNodeCollapse / onExpandedChange → tree-editing.txt, events-callbacks.txt
 getIsCollapsibleCallback → data-handling.txt
 getIsDraggableCallback → drag-drop.txt, data-handling.txt
 getNodeByPath → tree-editing.txt
@@ -209,7 +211,6 @@ S
 CSS / styles.css → styling-theming.txt, import-patterns.txt
 checkAll → tree-editing.txt, advanced-patterns.txt
 checkNode → tree-editing.txt, advanced-patterns.txt
-setExpandedPaths → tree-editing.txt
 selectedPaths / checkedPaths (assign = replace) → advanced-patterns.txt
 scrollHighlightClass → styling-theming.txt
 scrollHighlightTimeout → styling-theming.txt

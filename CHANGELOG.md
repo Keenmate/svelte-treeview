@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Expand family (parity with `@keenmate/web-treeview`)** — bindable **`expandedPaths`**
+  (`Set<string>`, like `selectedPaths` / `checkedPaths`; assigning replaces the expanded state
+  silently; given before the data it applies after the first load), **`onNodeExpand`** /
+  **`onNodeCollapse`** (`NodeRef` + `controller`; toggle, keyboard, `expandNodes` /
+  `collapseNodes`, accordion siblings — not `expandAll` / `collapseAll`), **`onExpandedChange`**
+  (`{ paths: Set<string>, controller }`, any change of the expanded set incl. data changes;
+  not for `isSilent` nor for assigning the bindable) and **`beforeExpandCallback`** (`false` keeps
+  the node collapsed; a Promise defers the expand and shows the node's loading state — spinner
+  toggle `.stv__toggle-icon--loading`, `aria-busy` + `data-loading` on `.stv__node` — lazy
+  loading). `isSilent` on `ExpandOptions` now has an effect (no events). The toggle UI goes
+  through `toggleNodeExpanded` (accordion + gate in one place); the expand methods' Promise
+  settles after an async gate. New types `ExpandedChangeContext`, `BeforeExpandContext`,
+  `TreeCallbackContext`.
+
 - **`isSortingEnabled` prop (default `true`)** — `false` = never auto-sort: the input order is
   kept, `addNode` / `addBranch` append at the end, `insertNode` / `insertBranch` / `moveNode` / drop
   keep the exact before / after position (with `orderMember` the order values are still computed
@@ -210,6 +224,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Drop placeholder no longer triggers a horizontal scrollbar.** `.stv__drop-placeholder` is `box-sizing: border-box` (the 2px dashed border no longer overruns the container width), and `--stv-drop-placeholder-hover-scale` now defaults to `1` (was `1.015`, which spilled past both edges).
 
 ### Removed
+
+- **BREAKING: `getExpandedPaths()` / `setExpandedPaths(paths)`** (component + `TreeController`) —
+  read / assign `bind:expandedPaths` (or `controller.expandedPaths` / `update({ expandedPaths })`).
 
 - **BREAKING: debug aids removed — `shouldDisplayDebugInformation` and
   `shouldDisplayContextMenuInDebugMode`.** Both were Sep-2025 development tools, not user

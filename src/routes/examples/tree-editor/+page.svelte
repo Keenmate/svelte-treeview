@@ -496,8 +496,8 @@
 	const scenarioDescriptions: Record<Scenario, { title: string; description: string; keyFeature: string }> = {
 		A: {
 			title: 'Full Redraw + State Preservation',
-			description: 'Drag-drop saves to DB, then reloads entire tree from DB. Expanded state is preserved using getExpandedPaths() / setExpandedPaths().',
-			keyFeature: 'getExpandedPaths() / setExpandedPaths()'
+			description: 'Drag-drop saves to DB, then reloads entire tree from DB. Expanded state is preserved through bind:expandedPaths.',
+			keyFeature: 'bind:expandedPaths'
 		},
 		B: {
 			title: 'Partial Redraw (Recommended)',
@@ -589,6 +589,7 @@
 
 	// Tree refs
 	let treeRefA = $state<Tree<ScenarioNode>>(undefined!);
+	let expandedA = $state<Set<string>>(new Set());
 	let treeRefB = $state<Tree<ScenarioNode>>(undefined!);
 	let treeRefC = $state<Tree<ScenarioNode>>(undefined!);
 	let treeRefD = $state<Tree<ScenarioNode>>(undefined!);
@@ -637,7 +638,7 @@
 		const isSameTree = draggedNode.treeId === 'tree-a';
 
 		// Step 1: Save expanded state BEFORE any changes
-		const expandedPaths = treeRefA.getExpandedPaths();
+		const expandedPaths = [...expandedA];
 		addLogA(`Saved ${expandedPaths.length} expanded paths`);
 
 		isLoadingA = true;
@@ -697,14 +698,14 @@
 
 		// Step 3: Restore expanded state
 		await tick();
-		treeRefA.setExpandedPaths(expandedPaths);
+		expandedA = new Set(expandedPaths);
 		addLogA(`Restored ${expandedPaths.length} expanded paths`);
 
 		isLoadingA = false;
 	}
 
 	async function reloadFromDbA() {
-		const expandedPaths = treeRefA.getExpandedPaths();
+		const expandedPaths = [...expandedA];
 		addLogA(`Reloading from DB (saving ${expandedPaths.length} expanded paths)...`);
 
 		isLoadingA = true;
@@ -712,7 +713,7 @@
 		targetDataA = [...mockDatabaseA];
 
 		await tick();
-		treeRefA.setExpandedPaths(expandedPaths);
+		expandedA = new Set(expandedPaths);
 		addLogA(`Reload complete (${delay}ms), restored expanded state`);
 		isLoadingA = false;
 	}
@@ -1270,12 +1271,8 @@
 					<td>Force re-render of a single node</td>
 				</tr>
 				<tr>
-					<td><code>getExpandedPaths()</code></td>
-					<td>Get all currently expanded node paths</td>
-				</tr>
-				<tr>
-					<td><code>setExpandedPaths(paths)</code></td>
-					<td>Restore expanded state from a saved list of paths</td>
+					<td><code>bind:expandedPaths</code></td>
+					<td>The expanded set (<code>Set&lt;string&gt;</code>) — read it to save, assign it to restore</td>
 				</tr>
 				<tr>
 					<td><code>bind:nodes</code></td>
@@ -1605,6 +1602,7 @@ function handleKeydown({ event, controller }) {
 						{#if activeTab === 'A'}
 							<Tree
 								bind:this={treeRefA}
+								bind:expandedPaths={expandedA}
 								treeId="tree-a"
 								nodes={targetDataA}
 								idMember="id"
@@ -1796,7 +1794,7 @@ function handleKeydown({ event, controller }) {
 async function handleDrop({ source, target, position }) {
   const draggedNode = source.node, dropNode = target?.node ?? null;
   // 1. Save expanded state BEFORE changes
-  const expandedPaths = treeRef.getExpandedPaths();
+  const saved = new Set(expandedPaths); // bind:expandedPaths={expandedPaths}
 
   // 2. Save to database
   await saveToDatabase(draggedNode);
@@ -1806,7 +1804,7 @@ async function handleDrop({ source, target, position }) {
 
   // 4. Restore expanded state
   await tick();
-  treeRef.setExpandedPaths(expandedPaths);
+  expandedPaths = saved;
 }`}</pre>
 				{:else if activeTab === 'B'}
 					<pre>{`// Scenario B: Partial Redraw (Recommended)

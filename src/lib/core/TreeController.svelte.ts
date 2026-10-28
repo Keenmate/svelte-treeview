@@ -30,7 +30,7 @@ import {
 	type SortOptions,
 	type NodesReorderContext
 } from '../ltree/types.js';
-import { tick } from 'svelte';
+import { tick, untrack } from 'svelte';
 import {
 	createRenderCoordinator,
 	type RenderCoordinator,
@@ -290,6 +290,25 @@ export interface SelectionChangeContext<T> {
 	nodes: LTreeNode<T>[];
 }
 
+/** The `controller` every callback / event context carries (web-treeview parity: its
+ *  details carry `controller` + `element`; svelte has no element). */
+export interface TreeCallbackContext<T> {
+	controller: TreeController<T>;
+}
+
+/** ctx of `onExpandedChange` — the whole new expanded set (same as `expandedPaths`). */
+export interface ExpandedChangeContext<T> extends TreeCallbackContext<T> {
+	paths: Set<string>;
+}
+
+/**
+ * ctx of `beforeExpandCallback` — the node about to expand (`node`, `path`, `parent`,
+ * `siblings`) + `controller`. Return `false` (or resolve `false`) to keep it collapsed;
+ * return a Promise to load children first (e.g. `ctx.controller.addBranch(...)`) — the
+ * node shows its loading state until it settles.
+ */
+export type BeforeExpandContext<T> = NodeRef<T> & TreeCallbackContext<T>;
+
 /**
  * Context for beforeCopyCallback / beforeCutCallback — batch policy, runs before the
  * snapshot is taken. Return a new path list to rewrite the set, false to block, or nothing
@@ -347,6 +366,9 @@ export interface NodeCallbacks<T> {
 	/** Unified pointer-driven drag entry (mouse/pen/touch). Replaces the native
 	 *  draggable/dragstart + touchstart handlers on the node row. */
 	onPointerDown: (node: LTreeNode<T>, event: PointerEvent) => void;
+	/** The toggle glyph / click-to-expand: goes through `toggleNodeExpanded` (accordion,
+	 *  `beforeExpandCallback`, expand events). */
+	onToggleExpanded: (node: LTreeNode<T>) => void;
 }
 
 export interface NodeConfig {
@@ -388,6 +410,8 @@ export interface NodeConfig {
 	// dragged visual dims the whole set in BOTH recursive and flat rendering (recursive
 	// nodes can't inherit a single top-level flag, else nested files never dim).
 	draggedPaths: Set<string>;
+	/** Nodes whose async `beforeExpandCallback` is in flight (the loading state). */
+	expandPendingPaths: Set<string>;
 	// Data-driven per-row class hooks. Applied to .stv__node (getNodeClassCallback) and
 	// .stv__node-content (getNodeContentClassCallback). Typed LTreeNode<any> here because
 	// NodeConfig is non-generic plumbing; the public Tree props are LTreeNode<T>.
@@ -454,6 +478,8 @@ export interface TreeControllerProps<T> {
 	focusedNode?: LTreeNode<T> | null | undefined;
 	selectedPaths?: Set<string>;
 	checkedPaths?: Set<string>;
+	/** Paths of the expanded nodes. Assigning replaces the expanded state (silently). */
+	expandedPaths?: Set<string>;
 
 	// BEHAVIOUR
 	expandLevel?: number | null | undefined;
@@ -551,6 +577,21 @@ export interface TreeControllerProps<T> {
 	onNodeDropReject?: (ctx: NodeEventContext<T>) => void;
 	onSelectionChange?: (ctx: SelectionChangeContext<T>) => void;
 	onCheckedChange?: (ctx: SelectionChangeContext<T>) => void;
+	/** A node expanded (toggle, keyboard, `expandNodes`, after any `beforeExpandCallback`
+	 *  load; NOT `expandAll` / expand-level seeding). Skipped with `isSilent`. */
+	onNodeExpand?: (ctx: NodeEventContext<T>) => void;
+	/** A node collapsed (toggle, keyboard, `collapseNodes`, an accordion sibling; NOT
+	 *  `collapseAll`). Skipped with `isSilent`. */
+	onNodeCollapse?: (ctx: NodeEventContext<T>) => void;
+	/** The expanded set changed (any cause: toggle, keyboard, expand/collapse methods,
+	 *  expandAll / collapseAll, accordion, data changes) — `paths` = the whole new set.
+	 *  Not fired for `isSilent` operations nor for assigning `expandedPaths`. */
+	onExpandedChange?: (ctx: ExpandedChangeContext<T>) => void;
+	/** Runs before a node expands (toggle, keyboard, `expandNodes` — not `expandAll` /
+	 *  seeding / accordion): `false` keeps it collapsed; a Promise defers the expand and
+	 *  shows the node's loading state (lazy loading: `addBranch` the children, then
+	 *  resolve). A throw / rejection keeps it collapsed and is logged. */
+	beforeExpandCallback?: (ctx: BeforeExpandContext<T>) => boolean | void | Promise<boolean | void>;
 	/** `sortNodes` / `sortAll` rewrote the `orderMember` values of one parent's children (custom
 	 *  `compareCallback` or `direction: 'desc'` with `orderMember` set) — persist `changes`.
 	 *  Once per affected parent; skipped with `isSilent`. */
@@ -693,6 +734,7 @@ export class TreeController<T> {
 		dragOverNodeClass: undefined,
 		draggedNodeClass: undefined,
 		draggedPaths: new Set(),
+		expandPendingPaths: new Set(),
 		dropZoneMode: 'glow',
 		dropZoneLayout: 'around',
 		dropZoneStart: 33,
@@ -748,6 +790,14 @@ export class TreeController<T> {
 	}
 	focusedNode = $state.raw<LTreeNode<T> | null | undefined>(null);
 	selectedPaths = $state.raw<Set<string>>(new Set());
+	/** Paths of the expanded nodes (kept in sync with the tree; `bind:expandedPaths`). */
+	expandedPaths = $state.raw<Set<string>>(new Set());
+	/** @internal Nodes whose async `beforeExpandCallback` is in flight (loading state). */
+	expandPendingPaths = $state.raw<Set<string>>(new Set());
+	/** The last announced (or silently re-baselined) expanded set, joined. */
+	#lastExpandedKey: string | undefined = undefined;
+	/** `expandedPaths` given before the data — applied after the first non-empty insert. */
+	#pendingExpanded: Set<string> | null = null;
 	/** Hidden internal cursor used by Shift+Arrow / Shift+click to extend ranges
 	 *  from the focused node. Set on first Shift action, advances on subsequent
 	 *  Shift actions, cleared on any plain navigation. Not exposed via props. */
@@ -824,6 +874,10 @@ export class TreeController<T> {
 	onSelectionChangeHandler: TreeControllerProps<T>['onSelectionChange'];
 	onCheckedChangeHandler: TreeControllerProps<T>['onCheckedChange'];
 	onNodesReorderHandler: TreeControllerProps<T>['onNodesReorder'];
+	onNodeExpandHandler: TreeControllerProps<T>['onNodeExpand'];
+	onNodeCollapseHandler: TreeControllerProps<T>['onNodeCollapse'];
+	onExpandedChangeHandler: TreeControllerProps<T>['onExpandedChange'];
+	beforeExpandHandler: TreeControllerProps<T>['beforeExpandCallback'];
 	onNodeDragStartHandler: TreeControllerProps<T>['onNodeDragStart'];
 	onNodeDragOverHandler: TreeControllerProps<T>['onNodeDragOver'];
 	onNodeDropHandler: TreeControllerProps<T>['onNodeDrop'];
@@ -1109,6 +1163,10 @@ export class TreeController<T> {
 		this.focusedNode = props.focusedNode ?? null;
 		this.selectedPaths = props.selectedPaths ?? new Set();
 		this.checkedPaths = props.checkedPaths ?? new Set();
+		if (props.expandedPaths?.size) {
+			this.expandedPaths = props.expandedPaths;
+			this.#pendingExpanded = props.expandedPaths;
+		}
 		this.searchTerm = props.searchTerm;
 
 		this.rangeSelectionMode = props.rangeSelectionMode ?? 'visual';
@@ -1181,6 +1239,10 @@ export class TreeController<T> {
 		this.onSelectionChangeHandler = props.onSelectionChange;
 		this.onCheckedChangeHandler = props.onCheckedChange;
 		this.onNodesReorderHandler = props.onNodesReorder;
+		this.onNodeExpandHandler = props.onNodeExpand;
+		this.onNodeCollapseHandler = props.onNodeCollapse;
+		this.onExpandedChangeHandler = props.onExpandedChange;
+		this.beforeExpandHandler = props.beforeExpandCallback;
 		this.onNodeDragStartHandler = props.onNodeDragStart;
 		this.onNodeDragOverHandler = props.onNodeDragOver;
 		this.onNodeDropHandler = props.onNodeDrop;
@@ -1270,7 +1332,10 @@ export class TreeController<T> {
 			onCheckboxToggle: (node: LTreeNode<T>, options?: { skipFocus?: boolean }) =>
 				this._onCheckboxToggle(node, options),
 			onNodeRightClicked: this._onNodeRightClicked.bind(this),
-			onPointerDown: this._onPointerDown.bind(this)
+			onPointerDown: this._onPointerDown.bind(this),
+			onToggleExpanded: (node: LTreeNode<T>) => {
+				void this.toggleNodeExpanded(node.path);
+			}
 		};
 
 		// ── Initial nodeConfig ──────────────────────────────────────────
@@ -1303,6 +1368,7 @@ export class TreeController<T> {
 			dragOverNodeClass: this.dragOverNodeClass,
 			draggedNodeClass: this.draggedNodeClass,
 			draggedPaths: this.draggedPaths,
+			expandPendingPaths: this.expandPendingPaths,
 			dropZoneMode: this.dropZoneMode,
 			dropZoneLayout: this.dropZoneLayout,
 			dropZoneStart: this.dropZoneStart,
@@ -1360,6 +1426,7 @@ export class TreeController<T> {
 				dragOverNodeClass: this.dragOverNodeClass,
 			draggedNodeClass: this.draggedNodeClass,
 			draggedPaths: this.draggedPaths,
+			expandPendingPaths: this.expandPendingPaths,
 				dropZoneMode: this.dropZoneMode,
 				dropZoneLayout: this.dropZoneLayout,
 				dropZoneStart: this.dropZoneStart,
@@ -1404,7 +1471,18 @@ export class TreeController<T> {
 					for (const key in this.tree.root.children) walk(this.tree.root.children[key]!);
 					this.checkedPaths = seeded;
 				}
+				if (this.#pendingExpanded && nodes.length) {
+					this.tree.setExpandedPaths([...this.#pendingExpanded]);
+					this.#pendingExpanded = null;
+				}
 			}
+		});
+
+		// Expanded set: any tree change (data load, toggles, mutations) re-derives it and
+		// announces a change through onExpandedChange (the first sync is the baseline).
+		$effect(() => {
+			void this.tree?.changeTracker;
+			untrack(() => this._syncExpanded());
 		});
 
 		// Progressive rendering for flat mode
@@ -1587,32 +1665,213 @@ export class TreeController<T> {
 
 	// ── Public API methods ──────────────────────────────────────────────
 
-	/** Expand the nodes one level (their ancestors are opened too). */
-	async expandNodes(paths: string | string[], options?: ExpandOptions) {
-		this.tree.expandNodes(paths, options);
+	/**
+	 * Expand the nodes one level (their collapsed ancestors are opened too). A collapsed
+	 * target with children goes through `beforeExpandCallback` first (`false` keeps it
+	 * collapsed; an async hook defers it and shows the loading state — the returned
+	 * Promise settles after it). Fires `onNodeExpand` for every node that actually
+	 * expanded unless `isSilent`.
+	 */
+	async expandNodes(paths: string | string[], options?: ExpandOptions): Promise<void> {
+		const list = Array.isArray(paths) ? paths : [paths];
+		if (!this.beforeExpandHandler) {
+			this._expandWithEvents(list, options);
+			return;
+		}
+		const now: string[] = [];
+		const pending: Promise<boolean>[] = [];
+		for (const p of list) {
+			const node = this.tree?.getNodeByPath(p);
+			if (!node || node.isExpanded || !node.hasChildren) {
+				now.push(p);
+				continue;
+			}
+			const result = this._gateExpand(node, () => this._expandWithEvents([p], options));
+			if (result === true) now.push(p);
+			else if (result !== false) pending.push(result);
+		}
+		if (now.length) this._expandWithEvents(now, options);
+		if (pending.length) await Promise.all(pending);
 	}
 
-	/** Collapse the nodes (one level — descendants keep their own state). */
-	async collapseNodes(paths: string | string[], options?: ExpandOptions) {
+	/** Collapse the nodes (one level — descendants keep their own state). Fires
+	 *  `onNodeCollapse` for every node that actually collapsed unless `isSilent`. */
+	async collapseNodes(paths: string | string[], options?: ExpandOptions): Promise<void> {
+		const list = Array.isArray(paths) ? paths : [paths];
+		const wereExpanded = list
+			.map((p) => this.tree?.getNodeByPath(p))
+			.filter((n): n is LTreeNode<T> => !!n && !!n.isExpanded && !!n.hasChildren);
 		this.tree.collapseNodes(paths, options);
+		if (!options?.isSilent)
+			for (const n of wereExpanded) if (!n.isExpanded) this._emitExpandEvent('collapse', n);
+		this._syncExpanded(options?.isSilent);
 	}
 
-	/** Expand a collapsed node / collapse an expanded one. */
-	async toggleNodeExpanded(path: string, options?: ExpandOptions) {
+	/**
+	 * Expand a collapsed node / collapse an expanded one (the toggle UI, keyboard). A leaf,
+	 * a non-collapsible node, or a node whose async `beforeExpandCallback` is in flight is
+	 * ignored. Expanding honours `shouldExpandAsAccordion` (expanded siblings collapse
+	 * first; `isExclusive` replaces it with the exclusive expand of `expandNodes`).
+	 */
+	async toggleNodeExpanded(path: string, options?: ExpandOptions): Promise<void> {
 		const node = this.tree?.getNodeByPath(path);
-		if (!node) return;
-		if (node.isExpanded) this.tree.collapseNodes(path, options);
-		else this.tree.expandNodes(path, options);
+		if (!node || !node.hasChildren) return;
+		if (!this.tree.getNodeIsCollapsible(node)) return;
+		if (this.expandPendingPaths.has(path)) return;
+		if (node.isExpanded) {
+			await this.collapseNodes(path, options);
+			return;
+		}
+		uiLogger.debug(`Expanding node: ${path}`, { accordion: this.shouldExpandAsAccordion });
+		const result = this._gateExpand(node, () => this._toggleExpandApply(path, options));
+		if (result === true) this._toggleExpandApply(path, options);
+		else if (result !== false) await result;
 	}
 
-	/** Expand the whole tree (`null` / omitted), or the given nodes + all their descendants. */
+	/** Expand the whole tree (`null` / omitted), or the given nodes + all their descendants.
+	 *  No `beforeExpandCallback`, no `onNodeExpand` — only `onExpandedChange`. */
 	expandAll(paths?: string | string[] | null, options?: ExpandOptions) {
 		this.tree?.expandAll(paths, options);
+		this._syncExpanded(options?.isSilent);
 	}
 
-	/** Collapse the whole tree (`null` / omitted), or the given nodes + all their descendants. */
+	/** Collapse the whole tree (`null` / omitted), or the given nodes + all their descendants.
+	 *  No `onNodeCollapse` — only `onExpandedChange`. */
 	collapseAll(paths?: string | string[] | null, options?: ExpandOptions) {
 		this.tree?.collapseAll(paths, options);
+		this._syncExpanded(options?.isSilent);
+	}
+
+	/** Whether `path` has an async `beforeExpandCallback` in flight (it shows the loading state). */
+	isExpandPending(path: string): boolean {
+		return this.expandPendingPaths.has(path);
+	}
+
+	private _emitExpandEvent(kind: 'expand' | 'collapse', node: LTreeNode<T>): void {
+		const handler = kind === 'expand' ? this.onNodeExpandHandler : this.onNodeCollapseHandler;
+		handler?.(this._ctx(this.nodeRef(node)));
+	}
+
+	/** Expand `paths` (no gate) and fire `onNodeExpand` for each node that changed. */
+	private _expandWithEvents(paths: string[], options?: ExpandOptions): void {
+		const sep = this.treePathSeparator || '.';
+		const changing = new Map<string, LTreeNode<T>>();
+		for (const p of paths) {
+			const segs = p.split(sep);
+			for (let i = 1; i <= segs.length; i++) {
+				const prefix = segs.slice(0, i).join(sep);
+				if (changing.has(prefix)) continue;
+				const n = this.tree?.getNodeByPath(prefix);
+				if (!n) break;
+				if (!n.isExpanded && n.hasChildren) changing.set(prefix, n);
+			}
+		}
+		this.tree.expandNodes(paths, options);
+		if (!options?.isSilent)
+			for (const n of changing.values()) if (n.isExpanded) this._emitExpandEvent('expand', n);
+		this._syncExpanded(options?.isSilent);
+	}
+
+	/** The expand half of a UI toggle, after the gate: accordion side-effect + expand + events. */
+	private _toggleExpandApply(path: string, options?: ExpandOptions): void {
+		const node = this.tree?.getNodeByPath(path);
+		if (!node || node.isExpanded) return;
+		if (options?.isExclusive) {
+			this._expandWithEvents([path], options);
+			return;
+		}
+		const collapsedSiblings: LTreeNode<T>[] = [];
+		if (this.shouldExpandAsAccordion) {
+			for (const sibling of this.tree.getSiblings(path)) {
+				if (sibling.path !== path && sibling.isExpanded && this.tree.getNodeIsCollapsible(sibling)) {
+					sibling.isExpanded = false;
+					sibling._rev = (sibling._rev || 0) + 1;
+					collapsedSiblings.push(sibling);
+				}
+			}
+		}
+		node.isExpanded = true;
+		node._rev = (node._rev || 0) + 1;
+		this.tree.refresh();
+		if (!options?.isSilent) {
+			for (const s of collapsedSiblings) this._emitExpandEvent('collapse', s);
+			this._emitExpandEvent('expand', node);
+		}
+		this._syncExpanded(options?.isSilent);
+	}
+
+	/**
+	 * Run `beforeExpandCallback` for `node`. Sync answer: `true` (the caller applies) /
+	 * `false` (cancelled; a throw counts as false). Async: marks the node pending (loading
+	 * state) and returns a Promise; on settle the mark clears and `applyLater()` runs unless
+	 * the hook resolved `false` (a rejection counts as false). A pending node answers `false`.
+	 */
+	private _gateExpand(node: LTreeNode<T>, applyLater: () => void): boolean | Promise<boolean> {
+		const path = node.path;
+		if (this.expandPendingPaths.has(path)) return false;
+		const cb = this.beforeExpandHandler;
+		if (!cb) return true;
+		let result: unknown;
+		try {
+			result = cb(this._ctx(this.nodeRef(node)));
+		} catch (err) {
+			uiLogger.error(`[Tree ${this.treeId}] beforeExpandCallback threw — the node stays collapsed`, err);
+			return false;
+		}
+		if (result && typeof (result as PromiseLike<unknown>).then === 'function') {
+			this.expandPendingPaths = new Set([...this.expandPendingPaths, path]);
+			node._rev = (node._rev || 0) + 1;
+			this.tree.refresh();
+			return Promise.resolve(result as PromiseLike<unknown>)
+				.then(
+					(v) => v !== false,
+					(err) => {
+						uiLogger.error(`[Tree ${this.treeId}] beforeExpandCallback rejected — the node stays collapsed`, err);
+						return false;
+					}
+				)
+				.then((isAllowed) => {
+					const next = new Set(this.expandPendingPaths);
+					next.delete(path);
+					this.expandPendingPaths = next;
+					const live = this.tree?.getNodeByPath(path) ?? null;
+					if (live) live._rev = (live._rev || 0) + 1;
+					if (isAllowed && live) applyLater();
+					this.tree?.refresh();
+					return isAllowed && !!live;
+				});
+		}
+		return result !== false;
+	}
+
+	/**
+	 * Re-derive `expandedPaths` from the tree. When the set changed: update it and fire
+	 * `onExpandedChange` — unless `isSilent` (re-baseline only) or this is the first sync
+	 * (the baseline).
+	 */
+	private _syncExpanded(isSilent?: boolean): void {
+		if (!this.tree) return;
+		const paths = this.tree.getExpandedPaths();
+		const key = paths.join('\u0000');
+		if (key === this.#lastExpandedKey) return;
+		const isFirst = this.#lastExpandedKey === undefined;
+		this.#lastExpandedKey = key;
+		const set = new Set(paths);
+		this.expandedPaths = set;
+		if (isFirst || isSilent) return;
+		this.onExpandedChangeHandler?.(this._ctx({ paths: set }));
+	}
+
+	/** @internal Replace the expanded state with `paths` (assigning `expandedPaths`) — silent. */
+	_replaceExpandedPaths(paths: Iterable<string>): void {
+		if (!this.tree) return;
+		this.tree.setExpandedPaths([...paths]);
+		this._syncExpanded(true);
+	}
+
+	/** Attach the `controller` to a callback / event context. */
+	private _ctx<C extends object>(ctx: C): C & TreeCallbackContext<T> {
+		return { ...ctx, controller: this };
 	}
 
 	filterNodes(term: string, searchOptions?: SearchOptions): void {
@@ -2920,14 +3179,6 @@ export class TreeController<T> {
 		return false;
 	}
 
-	getExpandedPaths(): string[] {
-		return this.tree?.getExpandedPaths() || [];
-	}
-
-	setExpandedPaths(paths: string[]): void {
-		this.tree?.setExpandedPaths(paths);
-	}
-
 	/** Open the context menu at the given screen coordinates (offsets are applied automatically). */
 	openContextMenu(node: LTreeNode<T>, screenX: number, screenY: number) {
 		this.contextMenuNode = node;
@@ -3412,6 +3663,11 @@ export class TreeController<T> {
 		if (updates.focusedNode !== undefined) this._setFocusedNode(updates.focusedNode ?? null);
 		if (updates.selectedPaths !== undefined)
 			this._replaceSelectedPaths(updates.selectedPaths ?? []);
+		if (updates.expandedPaths !== undefined) {
+			// With new nodes in the same update the tree re-inserts later — apply after it.
+			if (updates.nodes !== undefined) this.#pendingExpanded = updates.expandedPaths ?? new Set();
+			else this._replaceExpandedPaths(updates.expandedPaths ?? []);
+		}
 		if (updates.checkedPaths !== undefined)
 			// Incoming set is a projection intent — expand it (cascade-down) into the
 			// canonical checked state rather than storing it raw.
@@ -3545,6 +3801,10 @@ export class TreeController<T> {
 		if (updates.onCheckedChange !== undefined)
 			this.onCheckedChangeHandler = updates.onCheckedChange;
 		if (updates.onNodesReorder !== undefined) this.onNodesReorderHandler = updates.onNodesReorder;
+		if (updates.onNodeExpand !== undefined) this.onNodeExpandHandler = updates.onNodeExpand;
+		if (updates.onNodeCollapse !== undefined) this.onNodeCollapseHandler = updates.onNodeCollapse;
+		if (updates.onExpandedChange !== undefined) this.onExpandedChangeHandler = updates.onExpandedChange;
+		if (updates.beforeExpandCallback !== undefined) this.beforeExpandHandler = updates.beforeExpandCallback;
 	}
 
 	// ── Internal event handlers ─────────────────────────────────────────
@@ -5639,8 +5899,8 @@ export class TreeController<T> {
 				const currentIndex = flatNodes.findIndex((n) => n.path === currentPath);
 
 				if (node.hasChildren && !node.isExpanded && node.isCollapsible !== false) {
-					this.expandNodes(currentPath);
-					tick().then(() => {
+					// After any async beforeExpandCallback (lazy load) settles.
+					this.expandNodes(currentPath).then(() => tick()).then(() => {
 						const updatedFlat = this.allFlatNodes;
 						const idx = updatedFlat.findIndex((n) => n.path === currentPath);
 						if (idx >= 0 && idx + 1 < updatedFlat.length) {

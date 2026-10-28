@@ -84,6 +84,9 @@
 	// descendant). Derived per-node from the controller's complete manifest so recursive
 	// and flat rendering dim the identical set.
 	const isDraggedNode = $derived(config.draggedPaths?.has(node.path) ?? false);
+	// An async beforeExpandCallback is in flight for this node (lazy load): the toggle
+	// shows a spinner and the row carries aria-busy + data-loading.
+	const isExpandPending = $derived(config.expandPendingPaths?.has(node.path) ?? false);
 	// Data-driven per-row classes. The callbacks read node data; recompute when the
 	// node's _rev bumps (same trigger the rest of the render uses).
 	const customNodeClass = $derived(config.getNodeClassCallback ? (config.getNodeClassCallback({ node }) ?? '') : '');
@@ -98,11 +101,9 @@
 	// Indeterminate state: driven by controller's _updateAncestorVisualStates
 	const isIndeterminate = $derived(checkboxMode === 'cascade' && node.visualState === 'indeterminate');
 
-	// Read dropZoneMode and shouldExpandAsAccordion through the proxy each time (not
-	// destructured) so they stay reactive in flat mode where nodes are NOT
-	// recreated on config change.
+	// Read dropZoneMode through the proxy each time (not destructured) so it stays
+	// reactive in flat mode where nodes are NOT recreated on config change.
 	const dropZoneMode = $derived(config.dropZoneMode);
-	const shouldExpandAsAccordion = $derived(config.shouldExpandAsAccordion);
 
 	// Compute if THIS node is the one being hovered for drop.
 	// Single source of truth from the controller — guarantees exactly one highlighted
@@ -363,28 +364,9 @@
 	});
 
 	function toggleExpanded() {
-		if (node.hasChildren && isCollapsible) {
-			const newState = !node.isExpanded
-
-			// Accordion: collapse siblings when expanding
-			if (newState && shouldExpandAsAccordion) {
-				const siblings = tree.getSiblings(node.path)
-				uiLogger.debug(`[accordion] expanding ${node.path}, checking ${siblings.length} siblings, shouldExpandAsAccordion=${shouldExpandAsAccordion}`)
-				for (const sibling of siblings) {
-					if (sibling.path !== node.path && sibling.isExpanded && tree.getNodeIsCollapsible(sibling)) {
-						uiLogger.debug(`[accordion] collapsing sibling: ${sibling.path}`)
-						sibling.isExpanded = false
-						sibling._rev = (sibling._rev || 0) + 1
-					}
-				}
-			}
-
-			uiLogger.debug(`${newState ? 'Expanding' : 'Collapsing'} node: ${node.path}`)
-			node.isExpanded = newState
-			// Bump _rev so flat-mode {#each} key changes and Svelte re-renders the icon
-			node._rev = (node._rev || 0) + 1
-			tree.refresh()
-		}
+		// Accordion, beforeExpandCallback (lazy loading) and the expand events live in the
+		// controller (toggleNodeExpanded) — the same path the API and keyboard take.
+		if (node.hasChildren && isCollapsible) callbacks.onToggleExpanded(node)
 	}
 
 
@@ -431,6 +413,8 @@
 	class="stv__node {customNodeClass}"
 	id="{node.treeId}-{node.id}"
 	data-tree-path="{node.path}"
+	data-loading={isExpandPending ? '' : undefined}
+	aria-busy={isExpandPending ? 'true' : undefined}
 	style={indentStyle}
 >
 	<div class="stv__node-row">
@@ -444,6 +428,7 @@
 						: expandIconClass
 					: expandIconClass}"
 				class:expanded={node.isExpanded}
+				class:stv__toggle-icon--loading={isExpandPending}
 				onclick={toggleExpanded}
 			></span>
 		{:else}
