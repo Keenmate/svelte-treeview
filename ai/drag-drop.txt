@@ -359,7 +359,7 @@ Drop-zone classes (floating mode):
 
 Touch drag ghost:
 - stv__touch-ghost - element that follows the finger
-  (customizable via --tree-ghost-bg / --tree-ghost-color)
+  (customizable via --stv-touch-ghost-bg / --stv-touch-ghost-text-color)
 
 PROGRAMMATIC MOVE
 -----------------

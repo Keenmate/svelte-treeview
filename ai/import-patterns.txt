@@ -94,14 +94,14 @@ Override CSS custom properties to customize the look
 <style>
   /* Component-scope override */
   .my-tree-wrapper .stv__container {
-    --stv-primary: #6366f1;
-    --stv-node-indent-per-level: 1.5rem;
-    --stv-node-font-size: 16px;
+    --stv-accent-color: #6366f1;
+    --stv-indent-size: 1.5rem;
+    --stv-font-size: 16px;
   }
 
   /* Or globally for all KeenMate components: */
   :root {
-    --base-accent-color: #6366f1;
+    --base-primary-color: #6366f1;
     --base-font-family: 'Inter', system-ui, sans-serif;
   }
 </style>

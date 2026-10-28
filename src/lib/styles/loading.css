@@ -12,7 +12,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	z-index: 10;
+	z-index: var(--stv-z-index-overlay);
 }
 
 .stv__loading-spinner {
@@ -21,16 +21,16 @@
 	border: 3px solid var(--stv-spinner-track);
 	border-top-color: var(--stv-spinner-color);
 	border-radius: 50%;
-	animation: stv-spin 0.8s linear infinite;
+	animation: stv-spin var(--stv-spinner-duration) linear infinite;
 }
 
 /* (@keyframes stv-spin — moved to animations.css per canonical Tier-2 layout.) */
 
 /* Progressive rendering loading indicator */
 .stv__loading-more {
-	padding: 4px 8px;
-	margin-left: var(--stv-node-indent-per-level);
-	font-size: 12px;
+	padding: var(--stv-spacing-sm) var(--stv-spacing-md);
+	margin-left: var(--stv-indent-size);
+	font-size: var(--stv-font-size-xs);
 	color: var(--stv-loading-color);
 	font-style: italic;
 }

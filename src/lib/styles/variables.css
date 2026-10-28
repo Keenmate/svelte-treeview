@@ -13,7 +13,7 @@
 
    Resolution chain (priority high → low):
      1. Consumer rule targeting .stv__container directly:
-          .my-wrap .stv__container { --stv-primary: red; }
+          .my-wrap .stv__container { --stv-accent-color: red; }
      2. Consumer's --base-* set on any ancestor (including :root or a wrapper):
           .my-wrap { --base-primary-color: red; }
      3. Hardcoded fallback inside the var() chain below.
@@ -34,128 +34,155 @@
 	/* -------------------------------------------------------------------------
 	   BASE SIZING UNIT
 	   -------------------------------------------------------------------------
-	   Bridges to the shared --base-rem knob (web-multiselect parity) so ONE theme
-	   variable scales every KeenMate component together; 10px fallback keeps the
-	   historical absolute sizing when no base layer is loaded. */
+	   Bridges to the shared --base-rem knob so ONE theme variable scales every
+	   Keenmate component together; 10px fallback keeps the historical absolute
+	   sizing when no base layer is loaded. */
 	--stv-rem: var(--base-rem, 10px);
 
 	/* -------------------------------------------------------------------------
-	   COLORS — theme integration via --base-* tokens
-	   -------------------------------------------------------------------------
-	   Token names, roles and fallback palette are aligned 1:1 with
-	   @keenmate/web-multiselect's --ms-* contract so a shared --base-* theme gives
-	   the tree the SAME look & feel as every other KeenMate component. Tinted
-	   variants are derived via color-mix(); fallbacks use light-dark(<light>,<dark>)
-	   so `html { color-scheme: light dark }` gets OS-aware behavior automatically.
-
-	   KEY SEMANTIC (matches ms --ms-primary-bg + pure-admin's canonical
-	   `base-hover-bg` = "Hover state background"): --stv-primary-bg is a NEUTRAL
-	   text-tinted surface, NOT an accent tint. A plain row/menu hover reads as a
-	   soft gray wash; the accent is reserved for SELECTION (highlight / checked /
-	   drop) so the two never read the same.
-
-	   ACCENT — brand hue + hover/active steps (--base-primary-color contract). */
+	   COLORS — the same token list as @keenmate/web-treeview (--wtv-*), only the
+	   prefix differs. Standalone (no contract loaded): the inputs (accent, text,
+	   bg, shadow color) fall back to the contract's defaults and everything
+	   derived from them to the contract's FORMULA on the --stv-* input, so a
+	   standalone --stv-accent-color / --stv-main-bg override brings its
+	   dependents along (checked by `npm run check:contract`).
+	   ------------------------------------------------------------------------- */
 	--stv-accent-color: var(--base-primary-color, #3b82f6);
-	--stv-accent-color-hover: var(--base-primary-color-hover, #2563eb);
-	--stv-accent-color-active: var(--base-primary-color-active, #1d4ed8);
+	--stv-accent-color-hover: var(--base-primary-color-hover, light-dark(color-mix(in srgb, black 15%, var(--stv-accent-color)), color-mix(in srgb, white 15%, var(--stv-accent-color))));
+	--stv-text-color-1: var(--base-text-color-1, light-dark(#334155, #f1f5f9));
+	--stv-main-bg: var(--base-main-bg, light-dark(#ffffff, #1e293b));
+	--stv-text-color-3: var(--base-text-color-3, color-mix(in srgb, var(--stv-text-color-1) 55%, var(--stv-main-bg)));
+	/* Faintest text step (context-menu shortcut / submenu arrow / divider label). */
+	--stv-text-color-4: var(--base-text-color-4, color-mix(in srgb, var(--stv-text-color-1) 40%, var(--stv-main-bg)));
+	/* Text ON the accent fill: black or white by APCA contrast (contract formula). */
+	--stv-text-color-on-accent: var(--base-on-primary-text-color, color(from color(from var(--stv-accent-color) srgb calc(0.21 * r * r * (0.4 + r * (0.82 - 0.22 * r)) + 0.72 * g * g * (0.4 + g * (0.82 - 0.22 * g)) + 0.07 * b * b * (0.4 + b * (0.82 - 0.22 * b))) 0 0) srgb clamp(0, (0.34 - r) * 1e9, 1) clamp(0, (0.34 - r) * 1e9, 1) clamp(0, (0.34 - r) * 1e9, 1)));
+	--stv-border-color: var(--base-border-color, light-dark(oklch(from var(--stv-main-bg) calc(l - 0.096) c h), oklch(from var(--stv-main-bg) calc(l + 0.192) c h)));
+	/* Control outline (checkbox): stronger than the --stv-border-color divider. */
+	--stv-input-border-color: var(--base-input-border-color, light-dark(color-mix(in srgb, var(--stv-text-color-1) 45%, var(--stv-main-bg)), color-mix(in srgb, var(--stv-text-color-1) 35%, var(--stv-main-bg))));
+	--stv-shadow-color: var(--base-shadow-color, light-dark(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.4)));
+	--stv-success-color: var(--base-success-color, #10b981);
+	--stv-danger-color: var(--base-danger-color, #dc2626);
+	/* Danger as TEXT (menu danger item): the fill colour is too dark to read on a
+	   dark surface, so text reads the role's text colour. */
+	--stv-danger-text-color: var(--base-danger-text-color, light-dark(#721c24, #f87171));
+	--stv-elevated-bg: var(--base-elevated-bg, light-dark(oklch(from var(--stv-main-bg) calc(l - 0.03) c h), oklch(from var(--stv-main-bg) calc(l + 0.06) c h)));
+	/* Stroke width of the hairlines (menu, checkbox). */
+	--stv-border-width: var(--base-border-width, 1px);
+	/* Disabled controls (checkbox, menu item): the contract's one fade. */
+	--stv-disabled-opacity: var(--base-disabled-opacity, 0.65);
 
-	/* TEXT HIERARCHY (FluentUI-style) — fallbacks match ms exactly so
-	   heading/body/secondary/muted keep the same relative contrast steps. */
-	--stv-text-color-1: var(--base-text-color-1, light-dark(#111827, #f5f5f5));
-	--stv-text-color-2: var(--base-text-color-2, light-dark(#353b47, #d4d4d4));
-	--stv-text-color-3: var(--base-text-color-3, light-dark(#6b7280, #a3a3a3));
-	--stv-text-color-4: var(--base-text-color-4, light-dark(#a0a3a9, #737373));
-	--stv-text-color-on-accent: var(--base-on-primary-text-color, #ffffff);
+	/* Hover / Active — the contract's translucent overlays of the bg's own hue, so
+	   the highlight shows on any --stv-main-bg in both modes. */
+	--stv-hover-bg: var(--base-hover-bg, light-dark(color-mix(in oklch, oklch(from var(--stv-main-bg) calc(l - 0.45) c h) 14%, transparent), color-mix(in oklch, oklch(from var(--stv-main-bg) calc(l + 0.45) c h) 28%, transparent)));
+	--stv-active-bg: var(--base-active-bg, light-dark(color-mix(in oklch, oklch(from var(--stv-main-bg) calc(l - 0.45) c h) 24%, transparent), color-mix(in oklch, oklch(from var(--stv-main-bg) calc(l + 0.45) c h) 48%, transparent)));
+	--stv-node-bg-hover: var(--stv-hover-bg);
+	--stv-node-bg-active: var(--stv-active-bg);
 
-	/* STATUS — the hue itself (pure-admin canonical: `base-*-color` = the status
-	   colour; `base-text-on-*` is the on-surface text). */
-	--stv-success: var(--base-success-color, light-dark(#198754, #2ea561));
-	--stv-danger: var(--base-danger-color, light-dark(#dc3545, #f87c86));
-
-	/* SURFACES */
-	/* Tree surface — painted on .stv__container in base.css so the tree shows
-	   a visible background without consumer wrapping. Override to `transparent`
-	   to retain the pre-rc10 "no surface" behavior. */
-	--stv-bg: var(--base-main-bg, light-dark(#ffffff, #1a1a1a));
-	--stv-elevated-bg: var(--base-elevated-bg, light-dark(#ffffff, #2b2b2b));
-	--stv-border: var(--base-border-color, light-dark(#cbd5e1, #52525b));
-
-	/* NEUTRAL HOVER / ACTIVE SURFACES — mirror ms --ms-primary-bg / -hover.
-	   --base-hover-bg drives the resting hover; --base-active-bg the stronger
-	   pressed/active step. Fallback mixes the body text colour into the tree
-	   surface (8% / 14%) so hover stays visible on dark + neon themes. */
-	--stv-primary-bg: var(--base-hover-bg, color-mix(in srgb, var(--stv-text-color-1) 8%, var(--stv-bg)));
-	--stv-primary-bg-hover: var(--base-active-bg, color-mix(in srgb, var(--stv-text-color-1) 14%, var(--stv-bg)));
-
-	/* --stv-light — elevated chip / debug-stat surface. (Context-menu hover now
-	   uses the neutral --stv-primary-bg to match ms; this stays for chip tints.)
-	   Dark value #2b2b2b (not #1a1a1a) keeps the elevated surface distinguishable
-	   from the main bg in dark mode. */
-	--stv-light: var(--base-main-bg, light-dark(#f8f9fa, #2b2b2b));
-
-	/* LEGACY ALIASES — pre-alignment names kept for back-compat; prefer the
-	   canonical names above. --stv-primary was the accent; --stv-body-color was
-	   text-color-1. */
-	--stv-primary: var(--stv-accent-color);
-	--stv-body-color: var(--stv-text-color-1);
+	/* -------------------------------------------------------------------------
+	   SELECTION & FOCUS — one visual channel per state so they compose:
+	     • hover + selected → BACKGROUND (selected wins; hover suppressed under it)
+	     • focus → an INSET OUTLINE (outline-offset = −width): no layout shift
+	     • checked → the CHECKBOX only; style checked rows via `checkedNodeClass`
+	   Read the shared --base-selected-* / --base-focused-* item states, so a
+	   selected row and a selected web-multiselect option look identical.
+	   ------------------------------------------------------------------------- */
+	--stv-selected-bg: var(--base-selected-bg, var(--base-primary-bg-subtle, light-dark(color-mix(in srgb, var(--stv-accent-color) 10%, transparent), color-mix(in srgb, var(--stv-accent-color) 20%, transparent))));
+	--stv-selected-bg-hover: var(--base-selected-bg-hover, var(--stv-selected-bg));
+	--stv-selected-text-color: var(--base-selected-text-color, currentColor);
+	--stv-selected-outline: var(--base-selected-outline, none);
+	--stv-focused-bg: var(--base-focused-bg, transparent);
+	--stv-focused-text-color: var(--base-focused-text-color, currentColor);
+	--stv-focused-outline: var(--base-focused-outline, var(--base-outline-width, 1px) solid var(--stv-accent-color));
+	/* = −(ring width), following --base-outline-width so a thicker ring stays inset. */
+	--stv-focused-outline-offset: calc(-1 * var(--base-outline-width, 1px));
+	/* Opt-in `--selected-fill` flavor (Explorer-style strong fill). */
+	--stv-selected-fill-bg: color-mix(in srgb, var(--stv-accent-color) 30%, transparent);
+	--stv-selected-fill-text-color: inherit;
+	/* Hairline ring used by the --selected-border / --selected-glow presets. */
+	--stv-selected-preset-ring-color: color-mix(in srgb, var(--stv-accent-color) 45%, transparent);
 
 	/* -------------------------------------------------------------------------
 	   TYPOGRAPHY — unitless --base-* multipliers × --stv-rem
 	   ------------------------------------------------------------------------- */
-	--stv-font-family: var(--base-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif);
-	--stv-node-font-size: calc(var(--base-font-size-sm, 1.4) * var(--stv-rem));
-	--stv-node-icon-font-size: calc(var(--base-font-size-sm, 1.4) * var(--stv-rem));
-	--stv-node-icon-margin-right: calc(0.6 * var(--stv-rem));
-	/* Per-node icon color (default inherits the row text color) + reserved-column width
-	   used when shouldAlignNodeIcons is on. A per-node iconColor overrides the color. */
-	--stv-node-icon-color: currentColor;
-	--stv-node-icon-width: calc(1.8 * var(--stv-rem));
-	--stv-node-path-font-size: calc(var(--base-font-size-xs, 1.2) * var(--stv-rem));
-	--stv-node-path-color: var(--stv-text-color-3);
+	--stv-font-family: var(--base-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
+	--stv-font-size-xs: calc(var(--base-font-size-xs, 1.2) * var(--stv-rem));
+	--stv-font-size-sm: calc(var(--base-font-size-sm, 1.4) * var(--stv-rem));
+	--stv-font-size: var(--stv-font-size-sm);
+	--stv-font-weight-medium: var(--base-font-weight-medium, 500);
+	--stv-font-weight-semibold: var(--base-font-weight-semibold, 600);
 
 	/* -------------------------------------------------------------------------
-	   MOTION — durations + shared easing (ms parity)
-	   -------------------------------------------------------------------------
-	   Easing flows from the shared --base-ease-standard token (exact match for
-	   ms --ms-easing-snappy); durations stay local. */
-	--stv-transition-fast: 150ms;
-	--stv-transition-normal: 200ms;
+	   BORDER RADIUS + SPACING (× --stv-rem)
+	   ------------------------------------------------------------------------- */
+	--stv-border-radius-sm: calc(var(--base-border-radius-sm, 0.4) * var(--stv-rem));
+	--stv-border-radius-lg: calc(var(--base-border-radius-lg, 0.8) * var(--stv-rem));
+	--stv-spacing-xs: calc(0.2 * var(--stv-rem));
+	--stv-spacing-sm: calc(0.4 * var(--stv-rem));
+	--stv-spacing-md: calc(0.8 * var(--stv-rem));
+	--stv-spacing-lg: calc(1.2 * var(--stv-rem));
+	--stv-spacing-xl: calc(1.6 * var(--stv-rem));
+
+	/* -------------------------------------------------------------------------
+	   MOTION — the contract's four speeds + easings, nothing else. Motion off:
+	   --stv-transition-*: 0s (this tree) or --base-duration-*: 0s (page-wide);
+	   prefers-reduced-motion sets them to 0s (block after this rule).
+	   ------------------------------------------------------------------------- */
+	--stv-transition-fast: var(--base-duration-fast, 0.1s);
+	--stv-transition-normal: var(--base-duration-normal, 0.15s);
+	--stv-transition-medium: var(--base-duration-medium, 0.25s);
+	--stv-transition-slow: var(--base-duration-slow, 0.3s);
 	--stv-ease-standard: var(--base-ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
-	/* Row (.stv__node-content) transition. Default none = instant hover (crisper).
-	   Set to e.g. `background-color var(--stv-transition-normal) var(--stv-ease-standard),
-	   box-shadow var(--stv-transition-fast) var(--stv-ease-standard)` to restore the fade. */
-	--stv-node-content-transition: none;
+	--stv-ease-out: var(--base-ease-out, cubic-bezier(0, 0, 0.2, 1));
+	--stv-ease-in: var(--base-ease-in, cubic-bezier(0.4, 0, 1, 1));
+	/* One turn of the loading spinners — a loop period, not a transition, so it is
+	   not on the duration scale and keeps turning under reduced motion (it shows state). */
+	--stv-spinner-duration: 0.8s;
 
 	/* -------------------------------------------------------------------------
 	   NODE LAYOUT
 	   ------------------------------------------------------------------------- */
-	--stv-node-indent-per-level: calc(0.8 * var(--stv-rem));
-	/* Horizontal padding kept small so the label sits close to the icon while the
-	   hover/selection highlight still has a little breathing room — was 0.8rem. */
-	--stv-node-content-padding: calc(0.4 * var(--stv-rem)) calc(0.4 * var(--stv-rem));
-	--stv-node-content-border-radius: calc(var(--base-border-radius-sm, 0) * var(--stv-rem));
-	/* NEUTRAL hover (text-tinted surface), NOT an accent tint — see --stv-primary-bg. */
-	--stv-node-hover-bg: var(--stv-primary-bg);
-	--stv-children-margin-top: calc(0.2 * var(--stv-rem));
+	/* Per-level indent step (nested children's margin; flat rows: (level − 1) × this). */
+	--stv-indent-size: calc(0.8 * var(--stv-rem));
+	/* Row pill padding — small horizontal padding keeps the label close to the icon. */
+	--stv-node-padding: var(--stv-spacing-sm) var(--stv-spacing-sm);
+	/* Corner radius of the row pill (hover / selected / focused paint on it). */
+	--stv-node-border-radius: var(--stv-border-radius-sm);
+	/* Row transition. Default none = instant hover (crisper). Restore a fade with
+	   `background-color var(--stv-transition-normal) var(--stv-ease-standard)`. */
+	--stv-node-transition: none;
+	--stv-children-margin-top: var(--stv-spacing-xs);
+
+	/* Per-node icon: colour inherits the row text (a per-node iconColor overrides
+	   it); width is the reserved column used when shouldAlignNodeIcons is on. */
+	--stv-node-icon-color: currentColor;
+	--stv-node-icon-margin-right: calc(0.6 * var(--stv-rem));
+	--stv-node-icon-width: calc(1.8 * var(--stv-rem));
+	/* Path shown next to the label (debug / search results) */
+	--stv-node-path-font-size: var(--stv-font-size-xs);
+	--stv-node-path-color: var(--stv-text-color-3);
+
+	/* Info button + full-label popover (nodeTitleOverflow 'info') */
+	--stv-node-info-color: var(--stv-text-color-3);
+	--stv-node-info-color-hover: var(--stv-accent-color);
+	--stv-node-info-bg-hover: var(--base-primary-bg-subtle, light-dark(color-mix(in srgb, var(--stv-accent-color) 10%, transparent), color-mix(in srgb, var(--stv-accent-color) 20%, transparent)));
+	--stv-node-info-reveal-bg: var(--stv-elevated-bg);
+	--stv-node-info-reveal-text-color: var(--stv-text-color-1);
+	--stv-node-info-reveal-border-color: var(--stv-border-color);
 
 	/* -------------------------------------------------------------------------
 	   TOGGLE ICON (chevron / +/- / arrow / leaf)
 	   ------------------------------------------------------------------------- */
-	/* Slot width tracks the glyph size (+0.1rem breathing room) so the toggle
-	   column isn't wider than the chevron it holds. Was a hardcoded 2.0rem, which
-	   left ~4px of dead space next to a 1.6rem glyph. */
+	/* Glyph size (font-size of the toggle slot); the slot is the glyph + 0.1rem. */
 	--stv-toggle-icon-size: calc(1.6 * var(--stv-rem));
 	--stv-toggle-icon-width: calc(var(--stv-toggle-icon-size) + calc(0.1 * var(--stv-rem)));
 	--stv-toggle-icon-color: var(--stv-text-color-3);
-	/* Pure gap between the chevron and the label — was 0.8rem, tightened to 0.25rem. */
+	/* Gap between the chevron and the label. */
 	--stv-toggle-icon-margin-right: calc(0.25 * var(--stv-rem));
 	--stv-toggle-icon-transition: transform var(--stv-transition-normal) var(--stv-ease-standard);
 
 	/* Disclosure glyph — ONE variable set, reconfigured per `icon-set` via the
-	   .stv__container[data-icon-set=…] blocks BELOW this rule (NOT four parallel
-	   CSS-class families). The rendering rule in toggle-icons.css only ever reads
-	   these tokens; `icon-set` just swaps what they point at. Each chains to a
-	   shared --base-icon-* token so a theme reskins every KeenMate component's
+	   .stv__container[data-icon-set=…] blocks BELOW this rule. Each chains to a
+	   shared --base-icon-* token so a theme reskins every Keenmate component's
 	   disclosure glyph at once.
 	     --stv-icon-expand    glyph shown collapsed / the only glyph in rotate mode
 	     --stv-icon-collapse  glyph shown expanded (only consulted in swap mode)
@@ -170,156 +197,113 @@
 
 	/* Checkbox glyphs — the checkmark (checked) and dash (indeterminate/tri-state),
 	   rendered as masks (see checkbox.css) so they inherit --stv-checkbox-checkmark-color
-	   and follow the shared --base-icon-* contract. Override either to diverge. */
+	   and follow the shared --base-icon-* contract. */
 	--stv-icon-check: var(--base-icon-check, url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 6 9 17l-5-5'/></svg>"));
 	--stv-icon-indeterminate: var(--base-icon-indeterminate, url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12h14'/></svg>"));
-	/* mask-size of the check/dash glyph INSIDE the checkbox box. Defaults to the
-	   shared --base-icon-check-size (the SAME knob pure-admin's .pa-checkbox and
-	   ms read), so a theme rescales the mark once for every KeenMate checkbox;
-	   68% assumes a Lucide glyph that fills its viewBox edge-to-edge. Was an
-	   implicit `contain` (glyph filled the box) — 68% matches ms's inset mark. */
+	/* mask-size of the check/dash glyph INSIDE the box — the shared knob that
+	   pure-admin's .pa-checkbox and web-multiselect read too. */
 	--stv-icon-check-size: var(--base-icon-check-size, 68%);
 
 	/* -------------------------------------------------------------------------
-	   CHECKBOX
+	   CHECKBOX — same box as web-multiselect / web-treeview: 1.6rem, hairline
+	   border, flat 0.3rem radius; scaled by --base-checkbox-scale via calc.
 	   ------------------------------------------------------------------------- */
-	/* Box dimensions aligned with web-multiselect (--ms-checkbox-*): 1.6rem box,
-	   1px border, flat 0.3rem radius — so a KeenMate checkbox is the same size in
-	   every component. (Radius is flat 0.3, NOT the --base-border-radius-sm scale,
-	   matching ms — a theme's sm radius shouldn't reshape the small checkbox.) */
 	--stv-checkbox-size: calc(1.6 * var(--stv-rem));
-	/* Box scale — the shared --base-checkbox-scale contract (base-css-variables).
-	   Applied to the box's width/height via calc (see checkbox.css), NOT a CSS
-	   transform, so the masked tick/dash stays crisp + centered at any scale. */
-	--stv-checkbox-scale: var(--base-checkbox-scale, 1);
-	--stv-checkbox-border-width: 1px; /* hairline — does not scale */
-	--stv-checkbox-checkmark-width: 2px; /* hairline — does not scale */
-	/* Dedicated --base-checkbox-border-color (ms parity): deliberately a stronger
-	   mid-gray than the faint generic --base-border-color so the box reads as a
-	   real clickable control; same #8f8f8f in both themes. */
-	--stv-checkbox-border-color: var(--base-checkbox-border-color, #8f8f8f);
-	--stv-checkbox-border-radius: calc(0.3 * var(--stv-rem));
-	/* Space between the checkbox and the node pill, so a highlight tint / focus bar /
-	   ring on .stv__node-content never butts against the box. */
 	--stv-checkbox-gap: calc(0.6 * var(--stv-rem));
-	--stv-checkbox-bg: var(--base-input-bg, light-dark(#ffffff, #1a1a1a));
+	--stv-checkbox-scale: var(--base-checkbox-scale, 1);
+	--stv-checkbox-border-width: var(--stv-border-width);
+	--stv-checkbox-border-color: var(--base-checkbox-border-color, var(--stv-input-border-color));
+	--stv-checkbox-border-radius: calc(0.3 * var(--stv-rem));
+	--stv-checkbox-bg: var(--base-input-bg, var(--stv-main-bg));
 	--stv-checkbox-checked-bg: var(--stv-accent-color);
 	--stv-checkbox-checked-border-color: var(--stv-accent-color);
-	/* Checked-box hover deepens to the accent's hover step (ms parity). */
 	--stv-checkbox-checked-bg-hover: var(--stv-accent-color-hover);
 	--stv-checkbox-checkmark-color: var(--stv-text-color-on-accent);
 	--stv-checkbox-focus-ring-width: 2px;
-	--stv-checkbox-focus-ring-color: color-mix(in srgb, var(--stv-primary) 25%, transparent);
-	--stv-checkbox-focus-ring: 0 0 0 var(--stv-checkbox-focus-ring-width) var(--stv-checkbox-focus-ring-color);
+	--stv-checkbox-focus-ring-color: color-mix(in srgb, var(--stv-accent-color) 25%, transparent);
+	--stv-checkbox-focus-box-shadow: 0 0 0 var(--stv-checkbox-focus-ring-width) var(--stv-checkbox-focus-ring-color);
 
 	/* -------------------------------------------------------------------------
-	   SELECTION & HIGHLIGHT STATES
-
-	   Highlight (the multi-select set) and focus (the keyboard cursor) read the
-	   shared --base-selected-* / --base-focused-* item-state tokens, so a
-	   highlighted tree row and a selected web-multiselect option on the same page
-	   look identical and one override re-themes both. Fallbacks = the same defaults
-	   for standalone use. One visual channel per state so they compose:
-	     • hover + highlight → BACKGROUND (highlight wins; hover suppressed under it)
-	     • focus → an INSET OUTLINE ring (outline-offset = −width): no layout shift,
-	       no bleed, and its own paint channel — box-shadow presets / the scroll
-	       flash can't erase it
-	     • checked → the CHECKBOX only; style checked rows via `checkedNodeClass`
-	   ------------------------------------------------------------------------- */
-	--stv-selected-bg: var(--base-selected-bg, color-mix(in srgb, var(--stv-primary) 10%, transparent));
-	--stv-selected-bg-hover: var(--base-selected-bg-hover, var(--stv-selected-bg));
-	--stv-selected-text: var(--base-selected-text-color, currentColor);
-	--stv-selected-ring: var(--base-selected-outline, none);
-	--stv-focused-bg: var(--base-focused-bg, transparent);
-	--stv-focused-text: var(--base-focused-text-color, currentColor);
-	--stv-focused-ring: var(--base-focused-outline, var(--base-outline-width, 1px) solid var(--stv-primary));
-	/* Keep = −(ring width) so the ring stays inside the row. Follows
-	   --base-outline-width; thicken the ring there, not inside the shorthand. */
-	--stv-focused-outline-offset: calc(-1 * var(--base-outline-width, 1px));
-	--stv-selected-fill-bg: color-mix(in srgb, var(--stv-primary) 30%, transparent);
-	--stv-selected-fill-color: inherit;
-	/* Hairline ring used by the --selected-border / --selected-glow presets. */
-	--stv-selected-preset-ring-color: color-mix(in srgb, var(--stv-primary) 45%, transparent);
-
-	/* -------------------------------------------------------------------------
-	   DRAG / DROP — placeholder + dragover + ghost
-	   ------------------------------------------------------------------------- */
-	--stv-dragover-bg: color-mix(in srgb, var(--stv-primary) 10%, transparent);
-	--stv-dragover-shadow: 0 0 8px color-mix(in srgb, var(--stv-primary) 40%, transparent);
-	--stv-drop-placeholder-bg: color-mix(in srgb, var(--stv-primary) 10%, transparent);
-	--stv-drop-placeholder-color: var(--stv-primary);
-	--stv-drop-placeholder-border-radius: calc(0.8 * var(--stv-rem));
-	--stv-drop-placeholder-min-height: calc(6.0 * var(--stv-rem));
-	/* Hover state for a permanently-shown empty drop zone (isEmptyDropPlaceholderShown) */
-	--stv-drop-placeholder-hover-bg: color-mix(in srgb, var(--stv-primary) 28%, transparent);
-	--stv-drop-placeholder-hover-border-color: var(--stv-primary);
-	--stv-drop-placeholder-hover-shadow: 0 0 0 4px color-mix(in srgb, var(--stv-primary) 30%, transparent);
-	/* Defaults to 1 — a scale() on a container-width placeholder spills past both
-	   edges (~1.5% of the width) and surfaces as a horizontal scrollbar on any
-	   ancestor with overflow-x other than visible. The glow + solid border + bg
-	   already signal "engaged"; opt into a pop only if you control the overflow. */
-	--stv-drop-placeholder-hover-scale: 1;
-
-	/* Dragged source row (the dimmed node left in place while its ghost follows the pointer).
-	   Scale is anchored to the left edge (transform-origin in drag-drop.css) so a shrink
-	   below 1 lifts the row without shifting the label. Set --stv-dragged-scale: 1 to disable. */
-	--stv-dragged-opacity: 0.5;
-	--stv-dragged-scale: 0.95;
-
-	/* Touch drag ghost */
-	--tree-ghost-bg: color-mix(in srgb, var(--stv-primary) 90%, transparent);
-	--tree-ghost-color: #fff;
-	--tree-ghost-shadow: 0 4px 12px var(--base-shadow-color, rgba(0, 0, 0, 0.3));
-
-	/* -------------------------------------------------------------------------
-	   DROP ZONES (before / after / child) — pastel mode
-	   ------------------------------------------------------------------------- */
-	--stv-drop-zone-border-radius: 0;
-	--stv-drop-zone-before-bg: rgba(134, 179, 152, 0.25);
-	--stv-drop-zone-before-color: rgba(62, 89, 72, 0.7);
-	--stv-drop-zone-before-active-bg: rgba(134, 179, 152, 0.85);
-	--stv-drop-zone-before-active-color: rgb(32, 54, 40);
-	--stv-drop-zone-before-active-shadow: 0 2px 12px rgba(134, 179, 152, 0.4);
-	--stv-drop-zone-after-bg: rgba(242, 182, 158, 0.25);
-	--stv-drop-zone-after-color: rgba(120, 70, 50, 0.7);
-	--stv-drop-zone-after-active-bg: rgba(242, 182, 158, 0.85);
-	--stv-drop-zone-after-active-color: rgb(80, 45, 30);
-	--stv-drop-zone-after-active-shadow: 0 2px 12px rgba(242, 182, 158, 0.4);
-	--stv-drop-zone-child-bg: rgba(167, 155, 198, 0.25);
-	--stv-drop-zone-child-color: rgba(72, 62, 98, 0.7);
-	--stv-drop-zone-child-active-bg: rgba(167, 155, 198, 0.85);
-	--stv-drop-zone-child-active-color: rgb(45, 38, 62);
-	--stv-drop-zone-child-active-shadow: 0 2px 12px rgba(167, 155, 198, 0.4);
-
-	/* -------------------------------------------------------------------------
-	   GLOW MODE (border glow drop indicators)
+	   DRAG & DROP — glow indicators on the row, floating drop zones
 	   ------------------------------------------------------------------------- */
 	--stv-drop-glow-before-color: rgba(134, 179, 152, 0.8);
 	--stv-drop-glow-after-color: rgba(242, 182, 158, 0.8);
 	--stv-drop-glow-child-color: rgba(167, 155, 198, 0.8);
-	--stv-drop-glow-child-bg: rgba(167, 155, 198, 0.15);
-	--stv-drop-glow-size: 3px; /* hairline thickness, does not scale */
+	--stv-drop-glow-child-bg: color-mix(in srgb, var(--stv-drop-glow-child-color) 19%, transparent);
+	--stv-drop-glow-size: 3px; /* hairline, does not scale */
+	/* Arrow on the glowing row (mask, filled with the zone's glow colour) */
 	--stv-drop-arrow-size: calc(2.4 * var(--stv-rem));
 	--stv-drop-arrow-position: 66%;
 	--stv-drop-arrow-before-rotation: 0deg;
 	--stv-drop-arrow-after-rotation: 0deg;
 	--stv-drop-arrow-child-rotation: 45deg;
-
-	/* Drop indicator arrow SVGs (Lucide icons, rendered via mask-image so they
-	   inherit the matching --stv-drop-glow-*-color via background-color). */
 	--stv-drop-arrow-before-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 13a1 1 0 0 0-1-1H5.061a1 1 0 0 1-.75-1.811l6.836-6.835a1.207 1.207 0 0 1 1.707 0l6.835 6.835a1 1 0 0 1-.75 1.811H16a1 1 0 0 0-1 1v6a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1z'/%3E%3C/svg%3E");
 	--stv-drop-arrow-after-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 11a1 1 0 0 0 1 1h2.939a1 1 0 0 1 .75 1.811l-6.835 6.836a1.207 1.207 0 0 1-1.707 0L4.31 13.81a1 1 0 0 1 .75-1.811H8a1 1 0 0 0 1-1V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1z'/%3E%3C/svg%3E");
 	--stv-drop-arrow-child-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 9a1 1 0 0 0 1-1V5.061a1 1 0 0 1 1.811-.75l6.836 6.836a1.207 1.207 0 0 1 0 1.707l-6.836 6.835a1 1 0 0 1-1.811-.75V16a1 1 0 0 0-1-1H9a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1z'/%3E%3Cpath d='M4 9v6'/%3E%3C/svg%3E");
 
+	/* Floating drop zones (before / after / child) */
+	--stv-drop-zone-border-radius: 0;
+	/* Width cap of a side (before / after) zone */
+	--stv-drop-zone-max-width: 120px;
+	--stv-drop-zone-before-bg: rgba(134, 179, 152, 0.25);
+	--stv-drop-zone-after-bg: rgba(242, 182, 158, 0.25);
+	--stv-drop-zone-child-bg: rgba(167, 155, 198, 0.25);
+	--stv-drop-zone-before-bg-active: rgba(134, 179, 152, 0.85);
+	--stv-drop-zone-after-bg-active: rgba(242, 182, 158, 0.85);
+	--stv-drop-zone-child-bg-active: rgba(167, 155, 198, 0.85);
+	--stv-drop-zone-before-text-color-active: rgb(32, 54, 40);
+	--stv-drop-zone-after-text-color-active: rgb(80, 45, 30);
+	--stv-drop-zone-child-text-color-active: rgb(45, 38, 62);
+	--stv-drop-zone-before-box-shadow-active: 0 2px 12px rgba(134, 179, 152, 0.4);
+	--stv-drop-zone-after-box-shadow-active: 0 2px 12px rgba(242, 182, 158, 0.4);
+	--stv-drop-zone-child-box-shadow-active: 0 2px 12px rgba(167, 155, 198, 0.4);
+	--stv-drop-zone-before-text-color: rgba(62, 89, 72, 0.7);
+	--stv-drop-zone-after-text-color: rgba(120, 70, 50, 0.7);
+	--stv-drop-zone-child-text-color: rgba(72, 62, 98, 0.7);
+
+	/* Drag-over states */
+	--stv-drag-over-bg: var(--base-primary-bg-subtle, light-dark(color-mix(in srgb, var(--stv-accent-color) 10%, transparent), color-mix(in srgb, var(--stv-accent-color) 20%, transparent)));
+	--stv-drag-over-border: 2px dashed var(--stv-accent-color);
+	--stv-drag-over-box-shadow: 0 0 8px color-mix(in srgb, var(--stv-accent-color) 40%, transparent);
+
+	/* Drop validation */
+	--stv-drop-valid-bg: var(--base-success-bg-subtle, light-dark(color-mix(in srgb, var(--stv-success-color) 10%, transparent), color-mix(in srgb, var(--stv-success-color) 20%, transparent)));
+	--stv-drop-valid-border-color: var(--stv-success-color);
+	--stv-drop-invalid-bg: var(--base-danger-bg-subtle, light-dark(color-mix(in srgb, var(--stv-danger-color) 10%, transparent), color-mix(in srgb, var(--stv-danger-color) 20%, transparent)));
+	--stv-drop-invalid-border-color: var(--stv-danger-color);
+
+	/* Drag-over highlight (a row accepting the drop) */
+	--stv-drag-over-highlight-bg: var(--base-success-bg-subtle-hover, light-dark(color-mix(in srgb, var(--stv-success-color) 15%, transparent), color-mix(in srgb, var(--stv-success-color) 30%, transparent)));
+	--stv-drag-over-highlight-border: 2px dashed var(--stv-success-color);
+
+	/* Can't-drag / can't-drop feedback: the row tint (fades in, held while
+	   pressed) and the no-entry badge */
+	--stv-drag-denied-flash-bg: var(--base-danger-bg-subtle-hover, light-dark(color-mix(in srgb, var(--stv-danger-color) 15%, transparent), color-mix(in srgb, var(--stv-danger-color) 30%, transparent)));
+	--stv-drag-denied-badge-color: var(--stv-danger-color);
+
+	/* Dragged source row (dimmed in place while its ghost follows the pointer);
+	   scale anchored left (drag-drop.css), 1 disables the shrink. */
+	--stv-dragged-opacity: 0.5;
+	--stv-dragged-scale: 0.95;
+
+	/* Touch ghost */
+	--stv-touch-ghost-text-color: var(--stv-text-color-on-accent);
+	--stv-touch-ghost-bg: color-mix(in srgb, var(--stv-accent-color) 90%, transparent);
+	--stv-touch-ghost-box-shadow: var(--base-shadow-lg, 0 4px 12px var(--stv-shadow-color));
+
+	/* Scroll highlight (scrollToPath with shouldHighlight) */
+	--stv-scroll-highlight-bg: color-mix(in srgb, var(--stv-accent-color) 30%, transparent);
+	--stv-scroll-highlight-box-shadow: 0 0 8px color-mix(in srgb, var(--stv-accent-color) 40%, transparent);
+	--stv-scroll-highlight-arrow-color: var(--stv-danger-color);
+
 	/* -------------------------------------------------------------------------
-	   TOOLTIP (hover/focus node tooltip)
-	   Same --base-tooltip-* chain + defaults as web-multiselect's option tooltip,
-	   so one shared theme renders both components' tooltips identically.
+	   TOOLTIP (hover/focus node tooltip) — same --base-tooltip-* chain as
+	   web-multiselect's option tooltip and web-treeview's .wtv__tooltip.
 	   ------------------------------------------------------------------------- */
-	--stv-tooltip-bg: var(--base-tooltip-bg, light-dark(#333333, #f5f5f5));
-	--stv-tooltip-color: var(--base-tooltip-text-color, light-dark(#ffffff, #1a1a1a));
+	--stv-tooltip-bg: var(--base-tooltip-bg, light-dark(color-mix(in srgb, var(--stv-text-color-1) 85%, var(--stv-main-bg)), oklch(from var(--stv-main-bg) calc(l + 0.15) c h)));
+	--stv-tooltip-text-color: var(--base-tooltip-text-color, light-dark(var(--stv-main-bg), var(--stv-text-color-1)));
 	--stv-tooltip-padding: calc(0.8 * var(--stv-rem)) calc(1.2 * var(--stv-rem));
-	--stv-tooltip-border-radius: calc(var(--base-border-radius-lg, 0.8) * var(--stv-rem));
+	--stv-tooltip-border-radius: var(--stv-border-radius-lg);
 	--stv-tooltip-font-size: calc(var(--base-font-size-sm, 1.4) * var(--stv-rem));
 	/* Width model: auto = shrink-to-content (capped by max-width). Set --stv-tooltip-width
 	   to a length for a fixed box (also set --stv-tooltip-max-width: none), or
@@ -327,57 +311,86 @@
 	--stv-tooltip-width: auto;
 	--stv-tooltip-min-width: 0;
 	--stv-tooltip-max-width: calc(32 * var(--stv-rem));
-	--stv-tooltip-shadow: 0 2px 8px var(--base-shadow-color, rgba(0, 0, 0, 0.15));
-	--stv-tooltip-z-index: 10000;
+	--stv-tooltip-box-shadow: var(--base-shadow-md, 0 2px 8px var(--stv-shadow-color));
+	--stv-tooltip-z-index: var(--base-z-tooltip, 9000);
 
 	/* -------------------------------------------------------------------------
-	   CONTEXT MENU
+	   CONTEXT MENU — the same --*-context-menu-* names as web-treeview (whose
+	   menu is rendered by web-components-core, so its defaults live there).
 	   ------------------------------------------------------------------------- */
-	/* Dropdown chain: dropdown-bg → elevated-bg → main-bg → light-dark fallback.
-	   Matches base-variables.md "Fallback chains — the four chained variables". */
-	--stv-context-menu-bg: var(--base-dropdown-bg,
-		var(--base-elevated-bg,
-			var(--base-main-bg, light-dark(#ffffff, #2b2b2b))));
-	--stv-context-menu-border-color: var(--stv-border);
-	--stv-context-menu-border-radius: calc(var(--base-border-radius-sm, 0.4) * var(--stv-rem));
-	--stv-context-menu-shadow: var(--base-dropdown-box-shadow, 0 2px 10px var(--base-shadow-color, rgba(0, 0, 0, 0.15)));
+	--stv-context-menu-z-index: var(--stv-z-index-dropdown);
+	--stv-context-menu-bg: var(--base-dropdown-bg, var(--stv-main-bg));
+	--stv-context-menu-bg-hover: var(--stv-hover-bg);
+	--stv-context-menu-text-color: var(--stv-text-color-1);
+	--stv-context-menu-border: var(--base-dropdown-border, var(--stv-border-width) solid var(--stv-border-color));
+	--stv-context-menu-border-radius: var(--stv-border-radius-sm);
+	--stv-context-menu-box-shadow: var(--base-dropdown-box-shadow, 0 8px 16px var(--stv-shadow-color));
 	--stv-context-menu-min-width: calc(15 * var(--stv-rem));
-	--stv-context-menu-padding: calc(0.4 * var(--stv-rem)) 0;
-	--stv-context-menu-item-padding: calc(0.8 * var(--stv-rem)) calc(1.6 * var(--stv-rem));
-	--stv-context-menu-item-font-size: calc(var(--base-font-size-sm, 1.4) * var(--stv-rem));
-	--stv-context-menu-item-color: var(--stv-text-color-1);
-	/* NEUTRAL text-tinted hover (ms --ms-primary-bg parity), not an accent tint. */
-	--stv-context-menu-item-hover-bg: var(--stv-primary-bg);
-	--stv-context-menu-icon-size: calc(1.6 * var(--stv-rem));
-	--stv-context-menu-icon-font-size: calc(var(--base-font-size-xs, 1.2) * var(--stv-rem));
+	--stv-context-menu-padding: var(--stv-spacing-sm) 0;
+	--stv-context-menu-font-size: var(--stv-font-size-sm);
+	--stv-context-menu-item-padding: var(--stv-spacing-md) var(--stv-spacing-xl);
+	--stv-context-menu-item-gap: var(--stv-spacing-md);
+	--stv-context-menu-toggled-color: var(--stv-accent-color);
+	--stv-context-menu-icon-width: calc(1.6 * var(--stv-rem));
+	--stv-context-menu-icon-font-size: var(--stv-font-size-xs);
 	--stv-context-menu-shortcut-color: var(--stv-text-color-4);
-	--stv-context-menu-shortcut-font-size: calc(var(--base-font-size-xs, 1.2) * var(--stv-rem));
-	--stv-context-menu-arrow-color: var(--stv-text-color-4);
-	--stv-context-menu-divider-color: var(--stv-border);
+	--stv-context-menu-shortcut-font-size: var(--stv-font-size-xs);
+	--stv-context-menu-danger-color: var(--stv-danger-text-color);
+	--stv-context-menu-danger-bg-hover: var(--base-danger-bg-subtle, light-dark(color-mix(in srgb, var(--stv-danger-color) 10%, transparent), color-mix(in srgb, var(--stv-danger-color) 20%, transparent)));
+	--stv-context-menu-divider-color: var(--stv-border-color);
+	--stv-context-menu-divider-margin: var(--stv-spacing-sm) 0;
 	--stv-context-menu-divider-label-color: var(--stv-text-color-4);
+	--stv-context-menu-disabled-opacity: var(--stv-disabled-opacity);
 
 	/* -------------------------------------------------------------------------
-	   LOADING OVERLAY + SPINNER
+	   LOADING OVERLAY + SPINNERS
 	   ------------------------------------------------------------------------- */
-	/* Loading overlay: semi-transparent surface — use main-bg so it composites
-	   correctly against both light and dark page backgrounds. */
-	--stv-loading-bg: color-mix(in srgb, var(--base-main-bg, light-dark(#ffffff, #1a1a1a)) 80%, transparent);
+	--stv-loading-bg: color-mix(in srgb, var(--stv-main-bg) 80%, transparent);
+	/* "Loading more…" line of the progressive render */
 	--stv-loading-color: var(--stv-text-color-3);
 	--stv-spinner-size: calc(3.2 * var(--stv-rem));
-	--stv-spinner-track: var(--stv-border);
-	--stv-spinner-color: var(--stv-primary);
+	--stv-spinner-track: var(--stv-border-color);
+	--stv-spinner-color: var(--stv-accent-color);
+	/* Per-node loading spinner (async beforeExpandCallback) — replaces the toggle glyph. */
+	--stv-expand-spinner-size: var(--stv-icon-size-glyph);
+	--stv-expand-spinner-width: 2px;
+	--stv-expand-spinner-track: var(--stv-spinner-track);
+	--stv-expand-spinner-color: var(--stv-spinner-color);
 
 	/* -------------------------------------------------------------------------
-	   SCROLL HIGHLIGHT (after scrollToPath with highlight: true)
+	   DROP PLACEHOLDER (empty tree)
 	   ------------------------------------------------------------------------- */
-	--stv-scroll-highlight-bg: color-mix(in srgb, var(--stv-primary) 30%, transparent);
-	--stv-scroll-highlight-shadow: 0 0 0.5em color-mix(in srgb, var(--stv-primary) 40%, transparent);
-	--stv-scroll-highlight-arrow-color: var(--stv-danger);
+	--stv-drop-placeholder-border: 2px dashed var(--stv-accent-color);
+	--stv-drop-placeholder-color: var(--stv-accent-color);
+	--stv-drop-placeholder-min-height: calc(6 * var(--stv-rem));
+	--stv-drop-placeholder-bg: var(--stv-drag-over-bg);
+	--stv-drop-placeholder-border-radius: var(--stv-border-radius-lg);
+	/* Engaged state (:hover + --active). scale-hover defaults to 1 — a scale() on a
+	   container-width placeholder spills past both edges and surfaces as a
+	   horizontal scrollbar; opt in only if you control the overflow. */
+	--stv-drop-placeholder-bg-hover: color-mix(in srgb, var(--stv-accent-color) 28%, transparent);
+	--stv-drop-placeholder-border-color-hover: var(--stv-accent-color);
+	--stv-drop-placeholder-box-shadow-hover: 0 0 0 4px color-mix(in srgb, var(--stv-accent-color) 30%, transparent);
+	--stv-drop-placeholder-scale-hover: 1;
 
 	/* -------------------------------------------------------------------------
-	   LEGACY ALIASES — pre-rc09 names kept for backward compatibility
+	   Z-INDEX LAYERS — on the shared --base-z-* scale; the drag overlays sit
+	   above tooltips, the ghost on top.
 	   ------------------------------------------------------------------------- */
-	--tree-node-indent-per-level: var(--stv-node-indent-per-level);
+	--stv-z-index-dropdown: var(--base-z-dropdown, 7500);
+	--stv-z-index-drop-zones: calc(var(--base-z-tooltip, 9000) + 1);
+	--stv-z-index-ghost: calc(var(--stv-z-index-drop-zones) + 1);
+	--stv-z-index-overlay: 10;  /* loading overlay, local to the tree */
+}
+
+/* Reduced motion: no transitions / animations (the spinners keep turning). */
+@media (prefers-reduced-motion: reduce) {
+	.stv__container {
+		--stv-transition-fast: 0s;
+		--stv-transition-normal: 0s;
+		--stv-transition-medium: 0s;
+		--stv-transition-slow: 0s;
+	}
 }
 
 /* =============================================================================

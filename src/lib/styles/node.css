@@ -4,7 +4,7 @@
 
 .stv__node {
 	font-family: var(--stv-font-family);
-	font-size: var(--stv-node-font-size);
+	font-size: var(--stv-font-size);
 	position: relative; /* Required for absolutely positioned drop zones */
 	overflow: visible;
 }
@@ -19,13 +19,12 @@
 .stv__node-content {
 	display: flex;
 	align-items: center;
-	padding: var(--stv-node-content-padding);
-	border-radius: var(--stv-node-content-border-radius);
+	padding: var(--stv-node-padding);
+	border-radius: var(--stv-node-border-radius);
 	/* No row transition by default (instant hover — crisper). Opt back into the old
-	   animated hover/shadow by setting --stv-node-content-transition, e.g.
-	   `background-color var(--stv-transition-normal) var(--stv-ease-standard),
-	    box-shadow var(--stv-transition-fast) var(--stv-ease-standard)`. */
-	transition: var(--stv-node-content-transition, none);
+	   animated hover by setting --stv-node-transition, e.g.
+	   `background-color var(--stv-transition-normal) var(--stv-ease-standard)`. */
+	transition: var(--stv-node-transition);
 	flex: 1;
 	position: relative;
 	overflow: visible;
@@ -37,12 +36,16 @@
 }
 
 .stv__node-content:hover {
-	background-color: var(--stv-node-hover-bg);
+	background-color: var(--stv-node-bg-hover);
 }
 /* Hover and selection share the BACKGROUND channel — a highlighted row shows its
    selection tint on hover (--base-selected-bg-hover) so the two never stack. */
 .stv__node-content--selected:hover {
 	background-color: var(--stv-selected-bg-hover);
+}
+/* Press feedback on the pill (web-treeview parity). */
+.stv__node-content:active {
+	background-color: var(--stv-node-bg-active);
 }
 
 .stv__clickable {
@@ -59,14 +62,13 @@
 	justify-content: center;
 	flex: 0 0 auto;
 	margin-right: var(--stv-node-icon-margin-right);
-	font-size: var(--stv-node-icon-font-size);
-	color: var(--stv-node-icon-color, currentColor);
+	color: var(--stv-node-icon-color);
 	line-height: 1;
 }
 
 /* Reserve a fixed column so labels align even on rows with no icon (shouldAlignNodeIcons). */
 .stv__node-icon--aligned {
-	width: var(--stv-node-icon-width, calc(1.8 * var(--stv-rem)));
+	width: var(--stv-node-icon-width);
 }
 
 /* Wrapper hook for label-only styling (truncation, ellipsis, font weight, etc.).
@@ -114,7 +116,7 @@
 	height: 1.05em;
 	margin-inline-start: 0.35em;
 	padding: 0;
-	color: var(--stv-node-info-color, light-dark(#5b6472, #9aa4b2));
+	color: var(--stv-node-info-color);
 	background: transparent;
 	border: none;
 	border-radius: 50%;
@@ -133,8 +135,8 @@
 }
 
 .stv__node-info:hover {
-	color: var(--stv-node-info-color-hover, light-dark(#1f6feb, #58a6ff));
-	background: var(--stv-node-info-bg-hover, light-dark(rgba(31, 111, 235, 0.1), rgba(88, 166, 255, 0.15)));
+	color: var(--stv-node-info-color-hover);
+	background: var(--stv-node-info-bg-hover);
 }
 
 /* Full-label reveal popover (position: fixed → placed by @floating-ui, escapes the
@@ -143,16 +145,16 @@
 	position: fixed;
 	left: 0;
 	top: 0;
-	z-index: 9999;
+	z-index: var(--stv-tooltip-z-index);
 	max-width: min(360px, 90vw);
 	padding: 0.4rem 0.6rem;
 	font-family: var(--stv-font-family);
-	font-size: var(--stv-node-font-size);
-	color: var(--stv-node-info-reveal-color, light-dark(#1f2937, #e6edf3));
-	background: var(--stv-node-info-reveal-bg, light-dark(#ffffff, #1f2937));
-	border: 1px solid var(--stv-node-info-reveal-border, light-dark(#d1d5db, #30363d));
-	border-radius: 6px;
-	box-shadow: 0 6px 18px var(--base-shadow-color, rgba(0, 0, 0, 0.18));
+	font-size: var(--stv-font-size);
+	color: var(--stv-node-info-reveal-text-color);
+	background: var(--stv-node-info-reveal-bg);
+	border: var(--stv-border-width) solid var(--stv-node-info-reveal-border-color);
+	border-radius: var(--stv-border-radius-sm);
+	box-shadow: var(--base-shadow-lg, 0 4px 12px var(--stv-shadow-color));
 	white-space: normal;
 	overflow-wrap: anywhere;
 }

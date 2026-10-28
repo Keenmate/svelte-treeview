@@ -10,7 +10,7 @@
 	margin: 0;
 	padding: 0;
 	list-style: none;
-	color: var(--stv-body-color);
+	color: var(--stv-text-color-1);
 }
 
 .stv__tree .stv__empty-state {
@@ -33,8 +33,8 @@
 	display: block;
 	position: relative;
 	outline: none;
-	background: var(--stv-bg);
-	color: var(--stv-body-color);
+	background: var(--stv-main-bg);
+	color: var(--stv-text-color-1);
 }
 
 .stv__virtual-scroll {

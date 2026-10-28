@@ -57,7 +57,7 @@
 	let instanceTheme = $state<InstanceTheme>('none');
 	let brandTheme = $state<BrandTheme>('default');
 	// Pre-highlight a node so the accent (multi-select bg + outline, both derived
-	// from --stv-primary via color-mix) is visible at rest — otherwise switching
+	// from --stv-accent-color via color-mix) is visible at rest — otherwise switching
 	// brand themes only changes interaction states the user has to trigger.
 	let playgroundHighlight = $state<Set<string>>(new Set(['1.1']));
 
@@ -556,23 +556,23 @@
 		<div class="code-block">
 			<pre>{`/* Custom Purple Theme — set primary once, tints follow via color-mix() */
 .my-custom-theme {
-  --stv-primary: #667eea;
-  --stv-success: #10b981;
-  --stv-danger: #ef4444;
-  --stv-light: #f3f4f6;
-  --stv-border: #e5e7eb;
-  --stv-body-color: #1f2937;
-  --stv-node-indent-per-level: calc(1.0 * var(--stv-rem));
-  --tree-ghost-bg: color-mix(in srgb, #667eea 90%, transparent);
-  --tree-ghost-color: white;
+  --stv-accent-color: #667eea;
+  --stv-success-color: #10b981;
+  --stv-danger-color: #ef4444;
+  --stv-elevated-bg: #f3f4f6;
+  --stv-border-color: #e5e7eb;
+  --stv-text-color-1: #1f2937;
+  --stv-indent-size: calc(1.0 * var(--stv-rem));
+  --stv-touch-ghost-bg: color-mix(in srgb, #667eea 90%, transparent);
+  --stv-touch-ghost-text-color: white;
 }
 
 /* Dark mode variant */
 .my-dark-theme {
-  --stv-primary: #818cf8;
-  --stv-light: #374151;
-  --stv-border: #4b5563;
-  --stv-body-color: #f9fafb;
+  --stv-accent-color: #818cf8;
+  --stv-elevated-bg: #374151;
+  --stv-border-color: #4b5563;
+  --stv-text-color-1: #f9fafb;
   background-color: #1f2937;
 }`}</pre>
 		</div>
@@ -604,26 +604,25 @@
 				<tr><td><code>--stv-rem</code></td><td><code>10px</code></td><td>Base unit multiplied into every size/spacing value. Set to <code>12px</code> for 20% scale, or to <code>1rem</code> to follow document font-size.</td></tr>
 
 				<tr class="section-row"><td colspan="3">Colors</td></tr>
-				<tr><td><code>--stv-primary</code></td><td><code>var(--base-primary-color, #0d6efd)</code></td><td>Primary color (selection, highlights). Tints derived via <code>color-mix()</code>.</td></tr>
-				<tr><td><code>--stv-success</code></td><td><code>var(--base-success-color, #198754)</code></td><td>Success color (valid drop targets)</td></tr>
-				<tr><td><code>--stv-danger</code></td><td><code>var(--base-danger-color, #dc3545)</code></td><td>Danger color (invalid drops)</td></tr>
-				<tr><td><code>--stv-light</code></td><td><code>var(--base-main-bg, #f8f9fa)</code></td><td>Light background</td></tr>
-				<tr><td><code>--stv-border</code></td><td><code>var(--base-border-color, #dee2e6)</code></td><td>Border color</td></tr>
-				<tr><td><code>--stv-body-color</code></td><td><code>var(--base-text-color-1, #212529)</code></td><td>Default text color</td></tr>
+				<tr><td><code>--stv-accent-color</code></td><td><code>var(--base-primary-color, #3b82f6)</code></td><td>Primary color (selection, highlights). Tints derived via <code>color-mix()</code>.</td></tr>
+				<tr><td><code>--stv-success-color</code></td><td><code>var(--base-success-color, #10b981)</code></td><td>Success color (valid drop targets)</td></tr>
+				<tr><td><code>--stv-danger-color</code></td><td><code>var(--base-danger-color, #dc2626)</code></td><td>Danger color (invalid drops)</td></tr>
+				<tr><td><code>--stv-elevated-bg</code></td><td><code>var(--base-elevated-bg, bg shifted in lightness)</code></td><td>Raised surface (full-label popover)</td></tr>
+				<tr><td><code>--stv-border-color</code></td><td><code>var(--base-border-color, #dee2e6)</code></td><td>Border color</td></tr>
+				<tr><td><code>--stv-text-color-1</code></td><td><code>var(--base-text-color-1, #212529)</code></td><td>Default text color</td></tr>
 
 				<tr class="section-row"><td colspan="3">Typography</td></tr>
 				<tr><td><code>--stv-font-family</code></td><td><code>var(--base-font-family, system stack)</code></td><td>Font family for all tree text</td></tr>
-				<tr><td><code>--stv-node-font-size</code></td><td><code>(--base-font-size-sm, 1.4) × rem</code> (= 14px)</td><td>Node text size</td></tr>
-				<tr><td><code>--stv-node-icon-font-size</code></td><td><code>(--base-font-size-sm, 1.4) × rem</code> (= 14px)</td><td>Per-node icon font size</td></tr>
+				<tr><td><code>--stv-font-size</code></td><td><code>(--base-font-size-sm, 1.4) × rem</code> (= 14px)</td><td>Node text size</td></tr>
 				<tr><td><code>--stv-node-icon-margin-right</code></td><td><code>0.6 × rem</code> (= 6px)</td><td>Gap between node icon and label</td></tr>
 				<tr><td><code>--stv-node-path-font-size</code></td><td><code>(--base-font-size-xs, 1.2) × rem</code> (= 12px)</td><td>Path / debug text size</td></tr>
 				<tr><td><code>--stv-node-path-color</code></td><td><code>var(--base-text-color-3, #6c757d)</code></td><td>Path / muted text color</td></tr>
 
 				<tr class="section-row"><td colspan="3">Node layout</td></tr>
-				<tr><td><code>--stv-node-indent-per-level</code></td><td><code>0.8 × rem</code> (= 8px)</td><td>Indentation per nesting level</td></tr>
-				<tr><td><code>--stv-node-content-padding</code></td><td><code>0.4 × rem / 0.8 × rem</code> (= 4px 8px)</td><td>Inner padding of a node row (V / H)</td></tr>
-				<tr><td><code>--stv-node-content-border-radius</code></td><td><code>(--base-border-radius-sm, 0) × rem</code></td><td>Node row corner rounding</td></tr>
-				<tr><td><code>--stv-node-hover-bg</code></td><td><code>var(--base-hover-bg, color-mix(primary 8%, transparent))</code></td><td>Hover background — follows <code>--stv-primary</code> by default</td></tr>
+				<tr><td><code>--stv-indent-size</code></td><td><code>0.8 × rem</code> (= 8px)</td><td>Indentation per nesting level</td></tr>
+				<tr><td><code>--stv-node-padding</code></td><td><code>0.4 × rem / 0.4 × rem</code> (= 4px 4px)</td><td>Inner padding of a node row (V / H)</td></tr>
+				<tr><td><code>--stv-node-border-radius</code></td><td><code>= --stv-border-radius-sm</code> (4px)</td><td>Node row corner rounding</td></tr>
+				<tr><td><code>--stv-node-bg-hover</code> / <code>--stv-node-bg-active</code></td><td><code>= --stv-hover-bg / --stv-active-bg</code></td><td>Row hover / pressed background (neutral overlays of the surface)</td></tr>
 				<tr><td><code>--stv-children-margin-top</code></td><td><code>0.2 × rem</code> (= 2px)</td><td>Top margin of child list</td></tr>
 
 				<tr class="section-row"><td colspan="3">Toggle icon</td></tr>
@@ -631,7 +630,7 @@
 				<tr><td><code>--stv-toggle-icon-width</code></td><td><code>2.0 × rem</code> (= 20px)</td><td>Width reserved for the toggle column</td></tr>
 				<tr><td><code>--stv-toggle-icon-color</code></td><td><code>var(--base-text-color-3, #6c757d)</code></td><td>Icon color (via <code>currentColor</code> mask)</td></tr>
 				<tr><td><code>--stv-toggle-icon-margin-right</code></td><td><code>0.8 × rem</code> (= 8px)</td><td>Gap between toggle and node label</td></tr>
-				<tr><td><code>--stv-toggle-icon-transition</code></td><td><code>transform 0.2s</code></td><td>Rotate animation timing (does not scale)</td></tr>
+				<tr><td><code>--stv-toggle-icon-transition</code></td><td><code>transform var(--stv-transition-normal) var(--stv-ease-standard)</code></td><td>Expand / collapse turn of the glyph</td></tr>
 				<tr><td><code>--stv-icon-expand</code></td><td><code>var(--base-icon-chevron, …)</code></td><td>Disclosure glyph (collapsed / rotate mode). Re-pointed by <code>iconSet</code>.</td></tr>
 				<tr><td><code>--stv-icon-collapse</code></td><td>Lucide chevron-down</td><td>Glyph shown expanded — only in swap / plus-minus</td></tr>
 				<tr><td><code>--stv-icon-leaf</code></td><td>dot</td><td>Optional leaf marker (disabled by default)</td></tr>
@@ -645,44 +644,44 @@
 				<tr><td><code>--stv-checkbox-border-color</code></td><td><code>var(--base-border-color, #adb5bd)</code></td><td>Unchecked border</td></tr>
 				<tr><td><code>--stv-checkbox-border-radius</code></td><td><code>(--base-border-radius-sm, 0.3) × rem</code> (= 3px)</td><td>Corner rounding</td></tr>
 				<tr><td><code>--stv-checkbox-bg</code></td><td><code>var(--base-input-bg, #fff)</code></td><td>Unchecked background</td></tr>
-				<tr><td><code>--stv-checkbox-checked-bg</code></td><td><code>var(--stv-primary)</code></td><td>Checked / indeterminate background</td></tr>
-				<tr><td><code>--stv-checkbox-checked-border-color</code></td><td><code>var(--stv-primary)</code></td><td>Checked / indeterminate border</td></tr>
+				<tr><td><code>--stv-checkbox-checked-bg</code></td><td><code>var(--stv-accent-color)</code></td><td>Checked / indeterminate background</td></tr>
+				<tr><td><code>--stv-checkbox-checked-border-color</code></td><td><code>var(--stv-accent-color)</code></td><td>Checked / indeterminate border</td></tr>
 				<tr><td><code>--stv-checkbox-checkmark-color</code></td><td><code>var(--base-on-primary-text-color, #fff)</code></td><td>Tick / dash color</td></tr>
 				<tr><td><code>--stv-checkbox-focus-ring-width</code></td><td><code>2px</code></td><td>Focus-visible ring thickness</td></tr>
 				<tr><td><code>--stv-checkbox-focus-ring-color</code></td><td><code>color-mix(primary 25%, transparent)</code></td><td>Focus-visible ring color</td></tr>
-				<tr><td><code>--stv-checkbox-focus-ring</code></td><td><code>0 0 0 [ring-width] [ring-color]</code></td><td>Composed box-shadow; override directly for full control, or tune the two parts above</td></tr>
+				<tr><td><code>--stv-checkbox-focus-box-shadow</code></td><td><code>0 0 0 [ring-width] [ring-color]</code></td><td>Composed box-shadow; override directly for full control, or tune the two parts above</td></tr>
 
 				<tr class="section-row"><td colspan="3">Selection &amp; highlight states</td></tr>
 				<tr><td><code>--stv-selected-fill-bg</code></td><td><code>#cce8ff</code></td><td>Explorer-style highlight background</td></tr>
-				<tr><td><code>--stv-selected-fill-color</code></td><td><code>inherit</code></td><td>Highlight text color</td></tr>
+				<tr><td><code>--stv-selected-fill-text-color</code></td><td><code>inherit</code></td><td>Highlight text color</td></tr>
 				<tr><td><code>--stv-selected-bg</code></td><td><code>var(--base-selected-bg) → primary 10%</code></td><td>Default highlight tint (multi-select)</td></tr>
 				<tr><td><code>--stv-selected-preset-ring-color</code></td><td><code>color-mix(primary 45%, transparent)</code></td><td>Hairline ring of the border / glow presets</td></tr>
 				<tr><td><code>--stv-selected-bg-hover</code> / <code>-color</code> / <code>-border</code></td><td><code>var(--base-selected-bg-hover / -text / -ring)</code></td><td>Highlighted row on hover, its text color, optional ring (outline shorthand)</td></tr>
-				<tr><td><code>--stv-focused-ring</code></td><td><code>var(--base-focused-outline) → 1px solid primary</code></td><td>Default focus ring, drawn inset (<code>none</code> hides it)</td></tr>
+				<tr><td><code>--stv-focused-outline</code></td><td><code>var(--base-focused-outline) → 1px solid primary</code></td><td>Default focus ring, drawn inset (<code>none</code> hides it)</td></tr>
 				<tr><td><code>--stv-focused-bg</code> / <code>-color</code></td><td><code>var(--base-focused-bg / -text)</code></td><td>Focused row background (transparent) and text color</td></tr>
 				<tr><td><code>--stv-checkbox-gap</code></td><td><code>calc(0.6 * rem)</code></td><td>Space between checkbox and node row</td></tr>
 
 				<tr class="section-row"><td colspan="3">Drag / drop states</td></tr>
-				<tr><td><code>--stv-dragover-bg</code></td><td><code>color-mix(primary 10%, transparent)</code></td><td>Drag-over background tint</td></tr>
-				<tr><td><code>--stv-dragover-shadow</code></td><td><code>0 0 8px color-mix(primary 40%, transparent)</code></td><td>Drag-over glow shadow</td></tr>
+				<tr><td><code>--stv-drag-over-bg</code></td><td><code>color-mix(primary 10%, transparent)</code></td><td>Drag-over background tint</td></tr>
+				<tr><td><code>--stv-drag-over-box-shadow</code></td><td><code>0 0 8px color-mix(primary 40%, transparent)</code></td><td>Drag-over glow shadow</td></tr>
 				<tr><td><code>--stv-drop-placeholder-bg</code></td><td><code>color-mix(primary 10%, transparent)</code></td><td>Empty-tree placeholder background</td></tr>
-				<tr><td><code>--stv-drop-placeholder-color</code></td><td><code>var(--stv-primary)</code></td><td>Placeholder text color</td></tr>
+				<tr><td><code>--stv-drop-placeholder-color</code></td><td><code>var(--stv-accent-color)</code></td><td>Placeholder text color</td></tr>
 				<tr><td><code>--stv-drop-placeholder-border-radius</code></td><td><code>0.8 × rem</code> (= 8px)</td><td>Placeholder corner rounding</td></tr>
 				<tr><td><code>--stv-drop-placeholder-min-height</code></td><td><code>6.0 × rem</code> (= 60px)</td><td>Placeholder min height</td></tr>
-				<tr><td><code>--tree-ghost-bg</code></td><td><code>rgba(59, 130, 246, 0.9)</code></td><td>Touch drag ghost background</td></tr>
-				<tr><td><code>--tree-ghost-color</code></td><td><code>#fff</code></td><td>Touch drag ghost text color</td></tr>
+				<tr><td><code>--stv-touch-ghost-bg</code></td><td><code>rgba(59, 130, 246, 0.9)</code></td><td>Touch drag ghost background</td></tr>
+				<tr><td><code>--stv-touch-ghost-text-color</code></td><td><code>#fff</code></td><td>Touch drag ghost text color</td></tr>
 
 				<tr class="section-row"><td colspan="3">Drop zones (pastel mode)</td></tr>
 				<tr><td><code>--stv-drop-zone-border-radius</code></td><td><code>0</code></td><td>Drop zone corner rounding</td></tr>
 				<tr><td><code>--stv-drop-zone-[before|after|child]-bg</code></td><td><code>rgba sage / coral / lavender</code></td><td>Per-zone resting background</td></tr>
-				<tr><td><code>--stv-drop-zone-[before|after|child]-color</code></td><td><code>matching dark variants</code></td><td>Per-zone resting text color</td></tr>
-				<tr><td><code>--stv-drop-zone-[before|after|child]-active-bg</code></td><td><code>~85% opacity variants</code></td><td>Active zone background</td></tr>
-				<tr><td><code>--stv-drop-zone-[before|after|child]-active-color</code></td><td><code>~darker variants</code></td><td>Active zone text color</td></tr>
-				<tr><td><code>--stv-drop-zone-[before|after|child]-active-shadow</code></td><td><code>0 2px 12px (color, 0.4)</code></td><td>Active zone shadow</td></tr>
+				<tr><td><code>--stv-drop-zone-[before|after|child]-text-color</code></td><td><code>matching dark variants</code></td><td>Per-zone resting text color</td></tr>
+				<tr><td><code>--stv-drop-zone-[before|after|child]-bg-active</code></td><td><code>~85% opacity variants</code></td><td>Active zone background</td></tr>
+				<tr><td><code>--stv-drop-zone-[before|after|child]-text-color-active</code></td><td><code>~darker variants</code></td><td>Active zone text color</td></tr>
+				<tr><td><code>--stv-drop-zone-[before|after|child]-box-shadow-active</code></td><td><code>0 2px 12px (color, 0.4)</code></td><td>Active zone shadow</td></tr>
 
 				<tr class="section-row"><td colspan="3">Drop zones (glow mode)</td></tr>
 				<tr><td><code>--stv-drop-glow-[before|after|child]-color</code></td><td><code>0.8-alpha pastel variants</code></td><td>Glow border color per zone</td></tr>
-				<tr><td><code>--stv-drop-glow-child-bg</code></td><td><code>rgba(167, 155, 198, 0.15)</code></td><td>Glow child zone background tint</td></tr>
+				<tr><td><code>--stv-drop-glow-child-bg</code></td><td><code>color-mix(drop-glow-child-color 19%, transparent)</code></td><td>Glow child zone background tint</td></tr>
 				<tr><td><code>--stv-drop-glow-size</code></td><td><code>3px</code></td><td>Glow border thickness (hairline, does not scale)</td></tr>
 				<tr><td><code>--stv-drop-arrow-size</code></td><td><code>2.4 × rem</code> (= 24px)</td><td>Direction arrow size</td></tr>
 				<tr><td><code>--stv-drop-arrow-position</code></td><td><code>66%</code></td><td>Horizontal arrow position</td></tr>
@@ -690,44 +689,55 @@
 
 				<tr class="section-row"><td colspan="3">Context menu</td></tr>
 				<tr><td><code>--stv-context-menu-bg</code></td><td><code>var(--base-dropdown-bg, #fff)</code></td><td>Menu background</td></tr>
-				<tr><td><code>--stv-context-menu-border-color</code></td><td><code>var(--stv-border)</code></td><td>Menu border</td></tr>
+				<tr><td><code>--stv-context-menu-border</code></td><td><code>var(--base-dropdown-border, 1px solid border-color)</code></td><td>Menu border shorthand</td></tr>
 				<tr><td><code>--stv-context-menu-border-radius</code></td><td><code>(--base-border-radius-sm, 0.4) × rem</code> (= 4px)</td><td>Menu rounding</td></tr>
-				<tr><td><code>--stv-context-menu-shadow</code></td><td><code>var(--base-dropdown-box-shadow, …)</code></td><td>Menu drop shadow</td></tr>
+				<tr><td><code>--stv-context-menu-box-shadow</code></td><td><code>var(--base-dropdown-box-shadow, …)</code></td><td>Menu drop shadow</td></tr>
 				<tr><td><code>--stv-context-menu-min-width</code></td><td><code>15 × rem</code> (= 150px)</td><td>Menu minimum width</td></tr>
 				<tr><td><code>--stv-context-menu-padding</code></td><td><code>0.4 × rem / 0</code></td><td>Menu inner padding</td></tr>
 				<tr><td><code>--stv-context-menu-item-padding</code></td><td><code>0.8 × rem / 1.6 × rem</code> (= 8px 16px)</td><td>Item padding</td></tr>
-				<tr><td><code>--stv-context-menu-item-font-size</code></td><td><code>(--base-font-size-sm, 1.4) × rem</code> (= 14px)</td><td>Item font size</td></tr>
-				<tr><td><code>--stv-context-menu-item-color</code></td><td><code>var(--stv-body-color)</code></td><td>Item color</td></tr>
-				<tr><td><code>--stv-context-menu-item-hover-bg</code></td><td><code>var(--stv-light)</code></td><td>Item hover background</td></tr>
-				<tr><td><code>--stv-context-menu-icon-size</code></td><td><code>1.6 × rem</code> (= 16px)</td><td>Icon column width</td></tr>
+				<tr><td><code>--stv-context-menu-font-size</code></td><td><code>(--base-font-size-sm, 1.4) × rem</code> (= 14px)</td><td>Item font size</td></tr>
+				<tr><td><code>--stv-context-menu-text-color</code></td><td><code>var(--stv-text-color-1)</code></td><td>Item color</td></tr>
+				<tr><td><code>--stv-context-menu-bg-hover</code></td><td><code>var(--stv-elevated-bg)</code></td><td>Item hover background</td></tr>
+				<tr><td><code>--stv-context-menu-icon-width</code></td><td><code>1.6 × rem</code> (= 16px)</td><td>Icon column width</td></tr>
 				<tr><td><code>--stv-context-menu-icon-font-size</code></td><td><code>(--base-font-size-xs, 1.2) × rem</code> (= 12px)</td><td>Icon font size</td></tr>
 				<tr><td><code>--stv-context-menu-shortcut-color</code></td><td><code>var(--base-text-color-4, #9ca3af)</code></td><td>Shortcut hint color</td></tr>
 				<tr><td><code>--stv-context-menu-shortcut-font-size</code></td><td><code>(--base-font-size-xs, 1.2) × rem</code> (= 12px)</td><td>Shortcut hint size</td></tr>
-				<tr><td><code>--stv-context-menu-arrow-color</code></td><td><code>var(--base-text-color-4, #9ca3af)</code></td><td>Submenu arrow color</td></tr>
-				<tr><td><code>--stv-context-menu-divider-color</code></td><td><code>var(--stv-border)</code></td><td>Divider line color</td></tr>
+				<tr><td><code>--stv-context-menu-divider-color</code></td><td><code>var(--stv-border-color)</code></td><td>Divider line color</td></tr>
 				<tr><td><code>--stv-context-menu-divider-label-color</code></td><td><code>var(--base-text-color-4, #9ca3af)</code></td><td>Named divider label color</td></tr>
+
+				<tr><td><code>--stv-context-menu-danger-color</code> / <code>-danger-bg-hover</code></td><td><code>= --stv-danger-text-color / danger tint</code></td><td>Danger item text / hover background</td></tr>
+				<tr><td><code>--stv-context-menu-toggled-color</code></td><td><code>= --stv-accent-color</code></td><td>Toggled item color</td></tr>
+				<tr><td><code>--stv-context-menu-text-color-hover</code></td><td><code>unset</code></td><td>Item text color on hover</td></tr>
+				<tr><td><code>--stv-context-menu-disabled-opacity</code></td><td><code>= --stv-disabled-opacity</code> (0.65)</td><td>Disabled item opacity</td></tr>
+				<tr><td><code>--stv-context-menu-z-index</code></td><td><code>= --stv-z-index-dropdown</code> (7500)</td><td>Menu stacking order</td></tr>
+
+				<tr class="section-row"><td colspan="3">Motion — the contract's four speeds; motion off = <code>0s</code>; <code>prefers-reduced-motion</code> → 0s</td></tr>
+				<tr><td><code>--stv-transition-fast</code> / <code>-normal</code> / <code>-medium</code> / <code>-slow</code></td><td><code>var(--base-duration-*, 0.1s / 0.15s / 0.25s / 0.3s)</code></td><td>Every transition / animation duration (toggle, hover, tooltip, drop zones: normal; drag-denied tint: slow)</td></tr>
+				<tr><td><code>--stv-ease-standard</code> / <code>-out</code> / <code>-in</code></td><td><code>var(--base-ease-*)</code></td><td>Easings</td></tr>
+				<tr><td><code>--stv-spinner-duration</code></td><td><code>0.8s</code></td><td>One turn of the loading spinners (keeps turning under reduced motion)</td></tr>
+				<tr><td><code>--stv-disabled-opacity</code></td><td><code>var(--base-disabled-opacity, 0.65)</code></td><td>Disabled dimming (checkbox, menu item)</td></tr>
 
 				<tr class="section-row"><td colspan="3">Loading + spinner</td></tr>
 				<tr><td><code>--stv-loading-bg</code></td><td><code>rgba(255, 255, 255, 0.8)</code></td><td>Loading overlay background</td></tr>
 				<tr><td><code>--stv-loading-color</code></td><td><code>var(--base-text-color-3, #718096)</code></td><td>"Loading more..." text color</td></tr>
 				<tr><td><code>--stv-spinner-size</code></td><td><code>3.2 × rem</code> (= 32px)</td><td>Spinner diameter</td></tr>
 				<tr><td><code>--stv-spinner-track</code></td><td><code>var(--base-border-color, #e2e8f0)</code></td><td>Spinner track (background ring)</td></tr>
-				<tr><td><code>--stv-spinner-color</code></td><td><code>var(--stv-primary)</code></td><td>Spinner active color</td></tr>
+				<tr><td><code>--stv-spinner-color</code></td><td><code>var(--stv-accent-color)</code></td><td>Spinner active color</td></tr>
 
 				<tr class="section-row"><td colspan="3">Scroll highlight (after <code>scrollToPath</code>)</td></tr>
 				<tr><td><code>--stv-scroll-highlight-bg</code></td><td><code>color-mix(primary 30%, transparent)</code></td><td>Highlight background</td></tr>
-				<tr><td><code>--stv-scroll-highlight-shadow</code></td><td><code>0 0 0.5em color-mix(primary 40%, transparent)</code></td><td>Highlight glow</td></tr>
-				<tr><td><code>--stv-scroll-highlight-arrow-color</code></td><td><code>var(--stv-danger)</code></td><td>Arrow icon color</td></tr>
+				<tr><td><code>--stv-scroll-highlight-box-shadow</code></td><td><code>0 0 0.5em color-mix(primary 40%, transparent)</code></td><td>Highlight glow</td></tr>
+				<tr><td><code>--stv-scroll-highlight-arrow-color</code></td><td><code>var(--stv-danger-color)</code></td><td>Arrow icon color</td></tr>
 			</tbody>
 		</table>
 
 		<div class="code-block">
 			<pre>{`/* Override individual variables — tints follow automatically */
 .my-tree {
-  --stv-primary: #667eea;   /* hover/dragover/multi-select tints
+  --stv-accent-color: #667eea;   /* hover/dragover/multi-select tints
                                   derived via color-mix() */
-  --stv-success: #10b981;
-  --stv-danger: #ef4444;
+  --stv-success-color: #10b981;
+  --stv-danger-color: #ef4444;
 }
 
 /* Scale everything proportionally with one knob */
@@ -900,7 +910,7 @@ wrapper.className = 'brand-${dynamicBrand}';
 
 <style>
 	/* Purple theme — sets --base-primary-color on the wrapper. The tree's
-	   .stv__container inherits it and re-substitutes --stv-primary on its
+	   .stv__container inherits it and re-substitutes --stv-accent-color on its
 	   own scope; every primary-derived tint (hover, multi-select, dragover,
 	   focus ring) follows via color-mix(). */
 	.purple-theme {
@@ -1028,7 +1038,7 @@ wrapper.className = 'brand-${dynamicBrand}';
 	   The library never paints a background on .stv__container — that's the
 	   consumer's job. The demo provides one so dark text remains readable.
 
-	   The border uses var(--stv-primary) so the active brand theme is visible
+	   The border uses var(--stv-accent-color) so the active brand theme is visible
 	   at rest (the library's accent normally only shows in interaction states).
 	   We also bump --stv-selected-bg locally so the pre-highlighted "Work"
 	   node reads strongly against either surface — the library default (12%)
@@ -1037,9 +1047,9 @@ wrapper.className = 'brand-${dynamicBrand}';
 		border-radius: 6px;
 		padding: 0.5rem;
 		background: light-dark(#ffffff, #1a1a1a);
-		border: 2px solid var(--stv-primary);
+		border: 2px solid var(--stv-accent-color);
 		transition: background 0.15s ease;
-		--stv-selected-bg: color-mix(in srgb, var(--stv-primary) 18%, transparent);
+		--stv-selected-bg: color-mix(in srgb, var(--stv-accent-color) 18%, transparent);
 	}
 	@media (prefers-color-scheme: dark) {
 		.playground-tree { background: #1a1a1a; }

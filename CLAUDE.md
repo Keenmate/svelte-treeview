@@ -167,7 +167,7 @@ STYLING:
 - CSS variables for theming
 - Classes (stv__ BEM, rc11 rename — NO ltree-* classes remain): highlight states .stv__node-content--selected-bold, --highlight-border, --highlight-brackets, --highlight-fill, --highlight-glow, --scroll-highlight
 - Drag-over classes: .stv__node-content--dragover-highlight, --dragover-glow (plus --glow-before/-after/-child for snap zones)
-- Touch ghost class: .stv__touch-ghost (customizable via --tree-ghost-bg, --tree-ghost-color)
+- Touch ghost class: .stv__touch-ghost (customizable via --stv-touch-ghost-bg, --stv-touch-ghost-text-color)
 - Context menu classes: .stv__context-menu, .stv__context-menu-item (--disabled, --has-children, --danger, --toggled), .stv__context-menu-divider, .stv__context-menu-divider-label, .stv__context-menu-label, .stv__context-menu-shortcut, .stv__context-menu-icon, .stv__context-menu-arrow, .stv__context-submenu
 
 CONSTRAINTS:

@@ -514,8 +514,8 @@ function createGhostElement(node, x, y) {
 ```
 
 Customizable via CSS variables:
-- `--tree-ghost-bg`
-- `--tree-ghost-color`
+- `--stv-touch-ghost-bg`
+- `--stv-touch-ghost-text-color`
 
 ---
 

@@ -32,14 +32,14 @@
 	border: calc(var(--stv-checkbox-border-width) * var(--stv-checkbox-scale)) solid var(--stv-checkbox-border-color);
 	border-radius: calc(var(--stv-checkbox-border-radius) * var(--stv-checkbox-scale));
 	background: var(--stv-checkbox-bg);
-	transition: background-color var(--stv-transition-fast) var(--stv-ease-standard), border-color var(--stv-transition-fast) var(--stv-ease-standard);
+	transition: background-color var(--stv-transition-normal) var(--stv-ease-standard), border-color var(--stv-transition-normal) var(--stv-ease-standard);
 }
 
 /* Gap between the box and the node pill lives on the PILL, not the <input>: input
    margins get zeroed by common unlayered resets (Bootstrap reboot `input { margin: 0 }`,
    Tailwind preflight), which beat this @layer component rule. A div margin survives. */
 .stv__checkbox ~ .stv__node-content {
-	margin-left: var(--stv-checkbox-gap, 6px);
+	margin-left: var(--stv-checkbox-gap);
 }
 
 /* Checkmark / dash — a currentColor-tinted mask following --stv-icon-check →
@@ -59,7 +59,7 @@
 
 /* Hover */
 .stv__checkbox:hover:not(:disabled) {
-	border-color: var(--stv-primary);
+	border-color: var(--stv-accent-color);
 }
 
 /* Checked */
@@ -98,11 +98,11 @@
 
 /* Focus ring */
 .stv__checkbox:focus-visible {
-	box-shadow: var(--stv-checkbox-focus-ring);
+	box-shadow: var(--stv-checkbox-focus-box-shadow);
 }
 
 /* Disabled */
 .stv__checkbox:disabled {
 	cursor: not-allowed;
-	opacity: 0.6;
+	opacity: var(--stv-disabled-opacity);
 }

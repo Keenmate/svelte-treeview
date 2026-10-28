@@ -23,8 +23,8 @@ Setting `--stv-*` directly on a wrapper does NOT cascade (because `.stv__contain
 
 /* Override a single --stv-* token to change only this component */
 .stv__container {
-  --stv-primary: #0d6efd;
-  --stv-node-indent-per-level: calc(1.2 * var(--stv-rem));
+  --stv-accent-color: #0d6efd;
+  --stv-indent-size: calc(1.2 * var(--stv-rem));
 }
 
 /* Scale everything 20% larger */
@@ -42,16 +42,44 @@ For the full variable inventory, see [`component-variables.manifest.json`](../co
 ```css
 .stv__container {
   --stv-rem: 10px;                              /* Base sizing unit — scale all dimensions */
-  --stv-node-indent-per-level: calc(0.8 * var(--stv-rem));  /* Indent per nesting level */
-  --stv-primary: #0d6efd;                       /* Tints (multi-select, dragover) derived
+  --stv-indent-size: calc(0.8 * var(--stv-rem));  /* Indent per nesting level */
+  --stv-accent-color: #0d6efd;                       /* Tints (multi-select, dragover) derived
                                                        automatically via color-mix() */
-  --stv-success: #198754;
-  --stv-danger: #dc3545;
-  --stv-light: #f8f9fa;
-  --stv-border: #dee2e6;
-  --stv-body-color: #212529;
+  --stv-success-color: #198754;
+  --stv-danger-color: #dc3545;
+  --stv-elevated-bg: #f8f9fa;
+  --stv-border-color: #dee2e6;
+  --stv-text-color-1: #212529;
 }
 ```
+
+## Same tokens as web-treeview
+
+`--stv-<name>` and web-treeview's `--wtv-<name>` are ONE token list — only the prefix differs
+(see `docs/parity.md` → CSS custom properties). Every token
+chains to the `--base-*` contract the same way; `npm run check:contract` checks the fallbacks and
+`e2e/contract-parity.spec.ts` checks that the tree looks the same with and without the contract.
+
+## Motion
+
+Only the contract's four speeds and its easings — there is no prop for animations:
+
+| Variable | Default |
+|---|---|
+| `--stv-transition-fast` / `-normal` / `-medium` / `-slow` | `var(--base-duration-*, 0.1s / 0.15s / 0.25s / 0.3s)` |
+| `--stv-ease-standard` / `-out` / `-in` | `var(--base-ease-*)` |
+| `--stv-spinner-duration` | `0.8s` — one turn of the loading spinners (a loop period, not on the duration scale) |
+
+```css
+/* motion off — this tree */
+.stv__container { --stv-transition-fast: 0s; --stv-transition-normal: 0s; --stv-transition-medium: 0s; --stv-transition-slow: 0s; }
+/* motion off — page-wide, every Keenmate component */
+:root { --base-duration-fast: 0s; --base-duration-normal: 0s; --base-duration-medium: 0s; --base-duration-slow: 0s; }
+```
+
+`prefers-reduced-motion: reduce` sets the four `--stv-transition-*` to `0s` (the contract does the
+same for `--base-duration-*`); the spinners keep turning — they show state. Disabled dimming:
+`--stv-disabled-opacity` (→ `--base-disabled-opacity`, 0.65).
 
 ## Cascade-layer contract
 

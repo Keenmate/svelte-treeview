@@ -40,8 +40,8 @@
 	let clickedNode = $state<string | null>(null);
 
 	// Display demo: three sliders drive the CSS knobs that compose a row's left
-	// offset. --stv-node-indent-per-level is the per-level indent; --stv-toggle-icon-width
-	// is the toggle gutter reserved on every row; --stv-node-content-padding's horizontal
+	// offset. --stv-indent-size is the per-level indent; --stv-toggle-icon-width
+	// is the toggle gutter reserved on every row; --stv-node-padding's horizontal
 	// part is the content's left pad. All three are declared ON .stv__container (the tree
 	// root), so a value on an ancestor wrapper is shadowed — we set them inline on the
 	// container element itself (inline wins over the stylesheet declaration). Presets just
@@ -77,10 +77,10 @@
 			if (retries > 0) requestAnimationFrame(() => applyVars(retries - 1));
 			return;
 		}
-		container.style.setProperty('--stv-node-indent-per-level', `${indent}px`);
+		container.style.setProperty('--stv-indent-size', `${indent}px`);
 		container.style.setProperty('--stv-toggle-icon-width', `${toggleWidth}px`);
 		// Only the horizontal (left/right) part — keep the vertical pad at its default.
-		container.style.setProperty('--stv-node-content-padding', `calc(0.4 * var(--stv-rem)) ${padLeft}px`);
+		container.style.setProperty('--stv-node-padding', `calc(0.4 * var(--stv-rem)) ${padLeft}px`);
 		measureSpacing();
 	}
 
@@ -113,9 +113,9 @@
 		const padL = parseFloat(cs.paddingLeft);
 
 		cssReadout = [
-			{ name: '--stv-node-indent-per-level', value: px(indentPx) },
+			{ name: '--stv-indent-size', value: px(indentPx) },
 			{ name: '--stv-toggle-icon-width', value: px(colW) },
-			{ name: '--stv-node-content-padding (left)', value: px(padL) },
+			{ name: '--stv-node-padding (left)', value: px(padL) },
 			{ name: 'root gap (toggle + margin + pad)', value: px(colW + marginR + padL), isGap: true }
 		];
 	}
@@ -179,7 +179,7 @@
 		</div>
 
 		<div class="display-sliders">
-			<label for="sl-indent">--stv-node-indent-per-level</label>
+			<label for="sl-indent">--stv-indent-size</label>
 			<input id="sl-indent" type="range" min="0" max="32" step="1"
 				bind:value={indent} oninput={() => (activePreset = null)} />
 			<output>{indent}px</output>
@@ -189,7 +189,7 @@
 				bind:value={toggleWidth} oninput={() => (activePreset = null)} />
 			<output>{toggleWidth}px</output>
 
-			<label for="sl-pad">--stv-node-content-padding (left)</label>
+			<label for="sl-pad">--stv-node-padding (left)</label>
 			<input id="sl-pad" type="range" min="0" max="16" step="1"
 				bind:value={padLeft} oninput={() => (activePreset = null)} />
 			<output>{padLeft}px</output>
@@ -233,9 +233,9 @@
 			<div class="code-block">
 				<pre>{`/* one instance — scope by a wrapper class */
 .my-tree .stv__container {
-  --stv-node-indent-per-level: ${indent}px;
+  --stv-indent-size: ${indent}px;
   --stv-toggle-icon-width: ${toggleWidth}px;
-  --stv-node-content-padding: calc(0.4 * var(--stv-rem)) ${padLeft}px;
+  --stv-node-padding: calc(0.4 * var(--stv-rem)) ${padLeft}px;
 }`}</pre>
 			</div>
 		</div>

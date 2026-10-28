@@ -15,8 +15,8 @@
    pure hook, always present on the focused row. */
 .stv__node-content--selected {
 	background-color: var(--stv-selected-bg);
-	color: var(--stv-selected-text);
-	outline: var(--stv-selected-ring);
+	color: var(--stv-selected-text-color);
+	outline: var(--stv-selected-outline);
 	outline-offset: var(--stv-focused-outline-offset);
 }
 
@@ -27,10 +27,10 @@
 /* Default focus look — a thin inset ring (matches web-multiselect's focused option).
    Declared after --selected so on a focused + selected row the focus ring wins
    over any selected-border outline, while the highlight tint stays. Set
-   --stv-focused-ring: none to hide the ring but keep the hook. */
+   --stv-focused-outline: none to hide the ring but keep the hook. */
 .stv__node-content--focused-default {
-	color: var(--stv-focused-text);
-	outline: var(--stv-focused-ring);
+	color: var(--stv-focused-text-color);
+	outline: var(--stv-focused-outline);
 	outline-offset: var(--stv-focused-outline-offset);
 }
 .stv__node-content--focused-default:not(.stv__node-content--selected) {
@@ -39,7 +39,7 @@
 
 .stv__node-content--selected-bold {
 	font-weight: bold !important;
-	color: var(--stv-primary) !important;
+	color: var(--stv-accent-color) !important;
 }
 
 /* Hairline inset ring + soft tint. Inset box-shadow (not border) → no layout shift. */
@@ -50,7 +50,7 @@
 
 .stv__node-content--selected-fill {
 	background-color: var(--stv-selected-fill-bg) !important;
-	color: var(--stv-selected-fill-color) !important;
+	color: var(--stv-selected-fill-text-color) !important;
 }
 
 /* Soft ring — tint + an inset hairline + a faint INNER glow. Kept inside the pill so
@@ -59,7 +59,7 @@
 	background-color: var(--stv-selected-bg) !important;
 	box-shadow:
 		inset 0 0 0 1px var(--stv-selected-preset-ring-color),
-		inset 0 0 6px 0 color-mix(in srgb, var(--stv-primary) 20%, transparent) !important;
+		inset 0 0 6px 0 color-mix(in srgb, var(--stv-accent-color) 20%, transparent) !important;
 }
 
 .stv__node-content--selected-brackets {
@@ -69,21 +69,21 @@
 .stv__node-content--selected-brackets::before {
 	content: '❯';
 	margin-right: 6px;
-	color: var(--stv-primary);
+	color: var(--stv-accent-color);
 	font-weight: bold;
 }
 
 .stv__node-content--selected-brackets::after {
 	content: '❮';
 	margin-left: 6px;
-	color: var(--stv-primary);
+	color: var(--stv-accent-color);
 	font-weight: bold;
 }
 
 /* Scroll highlight (post-scrollToPath flash) */
 .stv__node-content--scroll-highlight {
 	background-color: var(--stv-scroll-highlight-bg) !important;
-	box-shadow: var(--stv-scroll-highlight-shadow);
+	box-shadow: var(--stv-scroll-highlight-box-shadow);
 	border-radius: 0.25em;
 }
 

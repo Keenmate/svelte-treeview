@@ -24,19 +24,19 @@ Override in your CSS:
   --stv-rem: 10px;
 
   /* Indentation */
-  --stv-node-indent-per-level: calc(0.8 * var(--stv-rem));
+  --stv-indent-size: calc(0.8 * var(--stv-rem));
 
   /* Colors — tints derived automatically via color-mix() */
-  --stv-primary: #0d6efd;
-  --stv-success: #198754;
-  --stv-danger: #dc3545;
-  --stv-light: #f8f9fa;
-  --stv-border: #dee2e6;
-  --stv-body-color: #212529;
+  --stv-accent-color: #0d6efd;
+  --stv-success-color: #198754;
+  --stv-danger-color: #dc3545;
+  --stv-elevated-bg: #f8f9fa;
+  --stv-border-color: #dee2e6;
+  --stv-text-color-1: #212529;
 
   /* Touch ghost */
-  --tree-ghost-bg: rgba(59, 130, 246, 0.9);
-  --tree-ghost-color: white;
+  --stv-touch-ghost-bg: rgba(59, 130, 246, 0.9);
+  --stv-touch-ghost-text-color: white;
 }
 
 --base-* TOKEN INTEGRATION
@@ -44,15 +44,15 @@ Override in your CSS:
 Every --stv-* variable chains through a --base-* token shared with other
 @keenmate/* web components, then falls back to a hardcoded default:
 
-  --stv-primary: var(--base-accent-color, #0d6efd);
+  --stv-accent-color: var(--base-primary-color, #3b82f6);
 
 Set --base-* once at :root and every KM component picks it up automatically:
 
 :root {
-  --base-accent-color: #6366f1;
+  --base-primary-color: #6366f1;
   --base-font-family: 'Inter', system-ui, sans-serif;
   --base-border-color: #e5e7eb;
-  --base-border-radius-sm: 6px;
+  --base-border-radius-sm: 0.6;   /* unitless multiplier × --stv-rem */
   --base-text-color-1: #111827;
   --base-text-color-3: #6b7280;
   --base-hover-bg: #f3f4f6;
@@ -60,6 +60,21 @@ Set --base-* once at :root and every KM component picks it up automatically:
 
 Tree-specific --stv-* overrides take precedence over --base-* tokens, so
 you can theme a single tree without affecting other components.
+
+The --stv-* names are the same list as @keenmate/web-treeview's --wtv-* (only
+the prefix differs).
+
+MOTION
+------
+Only the contract's four speeds + easings; no prop turns animations on/off:
+  --stv-transition-fast | -normal | -medium | -slow
+      = var(--base-duration-*, 0.1s | 0.15s | 0.25s | 0.3s)
+  --stv-ease-standard | -out | -in = var(--base-ease-*)
+  --stv-spinner-duration: 0.8s   (spinner loop; keeps turning under reduced motion)
+Motion off (this tree):  .stv__container { --stv-transition-normal: 0s; ... all four }
+Motion off (page-wide):  :root { --base-duration-fast: 0s; ... all four }
+prefers-reduced-motion: reduce -> the four --stv-transition-* are 0s.
+Disabled dimming: --stv-disabled-opacity = var(--base-disabled-opacity, 0.65).
 
 SELECTED NODE CLASSES
 ------------------------
@@ -152,21 +167,21 @@ Drop zones are styled via CSS custom properties (override in your own CSS):
 
   /* Before zone */
   --stv-drop-zone-before-bg: rgba(134, 239, 172, 0.25);
-  --stv-drop-zone-before-color: #166534;
-  --stv-drop-zone-before-active-bg: rgba(134, 239, 172, 0.85);
-  --stv-drop-zone-before-active-color: #14532d;
+  --stv-drop-zone-before-text-color: #166534;
+  --stv-drop-zone-before-bg-active: rgba(134, 239, 172, 0.85);
+  --stv-drop-zone-before-text-color-active: #14532d;
 
   /* After zone */
   --stv-drop-zone-after-bg: rgba(253, 186, 116, 0.25);
-  --stv-drop-zone-after-color: #9a3412;
-  --stv-drop-zone-after-active-bg: rgba(253, 186, 116, 0.85);
-  --stv-drop-zone-after-active-color: #7c2d12;
+  --stv-drop-zone-after-text-color: #9a3412;
+  --stv-drop-zone-after-bg-active: rgba(253, 186, 116, 0.85);
+  --stv-drop-zone-after-text-color-active: #7c2d12;
 
   /* Child zone */
   --stv-drop-zone-child-bg: rgba(196, 181, 253, 0.25);
-  --stv-drop-zone-child-color: #5b21b6;
-  --stv-drop-zone-child-active-bg: rgba(196, 181, 253, 0.85);
-  --stv-drop-zone-child-active-color: #4c1d95;
+  --stv-drop-zone-child-text-color: #5b21b6;
+  --stv-drop-zone-child-bg-active: rgba(196, 181, 253, 0.85);
+  --stv-drop-zone-child-text-color-active: #4c1d95;
 }
 
 Or target the zone classes directly:
@@ -230,8 +245,8 @@ CONTEXT MENU STYLING
 TOUCH GHOST STYLING
 -------------------
 .stv__touch-ghost {
-  background: var(--tree-ghost-bg, rgba(59, 130, 246, 0.9));
-  color: var(--tree-ghost-color, white);
+  background: var(--stv-touch-ghost-bg, rgba(59, 130, 246, 0.9));
+  color: var(--stv-touch-ghost-text-color, white);
   padding: 8px 16px;
   border-radius: 6px;
   font-size: 14px;
@@ -316,10 +331,10 @@ DARK THEME OVERRIDE EXAMPLE
 You can also override the --stv-* tokens for a custom dark palette:
 
 [data-theme="dark"] {
-  --stv-body-color: #e5e7eb;
-  --stv-border: #374151;
-  --stv-light: #1f2937;
-  --stv-primary: #60a5fa;
+  --stv-text-color-1: #e5e7eb;
+  --stv-border-color: #374151;
+  --stv-elevated-bg: #1f2937;
+  --stv-accent-color: #60a5fa;
 }
 
 INDENTATION
@@ -327,7 +342,7 @@ INDENTATION
 Control node indentation:
 
 :root {
-  --stv-node-indent-per-level: 1rem;
+  --stv-indent-size: 1rem;
 }
 
 Each level gets this fixed indent.

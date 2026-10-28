@@ -202,14 +202,14 @@
 			<thead><tr><th>Variable</th><th>Default</th><th>Effect</th></tr></thead>
 			<tbody>
 				<tr><td><code>--stv-tooltip-bg</code></td><td><code>--base-tooltip-bg</code> → inverse / light-dark</td><td>Background</td></tr>
-				<tr><td><code>--stv-tooltip-color</code></td><td><code>--base-tooltip-text-color</code> → light-dark</td><td>Text color</td></tr>
+				<tr><td><code>--stv-tooltip-text-color</code></td><td><code>--base-tooltip-text-color</code> → light-dark</td><td>Text color</td></tr>
 				<tr><td><code>--stv-tooltip-padding</code></td><td><code>0.8×rem 1.2×rem</code> (8px 12px)</td><td>Inner spacing</td></tr>
 				<tr><td><code>--stv-tooltip-font-size</code></td><td><code>1.4×rem</code> (14px)</td><td>Text size</td></tr>
 				<tr><td><code>--stv-tooltip-width</code></td><td><code>auto</code></td><td>Fixed box when set (shrink off)</td></tr>
 				<tr><td><code>--stv-tooltip-min-width</code></td><td><code>0</code></td><td>Floor (still grows to max)</td></tr>
 				<tr><td><code>--stv-tooltip-max-width</code></td><td><code>32×rem</code> (320px)</td><td>Wrap point / cap</td></tr>
 				<tr><td><code>--stv-tooltip-border-radius</code></td><td><code>--base-border-radius-lg</code></td><td>Corner rounding</td></tr>
-				<tr><td><code>--stv-tooltip-shadow</code></td><td><code>0 2px 8px rgba(0,0,0,.15)</code></td><td>Drop shadow</td></tr>
+				<tr><td><code>--stv-tooltip-box-shadow</code></td><td><code>0 2px 8px rgba(0,0,0,.15)</code></td><td>Drop shadow</td></tr>
 				<tr><td><code>--stv-tooltip-z-index</code></td><td><code>10000</code></td><td>Stacking order</td></tr>
 			</tbody>
 		</table>

@@ -549,10 +549,10 @@
 		width: 250px; flex-shrink: 0; overflow: auto;
 		background: #fbfbfb; border-right: 1px solid var(--winx-border); padding: 6px 4px;
 		/* tighten the tree to Explorer density + Windows-blue selection */
-		--stv-node-content-padding: 2px 6px;
-		--stv-node-font-size: 13px;
-		--stv-primary: var(--winx-accent);
-		--stv-node-content-border-radius: 4px;
+		--stv-node-padding: 2px 6px;
+		--stv-font-size: 13px;
+		--stv-accent-color: var(--winx-accent);
+		--stv-node-border-radius: 4px;
 	}
 	.winx__navrow { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 	.winx__navicon { font-size: 13px; }
@@ -578,7 +578,7 @@
 	/* The right <Tree>: flatten the row chrome and turn each row's content into the
 	   same 4-track grid as the header so columns align. */
 	.winx-right {
-		--stv-node-indent-per-level: 0; /* flat list — no indentation */
+		--stv-indent-size: 0; /* flat list — no indentation */
 	}
 	.winx-right :global(.stv__toggle-icon) { display: none; }       /* no chevrons in a flat list */
 	.winx-right :global(.stv__node) { margin-left: 0 !important; }

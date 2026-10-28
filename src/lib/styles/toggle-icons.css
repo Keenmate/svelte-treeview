@@ -128,10 +128,10 @@
 	mask-image: none;
 	background: none;
 	box-sizing: border-box;
-	width: var(--stv-icon-size-glyph, 1em);
-	height: var(--stv-icon-size-glyph, 1em);
-	border: 2px solid var(--stv-spinner-track);
-	border-top-color: var(--stv-spinner-color);
+	width: var(--stv-expand-spinner-size);
+	height: var(--stv-expand-spinner-size);
+	border: var(--stv-expand-spinner-width) solid var(--stv-expand-spinner-track);
+	border-top-color: var(--stv-expand-spinner-color);
 	border-radius: 50%;
-	animation: stv-spin 0.8s linear infinite;
+	animation: stv-spin var(--stv-spinner-duration) linear infinite;
 }

@@ -455,10 +455,10 @@
 
 /* stv__node-content--selected-glow (from states.css) */
 .stv__node-content--selected-glow {
-  background-color: color-mix(in srgb, var(--stv-primary) 12%, transparent);
+  background-color: color-mix(in srgb, var(--stv-accent-color) 12%, transparent);
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--stv-primary) 40%, transparent),
-    0 0 8px 1px color-mix(in srgb, var(--stv-primary) 35%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--stv-accent-color) 40%, transparent),
+    0 0 8px 1px color-mix(in srgb, var(--stv-accent-color) 35%, transparent);
   border-radius: 6px;
 }
 
@@ -467,7 +467,7 @@
 
 /* Must be global so it reaches nodes rendered inside <Tree> */
 :global(.my-focus-ring) {
-  box-shadow: 0 0 0 2px var(--stv-primary, #0d6efd);
+  box-shadow: 0 0 0 2px var(--stv-accent-color, #0d6efd);
   border-radius: 4px;
 }
 
@@ -748,18 +748,18 @@ function restoreFromUrl(nodePath: string) {
 	   descenders so it reads as a marker rather than a text link. */
 	:global(.demo-focused-underline .demo-node-name) {
 		text-decoration: underline;
-		text-decoration-color: var(--stv-primary, #0d6efd);
+		text-decoration-color: var(--stv-accent-color, #0d6efd);
 		text-decoration-thickness: 2px;
 		text-underline-offset: 0.4em;
 		text-decoration-skip-ink: none;
 	}
 	:global(.demo-focused-bg) {
-		background-color: color-mix(in srgb, var(--stv-primary, #0d6efd) 12%, transparent);
+		background-color: color-mix(in srgb, var(--stv-accent-color, #0d6efd) 12%, transparent);
 	}
 	/* Left accent bar, painted as a background-image layer so it sits over the
 	   highlight tint and survives box-shadow presets. */
 	:global(.demo-focused-bar) {
-		background-image: linear-gradient(var(--stv-primary, #0d6efd), var(--stv-primary, #0d6efd));
+		background-image: linear-gradient(var(--stv-accent-color, #0d6efd), var(--stv-accent-color, #0d6efd));
 		background-repeat: no-repeat;
 		background-size: 2px 100%;
 	}

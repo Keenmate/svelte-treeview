@@ -4,11 +4,11 @@
 
 .stv__context-menu {
 	position: fixed;
-	z-index: 1000;
+	z-index: var(--stv-context-menu-z-index);
 	background: var(--stv-context-menu-bg);
-	border: 1px solid var(--stv-context-menu-border-color);
+	border: var(--stv-context-menu-border);
 	border-radius: var(--stv-context-menu-border-radius);
-	box-shadow: var(--stv-context-menu-shadow);
+	box-shadow: var(--stv-context-menu-box-shadow);
 	padding: var(--stv-context-menu-padding);
 	min-width: var(--stv-context-menu-min-width);
 }
@@ -22,29 +22,39 @@
 	width: 100%;
 	text-align: left;
 	cursor: pointer;
-	color: var(--stv-context-menu-item-color);
+	color: var(--stv-context-menu-text-color);
 	text-decoration: none;
-	font-size: var(--stv-context-menu-item-font-size);
+	font-size: var(--stv-context-menu-font-size);
 	position: relative;
 }
 
 .stv__context-menu-item:hover {
-	background-color: var(--stv-context-menu-item-hover-bg);
+	background-color: var(--stv-context-menu-bg-hover);
+}
+
+/* Hover text colour (danger / toggled / disabled items keep theirs); unset (the
+   default) leaves the colour unchanged. */
+.stv__context-menu-item:hover:not(.stv__context-menu-item--danger, .danger, .stv__context-menu-item--toggled, .stv__context-menu-item--disabled) {
+	color: var(--stv-context-menu-text-color-hover, var(--stv-context-menu-text-color));
+}
+
+.stv__context-menu-item.stv__context-menu-item--toggled {
+	color: var(--stv-context-menu-toggled-color);
 }
 
 .stv__context-menu-item.stv__context-menu-item--disabled {
-	opacity: 0.5;
+	opacity: var(--stv-context-menu-disabled-opacity);
 	cursor: not-allowed;
 }
 
 .stv__context-menu-item.danger,
 .stv__context-menu-item--danger {
-	color: var(--stv-danger);
+	color: var(--stv-context-menu-danger-color);
 }
 
 .stv__context-menu-item.danger:hover,
 .stv__context-menu-item--danger:hover {
-	background-color: color-mix(in srgb, var(--stv-danger) 10%, transparent);
+	background-color: var(--stv-context-menu-danger-bg-hover);
 }
 
 /* Items with submenus: arrow indicates expandability */
@@ -53,9 +63,9 @@
 }
 
 .stv__context-menu-icon {
-	margin-right: 8px;
+	margin-right: var(--stv-context-menu-item-gap);
 	font-size: var(--stv-context-menu-icon-font-size);
-	width: var(--stv-context-menu-icon-size);
+	width: var(--stv-context-menu-icon-width);
 	text-align: center;
 	flex-shrink: 0;
 }
@@ -73,14 +83,14 @@
 }
 
 /* Submenu indicator — the Lucide "chevron-right" icon via CSS mask (recolour via
-   --stv-context-menu-arrow-color; swap via --stv-icon-chevron-right). */
+   --stv-context-menu-shortcut-color; swap via --stv-icon-chevron-right). */
 .stv__context-menu-arrow {
 	--stv-icon-chevron-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E");
 	display: inline-block;
 	width: 14px;
 	height: 14px;
-	margin-left: 8px;
-	background-color: var(--stv-context-menu-arrow-color);
+	margin-left: var(--stv-context-menu-item-gap);
+	background-color: var(--stv-context-menu-shortcut-color);
 	-webkit-mask: var(--stv-icon-chevron-right) center / contain no-repeat;
 	mask: var(--stv-icon-chevron-right) center / contain no-repeat;
 	flex-shrink: 0;
@@ -89,7 +99,7 @@
 .stv__context-menu-divider {
 	display: flex;
 	align-items: center;
-	margin: 4px 0;
+	margin: var(--stv-context-menu-divider-margin);
 }
 
 /* Default: simple line */
@@ -113,7 +123,7 @@
 }
 
 .stv__context-menu-divider-label {
-	font-size: 11px;
+	font-size: 0.8em;
 	color: var(--stv-context-menu-divider-label-color);
 	white-space: nowrap;
 	text-transform: uppercase;
@@ -122,5 +132,5 @@
 
 /* Submenu: position handled by Floating UI; inherits .stv__context-menu chrome */
 .stv__context-submenu {
-	z-index: 1001;
+	z-index: calc(var(--stv-context-menu-z-index) + 1);
 }

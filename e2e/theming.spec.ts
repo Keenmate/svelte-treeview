@@ -9,7 +9,7 @@ import { test, expect, Page, Locator } from '@playwright/test';
  *   Dark:  --base-main-bg = #16a34a (green), --base-primary-color = #06b6d4 (cyan)
  *
  * A green tree surface under a dark-signal scenario proves the brand theme's
- * dark variant reaches the tree's --stv-bg. A red surface proves the light
+ * dark variant reaches the tree's --stv-main-bg. A red surface proves the light
  * path. Anything else (e.g. library-default #1a1a1a) means the theme's
  * dark variant didn't actually win — the regression we want to catch.
  */

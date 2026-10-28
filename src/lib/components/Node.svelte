@@ -282,8 +282,8 @@
 	// — only applied before first-child nodes (where level > previous node's level).
 	const indentStyle = $derived(
 		flatMode
-			? `margin-left: calc(${Math.max(0, (node?.level || 1) - 1)} * var(--stv-node-indent-per-level, 0.5rem))${flatGap ? '; margin-top: 2px' : ''}`
-			: `margin-left: ${(node?.level || 1) <= 1 ? '0px' : 'var(--stv-node-indent-per-level, 0.5rem)'}`,
+			? `margin-left: calc(${Math.max(0, (node?.level || 1) - 1)} * var(--stv-indent-size))${flatGap ? '; margin-top: 2px' : ''}`
+			: `margin-left: ${(node?.level || 1) <= 1 ? '0px' : 'var(--stv-indent-size)'}`,
 	)
 
 	// Progressive rendering state - only used in recursive mode

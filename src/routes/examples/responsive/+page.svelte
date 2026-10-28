@@ -303,7 +303,7 @@ stop(); stopBox();`}</pre></div>
 		border: 1px solid var(--border-color, #d1d5db);
 		border-radius: 8px;
 		padding: 0.5rem;
-		background: var(--stv-bg, #fff);
+		background: var(--stv-main-bg, #fff);
 		overflow: auto;
 		resize: horizontal;
 		height: 380px;
@@ -330,7 +330,7 @@ stop(); stopBox();`}</pre></div>
 	}
 	/* RS01: the $derived flips this class, which adapts the rows to a tight box. */
 	.resize-box.compact :global(.stv__container) {
-		--stv-node-indent-per-level: 0.45rem;
+		--stv-indent-size: 0.45rem;
 		font-size: 0.85rem;
 	}
 	.resize-box.compact .isco-code {

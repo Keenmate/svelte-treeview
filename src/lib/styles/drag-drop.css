@@ -18,15 +18,15 @@
 }
 
 .stv__node-content--dragged {
-	opacity: var(--stv-dragged-opacity, 0.5);
+	opacity: var(--stv-dragged-opacity);
 	/* Anchor the shrink to the left edge. .stv__node-content is flex:1 (full-row width),
 	   so a default center-origin scale pulls the icon+label inward = a visible "extra
 	   indent" on the dimmed in-place row. Left origin keeps the label anchored. */
 	transform-origin: left center;
-	transform: scale(var(--stv-dragged-scale, 0.95));
+	transform: scale(var(--stv-dragged-scale));
 	transition:
-		opacity 0.2s,
-		transform 0.2s;
+		opacity var(--stv-transition-normal) var(--stv-ease-standard),
+		transform var(--stv-transition-normal) var(--stv-ease-standard);
 }
 
 /* Copy operation cursor (Ctrl+drag with isCopyAllowed enabled) */
@@ -38,15 +38,15 @@
 .stv__touch-ghost {
 	position: fixed;
 	transform: translate(-50%, -50%);
-	padding: 8px 12px;
-	background: var(--tree-ghost-bg);
-	color: var(--tree-ghost-color);
-	border-radius: 4px;
-	font-size: 14px;
+	padding: var(--stv-spacing-md) var(--stv-spacing-lg);
+	background: var(--stv-touch-ghost-bg);
+	color: var(--stv-touch-ghost-text-color);
+	border-radius: var(--stv-border-radius-sm);
+	font-size: var(--stv-font-size-sm);
 	font-family: var(--stv-font-family);
 	pointer-events: none;
-	z-index: 10000;
-	box-shadow: var(--tree-ghost-shadow);
+	z-index: var(--stv-z-index-ghost);
+	box-shadow: var(--stv-touch-ghost-box-shadow);
 	white-space: nowrap;
 	max-width: 200px;
 	overflow: hidden;
@@ -59,14 +59,14 @@
 	   full-width placeholder + border overruns the container and can trigger a
 	   horizontal scrollbar on any ancestor with overflow-x other than visible. */
 	box-sizing: border-box;
-	border: 2px dashed var(--stv-primary) !important;
+	border: var(--stv-drop-placeholder-border) !important;
 	background-color: var(--stv-drop-placeholder-bg) !important;
 	border-radius: var(--stv-drop-placeholder-border-radius);
 	min-height: var(--stv-drop-placeholder-min-height);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	transition: all 0.2s ease;
+	transition: all var(--stv-transition-normal) var(--stv-ease-standard);
 	cursor: pointer;
 }
 
@@ -78,18 +78,18 @@
    to the mid-drag placeholder and the permanent one (isEmptyDropPlaceholderShown). */
 .stv__drop-placeholder:hover,
 .stv__drop-placeholder--active {
-	background-color: var(--stv-drop-placeholder-hover-bg) !important;
+	background-color: var(--stv-drop-placeholder-bg-hover) !important;
 	border-style: solid !important;
-	border-color: var(--stv-drop-placeholder-hover-border-color) !important;
-	box-shadow: var(--stv-drop-placeholder-hover-shadow);
-	transform: scale(var(--stv-drop-placeholder-hover-scale, 1));
+	border-color: var(--stv-drop-placeholder-border-color-hover) !important;
+	box-shadow: var(--stv-drop-placeholder-box-shadow-hover);
+	transform: scale(var(--stv-drop-placeholder-scale-hover));
 }
 
 .stv__drop-placeholder-content {
 	color: var(--stv-drop-placeholder-color);
-	font-size: 14px;
-	font-weight: 500;
-	padding: 16px;
+	font-size: var(--stv-font-size-sm);
+	font-weight: var(--stv-font-weight-medium);
+	padding: var(--stv-spacing-xl);
 	text-align: center;
 }
 
@@ -97,31 +97,29 @@
    target — a drop anywhere lands with target=null and is routed by beforeDropCallback. While a
    drag hovers the tree the container shows an engaged outline so the "basket" reads as active. */
 .stv__container.stv__tree-drop-zone--active {
-	outline: 2px dashed var(--stv-drop-placeholder-hover-border-color, var(--stv-primary));
+	outline: 2px dashed var(--stv-drop-placeholder-border-color-hover);
 	outline-offset: -2px;
-	background-color: var(--stv-drop-placeholder-hover-bg);
-	transition: all 0.2s ease;
+	background-color: var(--stv-drop-placeholder-bg-hover);
+	transition: all var(--stv-transition-normal) var(--stv-ease-standard);
 }
 
 /* Drag-over node states (tinted background + dashed border) */
 .stv__node-content--dragover-highlight {
-	background-color: color-mix(in srgb, var(--stv-success) 15%, transparent) !important;
-	border: 2px dashed var(--stv-success) !important;
-	border-radius: 4px !important;
+	background-color: var(--stv-drag-over-highlight-bg) !important;
+	border: var(--stv-drag-over-highlight-border) !important;
+	border-radius: var(--stv-border-radius-sm) !important;
 }
 
 .stv__node-content--dragover-glow {
-	background-color: var(--stv-dragover-bg) !important;
-	box-shadow: var(--stv-dragover-shadow) !important;
+	background-color: var(--stv-drag-over-bg) !important;
+	box-shadow: var(--stv-drag-over-box-shadow) !important;
 }
-
-/* (@keyframes bounce — moved to animations.css per canonical Tier-2 layout.) */
 
 /* Drag-over and drop validity states applied to .stv__node-content */
 .stv__node-content.stv__node-content--drag-over {
-	background-color: var(--stv-dragover-bg) !important;
-	border: 2px dashed var(--stv-primary);
-	border-radius: 4px;
+	background-color: var(--stv-drag-over-bg) !important;
+	border: var(--stv-drag-over-border);
+	border-radius: var(--stv-border-radius-sm);
 }
 
 .stv__node-content.stv__node-content--drag-over::before {
@@ -131,19 +129,19 @@
 	left: -2px;
 	right: -2px;
 	bottom: -2px;
-	background: linear-gradient(45deg, transparent, color-mix(in srgb, var(--stv-primary) 5%, transparent));
+	background: linear-gradient(45deg, transparent, color-mix(in srgb, var(--stv-accent-color) 5%, transparent));
 	pointer-events: none;
-	border-radius: 4px;
+	border-radius: var(--stv-border-radius-sm);
 }
 
 .stv__node-content.stv__node-content--drop-valid {
-	border-color: var(--stv-success) !important;
-	background-color: color-mix(in srgb, var(--stv-success) 10%, transparent) !important;
+	border-color: var(--stv-drop-valid-border-color) !important;
+	background-color: var(--stv-drop-valid-bg) !important;
 }
 
 .stv__node-content.stv__node-content--drop-invalid {
-	border-color: var(--stv-danger) !important;
-	background-color: color-mix(in srgb, var(--stv-danger) 10%, transparent) !important;
+	border-color: var(--stv-drop-invalid-border-color) !important;
+	background-color: var(--stv-drop-invalid-bg) !important;
 }
 
 /* =============================================================================
@@ -182,7 +180,7 @@
 	transform: translate(-50%, -50%) rotate(var(--stv-drop-arrow-before-rotation));
 	-webkit-mask-image: var(--stv-drop-arrow-before-image);
 	mask-image: var(--stv-drop-arrow-before-image);
-	background-color: var(--stv-drop-glow-before-color);
+	background-color: rgb(from var(--stv-drop-glow-before-color) r g b);
 }
 
 .stv__node-content.stv__node-content--glow-after {
@@ -194,7 +192,7 @@
 	transform: translate(-50%, -50%) rotate(var(--stv-drop-arrow-after-rotation));
 	-webkit-mask-image: var(--stv-drop-arrow-after-image);
 	mask-image: var(--stv-drop-arrow-after-image);
-	background-color: var(--stv-drop-glow-after-color);
+	background-color: rgb(from var(--stv-drop-glow-after-color) r g b);
 }
 
 .stv__node-content.stv__node-content--glow-child {
@@ -207,7 +205,7 @@
 	transform: translate(-50%, -50%) rotate(var(--stv-drop-arrow-child-rotation));
 	-webkit-mask-image: var(--stv-drop-arrow-child-image);
 	mask-image: var(--stv-drop-arrow-child-image);
-	background-color: var(--stv-drop-glow-child-color);
+	background-color: rgb(from var(--stv-drop-glow-child-color) r g b);
 }
 
 /* =============================================================================
@@ -216,19 +214,18 @@
    .stv__node-content--drag-denied class + an appended .stv__drag-denied-badge.
    ============================================================================= */
 
-/* Row tint gently pulses for as long as the locked node stays pressed (class is added on
-   long-press, removed on release). */
+/* Row tint fades in and holds for as long as the locked node stays pressed (class is
+   added on long-press, removed on release). */
 .stv__node-content--drag-denied {
-	animation: stv-drag-denied-flash 0.9s ease-in-out infinite;
+	animation: stv-drag-denied-flash var(--stv-transition-slow) var(--stv-ease-out) forwards;
 }
 
 @keyframes stv-drag-denied-flash {
-	0%,
-	100% {
+	from {
 		background-color: transparent;
 	}
-	50% {
-		background-color: var(--stv-drag-denied-flash-bg, color-mix(in srgb, #e11d48 18%, transparent));
+	to {
+		background-color: var(--stv-drag-denied-flash-bg);
 	}
 }
 
@@ -246,10 +243,10 @@
 	pointer-events: none;
 	z-index: 3;
 	transform: translateY(-50%);
-	background-color: var(--stv-drag-denied-badge-color, #e11d48);
+	background-color: var(--stv-drag-denied-badge-color);
 	-webkit-mask: var(--stv-icon-ban) center / contain no-repeat;
 	mask: var(--stv-icon-ban) center / contain no-repeat;
-	animation: stv-drag-denied-badge 0.22s ease-out forwards;
+	animation: stv-drag-denied-badge var(--stv-transition-normal) var(--stv-ease-out) forwards;
 }
 
 @keyframes stv-drag-denied-badge {

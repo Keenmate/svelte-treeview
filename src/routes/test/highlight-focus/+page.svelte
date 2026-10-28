@@ -137,6 +137,6 @@
 	/* Page-scoped custom focus class — only its presence on the DOM is asserted,
 	   but give it a real rule so it behaves like a production focusedNodeClass. */
 	:global(.test-focus) {
-		box-shadow: inset 3px 0 0 0 var(--stv-primary, #0d6efd);
+		box-shadow: inset 3px 0 0 0 var(--stv-accent-color, #0d6efd);
 	}
 </style>

@@ -9,6 +9,122 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > 5.0.0 was never published to npm (the previous `[5.0.0] - 2026-10-13 [PUBLISHED]` heading was wrong — npm `rc` is 5.0.0-rc15, `latest` 4.8.0). Its entries are folded into rc16 below.
 
+### Changed — BREAKING (theming: one token list with web-treeview, contract conversion, motion — 2026-10-29)
+
+- **CSS variables renamed** so svelte-treeview and web-treeview share ONE token list (only the
+  prefix differs; web-treeview `docs/parity.md` → CSS custom properties) and names state their
+  type like the `--base-*` contract (`-color`, `-bg`, `-border`, `-outline`, `-box-shadow`; state
+  last: `-bg-hover`, `-bg-active`):
+
+  | Was | Now |
+  |-----|-----|
+  | `--stv-bg` | `--stv-main-bg` |
+  | `--stv-border` | `--stv-border-color` |
+  | `--stv-primary` | `--stv-accent-color` |
+  | `--stv-body-color` | `--stv-text-color-1` |
+  | `--stv-light` | `--stv-elevated-bg` |
+  | `--stv-success` | `--stv-success-color` |
+  | `--stv-danger` | `--stv-danger-color` |
+  | `--stv-primary-bg` | `--stv-hover-bg` |
+  | `--stv-primary-bg-hover` | `--stv-active-bg` |
+  | `--stv-node-hover-bg` | `--stv-node-bg-hover` |
+  | `--stv-node-indent-per-level` | `--stv-indent-size` |
+  | `--stv-node-content-padding` | `--stv-node-padding` |
+  | `--stv-node-content-border-radius` | `--stv-node-border-radius` |
+  | `--stv-node-content-transition` | `--stv-node-transition` |
+  | `--stv-node-font-size` | `--stv-font-size` |
+  | `--stv-transition-fast` | `--stv-transition-normal` (150ms usages; the four speeds are new, see below) |
+  | `--stv-checkbox-focus-ring` | `--stv-checkbox-focus-box-shadow` |
+  | `--stv-selected-text` | `--stv-selected-text-color` |
+  | `--stv-selected-ring` | `--stv-selected-outline` |
+  | `--stv-focused-text` | `--stv-focused-text-color` |
+  | `--stv-focused-ring` | `--stv-focused-outline` |
+  | `--stv-selected-fill-color` | `--stv-selected-fill-text-color` |
+  | `--stv-dragover-bg` | `--stv-drag-over-bg` |
+  | `--stv-dragover-shadow` | `--stv-drag-over-box-shadow` |
+  | `--stv-drop-placeholder-hover-bg` | `--stv-drop-placeholder-bg-hover` |
+  | `--stv-drop-placeholder-hover-border-color` | `--stv-drop-placeholder-border-color-hover` |
+  | `--stv-drop-placeholder-hover-shadow` | `--stv-drop-placeholder-box-shadow-hover` |
+  | `--stv-drop-placeholder-hover-scale` | `--stv-drop-placeholder-scale-hover` |
+  | `--stv-drop-zone-before-color` | `--stv-drop-zone-before-text-color` |
+  | `--stv-drop-zone-after-color` | `--stv-drop-zone-after-text-color` |
+  | `--stv-drop-zone-child-color` | `--stv-drop-zone-child-text-color` |
+  | `--stv-drop-zone-before-active-bg` | `--stv-drop-zone-before-bg-active` |
+  | `--stv-drop-zone-after-active-bg` | `--stv-drop-zone-after-bg-active` |
+  | `--stv-drop-zone-child-active-bg` | `--stv-drop-zone-child-bg-active` |
+  | `--stv-drop-zone-before-active-color` | `--stv-drop-zone-before-text-color-active` |
+  | `--stv-drop-zone-after-active-color` | `--stv-drop-zone-after-text-color-active` |
+  | `--stv-drop-zone-child-active-color` | `--stv-drop-zone-child-text-color-active` |
+  | `--stv-drop-zone-before-active-shadow` | `--stv-drop-zone-before-box-shadow-active` |
+  | `--stv-drop-zone-after-active-shadow` | `--stv-drop-zone-after-box-shadow-active` |
+  | `--stv-drop-zone-child-active-shadow` | `--stv-drop-zone-child-box-shadow-active` |
+  | `--stv-tooltip-color` | `--stv-tooltip-text-color` |
+  | `--stv-tooltip-shadow` | `--stv-tooltip-box-shadow` |
+  | `--stv-scroll-highlight-shadow` | `--stv-scroll-highlight-box-shadow` |
+  | `--stv-context-menu-shadow` | `--stv-context-menu-box-shadow` |
+  | `--stv-context-menu-item-font-size` | `--stv-context-menu-font-size` |
+  | `--stv-context-menu-item-color` | `--stv-context-menu-text-color` |
+  | `--stv-context-menu-item-hover-bg` | `--stv-context-menu-bg-hover` |
+  | `--stv-context-menu-icon-size` | `--stv-context-menu-icon-width` |
+  | `--stv-context-menu-arrow-color` | `--stv-context-menu-shortcut-color` |
+  | `--stv-node-info-reveal-border` | `--stv-node-info-reveal-border-color` |
+  | `--stv-node-info-reveal-color` | `--stv-node-info-reveal-text-color` |
+  | `--tree-ghost-bg` / `--tree-ghost-color` / `--tree-ghost-shadow` | `--stv-touch-ghost-bg` / `--stv-touch-ghost-text-color` / `--stv-touch-ghost-box-shadow` |
+  | `--drop-zone-max-width` | `--stv-drop-zone-max-width` (now declared, 120px) |
+
+  Removed (unused or legacy aliases): `--stv-primary`, `--stv-body-color` (use `--stv-accent-color`
+  / `--stv-text-color-1`), `--stv-text-color-2`, `--stv-accent-color-active`,
+  `--stv-checkbox-checkmark-width`, `--stv-node-icon-font-size` (the icon inherits the row size),
+  `--stv-context-menu-border-color` (→ the `--stv-context-menu-border` shorthand),
+  `--stv-context-menu-arrow-color` (the arrow uses `--stv-context-menu-shortcut-color`),
+  `--tree-node-indent-per-level`.
+- **Standalone defaults are the `--base-*` contract's** (`@keenmate/base-css-variables` 2.0,
+  checked by `npm run check:contract` in `prepack`): every input falls back to the contract's
+  default (accent `#3b82f6`, text `#334155` / `#f1f5f9`, surface `#ffffff` / `#1e293b`, success
+  `#10b981`, danger `#dc2626`, z-index on `--base-z-*`, …) and every derived token to the
+  contract's formula on the `--stv-*` input (hover / active overlays, tints 10% / 20% dark,
+  text steps, APCA text on the accent, borders, tooltip) — so a standalone `--stv-accent-color` or
+  `--stv-main-bg` override brings its dependents along. Visible standalone: the dark surface is
+  slate `#1e293b` (was `#1a1a1a`), the row pill is rounded 4px (was square), the context menu has
+  the contract's dropdown shadow and stacks at `--base-z-dropdown` (7500, was 1000), the tooltip
+  at `--base-z-tooltip` (9000, was 10000), hover is the contract's neutral overlay; the info button
+  and the full-label popover follow the theme (fixed GitHub-style colours before); the drag-denied
+  badge is the danger colour (was `#e11d48`). With the contract loaded nothing changes.
+- **Motion — only the contract's four speeds, CSS only.** `--stv-transition-fast` (150ms) /
+  `--stv-transition-normal` (200ms) are replaced by `--stv-transition-fast | -normal | -medium |
+  -slow` (→ `--base-duration-*`, 0.1 / 0.15 / 0.25 / 0.3s) and `--stv-ease-standard | -out | -in`
+  (→ `--base-ease-*`); every transition and animation reads them (no hard-coded durations).
+  Snapped toward faster: 200ms / 0.2s (toggle turn, dragged row, drop placeholder) → normal
+  (0.15s); the drag-denied badge pop 0.22s → normal; the drag-denied row tint no longer pulses
+  (0.9s, infinite) — it fades in over `--stv-transition-slow` (0.3s) and holds while the node is
+  pressed. The spinners turn once per `--stv-spinner-duration` (0.8s, a loop period). Turn motion
+  off with `--stv-transition-*: 0s` (this tree) or `--base-duration-*: 0s` (page-wide).
+
+### Added (theming — 2026-10-29)
+
+- **`prefers-reduced-motion: reduce`** sets the four `--stv-transition-*` to `0s` (the spinners
+  keep turning — they show state).
+- **`--stv-disabled-opacity`** (→ `--base-disabled-opacity`, 0.65) — disabled checkbox (was 0.6)
+  and, through `--stv-context-menu-disabled-opacity`, disabled menu items (was 0.5).
+- Tokens web-treeview already had, now in both: `--stv-hover-bg`, `--stv-active-bg`,
+  `--stv-node-bg-active` (+ a `:active` press background on the row), `--stv-text-color-3` /
+  `-4` steps on the contract formula, `--stv-input-border-color`, `--stv-shadow-color`,
+  `--stv-danger-text-color`, `--stv-border-width`, `--stv-border-radius-sm | -lg`,
+  `--stv-spacing-xs … -xl`, `--stv-font-size-xs | -sm`, `--stv-font-weight-medium | -semibold`,
+  `--stv-drag-over-border`, `--stv-drag-over-highlight-bg | -border`, `--stv-drop-valid-bg |
+  -border-color`, `--stv-drop-invalid-bg | -border-color`, `--stv-drop-placeholder-border`,
+  `--stv-drag-denied-flash-bg` / `-badge-color` (declared), `--stv-expand-spinner-size | -width |
+  -track | -color`, `--stv-z-index-dropdown | -drop-zones | -ghost | -overlay`, `--stv-node-info-*`
+  (declared, contract defaults). Context menu (the same names as web-treeview's):
+  `--stv-context-menu-z-index`, `-border`, `-text-color-hover`, `-item-gap`, `-toggled-color`
+  (+ the `--toggled` item style), `-danger-color` (= `--stv-danger-text-color`; the fill colour read
+  badly on dark), `-danger-bg-hover`, `-divider-margin`, `-disabled-opacity`.
+- **`npm run check:contract`** (`base-contract-check src/lib`, devDependency
+  `@keenmate/base-css-variables`, allowlist in `contract-check.json`: `--base-rem` stays 10px),
+  run by `prepack`; **`e2e/contract-parity.spec.ts`** (the tree's colours standalone = with the
+  contract, light / dark, default and custom accent; page `/test/contract-parity`) and
+  **`e2e/motion.spec.ts`**.
+
 ### Added
 
 - **Expand family (parity with `@keenmate/web-treeview`)** — bindable **`expandedPaths`**
