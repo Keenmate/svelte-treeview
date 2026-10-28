@@ -28,7 +28,8 @@ Full Props, Methods, Events, and Snippets reference for `@keenmate/svelte-treevi
 | `getIsCollapsibleCallback` | `({ node }) => boolean` | `undefined` | Callback to determine if a node is collapsible |
 | `getIsDraggableCallback` | `({ node }) => boolean` | `undefined` | Callback to determine if a node is draggable |
 | `hasChildrenMember` | `string \| null` | `null` | Property name for children existence |
-| `isSorted` | `boolean \| null` | `null` | Whether items should be sorted |
+| `isSorted` | `boolean \| null` | `null` | Hint: the input is already sorted (skip the initial sort) |
+| `isSortingEnabled` | `boolean` | `true` | `false` = never auto-sort — input order kept, added nodes appended, positioned inserts / moves / drops keep the exact position. See [Sorting & positions](#sorting--positions) |
 
 ### Display & search properties
 
@@ -127,6 +128,7 @@ Every `on*` event receives a **single context object** mirroring the clipboard c
 | `onNodeDrop` | `(ctx: NodeDropContext<T>) => void` | `undefined` | Drop event. `ctx = { source, target, dragged, dropped, position, operation, event }`. `source` is the lead dragged node's `NodeRef`; `target` is the drop node's `NodeRef` **or `null`** (empty tree/root). `dragged` is the **full top-level dragged set** — a drop fires once even for a multi-drag, so this is how you see the whole set. `dropped` is the nodes the **library** placed (move: the moved nodes; copy: the fresh copies), or **`null`** when the library didn't place them (cross-tree drop, or `shouldAutoHandleMove`/`Copy=false`) and the consumer owns insertion. Position is `'before'`/`'after'`/`'child'`; operation is `'move'`/`'copy'`. Symmetric with `NodeTransformContext`. (Its twin `beforeDropCallback` remains the older 5-arg positional signature.) |
 | `onSelectionChange` | `(ctx: SelectionChangeContext<T>) => void` | `undefined` | UI multi-select set (`selectedPaths`) changed. `ctx = { paths: Set<string>, nodes }`. Suppressed by `{ isSilent: true }` mutations. |
 | `onCheckedChange` | `(ctx: SelectionChangeContext<T>) => void` | `undefined` | Checkbox set (`checkedPaths`) changed. Same shape as `onSelectionChange`. Suppressed by `{ isSilent: true }`. |
+| `onNodesReorder` | `(ctx: NodesReorderContext<T>) => void` | `undefined` | `sortNodes` / `sortAll` rewrote one parent's `orderMember` values (custom `compareCallback` or `direction: 'desc'`). `ctx = { parentPath, nodes, changes: [{ path, oldOrder, newOrder }] }` — persist `changes`. Suppressed by `{ isSilent: true }`. |
 | `onNodeCopy` | `(ctx: ClipboardEventContext<T>) => void` | `undefined` | Fired after `controller.copyNodes()` succeeds. `ctx = { operation: 'copy', paths, nodes }` (nodes live). |
 | `onNodeCut` | `(ctx: ClipboardEventContext<T>) => void` | `undefined` | Fired after `controller.cutNodes()` succeeds. `ctx = { operation: 'cut', paths, nodes }` (nodes still live — cut only dims until paste). |
 | `onNodeDelete` | `(ctx: ClipboardEventContext<T>) => void` | `undefined` | Fired after the built-in Delete (or `controller.runDeleteCommand()`) removes nodes. `ctx = { paths, nodes }` — `nodes` are **pre-removal snapshots** (captured before removal, since the tree no longer holds them). |
@@ -185,8 +187,6 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `toggleNodeExpanded` | `path: string, opts?: ExpandOptions` | Expand a collapsed node / collapse an expanded one |
 | `expandAll` | `paths?: string \| string[] \| null, opts?: ExpandOptions` | Whole tree (`null`/omitted), or the given nodes + all descendants |
 | `collapseAll` | `paths?: string \| string[] \| null, opts?: ExpandOptions` | Whole tree (`null`/omitted), or the given nodes + all descendants |
-
-`ExpandOptions = { isExclusive?: boolean; isSilent?: boolean }` — `isExclusive` (expand only) collapses every open branch off the targets' spine; `isSilent` suppresses events / callbacks only — the tree always re-renders (svelte-treeview has no expand callbacks, so it is accepted for API parity).
 | `filterNodes` | `searchTerm: string, searchOptions?: SearchOptions` | Filter the tree display using internal search index with optional FlexSearch options |
 | `searchNodes` | `searchTerm: string \| null \| undefined, searchOptions?: SearchOptions` | Search nodes using internal search index and return matching nodes with optional FlexSearch options |
 | `scrollToPath` | `path: string, options?: ScrollToPathOptions` | Scroll to and highlight a specific node |
@@ -206,11 +206,40 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `updateNode` | `path: string, data: Partial<T>` | Update a node's data properties |
 | `copyNodeWithDescendants` | `sourcePath: string, targetPath: string, position: DropPosition` | Copy a node and its subtree to a new location |
 | `refreshNode` | `path: string` | Force re-render of a specific node |
-| `refreshSiblings` | `path: string` | Force re-render of a node's siblings |
+| `refreshSiblings` | `parentPath: string` | Re-sort a parent's children by the tree's rule (= `sortNodes(parentPath)`) |
+| `sortNodes` | `paths: string \| string[], options?: SortOptions` | Sort the children of each node — one level (`''` = root level) |
+| `sortAll` | `paths?: string \| string[] \| null, options?: SortOptions` | Sort whole subtrees (`null` / omitted = the whole tree) |
 | `getExpandedPaths` | | Get array of all currently expanded node paths |
 | `setExpandedPaths` | `paths: string[]` | Restore expanded state from saved paths |
 | `applyChanges` | `changes: TreeChange<T>[]` | Batch: `add` {parentPath, data, pathSegment?} / `insert` {targetPath, position, data} / `update` {path, data} / `remove` {path} |
 | `closeContextMenu` | | Programmatically close the context menu |
+
+`ExpandOptions = { isExclusive?: boolean; isSilent?: boolean }` — `isExclusive` (expand only) collapses every open branch off the targets' spine; `isSilent` suppresses events / callbacks only — the tree always re-renders (svelte-treeview has no expand callbacks, so it is accepted for API parity).
+
+### Sorting & positions
+
+Siblings are ordered by one rule: **`orderMember`** (display value breaks ties) → **`sortCallback`**
+→ the display value compared with `Intl.Collator(undefined, { numeric: true })` (`'Item 2'` before
+`'Item 10'`). The tree re-sorts **only the siblings of the affected parent** — on the initial load
+(unless `isSorted`), `addNode` / `addBranch`, `moveNode` / drop, `insertNode` / `insertBranch`
+(with `orderMember`), and `updateNode` when it changes the order value.
+
+An exact before / after position therefore needs **`orderMember`** (the moved / inserted node gets an
+order value between its neighbours, so the re-sort keeps it there) **or `isSortingEnabled={false}`**
+(no auto-sort at all: input order kept, `addNode` appends at the end, positioned operations place
+the node exactly — with `orderMember` the order values are still computed for persistence). Without
+either, a direct placement only lasts until the next re-sort of that parent.
+
+`sortNodes` / `sortAll` sort explicitly (also when auto-sorting is off). `SortOptions =
+{ compareCallback?: ({ a, b }) => number; direction?: 'asc' | 'desc'; isSilent?: boolean }` —
+`compareCallback` is an ascending comparator over two sibling `LTreeNode`s; `direction: 'desc'`
+reverses whichever rule applies. With `orderMember` set, a custom compare (or `'desc'`) rewrites the
+order values to 10, 20, 30… and fires `onNodesReorder` once per affected parent; `isSilent`
+suppresses that callback (the tree always re-renders).
+
+```ts
+treeRef.sortAll(null, { compareCallback: ({ a, b }) => a.data.size - b.data.size, direction: 'desc' });
+```
 
 ### Selection / checked / focus methods
 

@@ -75,6 +75,7 @@ Behavior props:
 | treePathSeparator | string | "." | Separator character for hierarchical paths |
 | expandLevel | number | 2 | Automatically expand nodes up to this level |
 | isSorted | boolean | null | Whether items are pre-sorted (skip internal sorting) |
+| isSortingEnabled | boolean | true | false = never auto-sort (input order kept; see tree-editing.txt SORTING & POSITIONS) |
 
 MEMBER CALLBACKS
 ----------------

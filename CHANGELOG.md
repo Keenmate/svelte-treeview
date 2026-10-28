@@ -38,7 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with `orderMember` they get order values spread between the target and its neighbour). **New
   `insertNode(targetPath, data, position)`** — positioned like `moveNode` (`orderMember`: an order value
   between the neighbours; otherwise placed directly next to the target — note that without
-  `orderMember` siblings are re-sorted by display value on the next add / move). New exported type
+  `orderMember` siblings are re-sorted by display value on the next add / move, unless
+  `isSortingEnabled={false}`). New exported type
   `InsertPosition`. The context-menu / keyboard Delete command keeps its name (`runDeleteCommand`,
   `onNodeDelete`).
 - **BREAKING: `data` → `nodes`; `getAllData()` removed** (`<Tree>`, `<TreeProvider>`, `update()`,

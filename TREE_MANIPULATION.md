@@ -262,16 +262,19 @@ refreshSiblings(parentPath: string): void
 
 1. Gets parent node (or root if empty path)
 2. Gets all children as array
-3. Sorts using `sortCallback` or default sort:
-   - If `orderMember` defined: compare order values
-   - Else: compare display values alphabetically
+3. Sorts by the sibling rule (`_sortSiblings`, shared with `sortNodes` / `sortAll`):
+   - If `orderMember` defined: compare order values (display value breaks ties)
+   - Else if `sortCallback`: its result
+   - Else: display values via `Intl.Collator(undefined, { numeric: true })`
 4. Rebuilds children object in sorted order
 5. Emits tree change
 
-**Called automatically by:**
+**Called automatically by** (skipped when `isSortingEnabled` is `false`):
 - `addNode()` after insertion
 - `moveNode()` after relocation
 - `updateNode()` if `orderMember` modified
+
+An explicit `refreshSiblings()` call always sorts.
 
 ---
 

@@ -62,6 +62,14 @@ each fire ONCE even for a multi-selection; ctx.dragged carries the full top-leve
   }}
 />
 
+REORDER EVENT
+-------------
+onNodesReorder: sortNodes / sortAll rewrote one parent's orderMember values (custom
+compareCallback or direction 'desc' with orderMember set). Once per parent; suppressed by
+{ isSilent: true }.
+<Tree onNodesReorder={({ parentPath, nodes, changes }) => api.saveOrder(changes)} />
+// changes: [{ path, oldOrder, newOrder }]
+
 SELECTION EVENTS
 ----------------
 Fire after the selection (UI multi-select) or the checked set changes.

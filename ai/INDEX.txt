@@ -132,6 +132,7 @@ isExpandedMember → data-handling.txt
 isRendering → performance.txt
 isCheckedMember → data-handling.txt
 isSorted → data-handling.txt
+isSortingEnabled → tree-editing.txt, data-handling.txt
 
 K
 -
@@ -199,6 +200,7 @@ rangeSelectionMode → advanced-patterns.txt
 refreshNode → tree-editing.txt
 replaceBranch → tree-editing.txt
 refreshSiblings → tree-editing.txt
+onNodesReorder → tree-editing.txt, events-callbacks.txt
 removeNode → tree-editing.txt
 Root drop zone → drag-drop.txt
 
@@ -228,6 +230,7 @@ clickBehavior → basic-setup.txt, events-callbacks.txt
 shouldUseInternalSearchIndex → search-features.txt
 Snippets → basic-setup.txt, context-menu.txt
 sortCallback → data-handling.txt, basic-setup.txt
+sortNodes / sortAll / SortOptions → tree-editing.txt
 $state.raw() → performance.txt
 statistics → basic-setup.txt, performance.txt
 Styles → styling-theming.txt

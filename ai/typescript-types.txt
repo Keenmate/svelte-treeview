@@ -303,6 +303,20 @@ getContextMenuItemsCallback?: (ctx: ContextMenuContext<T>) => ContextMenuEntry<T
 
 // Sort
 sortCallback?: (ctx: SortContext<T>) => LTreeNode<T>[];
+isSortingEnabled?: boolean;   // default true; false = never auto-sort
+onNodesReorder?: (ctx: NodesReorderContext<T>) => void;
+
+// sortNodes(paths, options?) / sortAll(paths?, options?)
+interface SortOptions<T> {
+  compareCallback?: (ctx: { a: LTreeNode<T>; b: LTreeNode<T> }) => number; // ascending
+  direction?: 'asc' | 'desc';
+  isSilent?: boolean;
+}
+interface NodesReorderContext<T> {
+  parentPath: string;              // '' = root
+  nodes: LTreeNode<T>[];           // all children, new order
+  changes: Array<{ path: string; oldOrder: number | undefined; newOrder: number }>;
+}
 
 CONTEXT TYPES (shared shapes — exported for consumers)
 ------------------------------------------------------

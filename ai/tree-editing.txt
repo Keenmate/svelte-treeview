@@ -120,6 +120,32 @@ When moving nodes with orderMember:
 - Uses midpoint between adjacent values
 - Example: Moving between 10 and 20 → sortOrder = 15
 
+SORTING & POSITIONS
+-------------------
+One sibling rule: orderMember (display value breaks ties) -> sortCallback ->
+Intl.Collator(numeric) by display value ('Item 2' before 'Item 10').
+The tree re-sorts ONLY the siblings of the affected parent: initial load (unless isSorted),
+addNode / addBranch, moveNode / drop, insertNode / insertBranch (with orderMember),
+updateNode changing the order value.
+
+Exact before/after position needs orderMember OR isSortingEnabled={false}:
+<Tree isSortingEnabled={false} ... />   // never auto-sort: input order kept,
+                                         // addNode appends, insert/move/drop keep the exact
+                                         // position (orderMember values still computed)
+
+Explicit sort (also when isSortingEnabled={false}):
+treeRef.sortNodes('1.2');                // children of 1.2, one level ('' = root level)
+treeRef.sortAll();                       // whole tree; sortAll('1') = subtree of 1
+treeRef.sortAll(null, { direction: 'desc' });
+treeRef.sortNodes('', { compareCallback: ({ a, b }) => a.data.size - b.data.size });
+// SortOptions { compareCallback?: ({ a, b }) => number  /* ascending */,
+//               direction?: 'asc' | 'desc'  /* reverses whichever rule applies */,
+//               isSilent?: boolean          /* no onNodesReorder; still re-renders */ }
+// With orderMember: a custom compare (or 'desc') rewrites the order values 10, 20, 30...
+// and fires onNodesReorder once per parent:
+<Tree onNodesReorder={({ parentPath, nodes, changes }) => save(changes)} />
+// changes: [{ path, oldOrder, newOrder }] (only the nodes whose value changed)
+
 HELPER METHODS
 --------------
 Get node by path:
@@ -134,7 +160,7 @@ Get siblings (including self):
 const siblings = treeRef.getSiblings('1.2.3');
 const index = siblings.findIndex(s => s.path === '1.2.3');
 
-Refresh siblings (re-sort):
+Refresh siblings (re-sort; = sortNodes(parentPath)):
 treeRef.refreshSiblings('1.2');  // Parent path
 
 Refresh specific node:
@@ -221,7 +247,8 @@ INSERT NEXT TO A NODE
 ---------------------
 treeRef.insertNode(targetPath, data, position)   // 'before' | 'after' | 'child'
 // orderMember set: the new node gets an order value between its neighbours (like moveNode);
-// otherwise it is placed directly next to the target (until the next sibling re-sort).
+// otherwise it is placed directly next to the target (until the next sibling re-sort —
+// unless isSortingEnabled={false}, see SORTING & POSITIONS).
 
 COPY NODE (low-level)
 ---------------------
