@@ -74,6 +74,7 @@ Without both requirements, no search indexing will occur.
 | `indexerBatchSize` | `number \| null` | `25` | Number of nodes to process per batch during search indexing |
 | `indexerTimeout` | `number \| null` | `50` | Maximum time (ms) to wait for idle callback before forcing indexing |
 | `isLoading` | `boolean` | `false` | Show loading placeholder instead of tree content |
+| `labels` | `Partial<TreeLabels>` | English defaults | UI strings merged per key: `noData` "No data" (no nodes), `noResults` "No results found" (search filter matched nothing), `dropHere` "Drop here", `noDisplayValue` "[N/A]" (node without a display value), `loading` "Loading…" (overlay aria-label). `''` = render nothing |
 
 ### Rendering properties
 
@@ -170,7 +171,7 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `nodeTemplate` | `(node)` | Custom node template |
 | `treeHeader` | | Tree header content |
 | `treeFooter` | | Tree footer content |
-| `noData` | | Content shown when tree has no data (falls back to the `noDataText` prop, default "No data") |
+| `noData` | | Content shown when tree has no data (falls back to `labels.noData` "No data", or `labels.noResults` "No results found" when the search filter matched nothing) |
 | `dropPlaceholder` | | Content shown in empty drop target tree |
 | `loadingPlaceholder` | | Content shown while `isLoading` is true |
 | `contextMenu` | `(node, closeMenu)` | Context menu template |

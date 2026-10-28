@@ -34,6 +34,7 @@ import {
 } from '../components/RenderCoordinator.svelte.js';
 import { uiLogger, dragLogger } from '../logger.js';
 import { perfStart, perfEnd } from '../perf-logger.js';
+import { resolveLabel, type TreeLabels } from './labels.js';
 import {
 	type ClipboardEntry,
 	type TreeClipboard,
@@ -394,6 +395,8 @@ export interface NodeConfig {
 	dropZoneMaxWidth: number;
 	isCopyAllowed: boolean;
 	shouldExpandAsAccordion: boolean;
+	/** Resolved `labels.loading` — the progressive "more children" row. */
+	loadingLabel: string;
 }
 
 // ─── Controller props ─────────────────────────────────────────────────────
@@ -423,7 +426,8 @@ export interface TreeControllerProps<T> {
 
 	displayValueMember?: string | null | undefined;
 	getDisplayValueCallback?: (ctx: NodeContext<T>) => string;
-	displayValueFallback?: string;
+	/** UI strings — partial, merged per key over the English defaults ('' = render nothing). */
+	labels?: Partial<TreeLabels> | null;
 
 	searchValueMember?: string | null | undefined;
 	getSearchValueCallback?: (ctx: NodeContext<T>) => string;
@@ -692,7 +696,8 @@ export class TreeController<T> {
 		shouldAlignNodeIcons: false,
 		dropZoneMaxWidth: 120,
 		isCopyAllowed: false,
-		shouldExpandAsAccordion: false
+		shouldExpandAsAccordion: false,
+		loadingLabel: 'Loading…'
 	});
 
 	// ── Props stored as reactive state ──────────────────────────────────
@@ -1034,6 +1039,19 @@ export class TreeController<T> {
 		return this.tree?.statistics;
 	}
 
+	/** UI strings (partial) — see `TreeLabels`. Resolve one with `getLabel()`. */
+	labels = $state.raw<Partial<TreeLabels> | null | undefined>(undefined);
+
+	/** The resolved UI string for `key` (`labels` over the English defaults; `''` = nothing). */
+	getLabel(key: keyof TreeLabels, params?: Record<string, string | number>): string {
+		return resolveLabel(this.labels, key, params);
+	}
+
+	/** Whether the tree holds any node (an empty render with nodes = the search filtered them all). */
+	get hasNodes(): boolean {
+		return (this.tree?.statistics?.nodeCount ?? 0) > 0;
+	}
+
 	// ── Constructor ─────────────────────────────────────────────────────
 
 	constructor(props: TreeControllerProps<T>) {
@@ -1046,6 +1064,7 @@ export class TreeController<T> {
 		registerClipboardTree(this.treeId, this);
 
 		this.data = props.data;
+		this.labels = props.labels;
 		this.focusedNode = props.focusedNode ?? null;
 		this.selectedPaths = props.selectedPaths ?? new Set();
 		this.checkedPaths = props.checkedPaths ?? new Set();
@@ -1180,7 +1199,7 @@ export class TreeController<T> {
 			{
 				isSorted: props.isSorted,
 				sortCallback: props.sortCallback,
-				displayValueFallback: props.displayValueFallback
+				displayValueFallback: resolveLabel(props.labels, 'noDisplayValue')
 			}
 		);
 
@@ -1246,7 +1265,8 @@ export class TreeController<T> {
 			dropZoneStart: this.dropZoneStart,
 			dropZoneMaxWidth: this.dropZoneMaxWidth,
 			isCopyAllowed: this.isCopyAllowed,
-			shouldExpandAsAccordion: this.shouldExpandAsAccordion
+			shouldExpandAsAccordion: this.shouldExpandAsAccordion,
+			loadingLabel: this.getLabel('loading')
 		};
 
 		// ── Initialize default navigation strategy ─────────────────────
@@ -1259,6 +1279,11 @@ export class TreeController<T> {
 		// Sync treePathSeparator → LTree
 		$effect(() => {
 			this.tree.treePathSeparator = this.treePathSeparator;
+		});
+
+		// Sync labels.noDisplayValue → LTree (the display fallback of a node without a value)
+		$effect(() => {
+			this.tree.displayValueFallback = this.getLabel('noDisplayValue');
 		});
 
 		// Mutate (don't replace) nodeConfig so the context reference stays the same.
@@ -1297,7 +1322,8 @@ export class TreeController<T> {
 				dropZoneStart: this.dropZoneStart,
 				dropZoneMaxWidth: this.dropZoneMaxWidth,
 				isCopyAllowed: this.isCopyAllowed,
-				shouldExpandAsAccordion: this.shouldExpandAsAccordion
+				shouldExpandAsAccordion: this.shouldExpandAsAccordion,
+				loadingLabel: this.getLabel('loading')
 			});
 		});
 
@@ -3333,8 +3359,7 @@ export class TreeController<T> {
 			this.contextMenuYOffset = updates.contextMenuYOffset ?? 0;
 		if (updates.touchDragDelay !== undefined)
 			this.touchDragDelay = updates.touchDragDelay ?? 300;
-		if (updates.displayValueFallback !== undefined)
-			this.tree.displayValueFallback = updates.displayValueFallback ?? '[N/A]';
+		if (updates.labels !== undefined) this.labels = updates.labels;
 		if (updates.shouldIndicateUndraggable !== undefined)
 			this.shouldIndicateUndraggable = updates.shouldIndicateUndraggable ?? true;
 

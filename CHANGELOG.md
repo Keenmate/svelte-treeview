@@ -15,6 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BREAKING: `labels` prop for the UI strings; `noDataText` and `displayValueFallback` removed** —
+  `labels?: Partial<TreeLabels>` (props, `update()`, `TreeController.labels` / `getLabel(key)`) merged
+  per key over the English defaults: `noData` "No data" (the tree has no nodes), `noResults` "No results
+  found" (nodes exist but the search filter matched none — the empty state now tells the two apart),
+  `dropHere` "Drop here" (was the hard-coded "Drop here to add"), `noDisplayValue` "[N/A]" (replaces
+  `displayValueFallback`), `loading` "Loading…" (the `isLoading` overlay is now `role="status"` with it
+  as `aria-label`; also the progressive "Loading… (n/m)" row, which used `...`). `''` = render nothing;
+  missing = default. The `noData` / `dropPlaceholder` / `loadingPlaceholder` snippets still replace
+  the markup. `resolveLabel()` / `DEFAULT_TREE_LABELS` / `TreeLabels` are exported. Mirrors
+  `@keenmate/web-treeview`.
 - **BREAKING: canonical boolean names** — `isProgressiveRender` → `isProgressiveRenderEnabled`;
   `isAccordionExpand` → `shouldExpandAsAccordion` (props, `update()`, `TreeController`). Same as
   `@keenmate/web-treeview` (`enable-progressive-render` / `expand-as-accordion`).

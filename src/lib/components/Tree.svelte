@@ -31,6 +31,7 @@
 	import { setContext, onDestroy, type Snippet } from 'svelte';
 	import type { RenderStats } from './RenderCoordinator.svelte.js';
 	import { TreeController } from '../core/TreeController.svelte.js';
+	import type { TreeLabels } from '../core/labels.js';
 	import type {
 		NodeEventContext,
 		NodeDragContext,
@@ -78,9 +79,6 @@
 
 		displayValueMember?: string | null | undefined;
 		getDisplayValueCallback?: (ctx: NodeContext<T>) => string;
-		/** Text shown for a node with no resolvable display value (no displayValueMember /
-		 *  getDisplayValueCallback match). Default '[N/A]'. Also used by the touch-drag ghost. */
-		displayValueFallback?: string;
 
 		searchValueMember?: string | null | undefined;
 		getSearchValueCallback?: (ctx: NodeContext<T>) => string;
@@ -117,8 +115,13 @@
 		dropPlaceholder?: any;
 		loadingPlaceholder?: any;
 
-		/** Fallback text shown in an empty tree when no `noData` snippet is provided. Default: "No data". */
-		noDataText?: string;
+		/** UI strings — a partial object merged per key over the English defaults (`''` = render
+		 *  nothing): `noData` ("No data" — no nodes), `noResults` ("No results found" — the search
+		 *  filter left nothing), `dropHere` ("Drop here" — default drop placeholder),
+		 *  `noDisplayValue` ("[N/A]" — node without a display value; also the touch-drag ghost),
+		 *  `loading` ("Loading…" — `isLoading` overlay aria-label, progressive "more" row).
+		 *  The `noData` / `dropPlaceholder` snippets still replace the markup. */
+		labels?: Partial<TreeLabels> | null;
 
 		// BEHAVIOUR
 		expandLevel?: number | null | undefined;
@@ -184,7 +187,7 @@
 		dropZoneStart?: number | string; // number = percentage (0-100), string = any CSS value ("33%", "50px", "3rem")
 		dropZoneMaxWidth?: number; // max width in pixels for wave layouts
 		/**
-		 * Keep the `dropPlaceholder` (or default "Drop here") visible whenever the tree
+		 * Keep the `dropPlaceholder` (or `labels.dropHere`, default "Drop here") visible whenever the tree
 		 * is empty — not just mid-drag. Also makes the empty drop zone grab keyboard
 		 * focus on hover, so a clipboard paste (Ctrl/Cmd+V routed through `beforeKeydownCallback`)
 		 * lands on this tree without needing a node to click first. Default: false.
@@ -415,7 +418,6 @@
 
 		displayValueMember,
 		getDisplayValueCallback,
-		displayValueFallback = '[N/A]',
 		searchValueMember,
 		getSearchValueCallback,
 		orderMember,
@@ -437,7 +439,7 @@
 		contextMenu = undefined,
 		dropPlaceholder = undefined,
 		loadingPlaceholder = undefined,
-		noDataText = 'No data',
+		labels = undefined,
 
 		// BEHAVIOUR
 		expandLevel = 2,
@@ -586,7 +588,7 @@
 		getIsCollapsibleCallback,
 		displayValueMember,
 		getDisplayValueCallback,
-		displayValueFallback,
+		labels,
 		searchValueMember,
 		getSearchValueCallback,
 		orderMember,
@@ -1007,7 +1009,7 @@
 		controller.shouldIndicateUndraggable = shouldIndicateUndraggable ?? true;
 	});
 	$effect(() => {
-		if (controller?.tree) controller.tree.displayValueFallback = displayValueFallback ?? '[N/A]';
+		controller.labels = labels;
 	});
 
 	// Callback sync
@@ -1413,7 +1415,6 @@
 				| 'getIsDropAllowedCallback'
 				| 'displayValueMember'
 				| 'getDisplayValueCallback'
-				| 'displayValueFallback'
 				| 'searchValueMember'
 				| 'getSearchValueCallback'
 				| 'isCollapsibleMember'
@@ -1471,7 +1472,7 @@
 				| 'dropZoneMode'
 				| 'isEmptyDropPlaceholderShown'
 				| 'isTreeDropZoneEnabled'
-				| 'noDataText'
+				| 'labels'
 				| 'bodyClass'
 				| 'iconSet'
 				| 'expandIconClass'
@@ -1534,8 +1535,6 @@
 		if (updates.displayValueMember !== undefined) displayValueMember = updates.displayValueMember;
 		if (updates.getDisplayValueCallback !== undefined)
 			getDisplayValueCallback = updates.getDisplayValueCallback;
-		if (updates.displayValueFallback !== undefined)
-			displayValueFallback = updates.displayValueFallback;
 		if (updates.searchValueMember !== undefined) searchValueMember = updates.searchValueMember;
 		if (updates.getSearchValueCallback !== undefined)
 			getSearchValueCallback = updates.getSearchValueCallback;
@@ -1613,7 +1612,7 @@
 			isEmptyDropPlaceholderShown = updates.isEmptyDropPlaceholderShown;
 		if (updates.isTreeDropZoneEnabled !== undefined)
 			isTreeDropZoneEnabled = updates.isTreeDropZoneEnabled;
-		if (updates.noDataText !== undefined) noDataText = updates.noDataText;
+		if (updates.labels !== undefined) labels = updates.labels;
 		if (updates.bodyClass !== undefined) bodyClass = updates.bodyClass;
 		if (updates.iconSet !== undefined) iconSet = updates.iconSet;
 		if (updates.expandIconClass !== undefined) expandIconClass = updates.expandIconClass;
@@ -1861,12 +1860,15 @@
 			{#if dropPlaceholder}
 				{@render dropPlaceholder()}
 			{:else}
-				<div class="stv__drop-placeholder-content">Drop here to add</div>
+				{@const dropHereText = controller.getLabel('dropHere')}
+				{#if dropHereText}<div class="stv__drop-placeholder-content">{dropHereText}</div>{/if}
 			{/if}
 		{:else if noData}
 			{@render noData()}
 		{:else}
-			<div class="stv__empty-state-content">{noDataText}</div>
+			<!-- No nodes at all → noData; nodes exist but the search filter hid them all → noResults -->
+			{@const emptyText = controller.getLabel(controller.hasNodes ? 'noResults' : 'noData')}
+			{#if emptyText}<div class="stv__empty-state-content">{emptyText}</div>{/if}
 		{/if}
 	</div>
 {/snippet}
@@ -1888,7 +1890,8 @@
 	{@render treeHeader?.()}
 
 	{#if controller.isLoading}
-		<div class="stv__loading-overlay">
+		{@const loadingText = controller.getLabel('loading')}
+		<div class="stv__loading-overlay" role="status" aria-label={loadingText || undefined}>
 			{#if loadingPlaceholder}
 				{@render loadingPlaceholder()}
 			{:else}

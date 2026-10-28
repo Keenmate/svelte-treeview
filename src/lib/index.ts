@@ -23,6 +23,8 @@ export type { ClipboardEntry, TreeClipboard } from "./core/clipboard.js"
 export { setClipboard, getClipboard, clearClipboard, hasClipboard, getClipboardOperation, uniqueName } from "./core/clipboard.js"
 export type { TreeNavigation, TreeNavigationOverrides } from "./core/navigation.js"
 export type { RenderStats } from "./components/RenderCoordinator.svelte"
+export { DEFAULT_TREE_LABELS, resolveLabel } from "./core/labels.js"
+export type { TreeLabels } from "./core/labels.js"
 export type { NodeCallbacks, NodeConfig, SelectionModifiers } from "./core/TreeController.svelte"
 
 // Export logging utilities

@@ -424,7 +424,7 @@ const data = [
 		<p class="description">
 			A node's label comes from <code>getNodeDisplayValue</code>, resolved in order:
 			<code>displayValueMember</code> &rarr; <code>getDisplayValueCallback</code> &rarr;
-			<code>displayValueFallback</code>. When a tree configures neither a member nor a
+			<code>labels.noDisplayValue</code>. When a tree configures neither a member nor a
 			callback (or a node has no <code>data</code>), the fallback text is shown for every
 			node — this is also what the touch-drag ghost displays. Default is <code>'[N/A]'</code>,
 			and it's now configurable per-tree (and live-updatable).
@@ -466,7 +466,7 @@ const data = [
 						data={dotSeparatorData}
 						idMember="id"
 						pathMember="path"
-						displayValueFallback={displayValueFallbackText}
+						labels={{ noDisplayValue: displayValueFallbackText }}
 						sortCallback={sortByName}
 						isSorted={true}
 						expandLevel={3}
@@ -481,7 +481,7 @@ const data = [
   data={data}
   idMember="id"
   pathMember="path"
-  displayValueFallback="${displayValueFallbackText || '[N/A]'}"
+  labels={{ noDisplayValue: '${displayValueFallbackText}' }}
 />`}</pre>
 		</div>
 
@@ -490,7 +490,7 @@ const data = [
 			<ul>
 				<li><strong>displayValueMember</strong> — used when set and the node has data (wins over the callback)</li>
 				<li><strong>getDisplayValueCallback</strong> — used when no member (or the node has no data)</li>
-				<li><strong>displayValueFallback</strong> — used only when neither resolves; set <code>""</code> to render nothing</li>
+				<li><strong>labels.noDisplayValue</strong> — used only when neither resolves; set <code>""</code> to render nothing</li>
 			</ul>
 		</div>
 	</div>

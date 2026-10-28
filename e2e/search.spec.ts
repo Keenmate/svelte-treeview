@@ -129,6 +129,14 @@ test.describe('Filter mode (default)', () => {
 		await expect(searchBar(page).locator('.search-counter.no-results')).toContainText('0 results');
 	});
 
+	test('filter matching nothing shows labels.noResults (not noData) in the tree', async ({ page }) => {
+		await gotoSearch(page);
+
+		await searchInput(page).fill('xxx_no_match_zzz');
+
+		await expect(treeContainer(page).locator('.stv__empty-state-content')).toHaveText('No results found');
+	});
+
 	test('Clear (×) button empties the input and restores the tree', async ({ page }) => {
 		await gotoSearch(page);
 

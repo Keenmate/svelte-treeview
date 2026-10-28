@@ -566,7 +566,7 @@
 			{/each}
 			{#if hasMoreToRender}
 				<div class="stv__loading-more">
-					Loading... ({renderedCount}/{childrenArray.length})
+					{#if config.loadingLabel}{config.loadingLabel} {/if}({renderedCount}/{childrenArray.length})
 				</div>
 			{/if}
 		</div>

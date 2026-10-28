@@ -240,9 +240,20 @@ Custom message when tree is empty:
   {/snippet}
 </Tree>
 
-The snippet name is noData (not noDataFound). Without a snippet,
-the noDataText string is used as a fallback (default "No data"):
-<Tree {data} noDataText="Nothing here yet" />
+The snippet name is noData (not noDataFound). Without a snippet the
+labels prop supplies the text: labels.noData (default "No data") when the
+tree has no nodes, labels.noResults (default "No results found") when the
+search filter matched nothing. '' renders nothing.
+<Tree {data} labels={{ noData: 'Nothing here yet' }} />
+
+LABELS (UI strings)
+-------------------
+labels?: Partial<TreeLabels> — merged per key over the English defaults:
+  noData "No data" | noResults "No results found" | dropHere "Drop here"
+  noDisplayValue "[N/A]" (node with no display value) | loading "Loading…"
+'' = deliberately empty (render nothing); missing/undefined = default.
+Text only (escaped by Svelte). Snippets noData / dropPlaceholder /
+loadingPlaceholder still replace the markup.
 
 LOADING STATE
 -------------

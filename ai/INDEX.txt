@@ -158,7 +158,7 @@ navigationOverrides → advanced-patterns.txt
 navInto → typescript-types.txt, advanced-patterns.txt
 navOut → typescript-types.txt, advanced-patterns.txt
 noData → basic-setup.txt
-noDataText → basic-setup.txt
+labels (noData/noResults/dropHere/noDisplayValue/loading) → basic-setup.txt
 nodeInputTransformationCallback → tree-editing.txt
 nodeOutputTransformationCallback → tree-editing.txt
 nodeTemplate → basic-setup.txt, styling-theming.txt
