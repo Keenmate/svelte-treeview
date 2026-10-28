@@ -299,6 +299,7 @@ Callback props (one-way notification):
 - onSelectionChange
 - onCheckedChange
 - onNodeExpand / onNodeCollapse / onExpandedChange
+- onFocusChange ({ focusedNode, controller }) / onTreeChange ({ controller }, after mutations)
 - beforeExpandCallback (interceptor; Promise = lazy load with loading state)
 - onNodeCopy / onNodeCut / onNodePaste / onNodeDelete
 - beforeKeydownCallback (interceptor)
@@ -354,6 +355,12 @@ onNodeExpand / onNodeCollapse:
 
 onExpandedChange:
 (ctx: { paths: Set<string>, controller }) => void   // whole new expanded set
+
+onFocusChange:
+(ctx: { focusedNode: LTreeNode<T> | null, controller }) => void   // not for isSilent / bind assign
+
+onTreeChange:
+(ctx: { controller }) => void   // data/structure changed by a mutation; once per batch; not on load
 
 beforeExpandCallback (interceptor):
 (ctx: NodeRef<T> & { controller }) => boolean | void | Promise<boolean | void>

@@ -23,6 +23,8 @@
 	let treeRef: Tree<Item>;
 	let expanded = $state<Set<string>>(new Set());
 	let log = $state<string[]>([]);
+	// focus / tree-change log (separate so the expand assertions stay exact)
+	let log2 = $state<string[]>([]);
 	let isAccordion = $state(false);
 	let releaseLazy: ((v: boolean) => void) | null = null;
 
@@ -61,9 +63,16 @@
 		<button data-testid="release-lazy" onclick={() => releaseLazy?.(true)}>release lazy</button>
 		<button data-testid="reject-lazy" onclick={() => releaseLazy?.(false)}>reject lazy</button>
 		<button data-testid="accordion" onclick={() => (isAccordion = !isAccordion)}>accordion</button>
-		<button data-testid="clear-log" onclick={() => (log = [])}>clear</button>
+		<button data-testid="clear-log" onclick={() => ((log = []), (log2 = []))}>clear</button>
+		<button data-testid="focus-2" onclick={() => treeRef.focusNode('2')}>focusNode('2')</button>
+		<button data-testid="focus-1-silent" onclick={() => treeRef.focusNode('1', { isSilent: true })}>focusNode('1', silent)</button>
+		<button data-testid="clear-focus" onclick={() => treeRef.clearFocus()}>clearFocus</button>
+		<button data-testid="add-node" onclick={() => treeRef.addNode('2', { id: 99, path: '2.9', name: 'Added' } as Item)}>addNode</button>
+		<button data-testid="batch" onclick={() => { treeRef.addNode('', { id: 98, path: '9', name: 'Root9' } as Item); treeRef.removeNode('3'); }}>add + remove</button>
+		<button data-testid="sort-all" onclick={() => treeRef.sortAll()}>sortAll</button>
 	</div>
 	<pre data-testid="log">{JSON.stringify(log)}</pre>
+	<pre data-testid="log2">{JSON.stringify(log2)}</pre>
 	<pre data-testid="expanded">{JSON.stringify([...expanded].sort())}</pre>
 
 	<div data-testid="tree">
@@ -81,6 +90,8 @@
 			onNodeExpand={(ctx) => push(`expand:${ctx.path}`)}
 			onNodeCollapse={(ctx) => push(`collapse:${ctx.path}`)}
 			onExpandedChange={(ctx) => push(`changed:${[...ctx.paths].sort().join(',')}`)}
+			onFocusChange={(ctx) => (log2 = [...log2, `focus:${ctx.focusedNode?.path ?? 'null'}:${ctx.controller ? 'ctrl' : 'no-ctrl'}`])}
+			onTreeChange={(ctx) => (log2 = [...log2, `tree:${ctx.controller ? 'ctrl' : 'no-ctrl'}`])}
 		/>
 	</div>
 </main>

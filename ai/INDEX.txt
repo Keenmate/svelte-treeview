@@ -104,6 +104,7 @@ getDisplayValueCallback → data-handling.txt
 expandedPaths (bindable) → tree-editing.txt
 beforeExpandCallback → tree-editing.txt, events-callbacks.txt
 onNodeExpand / onNodeCollapse / onExpandedChange → tree-editing.txt, events-callbacks.txt
+onFocusChange / onTreeChange → events-callbacks.txt
 getIsCollapsibleCallback → data-handling.txt
 getIsDraggableCallback → drag-drop.txt, data-handling.txt
 getNodeByPath → tree-editing.txt

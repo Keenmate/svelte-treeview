@@ -24,6 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   through `toggleNodeExpanded` (accordion + gate in one place); the expand methods' Promise
   settles after an async gate. New types `ExpandedChangeContext`, `BeforeExpandContext`,
   `TreeCallbackContext`.
+- **`onFocusChange({ focusedNode, controller })`** — the focused node changed (click, keyboard,
+  `focusNode` / `clearFocus`, removal); `focusNode` / `clearFocus` now honour `{ isSilent: true }`
+  (the option used to be ignored). Assigning `bind:focusedNode` stays silent. **`onTreeChange({
+  controller })`** — the tree's data / structure changed through a mutation (add / insert / move /
+  remove / update / `applyChanges` / paste / drop / sort), once per batch after `nodes` was
+  re-collected; not for loading new `nodes`. Parity with web-treeview's `focus-change` /
+  `tree-change`. New types `FocusChangeContext`, `TreeChangeContext`.
 
 - **`isSortingEnabled` prop (default `true`)** — `false` = never auto-sort: the input order is
   kept, `addNode` / `addBranch` append at the end, `insertNode` / `insertBranch` / `moveNode` / drop

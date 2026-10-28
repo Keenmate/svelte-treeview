@@ -133,6 +133,8 @@ Every `on*` event receives a **single context object** mirroring the clipboard c
 | `onNodeCollapse` | `(ctx: NodeRef<T> & { controller }) => void` | `undefined` | A node collapsed (toggle, keyboard, `collapseNodes`, an accordion sibling). NOT `collapseAll`. Suppressed by `isSilent`. |
 | `onExpandedChange` | `(ctx: ExpandedChangeContext<T>) => void` | `undefined` | The expanded set changed (any cause: toggle, keyboard, expand/collapse methods, `expandAll` / `collapseAll`, accordion, data changes). `ctx = { paths: Set<string>, controller }` — the whole new set (same as `expandedPaths`). Fires after the per-node events. Not fired for `isSilent` operations nor for assigning `bind:expandedPaths`. |
 | `beforeExpandCallback` | `(ctx: BeforeExpandContext<T>) => boolean \| void \| Promise<boolean \| void>` | `undefined` | Runs before a collapsed node with children expands (toggle, keyboard, `expandNodes` — not `expandAll` / seeding / accordion; it also runs for `isSilent`). `false` keeps it collapsed. A **Promise defers the expand**: the node shows its loading state (spinner toggle, `aria-busy` + `data-loading` on the row; repeat toggles are ignored) until it settles — lazy loading: `ctx.controller.addBranch(ctx.path, children)` then resolve. A throw / rejection keeps it collapsed and is logged. `ctx` = the node's `NodeRef` + `controller`. |
+| `onFocusChange` | `(ctx: FocusChangeContext<T>) => void` | `undefined` | The focused node changed (click, keyboard, `focusNode` / `clearFocus`, removal of the focused node). `ctx = { focusedNode: LTreeNode<T> \| null, controller }`. Not fired for `{ isSilent: true }` nor for assigning `bind:focusedNode`. |
+| `onTreeChange` | `(ctx: { controller }) => void` | `undefined` | The tree's data / structure changed through a mutation (add / insert / move / remove / update / `applyChanges` / paste / drop / sort) — once per batch, on the microtask after `nodes` was re-collected. Not fired for loading new `nodes`. |
 | `onNodesReorder` | `(ctx: NodesReorderContext<T>) => void` | `undefined` | `sortNodes` / `sortAll` rewrote one parent's `orderMember` values (custom `compareCallback` or `direction: 'desc'`). `ctx = { parentPath, nodes, changes: [{ path, oldOrder, newOrder }] }` — persist `changes`. Suppressed by `{ isSilent: true }`. |
 | `onNodeCopy` | `(ctx: ClipboardEventContext<T>) => void` | `undefined` | Fired after `controller.copyNodes()` succeeds. `ctx = { operation: 'copy', paths, nodes }` (nodes live). |
 | `onNodeCut` | `(ctx: ClipboardEventContext<T>) => void` | `undefined` | Fired after `controller.cutNodes()` succeeds. `ctx = { operation: 'cut', paths, nodes }` (nodes still live — cut only dims until paste). |
@@ -260,7 +262,7 @@ Three independent concerns, each with the same method shape. `opts` is always `T
 | `uncheckNode` | `path: string, opts?` | Uncheck one node (cascades in cascade mode) |
 | `uncheckNodes` | `paths: string[], opts?` | Uncheck nodes (cascades in cascade mode) |
 | `uncheckAll` | `opts?` | Uncheck every node |
-| `focusNode` | `path: string, opts?` | Move focus to a node |
+| `focusNode` | `path: string, opts?` | Move focus to a node (fires `onFocusChange` unless `{ isSilent: true }`) |
 | `clearFocus` | `opts?` | Clear the focused node |
 
 Read-side helpers: `getSelectedNodes()` / `isNodeSelected(path)` / `getCheckedNodes()` / `isNodeChecked(path)`.

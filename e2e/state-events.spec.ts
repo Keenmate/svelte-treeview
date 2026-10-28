@@ -109,3 +109,30 @@ test('accordion collapses the expanded sibling and fires collapse for it', async
 	await toggle(page, '2').click();
 	await expect.poll(() => log(page)).toEqual(['before:2:ctrl', 'collapse:1', 'expand:2', 'changed:2']);
 });
+
+async function log2(page: Page): Promise<string[]> {
+	return JSON.parse((await page.getByTestId('log2').textContent()) || '[]');
+}
+
+test('onFocusChange: focusNode / clearFocus fire, isSilent does not, same node does not repeat', async ({ page }) => {
+	await page.getByTestId('focus-2').click();
+	await expect.poll(() => log2(page)).toEqual(['focus:2:ctrl']);
+	await page.getByTestId('focus-2').click();
+	await page.getByTestId('focus-1-silent').click();
+	await page.getByTestId('clear-focus').click();
+	await expect.poll(() => log2(page)).toEqual(['focus:2:ctrl', 'focus:null:ctrl']);
+});
+
+test('onFocusChange fires on a node click', async ({ page }) => {
+	await page.getByTestId('tree').getByText('B', { exact: true }).click();
+	await expect.poll(() => log2(page)).toEqual(['focus:2:ctrl']);
+});
+
+test('onTreeChange fires once per mutation batch (add, add+remove, sort)', async ({ page }) => {
+	await page.getByTestId('add-node').click();
+	await expect.poll(() => log2(page)).toEqual(['tree:ctrl']);
+	await page.getByTestId('batch').click();
+	await expect.poll(() => log2(page)).toEqual(['tree:ctrl', 'tree:ctrl']);
+	await page.getByTestId('sort-all').click();
+	await expect.poll(() => log2(page)).toEqual(['tree:ctrl', 'tree:ctrl', 'tree:ctrl']);
+});

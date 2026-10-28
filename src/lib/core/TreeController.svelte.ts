@@ -296,6 +296,14 @@ export interface TreeCallbackContext<T> {
 	controller: TreeController<T>;
 }
 
+/** ctx of `onFocusChange` — the new focused node (null = focus cleared). */
+export interface FocusChangeContext<T> extends TreeCallbackContext<T> {
+	focusedNode: LTreeNode<T> | null;
+}
+
+/** ctx of `onTreeChange` — just the controller (read the new state from it). */
+export type TreeChangeContext<T> = TreeCallbackContext<T>;
+
 /** ctx of `onExpandedChange` — the whole new expanded set (same as `expandedPaths`). */
 export interface ExpandedChangeContext<T> extends TreeCallbackContext<T> {
 	paths: Set<string>;
@@ -592,6 +600,13 @@ export interface TreeControllerProps<T> {
 	 *  shows the node's loading state (lazy loading: `addBranch` the children, then
 	 *  resolve). A throw / rejection keeps it collapsed and is logged. */
 	beforeExpandCallback?: (ctx: BeforeExpandContext<T>) => boolean | void | Promise<boolean | void>;
+	/** The focused node changed (click, keyboard, `focusNode` / `clearFocus`, a removed focused
+	 *  node). Not fired for `{ isSilent: true }` nor for assigning `focusedNode`. */
+	onFocusChange?: (ctx: FocusChangeContext<T>) => void;
+	/** The tree's data / structure changed through a mutation (add / insert / move / remove /
+	 *  update / applyChanges / paste / drop / sort) — once per batch, after `nodes` was
+	 *  re-collected (microtask). Not fired for loading new `nodes`. */
+	onTreeChange?: (ctx: TreeChangeContext<T>) => void;
 	/** `sortNodes` / `sortAll` rewrote the `orderMember` values of one parent's children (custom
 	 *  `compareCallback` or `direction: 'desc'` with `orderMember` set) — persist `changes`.
 	 *  Once per affected parent; skipped with `isSilent`. */
@@ -767,6 +782,7 @@ export class TreeController<T> {
 	/** The array this controller wrote back itself — the insertArray effect must not re-insert it. */
 	#selfWrittenNodes: T[] | null = null;
 	#nodesDirty = false;
+	#treeChangePending = false;
 	/** The tree's nodes. Assign to (re)load the tree; read for the CURRENT state — after a
 	 *  mutation (move / add / remove / paste / applyChanges…) this is the tree's data,
 	 *  re-collected (and written back on a microtask, which updates `bind:nodes`). */
@@ -776,8 +792,11 @@ export class TreeController<T> {
 	set nodes(value: T[]) {
 		this.#nodes = value;
 	}
-	/** @internal A mutation changed the tree's data — re-collect `nodes` (coalesced, microtask). */
-	_markNodesChanged() {
+	/** @internal A mutation changed the tree's data — re-collect `nodes` (coalesced, microtask)
+	 *  and fire `onTreeChange`. `shouldNotify: false` = the post-tick re-collect of a mutation
+	 *  already announced (no second onTreeChange). */
+	_markNodesChanged(shouldNotify = true) {
+		if (shouldNotify) this.#treeChangePending = true;
 		if (this.#nodesDirty) return;
 		this.#nodesDirty = true;
 		queueMicrotask(() => {
@@ -786,6 +805,10 @@ export class TreeController<T> {
 			const current = this.tree?._collectData() ?? [];
 			this.#selfWrittenNodes = current;
 			this.#nodes = current;
+			if (this.#treeChangePending) {
+				this.#treeChangePending = false;
+				this.onTreeChangeHandler?.(this._ctx({}));
+			}
 		});
 	}
 	focusedNode = $state.raw<LTreeNode<T> | null | undefined>(null);
@@ -878,6 +901,8 @@ export class TreeController<T> {
 	onNodeCollapseHandler: TreeControllerProps<T>['onNodeCollapse'];
 	onExpandedChangeHandler: TreeControllerProps<T>['onExpandedChange'];
 	beforeExpandHandler: TreeControllerProps<T>['beforeExpandCallback'];
+	onFocusChangeHandler: TreeControllerProps<T>['onFocusChange'];
+	onTreeChangeHandler: TreeControllerProps<T>['onTreeChange'];
 	onNodeDragStartHandler: TreeControllerProps<T>['onNodeDragStart'];
 	onNodeDragOverHandler: TreeControllerProps<T>['onNodeDragOver'];
 	onNodeDropHandler: TreeControllerProps<T>['onNodeDrop'];
@@ -1243,6 +1268,8 @@ export class TreeController<T> {
 		this.onNodeCollapseHandler = props.onNodeCollapse;
 		this.onExpandedChangeHandler = props.onExpandedChange;
 		this.beforeExpandHandler = props.beforeExpandCallback;
+		this.onFocusChangeHandler = props.onFocusChange;
+		this.onTreeChangeHandler = props.onTreeChange;
 		this.onNodeDragStartHandler = props.onNodeDragStart;
 		this.onNodeDragOverHandler = props.onNodeDragOver;
 		this.onNodeDropHandler = props.onNodeDrop;
@@ -2065,7 +2092,7 @@ export class TreeController<T> {
 		const reorders = run();
 		tick().then(() => {
 			this._skipInsertArray = false;
-			this._markNodesChanged();
+			this._markNodesChanged(false);
 		});
 		if (options?.isSilent || !this.onNodesReorderHandler) return;
 		for (const ctx of reorders) this.onNodesReorderHandler(ctx);
@@ -2161,7 +2188,7 @@ export class TreeController<T> {
 
 		tick().then(() => {
 			this._skipInsertArray = false;
-			this._markNodesChanged();
+			this._markNodesChanged(false);
 		});
 		return result;
 	}
@@ -2405,7 +2432,7 @@ export class TreeController<T> {
 
 		tick().then(() => {
 			this._skipInsertArray = false;
-			this._markNodesChanged();
+			this._markNodesChanged(false);
 		});
 
 		return {
@@ -2437,7 +2464,7 @@ export class TreeController<T> {
 		};
 		tick().then(() => {
 			this._skipInsertArray = false;
-			this._markNodesChanged();
+			this._markNodesChanged(false);
 		});
 		return result;
 	}
@@ -2455,7 +2482,7 @@ export class TreeController<T> {
 		};
 		tick().then(() => {
 			this._skipInsertArray = false;
-			this._markNodesChanged();
+			this._markNodesChanged(false);
 		});
 		return result;
 	}
@@ -2472,7 +2499,7 @@ export class TreeController<T> {
 		};
 		tick().then(() => {
 			this._skipInsertArray = false;
-			this._markNodesChanged();
+			this._markNodesChanged(false);
 		});
 		return result;
 	}
@@ -2483,7 +2510,7 @@ export class TreeController<T> {
 		const result = this.tree?.applyChanges(changes) || { successful: 0, failed: [] };
 		tick().then(() => {
 			this._skipInsertArray = false;
-			this._markNodesChanged();
+			this._markNodesChanged(false);
 		});
 		return result;
 	}
@@ -2506,7 +2533,7 @@ export class TreeController<T> {
 		) || { success: false, count: 0, error: 'Tree not initialized' };
 		tick().then(() => {
 			this._skipInsertArray = false;
-			this._markNodesChanged();
+			this._markNodesChanged(false);
 		});
 		return result;
 	}
@@ -2528,7 +2555,7 @@ export class TreeController<T> {
 		};
 		tick().then(() => {
 			this._skipInsertArray = false;
-			this._markNodesChanged();
+			this._markNodesChanged(false);
 		});
 		return result;
 	}
@@ -2546,7 +2573,7 @@ export class TreeController<T> {
 		};
 		tick().then(() => {
 			this._skipInsertArray = false;
-			this._markNodesChanged();
+			this._markNodesChanged(false);
 		});
 		return result;
 	}
@@ -2563,7 +2590,7 @@ export class TreeController<T> {
 		};
 		tick().then(() => {
 			this._skipInsertArray = false;
-			this._markNodesChanged();
+			this._markNodesChanged(false);
 		});
 		return result;
 	}
@@ -2579,7 +2606,7 @@ export class TreeController<T> {
 		};
 		tick().then(() => {
 			this._skipInsertArray = false;
-			this._markNodesChanged();
+			this._markNodesChanged(false);
 		});
 		return result;
 	}
@@ -2594,7 +2621,7 @@ export class TreeController<T> {
 		};
 		tick().then(() => {
 			this._skipInsertArray = false;
-			this._markNodesChanged();
+			this._markNodesChanged(false);
 		});
 		return result;
 	}
@@ -3000,7 +3027,7 @@ export class TreeController<T> {
 
 		tick().then(() => {
 			this._skipInsertArray = false;
-			this._markNodesChanged();
+			this._markNodesChanged(false);
 		});
 
 		// Clear cut-dimming. A CUT is a one-shot move, so clear the clipboard; a COPY
@@ -3660,7 +3687,7 @@ export class TreeController<T> {
 		if (updates.treePathSeparator !== undefined)
 			this.treePathSeparator = updates.treePathSeparator ?? '.';
 		if (updates.nodes !== undefined) this.nodes = updates.nodes;
-		if (updates.focusedNode !== undefined) this._setFocusedNode(updates.focusedNode ?? null);
+		if (updates.focusedNode !== undefined) this._setFocusedNode(updates.focusedNode ?? null, true);
 		if (updates.selectedPaths !== undefined)
 			this._replaceSelectedPaths(updates.selectedPaths ?? []);
 		if (updates.expandedPaths !== undefined) {
@@ -3805,6 +3832,8 @@ export class TreeController<T> {
 		if (updates.onNodeCollapse !== undefined) this.onNodeCollapseHandler = updates.onNodeCollapse;
 		if (updates.onExpandedChange !== undefined) this.onExpandedChangeHandler = updates.onExpandedChange;
 		if (updates.beforeExpandCallback !== undefined) this.beforeExpandHandler = updates.beforeExpandCallback;
+		if (updates.onFocusChange !== undefined) this.onFocusChangeHandler = updates.onFocusChange;
+		if (updates.onTreeChange !== undefined) this.onTreeChangeHandler = updates.onTreeChange;
 	}
 
 	// ── Internal event handlers ─────────────────────────────────────────
@@ -4216,8 +4245,9 @@ export class TreeController<T> {
 		return out;
 	}
 
-	/** Set focused node, clearing previous focus flag */
-	private _setFocusedNode(node: LTreeNode<T> | null) {
+	/** Set focused node, clearing previous focus flag. Fires `onFocusChange` when the focused
+	 *  path changed, unless `isSilent`. */
+	private _setFocusedNode(node: LTreeNode<T> | null, isSilent?: boolean) {
 		// IMPORTANT: bidirectional bind on `focusedNode` can route the value through
 		// the parent's `$state`, which deep-clones the node into a reactive proxy.
 		// That clone shares the path but is a different object from the tree's
@@ -4239,6 +4269,8 @@ export class TreeController<T> {
 			canonical._rev = (canonical._rev || 0) + 1;
 		}
 		this.focusedNode = canonical;
+		if (!isSilent && prevPath !== canonical?.path && (prevPath !== undefined || canonical))
+			this.onFocusChangeHandler?.(this._ctx({ focusedNode: canonical }));
 	}
 
 	/**
@@ -4673,18 +4705,17 @@ export class TreeController<T> {
 
 	// ── Public focus methods (single cursor) ─────────────────────────
 
-	/** Move focus to a node. `_options` is accepted for signature parity;
-	 *  focus changes have no dedicated change callback. */
-	focusNode(path: string, _options?: TreeMutationOptions) {
+	/** Move focus to a node. Fires `onFocusChange` unless `{ isSilent: true }`. */
+	focusNode(path: string, options?: TreeMutationOptions) {
 		const node = this.tree.getNodeByPath(path);
 		if (!node) return;
-		this._setFocusedNode(node);
+		this._setFocusedNode(node, options?.isSilent);
 		this.tree.refresh();
 	}
 
-	/** Clear the focused node. */
-	clearFocus(_options?: TreeMutationOptions) {
-		this._setFocusedNode(null);
+	/** Clear the focused node. Fires `onFocusChange` unless `{ isSilent: true }`. */
+	clearFocus(options?: TreeMutationOptions) {
+		this._setFocusedNode(null, options?.isSilent);
 		this.tree.refresh();
 	}
 

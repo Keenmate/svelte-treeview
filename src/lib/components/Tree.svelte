@@ -44,6 +44,8 @@
 		SelectionChangeContext,
 		ExpandedChangeContext,
 		BeforeExpandContext,
+		FocusChangeContext,
+		TreeChangeContext,
 		BeforeCheckboxToggleContext,
 		NodeTransformCallbackContext,
 		NodeTransformCallback,
@@ -251,6 +253,12 @@
 		 *  seeding / accordion): `false` keeps it collapsed; a Promise defers the expand and
 		 *  shows the node's loading state (lazy loading). A throw / rejection keeps it collapsed. */
 		beforeExpandCallback?: (ctx: BeforeExpandContext<T>) => boolean | void | Promise<boolean | void>;
+		/** The focused node changed (click, keyboard, `focusNode` / `clearFocus`). `ctx =
+		 *  { focusedNode, controller }`. Not for `isSilent` nor for assigning `focusedNode`. */
+		onFocusChange?: (ctx: FocusChangeContext<T>) => void;
+		/** The tree's data / structure changed through a mutation (add / insert / move / remove /
+		 *  update / applyChanges / paste / drop / sort) — once per batch. Not for loading `nodes`. */
+		onTreeChange?: (ctx: TreeChangeContext<T>) => void;
 		/** `sortNodes` / `sortAll` rewrote one parent's `orderMember` values (custom compare /
 		 *  `direction: 'desc'`) — persist `changes`. Skipped with `isSilent`. */
 		onNodesReorder?: (ctx: NodesReorderContext<T>) => void;
@@ -537,6 +545,8 @@
 		onNodeCollapse,
 		onExpandedChange,
 		beforeExpandCallback,
+		onFocusChange,
+		onTreeChange,
 		onNodesReorder,
 		onNodeDragStart,
 		onNodeDragOver,
@@ -688,6 +698,8 @@
 		onNodeCollapse,
 		onExpandedChange,
 		beforeExpandCallback,
+		onFocusChange,
+		onTreeChange,
 		onNodesReorder,
 		onNodeDragStart,
 		onNodeDragOver,
@@ -1095,6 +1107,12 @@
 	});
 	$effect(() => {
 		controller.beforeExpandHandler = beforeExpandCallback;
+	});
+	$effect(() => {
+		controller.onFocusChangeHandler = onFocusChange;
+	});
+	$effect(() => {
+		controller.onTreeChangeHandler = onTreeChange;
 	});
 	$effect(() => {
 		controller.isSortingEnabled = isSortingEnabled ?? true;
@@ -1547,6 +1565,8 @@
 				| 'onNodeCollapse'
 				| 'onExpandedChange'
 				| 'beforeExpandCallback'
+				| 'onFocusChange'
+				| 'onTreeChange'
 				| 'onNodesReorder'
 				| 'onNodeDragStart'
 				| 'onNodeDragOver'
@@ -1684,6 +1704,8 @@
 		if (updates.onNodeCollapse !== undefined) onNodeCollapse = updates.onNodeCollapse;
 		if (updates.onExpandedChange !== undefined) onExpandedChange = updates.onExpandedChange;
 		if (updates.beforeExpandCallback !== undefined) beforeExpandCallback = updates.beforeExpandCallback;
+		if (updates.onFocusChange !== undefined) onFocusChange = updates.onFocusChange;
+		if (updates.onTreeChange !== undefined) onTreeChange = updates.onTreeChange;
 		if (updates.onNodeDragStart !== undefined) onNodeDragStart = updates.onNodeDragStart;
 		if (updates.onNodeDragOver !== undefined) onNodeDragOver = updates.onNodeDragOver;
 		if (updates.onNodeDrop !== undefined) onNodeDrop = updates.onNodeDrop;
