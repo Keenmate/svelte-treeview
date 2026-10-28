@@ -184,6 +184,7 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `expandIconClass` | `string \| null` | `"stv__toggle-icon--expand"` | **Deprecated** — prefer `iconSet`. Escape hatch to override the toggle glyph with a custom class (e.g. FontAwesome) |
 | `collapseIconClass` | `string \| null` | `"stv__toggle-icon--collapse"` | **Deprecated** — only used with a *custom* `expandIconClass` in `swap` mode (built-in swap is CSS-driven) |
 | `leafIconClass` | `string \| null` | `"stv__toggle-icon--leaf"` | CSS class for leaf node icons |
+| `nodeTitleOverflow` | `'wrap' \| 'ellipsis' \| 'info'` | `'ellipsis'` | A built-in label wider than the row: `ellipsis` clips on one line (fixed row heights — what virtual scroll needs), `wrap` grows the row, `info` = ellipsis + a trailing ⓘ on clipped rows that reveals the full label (accessible name: `labels.showFullLabel`) |
 | `scrollHighlightTimeout` | `number \| null` | `4000` | Duration (ms) for scroll highlight animation |
 | `scrollHighlightClass` | `string \| null` | `'stv__scroll-highlight'` | CSS class to apply for scroll highlight effect |
 

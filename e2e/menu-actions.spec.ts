@@ -111,3 +111,18 @@ test('delete removes the node; copy + paste duplicates into the clicked node', a
 	await menuItem(page, 'Paste').click();
 	expect(await log(page)).toContain('action:paste:-:context-menu');
 });
+
+test('keyboard (WAI-ARIA): Enter expands / collapses, Space toggles the selection in multiple mode', async ({ page }) => {
+	await row(page, 'A').click(); // expand-and-focus: selects + expands
+	const content = page.locator('.stv__node[data-tree-path="1"] > .stv__node-row .stv__node-content').first();
+	await expect(content).toHaveClass(/stv__node-content--selected/);
+	await expect(row(page, 'A1')).toBeVisible();
+	await page.keyboard.press('Enter');
+	await expect(row(page, 'A1')).toHaveCount(0);
+	await expect(content).toHaveClass(/stv__node-content--selected/);
+	await page.keyboard.press('Space');
+	await expect(content).not.toHaveClass(/stv__node-content--selected/);
+	await expect(row(page, 'A1')).toHaveCount(0);
+	await page.keyboard.press('Enter');
+	await expect(row(page, 'A1')).toBeVisible();
+});

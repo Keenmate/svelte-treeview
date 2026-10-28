@@ -495,9 +495,9 @@ export interface TreeControllerProps<T> {
 	expandLevel?: number | null | undefined;
 	clickBehavior?: ClickBehavior | null | undefined;
 	/**
-	 * `'single'` (default): Ctrl/Shift+click act as plain click, Shift+Arrow is no-op,
-	 * Enter is no-op. `'multiple'`: Ctrl-toggle, Shift-range, Shift+Arrow extends, Enter
-	 * toggles highlight on the focused node.
+	 * `'single'` (default): Ctrl/Shift+click act as plain click, Shift+Arrow is no-op.
+	 * `'multiple'`: Ctrl-toggle, Shift-range, Shift+Arrow extends, Space toggles the focused
+	 * node in the selection. Enter = expand / collapse in both (WAI-ARIA).
 	 */
 	selectionMode?: SelectionMode | null | undefined;
 	isCheckboxesShown?: boolean | null | undefined;
@@ -763,7 +763,7 @@ export class TreeController<T> {
 		dropZoneLayout: 'around',
 		dropZoneStart: 33,
 		toggleIconMode: 'rotate',
-		nodeTitleOverflow: 'wrap',
+		nodeTitleOverflow: 'ellipsis',
 		isNodeTooltipsShown: false,
 		getNodeTooltipCallback: undefined,
 		tooltipPlacement: 'top-start',
@@ -974,7 +974,7 @@ export class TreeController<T> {
 	collapseIconClass = $state('stv__toggle-icon--collapse');
 	leafIconClass = $state('stv__toggle-icon--leaf');
 	toggleIconMode = $state<ToggleIconMode>('rotate');
-	nodeTitleOverflow = $state<NodeTitleOverflow>('wrap');
+	nodeTitleOverflow = $state<NodeTitleOverflow>('ellipsis');
 	isNodeTooltipsShown = $state<boolean>(false);
 	getNodeTooltipCallback = $state<((ctx: NodeContext<any>) => string | null | undefined) | undefined>(
 		undefined
@@ -1233,7 +1233,7 @@ export class TreeController<T> {
 		this.collapseIconClass = props.collapseIconClass ?? 'stv__toggle-icon--collapse';
 		this.leafIconClass = props.leafIconClass ?? 'stv__toggle-icon--leaf';
 		this.toggleIconMode = props.toggleIconMode ?? 'rotate';
-		this.nodeTitleOverflow = props.nodeTitleOverflow ?? 'wrap';
+		this.nodeTitleOverflow = props.nodeTitleOverflow ?? 'ellipsis';
 		this.isNodeTooltipsShown = props.isNodeTooltipsShown ?? false;
 		this.getNodeTooltipCallback = props.getNodeTooltipCallback;
 		this.tooltipPlacement = props.tooltipPlacement ?? 'top-start';

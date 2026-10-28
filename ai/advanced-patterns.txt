@@ -167,7 +167,9 @@ Built-in keys:
 - ArrowRight: expand node or move to first child
 - ArrowLeft: collapse node or move to parent
 - Home/End: first/last visible node
-- Enter/Space: toggle expand/collapse
+- Enter: expand/collapse (the node's default action, WAI-ARIA)
+- Space: toggle selection — the checkbox (isCheckboxesShown), the focused node in the selection
+  (selectionMode 'multiple'); in single mode without checkboxes: expand/collapse
 - Backspace: collapse parent and select it
 
 Custom navigation overrides (navigationOverrides prop):

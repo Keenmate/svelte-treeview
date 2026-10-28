@@ -64,8 +64,9 @@ export type IconSet = 'chevron' | 'triangle' | 'plus-minus' | 'arrow';
 /**
  * How the built-in node label (`.stv__node-label`) behaves when it's wider than the
  * available row space:
- * - `wrap` (default): the label wraps onto multiple lines — the row grows taller.
- * - `ellipsis`: the label stays on one line and is clipped with an ellipsis (…).
+ * - `wrap`: the label wraps onto multiple lines — the row grows taller.
+ * - `ellipsis` (default): the label stays on one line and is clipped with an ellipsis (…) —
+ *   fixed row heights (virtual scroll needs them).
  * - `info`: like `ellipsis`, but a trailing circled-ⓘ affordance appears ONLY on rows
  *   whose label is actually clipped; clicking it reveals the full label in a popover
  *   (the touch/no-hover substitute for the native `title` tooltip, which is also set).

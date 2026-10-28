@@ -68,6 +68,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `false` → **`true`** (built-in Ctrl/Cmd+C/X/V, Delete, Esc on a focused tree; `false` opts out),
   `shouldAlignNodeIcons` `false` → **`true`** (the icon column is reserved on every row).
   `shouldUseInternalSearchIndex` stays `true` (web-treeview moved to `true`).
+- **BREAKING: `nodeTitleOverflow` default `'wrap'` → `'ellipsis'`** (same as web-treeview) — rows
+  keep a fixed height, which virtual scroll needs; pass `nodeTitleOverflow="wrap"` for multi-line labels.
+- **BREAKING: keyboard per WAI-ARIA (same as web-treeview)** — **Enter** = the node's default action
+  (expand / collapse) in every mode; **Space** toggles selection: the checkbox when checkboxes are
+  shown, the focused node in the selection with `selectionMode: 'multiple'` (Enter used to do this),
+  expand / collapse as a fallback in single mode without checkboxes.
 
 - **BREAKING: mutation vocabulary — `add` / `insert` / `update` / `remove`** (same as
   `@keenmate/web-treeview`). `applyChanges` operations: `'create'` → `'add'` `{ parentPath, data,

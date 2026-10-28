@@ -148,8 +148,8 @@
 		clickBehavior?: ClickBehavior | null | undefined;
 		/**
 		 * `'single'` (default): plain click selects one node; Ctrl/Shift+click
-		 * degrade to plain click; Shift+Arrow / Enter are no-ops.
-		 * `'multiple'`: Ctrl-toggle, Shift-range, Shift+Arrow extend, Enter toggles
+		 * degrade to plain click; Shift+Arrow is a no-op.
+		 * `'multiple'`: Ctrl-toggle, Shift-range, Shift+Arrow extend, Space toggles
 		 * selection on the focused node.
 		 */
 		selectionMode?: SelectionMode | null | undefined;
@@ -389,8 +389,8 @@
 		collapseIconClass?: string | null | undefined;
 		leafIconClass?: string | null | undefined;
 		toggleIconMode?: 'rotate' | 'swap';
-		/** How the built-in node label behaves when wider than the row: `wrap` (default,
-		 *  multi-line), `ellipsis` (single-line clip), or `info` (ellipsis + a trailing ⓘ
+		/** How the built-in node label behaves when wider than the row: `wrap` (multi-line),
+		 *  `ellipsis` (default — single-line clip; fixed row heights for virtual scroll), or `info` (ellipsis + a trailing ⓘ
 		 *  on clipped rows that reveals the full label on click). See NodeTitleOverflow. */
 		nodeTitleOverflow?: NodeTitleOverflow;
 		/** Enable hover/focus tooltips on node rows. Content comes from the `tooltip`
@@ -592,7 +592,7 @@
 		collapseIconClass = 'stv__toggle-icon--collapse',
 		leafIconClass = 'stv__toggle-icon--leaf',
 		toggleIconMode = 'rotate',
-		nodeTitleOverflow = 'wrap',
+		nodeTitleOverflow = 'ellipsis',
 		isNodeTooltipsShown = false,
 		getNodeTooltipCallback,
 		tooltipPlacement = 'top-start',
@@ -1005,7 +1005,7 @@
 		controller.toggleIconMode = toggleIconMode ?? 'rotate';
 	});
 	$effect(() => {
-		controller.nodeTitleOverflow = nodeTitleOverflow ?? 'wrap';
+		controller.nodeTitleOverflow = nodeTitleOverflow ?? 'ellipsis';
 	});
 	$effect(() => {
 		controller.isNodeTooltipsShown = isNodeTooltipsShown ?? false;
@@ -1885,15 +1885,17 @@
 				event.shiftKey ? controller.navSelectPageUp() : controller.navPageUp();
 				break;
 			case 'Enter':
-				// single: no-op (per spec); multi: toggle selection on focused node.
-				if (controller.selectionMode === 'multiple') controller.toggleFocusedSelect();
-				else handled = false;
+				// WAI-ARIA tree: Enter = the node's default action (expand / collapse).
+				controller.navToggle();
 				break;
 			case ' ':
-				// With checkboxes: toggle the focused node's checkbox.
-				// Without: keep the legacy expand/collapse behaviour as a useful fallback.
+				// WAI-ARIA tree: Space toggles selection. With checkboxes: the focused node's
+				// checkbox; multiple mode: the focused node in the selection; single mode
+				// (nothing to toggle): expand / collapse as a fallback.
 				if (controller.isCheckboxesShown && controller.focusedNode?.isSelectable) {
 					controller.nodeCallbacks.onCheckboxToggle(controller.focusedNode);
+				} else if (controller.selectionMode === 'multiple') {
+					controller.toggleFocusedSelect();
 				} else {
 					controller.navToggle();
 				}

@@ -21,7 +21,8 @@
 		return [...items].sort((a, b) => a.path.localeCompare(b.path));
 	}
 
-	let mode = $state<NodeTitleOverflow>('wrap');
+	// undefined = the prop is not set (the default, `ellipsis`).
+	let mode = $state<NodeTitleOverflow | undefined>(undefined);
 	const modes: NodeTitleOverflow[] = ['wrap', 'ellipsis', 'info'];
 </script>
 
@@ -32,7 +33,7 @@
 		<button data-testid={`mode-${m}`} onclick={() => (mode = m)} aria-pressed={mode === m}>{m}</button>
 	{/each}
 </div>
-<div data-testid="mode-readout">mode = {mode}</div>
+<div data-testid="mode-readout">mode = {mode ?? 'default'}</div>
 
 <div class="narrow" style="width: 240px;">
 	<Tree

@@ -16,7 +16,15 @@ test.describe('nodeTitleOverflow', () => {
 		await expect(node(page, '1.1')).toBeVisible();
 	});
 
-	test('wrap (default): label is multi-line, not clipped, no info button', async ({ page }) => {
+	test('default is ellipsis: single-line clip', async ({ page }) => {
+		const l = label(page, '1.1');
+		await expect(l).toHaveCSS('white-space', 'nowrap');
+		await expect(l).toHaveCSS('text-overflow', 'ellipsis');
+		await expect(node(page, '1.1').locator('.stv__node-info')).toHaveCount(0);
+	});
+
+	test('wrap: label is multi-line, not clipped, no info button', async ({ page }) => {
+		await page.getByTestId('mode-wrap').click();
 		const l = label(page, '1.1');
 		await expect(l).toHaveCSS('white-space', 'normal');
 		// A long label wrapped onto several lines is much taller than one row.
