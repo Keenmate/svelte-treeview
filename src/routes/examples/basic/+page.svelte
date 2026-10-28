@@ -521,7 +521,7 @@ tree.expandAll('1', { isExclusive: true });`}</pre>
 	<div class="card">
 		<h2>BU07 · Expand / Collapse API</h2>
 		<div class="code-block">
-			<pre>{`interface ExpandOptions { isExclusive?: boolean; silent?: boolean }
+			<pre>{`interface ExpandOptions { isExclusive?: boolean; isSilent?: boolean }
 
 expandNodes(paths: string | string[], options?: ExpandOptions)   // one level, ancestors opened
 collapseNodes(paths: string | string[], options?: ExpandOptions)
@@ -531,8 +531,8 @@ expandAll(paths?: string | string[] | null, options?: ExpandOptions)   // null =
 collapseAll(paths?: string | string[] | null, options?: ExpandOptions) // paths = those + descendants`}</pre>
 		</div>
 		<p class="description">
-			<code>silent: true</code> suppresses the change notification — handy when you want to batch
-			several calls and emit once at the end via <code>tree.refresh()</code>.
+			<code>isSilent: true</code> suppresses events / callbacks only — the tree always re-renders
+			(svelte-treeview has no expand callbacks; the option exists for parity with web-treeview).
 		</p>
 	</div>
 

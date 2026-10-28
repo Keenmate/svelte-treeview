@@ -97,14 +97,15 @@ export interface ExpandOptions {
 	/** Expand only: collapse every expanded branch that isn't an ancestor of (or, for
 	 *  `expandAll`, inside) the targets — focus the tree on them. Default `false`. */
 	isExclusive?: boolean;
-	/** Skip the tree-changed notification (no re-render) — batch several calls, then refresh. */
-	silent?: boolean;
+	/** Suppress events / callbacks only — the tree ALWAYS re-renders. (svelte-treeview fires no
+	 *  expand callbacks, so this is accepted for API parity with web-treeview.) */
+	isSilent?: boolean;
 }
 
 export interface TreeMutationOptions {
 	/** Update state without firing onNodeClick / onSelectionChange / onCheckedChange
 	 *  (e.g. when restoring state from URL params or other external sources). */
-	silent?: boolean;
+	isSilent?: boolean;
 }
 export type DropZoneLayout = 'around' | 'before' | 'after' | 'wave' | 'wave2';
 export type DropOperation = 'move' | 'copy';
@@ -363,7 +364,8 @@ export interface Ltree<T> {
 	// State persistence methods
 	getExpandedPaths(): string[];
 	setExpandedPaths(paths: string[]): void;
-	getAllData(): T[];
+	/** @internal Flat array of every node's data — read the tree state via `nodes` instead. */
+	_collectData(): T[];
 
 	// Internal helpers
 	_updateDescendantPaths(node: LTreeNode<T>, oldBasePath: string, newBasePath: string): void;

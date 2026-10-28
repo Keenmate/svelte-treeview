@@ -145,3 +145,26 @@ describe('branch operations — single-emission guarantee', () => {
 		expect(spy).not.toHaveBeenCalled();
 	});
 });
+
+describe('isSilent on expand / collapse — never skips the re-render', () => {
+	it('expandNodes / collapseNodes / expandAll / collapseAll with isSilent still emit the tree change', () => {
+		const tree = createTree();
+		tree.insertArray(seed);
+		tree.collapseAll();
+		const spy = vi.spyOn(tree, '_emitTreeChanged');
+
+		tree.expandNodes('2.1', { isSilent: true });
+		expect(tree.getNodeByPath('2.1')!.isExpanded).toBe(true);
+		expect(spy).toHaveBeenCalledTimes(1);
+
+		tree.collapseNodes('2.1', { isSilent: true });
+		expect(tree.getNodeByPath('2.1')!.isExpanded).toBe(false);
+		expect(spy).toHaveBeenCalledTimes(2);
+
+		tree.expandAll(null, { isSilent: true });
+		expect(spy).toHaveBeenCalledTimes(3);
+
+		tree.collapseAll(null, { isSilent: true });
+		expect(spy).toHaveBeenCalledTimes(4);
+	});
+});

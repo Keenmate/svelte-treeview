@@ -49,6 +49,12 @@
 		<button data-testid="expand-nodes-single" onclick={() => treeRef?.expandNodes('1.1.1')}>
 			expandNodes('1.1.1')
 		</button>
+		<button data-testid="expand-nodes-silent" onclick={() => treeRef?.expandNodes('1.1.1', { isSilent: true })}>
+			expandNodes('1.1.1', isSilent)
+		</button>
+		<button data-testid="collapse-all-silent" onclick={() => treeRef?.collapseAll(null, { isSilent: true })}>
+			collapseAll(null, isSilent)
+		</button>
 		<button data-testid="expand-nodes-array" onclick={() => treeRef?.expandNodes(['1.1.1', '2.1.1'])}>
 			expandNodes(['1.1.1','2.1.1'])
 		</button>

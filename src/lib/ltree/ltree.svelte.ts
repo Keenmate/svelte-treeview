@@ -683,7 +683,6 @@ export function createLTree<T>(
 			perfStart(`[${_treeId}] expandAll`);
 			const self = this;
 			const exclusive = options?.isExclusive ?? false;
-			const noEmit = options?.silent ?? false;
 
 			function setExpandedRecursive(node: LTreeNode<T>, value: boolean) {
 				if (node.isExpanded !== value) {
@@ -760,7 +759,7 @@ export function createLTree<T>(
 				}
 			}
 
-			if (!noEmit) this._emitTreeChanged();
+			this._emitTreeChanged();
 			perfEnd(`[${_treeId}] expandAll`);
 		},
 
@@ -770,7 +769,6 @@ export function createLTree<T>(
 		): void {
 			perfStart(`[${_treeId}] collapseAll`);
 			const self = this;
-			const noEmit = options?.silent ?? false;
 
 			function collapseRecursive(node: LTreeNode<T>) {
 				if (node.isExpanded && self.getNodeIsCollapsible(node)) {
@@ -797,7 +795,7 @@ export function createLTree<T>(
 				}
 			}
 
-			if (!noEmit) this._emitTreeChanged();
+			this._emitTreeChanged();
 			perfEnd(`[${_treeId}] collapseAll`);
 		},
 
@@ -829,7 +827,6 @@ export function createLTree<T>(
 			perfStart(`[${_treeId}] expandNodes`);
 			const self = this;
 			const exclusive = options?.isExclusive ?? false;
-			const noEmit = options?.silent ?? false;
 			const rootNode = this.isFiltered ? filteredRoot : root;
 			const paths = Array.isArray(path) ? path : [path];
 			let hasChanges = false;
@@ -883,7 +880,7 @@ export function createLTree<T>(
 				}
 			}
 
-			if (!noEmit && hasChanges) {
+			if (hasChanges) {
 				this._emitTreeChanged();
 			}
 
@@ -892,7 +889,6 @@ export function createLTree<T>(
 		},
 
 		collapseNodes: function (path: string | string[], options?: ExpandOptions) {
-			const noEmit = options?.silent ?? false;
 			const rootNode = this.isFiltered ? filteredRoot : this.root;
 			const paths = Array.isArray(path) ? path : [path];
 			let hasChanges = false;
@@ -918,7 +914,7 @@ export function createLTree<T>(
 				}
 			}
 
-			if (!noEmit && hasChanges) {
+			if (hasChanges) {
 				this._emitTreeChanged();
 			}
 
@@ -1708,11 +1704,10 @@ export function createLTree<T>(
 		},
 
 		/**
-		 * Extract all node data as a flat array
-		 * Useful for saving the entire tree state to a database
+		 * @internal Collect every node's data as a flat array — backs the controller's `nodes`.
 		 * @returns Array of all node data objects
 		 */
-		getAllData(): T[] {
+		_collectData(): T[] {
 			const result: T[] = [];
 			const traverse = (node: LTreeNode<T>) => {
 				if (node.data) {

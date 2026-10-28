@@ -718,7 +718,7 @@ export class TreeController<T> {
 	 *  mutation (move / add / remove / paste / applyChanges…) this is the tree's data,
 	 *  re-collected (and written back on a microtask, which updates `bind:nodes`). */
 	get nodes(): T[] {
-		return this.#nodesDirty ? (this.tree?.getAllData() ?? []) : this.#nodes;
+		return this.#nodesDirty ? (this.tree?._collectData() ?? []) : this.#nodes;
 	}
 	set nodes(value: T[]) {
 		this.#nodes = value;
@@ -730,7 +730,7 @@ export class TreeController<T> {
 		queueMicrotask(() => {
 			if (!this.#nodesDirty) return;
 			this.#nodesDirty = false;
-			const current = this.tree?.getAllData() ?? [];
+			const current = this.tree?._collectData() ?? [];
 			this.#selfWrittenNodes = current;
 			this.#nodes = current;
 		});
@@ -3502,7 +3502,7 @@ export class TreeController<T> {
 	private async _onNodeClicked(
 		node: LTreeNode<T>,
 		modifiers?: SelectionModifiers,
-		options?: { silent?: boolean; forceMultiSemantics?: boolean; uiClick?: boolean }
+		options?: { isSilent?: boolean; forceMultiSemantics?: boolean; uiClick?: boolean }
 	) {
 		if (this.contextMenuVisible) {
 			this.closeContextMenu();
@@ -3547,7 +3547,7 @@ export class TreeController<T> {
 		const isMulti = options?.forceMultiSemantics || this.selectionMode === 'multiple';
 		const ctrl = isMulti && (modifiers?.ctrl ?? false);
 		const shift = isMulti && (modifiers?.shift ?? false);
-		const silent = options?.silent ?? false;
+		const silent = options?.isSilent ?? false;
 
 		uiLogger.debug(`[highlight] Click on ${node.path}`, {
 			ctrl,
@@ -4092,7 +4092,7 @@ export class TreeController<T> {
 	/** Highlight a single node. `mode` mirrors the click gestures:
 	 *  'replace' (plain click) replaces the set, 'toggle' (Ctrl+click) adds/removes
 	 *  just this node, 'range' (Shift+click) highlights from the shift-cursor to here.
-	 *  Pass `{ silent: true }` to update state without firing `onNodeClick` / `onSelectionChange`. */
+	 *  Pass `{ isSilent: true }` to update state without firing `onNodeClick` / `onSelectionChange`. */
 	selectNode(path: string, mode: SelectMode = 'replace', options?: TreeMutationOptions) {
 		const node = this.tree.getNodeByPath(path);
 		if (!node) return;
@@ -4116,7 +4116,7 @@ export class TreeController<T> {
 
 	/** Add nodes to the highlight set (additive — existing highlights are kept).
 	 *  To replace the whole set, assign `selectedPaths` (the bindable prop / `updateProps`).
-	 *  Pass `{ silent: true }` to skip `onSelectionChange`. */
+	 *  Pass `{ isSilent: true }` to skip `onSelectionChange`. */
 	selectNodes(paths: string[], options?: TreeMutationOptions) {
 		const newPaths = new Set(this.selectedPaths);
 		let lastNode: LTreeNode<T> | null = null;
@@ -4134,7 +4134,7 @@ export class TreeController<T> {
 			this._setFocusedNode(lastNode);
 			this._shiftCursor = lastNode.path;
 		}
-		if (!options?.silent) {
+		if (!options?.isSilent) {
 			this._notifySelectionChanged();
 			this._mirrorSelectedToChecked();
 		}
@@ -4147,11 +4147,11 @@ export class TreeController<T> {
 		this._clearAllSelectionFlags();
 		this.selectedPaths = new Set();
 		this._shiftCursor = null;
-		this.selectNodes([...paths], { silent: true });
+		this.selectNodes([...paths], { isSilent: true });
 		this.tree.refresh();
 	}
 
-	/** Highlight every visible node. Pass `{ silent: true }` to skip `onSelectionChange`. */
+	/** Highlight every visible node. Pass `{ isSilent: true }` to skip `onSelectionChange`. */
 	selectAll(options?: TreeMutationOptions) {
 		this._clearAllSelectionFlags();
 		const newPaths = new Set<string>();
@@ -4168,7 +4168,7 @@ export class TreeController<T> {
 			this._setFocusedNode(lastNode);
 			this._shiftCursor = lastNode.path;
 		}
-		if (!options?.silent) {
+		if (!options?.isSilent) {
 			this._notifySelectionChanged();
 			this._mirrorSelectedToChecked();
 		}
@@ -4176,7 +4176,7 @@ export class TreeController<T> {
 	}
 
 	/** Clear highlights. Pass `paths` to clear only those nodes, or omit to clear all.
-	 *  Pass `{ silent: true }` to skip `onSelectionChange`. */
+	 *  Pass `{ isSilent: true }` to skip `onSelectionChange`. */
 	clearSelection(paths?: string[], options?: TreeMutationOptions) {
 		if (paths && paths.length > 0) {
 			const newPaths = new Set(this.selectedPaths);
@@ -4195,7 +4195,7 @@ export class TreeController<T> {
 			this.selectedPaths = new Set();
 			this._shiftCursor = null;
 		}
-		if (!options?.silent) {
+		if (!options?.isSilent) {
 			this._notifySelectionChanged();
 			this._mirrorSelectedToChecked();
 		}
@@ -4292,19 +4292,19 @@ export class TreeController<T> {
 	}
 
 	/** Check a single node (cascades to descendants in cascade mode).
-	 *  Pass `{ silent: true }` to skip `onCheckedChange`. */
+	 *  Pass `{ isSilent: true }` to skip `onCheckedChange`. */
 	checkNode(path: string, options?: TreeMutationOptions) {
 		const changed = this._applyCheckboxState([path], true);
-		if (changed && !options?.silent) this._notifyCheckedChanged();
+		if (changed && !options?.isSilent) this._notifyCheckedChanged();
 		this.tree.refresh();
 	}
 
 	/** Check multiple nodes (additive — existing checks are kept).
 	 *  To replace the whole set, assign `checkedPaths` (the bindable prop / `updateProps`).
-	 *  Pass `{ silent: true }` to skip `onCheckedChange`. */
+	 *  Pass `{ isSilent: true }` to skip `onCheckedChange`. */
 	checkNodes(paths: string[], options?: TreeMutationOptions) {
 		const changed = this._applyCheckboxState(paths, true);
-		if (changed && !options?.silent) this._notifyCheckedChanged();
+		if (changed && !options?.isSilent) this._notifyCheckedChanged();
 		this.tree.refresh();
 	}
 
@@ -4318,7 +4318,7 @@ export class TreeController<T> {
 		this.tree.refresh();
 	}
 
-	/** Check every selectable node. Pass `{ silent: true }` to skip `onCheckedChange`. */
+	/** Check every selectable node. Pass `{ isSilent: true }` to skip `onCheckedChange`. */
 	checkAll(options?: TreeMutationOptions) {
 		const newPaths = new Set<string>();
 		const traverse = (node: LTreeNode<T>) => {
@@ -4332,32 +4332,32 @@ export class TreeController<T> {
 		};
 		for (const root of this.tree.tree) traverse(root);
 		this.checkedPaths = newPaths;
-		if (!options?.silent) this._notifyCheckedChanged();
+		if (!options?.isSilent) this._notifyCheckedChanged();
 		this.tree.refresh();
 	}
 
 	/** Uncheck a single node (cascades to descendants in cascade mode).
-	 *  Pass `{ silent: true }` to skip `onCheckedChange`. */
+	 *  Pass `{ isSilent: true }` to skip `onCheckedChange`. */
 	uncheckNode(path: string, options?: TreeMutationOptions) {
 		const changed = this._applyCheckboxState([path], false);
-		if (changed && !options?.silent) this._notifyCheckedChanged();
+		if (changed && !options?.isSilent) this._notifyCheckedChanged();
 		this.tree.refresh();
 	}
 
 	/** Uncheck multiple nodes (cascades in cascade mode); other checks are kept.
-	 *  Pass `{ silent: true }` to skip `onCheckedChange`. */
+	 *  Pass `{ isSilent: true }` to skip `onCheckedChange`. */
 	uncheckNodes(paths: string[], options?: TreeMutationOptions) {
 		const changed = this._applyCheckboxState(paths, false);
-		if (changed && !options?.silent) this._notifyCheckedChanged();
+		if (changed && !options?.isSilent) this._notifyCheckedChanged();
 		this.tree.refresh();
 	}
 
 	/** Uncheck every node (empties the checkbox set).
-	 *  Pass `{ silent: true }` to skip `onCheckedChange`. */
+	 *  Pass `{ isSilent: true }` to skip `onCheckedChange`. */
 	uncheckAll(options?: TreeMutationOptions) {
 		this._clearAllCheckedFlags();
 		this.checkedPaths = new Set();
-		if (!options?.silent) this._notifyCheckedChanged();
+		if (!options?.isSilent) this._notifyCheckedChanged();
 		this.tree.refresh();
 	}
 

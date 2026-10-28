@@ -125,8 +125,8 @@ Every `on*` event receives a **single context object** mirroring the clipboard c
 | `onNodeDragStart` | `(ctx: NodeDragContext<T>) => void` | `undefined` | Drag start. `ctx` is the grabbed node's `NodeRef` + `{ event, dragged }`. `dragged` is the full top-level set in flight (see below). |
 | `onNodeDragOver` | `(ctx: NodeDragContext<T>) => void` | `undefined` | Drag over. `ctx.node` is the **hovered** node; `ctx.dragged` is the in-flight set. |
 | `onNodeDrop` | `(ctx: NodeDropContext<T>) => void` | `undefined` | Drop event. `ctx = { source, target, dragged, dropped, position, operation, event }`. `source` is the lead dragged node's `NodeRef`; `target` is the drop node's `NodeRef` **or `null`** (empty tree/root). `dragged` is the **full top-level dragged set** — a drop fires once even for a multi-drag, so this is how you see the whole set. `dropped` is the nodes the **library** placed (move: the moved nodes; copy: the fresh copies), or **`null`** when the library didn't place them (cross-tree drop, or `shouldAutoHandleMove`/`Copy=false`) and the consumer owns insertion. Position is `'before'`/`'after'`/`'child'`; operation is `'move'`/`'copy'`. Symmetric with `NodeTransformContext`. (Its twin `beforeDropCallback` remains the older 5-arg positional signature.) |
-| `onSelectionChange` | `(ctx: SelectionChangeContext<T>) => void` | `undefined` | UI multi-select set (`selectedPaths`) changed. `ctx = { paths: Set<string>, nodes }`. Suppressed by `{ silent: true }` mutations. |
-| `onCheckedChange` | `(ctx: SelectionChangeContext<T>) => void` | `undefined` | Checkbox set (`checkedPaths`) changed. Same shape as `onSelectionChange`. Suppressed by `{ silent: true }`. |
+| `onSelectionChange` | `(ctx: SelectionChangeContext<T>) => void` | `undefined` | UI multi-select set (`selectedPaths`) changed. `ctx = { paths: Set<string>, nodes }`. Suppressed by `{ isSilent: true }` mutations. |
+| `onCheckedChange` | `(ctx: SelectionChangeContext<T>) => void` | `undefined` | Checkbox set (`checkedPaths`) changed. Same shape as `onSelectionChange`. Suppressed by `{ isSilent: true }`. |
 | `onNodeCopy` | `(ctx: ClipboardEventContext<T>) => void` | `undefined` | Fired after `controller.copyNodes()` succeeds. `ctx = { operation: 'copy', paths, nodes }` (nodes live). |
 | `onNodeCut` | `(ctx: ClipboardEventContext<T>) => void` | `undefined` | Fired after `controller.cutNodes()` succeeds. `ctx = { operation: 'cut', paths, nodes }` (nodes still live — cut only dims until paste). |
 | `onNodeDelete` | `(ctx: ClipboardEventContext<T>) => void` | `undefined` | Fired after the built-in Delete (or `controller.runDeleteCommand()`) removes nodes. `ctx = { paths, nodes }` — `nodes` are **pre-removal snapshots** (captured before removal, since the tree no longer holds them). |
@@ -186,7 +186,7 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `expandAll` | `paths?: string \| string[] \| null, opts?: ExpandOptions` | Whole tree (`null`/omitted), or the given nodes + all descendants |
 | `collapseAll` | `paths?: string \| string[] \| null, opts?: ExpandOptions` | Whole tree (`null`/omitted), or the given nodes + all descendants |
 
-`ExpandOptions = { isExclusive?: boolean; silent?: boolean }` — `isExclusive` (expand only) collapses every open branch off the targets' spine; `silent` skips the tree-changed notification (batch, then `refresh()`).
+`ExpandOptions = { isExclusive?: boolean; isSilent?: boolean }` — `isExclusive` (expand only) collapses every open branch off the targets' spine; `isSilent` suppresses events / callbacks only — the tree always re-renders (svelte-treeview has no expand callbacks, so it is accepted for API parity).
 | `filterNodes` | `searchTerm: string, searchOptions?: SearchOptions` | Filter the tree display using internal search index with optional FlexSearch options |
 | `searchNodes` | `searchTerm: string \| null \| undefined, searchOptions?: SearchOptions` | Search nodes using internal search index and return matching nodes with optional FlexSearch options |
 | `scrollToPath` | `path: string, options?: ScrollToPathOptions` | Scroll to and highlight a specific node |
@@ -214,7 +214,7 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 
 ### Selection / checked / focus methods
 
-Three independent concerns, each with the same method shape. `opts` is always `TreeMutationOptions = { silent?: boolean }` — pass `{ silent: true }` to mutate state without firing the change callbacks (e.g. restoring state from a URL). Keep the verbs straight: **`highlight*`** drives the UI multi-select set (`selectedPaths`), **`select*`** drives the checkbox/data set (`checkedPaths`), **`focus*`** drives the single cursor (`focusedNode`).
+Three independent concerns, each with the same method shape. `opts` is always `TreeMutationOptions = { isSilent?: boolean }` — pass `{ isSilent: true }` to mutate state without firing the change callbacks (e.g. restoring state from a URL). Keep the verbs straight: **`select*`** drives the UI multi-select set (`selectedPaths`), **`check*`** drives the checkbox/data set (`checkedPaths`), **`focus*`** drives the single cursor (`focusedNode`).
 
 | Method | Parameters | Description |
 |--------|------------|-------------|

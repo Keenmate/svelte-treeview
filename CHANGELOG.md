@@ -33,7 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `controller.nodes` returns it synchronously. The write-back is not re-inserted (no rebuild, expand /
   selection state kept); assigning a new array still reloads the tree. `node.data` (your object)
   is unchanged. Same as `@keenmate/web-treeview` (`tree.nodes`).
-- **BREAKING: expand API options are `ExpandOptions { isExclusive?, silent? }`** (was `{ exclusive?,
+- **BREAKING: `silent` → `isSilent` in every options object** (`TreeMutationOptions` of the
+  selection / checked / focus mutators, `ExpandOptions`). `isSilent` suppresses events / callbacks
+  ONLY — the tree always re-renders: `expandNodes(p, { isSilent: true })` (and `collapseNodes` /
+  `expandAll` / `collapseAll`) used to skip the tree-changed notification, so the change didn't show.
+- `Ltree.getAllData()` (engine) → internal `_collectData()` — read the tree's data via `nodes`.
+- **BREAKING: expand API options are `ExpandOptions { isExclusive?, isSilent? }`** (was `{ exclusive?,
   noEmit? }`) on `expandNodes` / `collapseNodes` / `expandAll` / `collapseAll` (`<Tree>`,
   `TreeController`, `Ltree`); the type is exported. Parameters are `paths` (`string | string[]`;
   `expandAll` / `collapseAll`: `null` / omitted = whole tree, paths = those nodes + all descendants).

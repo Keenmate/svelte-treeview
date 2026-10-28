@@ -91,6 +91,19 @@ test.describe('expandNodes', () => {
 		);
 	});
 
+	test('isSilent: still re-renders (suppresses events only)', async ({ page }) => {
+		await goto(page);
+		await resetCollapsed(page);
+
+		await page.getByTestId('expand-nodes-silent').click();
+		expect(await visiblePaths(page)).toEqual(
+			sorted(['1', '1.1', '1.1.1', '1.1.2', '1.2', '1.3', '2', '3'])
+		);
+
+		await page.getByTestId('collapse-all-silent').click();
+		expect(await visiblePaths(page)).toEqual(sorted(['1', '2', '3']));
+	});
+
 	test('array: opens spines for every path independently', async ({ page }) => {
 		await goto(page);
 		await resetCollapsed(page);

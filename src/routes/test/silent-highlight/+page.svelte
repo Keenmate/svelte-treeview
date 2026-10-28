@@ -72,28 +72,28 @@
 		<button data-testid="highlight-loud" onclick={() => treeRef?.selectNode('1.2')}>
 			selectNode('1.2') — loud
 		</button>
-		<button data-testid="highlight-silent" onclick={() => treeRef?.selectNode('1.2', 'replace', { silent: true })}>
+		<button data-testid="highlight-silent" onclick={() => treeRef?.selectNode('1.2', 'replace', { isSilent: true })}>
 			selectNode('1.2', silent)
 		</button>
-		<button data-testid="highlight-other-silent" onclick={() => treeRef?.selectNode('2.1', 'replace', { silent: true })}>
+		<button data-testid="highlight-other-silent" onclick={() => treeRef?.selectNode('2.1', 'replace', { isSilent: true })}>
 			selectNode('2.1', silent)
 		</button>
 		<button data-testid="highlight-many-loud" onclick={() => treeRef?.selectNodes(['1.1', '1.2'])}>
 			selectNodes(['1.1','1.2']) — loud
 		</button>
-		<button data-testid="highlight-many-silent" onclick={() => treeRef?.selectNodes(['1.1', '1.2'], { silent: true })}>
+		<button data-testid="highlight-many-silent" onclick={() => treeRef?.selectNodes(['1.1', '1.2'], { isSilent: true })}>
 			selectNodes(['1.1','1.2'], silent)
 		</button>
 		<button data-testid="clear-loud" onclick={() => treeRef?.clearSelection()}>
 			clearSelection() — loud
 		</button>
-		<button data-testid="clear-silent" onclick={() => treeRef?.clearSelection(undefined, { silent: true })}>
+		<button data-testid="clear-silent" onclick={() => treeRef?.clearSelection(undefined, { isSilent: true })}>
 			clearSelection(silent)
 		</button>
 		<button data-testid="clear-selection-loud" onclick={() => treeRef?.uncheckAll()}>
 			uncheckAll() — loud
 		</button>
-		<button data-testid="clear-selection-silent" onclick={() => treeRef?.uncheckAll({ silent: true })}>
+		<button data-testid="clear-selection-silent" onclick={() => treeRef?.uncheckAll({ isSilent: true })}>
 			uncheckAll(silent)
 		</button>
 		<button data-testid="reset-counters" onclick={resetCounters}>Reset counters</button>

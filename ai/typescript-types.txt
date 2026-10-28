@@ -48,7 +48,7 @@ import type {
   CheckboxMode,        // 'independent' | 'cascade'
   SelectionMode,       // 'single' | 'multiple'
   SelectMode,       // 'replace' | 'toggle' | 'range'
-  TreeMutationOptions, // { silent? } — passed to selection/checked/focus mutators
+  TreeMutationOptions, // { isSilent? } — passed to selection/checked/focus mutators
 
   // Context menu (unified types)
   ContextMenuEntry,    // ContextMenuItem | ContextMenuDivider
@@ -236,7 +236,7 @@ interface Ltree<T> {
   collapseNodes(paths: string | string[], options?: ExpandOptions): Ltree<T>;
   expandAll(paths?: string | string[] | null, options?: ExpandOptions): void;
   collapseAll(paths?: string | string[] | null, options?: ExpandOptions): void;
-  // ExpandOptions = { isExclusive?: boolean; silent?: boolean }
+  // ExpandOptions = { isExclusive?: boolean; isSilent?: boolean }
   // <Tree> / TreeController also: toggleNodeExpanded(path, options?)
   filterNodes(searchTerm: string): void;
   searchNodes(searchTerm: string): LTreeNode<T>[];
@@ -346,7 +346,7 @@ interface ClipboardEventContext<T> {
 }
 
 // onSelectionChange (selectedPaths) / onCheckedChange (checkedPaths).
-// Suppressed by { silent: true } mutations.
+// Suppressed by { isSilent: true } mutations.
 interface SelectionChangeContext<T> {
   paths: Set<string>;
   nodes: LTreeNode<T>[];

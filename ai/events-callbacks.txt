@@ -66,7 +66,7 @@ SELECTION EVENTS
 ----------------
 Fire after the selection (UI multi-select) or the checked set changes.
 Both take SelectionChangeContext { paths: Set<string>, nodes: LTreeNode<T>[] }.
-Suppressed by { silent: true } mutations.
+Suppressed by { isSilent: true } mutations.
 
 <Tree
   onSelectionChange={(ctx) => {

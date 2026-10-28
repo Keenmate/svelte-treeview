@@ -223,7 +223,7 @@
 		selectionChangeFires = 0;
 
 		// 2. Mark the matching tree node so the user sees what's selected.
-		silentTreeRef.selectNode(pathFromUrl, 'replace', { silent: silentMode });
+		silentTreeRef.selectNode(pathFromUrl, 'replace', { isSilent: silentMode });
 
 		// 3. Scroll the tree into view. scrollToPath itself never fires
 		//    selection callbacks, only the visual scroll-flash highlight.
@@ -649,7 +649,7 @@ End    Go to last visible node
 		</p>
 
 		<p class="description">
-			Pass <code>{`{ silent: true }`}</code> to <code>selectNode()</code> /
+			Pass <code>{`{ isSilent: true }`}</code> to <code>selectNode()</code> /
 			<code>selectNodes()</code> / <code>clearSelection()</code> / <code>uncheckAll()</code>.
 			State (<code>selectedPaths</code>, <code>isSelected</code> CSS class, focused node) still
 			updates — only <code>onNodeClick</code> / <code>onSelectionChange</code> / <code>onCheckedChange</code>
@@ -663,7 +663,7 @@ End    Go to last visible node
 			</label>
 			<label>
 				<input type="checkbox" bind:checked={silentMode} />
-				silent: true
+				isSilent: true
 			</label>
 			<button class="btn" onclick={simulateUrlLoad}>Simulate URL load</button>
 			<button class="btn btn-secondary" onclick={silentReset}>Reset</button>
@@ -708,10 +708,10 @@ function restoreFromUrl(nodePath: string) {
   // 1. Load form data based on the URL — preserve this value
   loadFormDataFromUrl(nodePath);
 
-  // 2. Mark the matching node visually — { silent: true } skips
+  // 2. Mark the matching node visually — { isSilent: true } skips
   //    onNodeClick / onSelectionChange so the form-load handler
   //    doesn't re-fire and clobber the data above.
-  tree.selectNode(nodePath, 'replace', { silent: true });
+  tree.selectNode(nodePath, 'replace', { isSilent: true });
 
   // 3. Scroll into view (scrollToPath never fires selection events).
   tree.scrollToPath(nodePath, { expand: true, highlight: true });
@@ -721,7 +721,7 @@ function restoreFromUrl(nodePath: string) {
 		<div class="note">
 			<p class="note-title">Also supported</p>
 			<p>
-				All four methods accept <code>{`{ silent: true }`}</code>:
+				All four methods accept <code>{`{ isSilent: true }`}</code>:
 				<code>selectNode(path, mode, opts)</code>,
 				<code>selectNodes(paths, opts)</code>,
 				<code>clearSelection(paths?, opts)</code>,

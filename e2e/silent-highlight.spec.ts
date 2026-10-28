@@ -7,7 +7,7 @@ import { test, expect, Page } from '@playwright/test';
  * The fixture page wires every Tree event callback (onNodeClick,
  * onSelectionChange, onCheckedChange) to a counter rendered into the DOM.
  * Each control button calls a single Tree method — once with options omitted
- * ("loud"), once with { silent: true }. The spec asserts on the counters and
+ * ("loud"), once with { isSilent: true }. The spec asserts on the counters and
  * on the bindable selectedPaths / checkedPaths to verify silent mode
  * suppresses callbacks but still updates state.
  *

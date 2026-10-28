@@ -132,7 +132,7 @@ rangeSelectionMode:
 - "visual" (default): selects only visible/expanded nodes
 - "logical": selects all nodes in depth-first order including collapsed
 
-TreeController API — three symmetric families (opts = { silent? }):
+TreeController API — three symmetric families (opts = { isSilent? }):
 Access via bind:this on <Tree> (treeRef) — every method below is on the controller.
 
 SELECTION (UI multi-select set = selectedPaths):
