@@ -55,7 +55,7 @@ import {
 } from './clipboard.js';
 import type { TreeNavigation } from './navigation.js';
 import type { TreeMenuContext, TreeMenuEntry, TreeMenuItem, TreeAction, TreeActionEventDetail } from './menu.js';
-import type { ResolvedActionItem } from '../vendor/actions/types.js';
+import type { MenuItem, ResolvedActionItem } from '../vendor/actions/types.js';
 import { runAction } from '../vendor/actions/resolve.js';
 
 // Re-register global API (safe to import multiple times)
@@ -3360,7 +3360,11 @@ export class TreeController<T> {
 	 * non-enumerable `controller`. Public for custom menu renderers — pass it to
 	 * `getContextMenuItemsCallback`, `resolveMenuEntries` and `activateMenuItem`.
 	 */
-	menuContext(node: LTreeNode<T>): TreeMenuContext<T> {
+	menuContext(node: LTreeNode<T>): TreeMenuContext<T>;
+	/** A menu over empty space: `{ node: null }` + non-enumerable `controller`. */
+	menuContext(node: null): TreeCallbackContext<T> & { node: null };
+	menuContext(node: LTreeNode<T> | null): TreeMenuContext<T> | (TreeCallbackContext<T> & { node: null }) {
+		if (!node) return this._ctx({ node: null }) as TreeCallbackContext<T> & { node: null };
 		return this._ctx({ ...this.getNodeRef(node), node }) as TreeMenuContext<T>;
 	}
 
@@ -3373,10 +3377,37 @@ export class TreeController<T> {
 	menuItemDefaults(
 		item: TreeMenuItem<T>,
 		ctx: TreeMenuContext<T>
+	): Partial<ResolvedActionItem<TreeAction>> | undefined;
+	/** A menu over empty space (`ctx` without a `node`): the node-bound built-ins are disabled. */
+	menuItemDefaults(
+		item: MenuItem<any, string>,
+		ctx: TreeCallbackContext<T> & { node?: null }
+	): Partial<ResolvedActionItem<TreeAction>> | undefined;
+	menuItemDefaults(
+		item: MenuItem<any, string>,
+		ctx: TreeCallbackContext<T> & { node?: LTreeNode<T> | null }
 	): Partial<ResolvedActionItem<TreeAction>> | undefined {
 		const label = (key: Parameters<TreeController<T>['getLabel']>[0]) => this.getLabel(key);
+		const node = ctx.node;
+		if (!node) {
+			switch (item.action) {
+				case 'paste': return { text: label('paste'), isDisabled: !this.hasClipboardContent() };
+				case 'expand-all': return { text: label('expandAll') };
+				case 'collapse-all': return { text: label('collapseAll') };
+				case 'sort-all': return { text: label('sortAll') };
+				case 'copy': case 'cut': case 'delete': case 'expand': case 'collapse':
+				case 'expand-subtree': case 'collapse-subtree': case 'sort': case 'sort-subtree': {
+					const key = item.action === 'expand-subtree' ? 'expandSubtree'
+						: item.action === 'collapse-subtree' ? 'collapseSubtree'
+						: item.action === 'sort-subtree' ? 'sortSubtree'
+						: item.action;
+					return { text: label(key), isDisabled: true };
+				}
+				default: return undefined;
+			}
+		}
 		const targets = () =>
-			this._actionTargets(ctx.node)
+			this._actionTargets(node)
 				.map((p) => this.tree?.getNodeByPath(p))
 				.filter((n): n is LTreeNode<T> => !!n && !!n.hasChildren);
 		switch (item.action) {
@@ -3411,6 +3442,24 @@ export class TreeController<T> {
 		ctx: TreeMenuContext<T>,
 		trigger?: HTMLElement,
 		event?: Event
+	): Promise<boolean>;
+	/**
+	 * A menu over empty space — `ctx` without a `node` (`{ node: null }` or just
+	 * `{ controller }`): the same order; of the built-ins only the node-free ones run
+	 * (`paste` into the root, `expand-all`, `collapse-all`, `sort-all`), node-bound ones are
+	 * skipped (debug log).
+	 */
+	activateMenuItem<Ctx extends TreeCallbackContext<T>>(
+		item: MenuItem<Ctx, string>,
+		ctx: Ctx & { node?: null },
+		trigger?: HTMLElement,
+		event?: Event
+	): Promise<boolean>;
+	activateMenuItem(
+		item: MenuItem<any, string>,
+		ctx: TreeCallbackContext<T> & { node?: LTreeNode<T> | null },
+		trigger?: HTMLElement,
+		event?: Event
 	): Promise<boolean> {
 		const detail = this._ctx({
 			...ctx,
@@ -3426,7 +3475,7 @@ export class TreeController<T> {
 			detail,
 			beforeActionCallback: this.beforeActionHandler,
 			emitAction: (d) => this.onActionHandler?.(d),
-			runBuiltIn: (d) => this._runBuiltInAction(d.action, ctx.node)
+			runBuiltIn: (d) => this._runBuiltInAction(d.action, ctx.node ?? null)
 		});
 	}
 
@@ -3436,7 +3485,21 @@ export class TreeController<T> {
 	}
 
 	/** The built-in menu actions act on the node — or on the whole selection when the node is in it. */
-	private async _runBuiltInAction(action: string, node: LTreeNode<T>): Promise<void> {
+	private async _runBuiltInAction(action: string, node: LTreeNode<T> | null): Promise<void> {
+		if (!node) {
+			// A menu over empty space: only the node-free built-ins apply.
+			switch (action) {
+				case 'paste': this.pasteNodes(''); break;
+				case 'expand-all': this.expandAll(null); break;
+				case 'collapse-all': this.collapseAll(null); break;
+				case 'sort-all': this.sortAll(null); break;
+				case 'copy': case 'cut': case 'delete': case 'expand': case 'collapse':
+				case 'expand-subtree': case 'collapse-subtree': case 'sort': case 'sort-subtree':
+					uiLogger.debug(`[menu] built-in '${action}' needs a node — skipped (menu without a node)`);
+					break;
+			}
+			return;
+		}
 		const paths = this._actionTargets(node);
 		switch (action) {
 			case 'copy': this.copyNodes(paths); break;

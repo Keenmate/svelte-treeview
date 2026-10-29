@@ -110,6 +110,10 @@ UI like @keenmate/svelte-treeview-canvas):
   // = beforeActionCallback (false cancels everything) → onClick → built-in → onAction; resolves
   //   false when cancelled. A custom renderer cannot bypass the veto. Closing the menu is yours
   //   (respect item.shouldCloseOnClick !== false).
+  // Menu over empty space (no node): ctx = controller.menuContext(null)  -> { node: null } + controller.
+  //   activateMenuItem(item, ctx) runs the same order; only node-free built-ins run (paste into the
+  //   root, expand-all, collapse-all, sort-all); node-bound ones are skipped (debug log) and
+  //   menuItemDefaults marks them disabled.
 
 SUBMENUS
 --------

@@ -74,3 +74,53 @@ test('getMenuChildren resolves an async submenu with the ctx', async ({ page }) 
 	await item(page, 'More').click();
 	await expect.poll(async () => JSON.parse((await page.getByTestId('submenu').textContent()) || '[]')).toEqual(['Child of 2']);
 });
+
+test.describe('menu over empty space (menuContext(null) / activateMenuItem with no node)', () => {
+	const emptyItem = (page: Page, text: string) => page.getByTestId('empty-item').filter({ hasText: text });
+
+	test('menuItemDefaults: node-free built-ins enabled, node-bound ones disabled', async ({ page }) => {
+		await expect(page.getByTestId('empty-item')).toHaveText(['Empty custom', 'Expand all', 'Delete']);
+		await expect(emptyItem(page, 'Expand all')).toBeEnabled();
+		await expect(emptyItem(page, 'Delete')).toBeDisabled();
+	});
+
+	test('a consumer item: beforeActionCallback → onClick → onAction (node null)', async ({ page }) => {
+		await emptyItem(page, 'Empty custom').click();
+		await expect.poll(() => log(page)).toEqual([
+			'before:custom:empty-custom',
+			'click:empty-custom:null',
+			'action:custom:empty-custom:context-menu',
+			'result:true',
+			'expanded-1:false',
+			'nodes:3'
+		]);
+	});
+
+	test('a node-free built-in runs (expand-all)', async ({ page }) => {
+		await emptyItem(page, 'Expand all').click();
+		await expect.poll(() => log(page)).toEqual([
+			'before:expand-all:-',
+			'action:expand-all:-:context-menu',
+			'result:true',
+			'expanded-1:true',
+			'nodes:4'
+		]);
+	});
+
+	test('the veto applies without a node too', async ({ page }) => {
+		await page.getByTestId('block').click();
+		await emptyItem(page, 'Expand all').click();
+		await expect.poll(() => log(page)).toEqual(['before:expand-all:-', 'result:false', 'expanded-1:false', 'nodes:3']);
+	});
+
+	test('a node-bound built-in is skipped (delete removes nothing)', async ({ page }) => {
+		await page.getByTestId('force-delete').click();
+		await expect.poll(() => log(page)).toEqual([
+			'before:delete:-',
+			'action:delete:-:context-menu',
+			'result:true',
+			'expanded-1:false',
+			'nodes:3'
+		]);
+	});
+});

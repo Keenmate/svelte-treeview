@@ -134,6 +134,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `activateMenuItem` runs the built-in menu's path (`beforeActionCallback` veto → item `onClick` →
   built-in → `onAction`), so a custom renderer cannot bypass a veto. docs/usage.md "Custom menu
   renderer"; `/test/custom-menu` + `e2e/custom-menu.spec.ts`.
+- **Menus over empty space** — `controller.menuContext(null)` returns `{ node: null }` +
+  `controller`; `activateMenuItem(item, ctx)` accepts a ctx without a node (same order: veto →
+  `onClick` → built-in → `onAction`); only the node-free built-ins run (`paste` into the root,
+  `expand-all`, `collapse-all`, `sort-all`), node-bound ones are skipped with a debug log and
+  `menuItemDefaults` marks them disabled.
 - **Expand family (parity with `@keenmate/web-treeview`)** — bindable **`expandedPaths`**
   (`Set<string>`, like `selectedPaths` / `checkedPaths`; assigning replaces the expanded state
   silently; given before the data it applies after the first load), **`onNodeExpand`** /

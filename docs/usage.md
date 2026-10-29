@@ -161,11 +161,11 @@ Rendering your own menu (a `contextMenu` snippet, or a headless `TreeProvider` /
 
 | API | Description |
 |-----|-------------|
-| `controller.menuContext(node)` | The menu ctx `{ node, path, parent, siblings }` + non-enumerable `controller` — pass it to `getContextMenuItemsCallback` and the functions below. |
+| `controller.menuContext(node)` | The menu ctx `{ node, path, parent, siblings }` + non-enumerable `controller` — pass it to `getContextMenuItemsCallback` and the functions below. `menuContext(null)` = a menu over empty space: `{ node: null }` + `controller`. |
 | `controller.menuItemDefaults(item, ctx)` | The built-in state of a built-in action item (text from `labels`, `isDisabled`, `isDanger`); `undefined` for consumer items. |
 | `resolveMenuEntries(entries, ctx, defaults?)` | Resolves one level: built-in names → items, `get*Callback`s evaluated, hidden items dropped, dividers collapsed (no leading / trailing / doubled). Returns `{ kind: 'item', item, resolved, hasChildren } \| { kind: 'divider', text? }` (`ResolvedMenuEntry`). |
 | `getMenuChildren(item, ctx)` | A submenu's entries: `getChildrenCallback(ctx)` (may be async) wins over `children`. |
-| `controller.activateMenuItem(item, ctx, trigger?, event?)` | Runs the item exactly like the built-in menu: `beforeActionCallback` (`false` cancels — no `onClick`, built-in or `onAction`) → `onClick(detail)` → built-in action → `onAction(detail)`. Resolves `false` when cancelled. A custom renderer cannot bypass the veto. Closing the menu is yours (respect `item.shouldCloseOnClick !== false`). |
+| `controller.activateMenuItem(item, ctx, trigger?, event?)` | Runs the item exactly like the built-in menu: `beforeActionCallback` (`false` cancels — no `onClick`, built-in or `onAction`) → `onClick(detail)` → built-in action → `onAction(detail)`. Resolves `false` when cancelled. A custom renderer cannot bypass the veto. Closing the menu is yours (respect `item.shouldCloseOnClick !== false`). With a node-less ctx (`menuContext(null)`) only the node-free built-ins run — `paste` (into the root), `expand-all`, `collapse-all`, `sort-all`; node-bound ones are skipped (debug log) and `menuItemDefaults` marks them disabled. |
 
 ```svelte
 <script lang="ts">

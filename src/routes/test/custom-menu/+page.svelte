@@ -14,7 +14,9 @@
 		type TreeMenuEntry,
 		type TreeMenuItem,
 		type TreeAction,
-		type TreeActionEventDetail
+		type TreeActionEventDetail,
+		type MenuEntry,
+		type MenuItem
 	} from '$lib/index.js';
 
 	type Item = { id: number; path: string; name: string };
@@ -50,6 +52,22 @@
 	async function activate(controller: TreeController<Item>, item: TreeMenuItem<Item>, ctx: TreeMenuContext<Item>, el: HTMLElement, e: Event) {
 		const ok = await controller.activateMenuItem(item, ctx, el, e);
 		log = [...log, `result:${ok}`];
+	}
+
+	// A menu over empty space: ctx without a node (controller.menuContext(null)).
+	type EmptyCtx = ReturnType<TreeController<Item>['menuContext']> & { node: null };
+	function emptyEntries(): (MenuEntry<EmptyCtx, string> | string)[] {
+		return [
+			{ id: 'empty-custom', text: 'Empty custom', onClick: (d) => { log = [...log, `click:${d.id}:${d.node}`]; } },
+			'expand-all',
+			'delete'
+		];
+	}
+
+	async function activateEmpty(controller: TreeController<Item>, item: MenuItem<EmptyCtx, string>, ctx: EmptyCtx, el?: HTMLElement, e?: Event) {
+		const ok = await controller.activateMenuItem(item, ctx, el, e);
+		const a = controller.allFlatNodes.find((n) => n.path === '1');
+		log = [...log, `result:${ok}`, `expanded-1:${!!a?.isExpanded}`, `nodes:${controller.allFlatNodes.length}`]; // nodes = visible rows
 	}
 
 	async function openSub(item: TreeMenuItem<Item>, ctx: TreeMenuContext<Item>) {
@@ -103,6 +121,22 @@
 					{/each}
 				</ul>
 			{/if}
+			{@const emptyCtx = controller.menuContext(null)}
+			<ul data-testid="empty-menu" role="menu">
+				{#each resolveMenuEntries<EmptyCtx, string>(emptyEntries(), emptyCtx, (item) => controller.menuItemDefaults(item, emptyCtx)) as entry}
+					{#if entry.kind === 'item'}
+						<li role="none">
+							<button
+								role="menuitem"
+								data-testid="empty-item"
+								disabled={entry.resolved.isDisabled}
+								onclick={(e) => activateEmpty(controller, entry.item, emptyCtx, e.currentTarget, e)}
+							>{entry.resolved.text}</button>
+						</li>
+					{/if}
+				{/each}
+			</ul>
+			<button data-testid="force-delete" onclick={() => activateEmpty(controller, { action: 'delete' }, emptyCtx)}>force delete</button>
 		{/snippet}
 	</TreeProvider>
 </main>
