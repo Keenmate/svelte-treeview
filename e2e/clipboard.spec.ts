@@ -52,6 +52,36 @@ test.describe('Clipboard — Ctrl/Cmd + C / X / V', () => {
 		await expect.poll(() => countByName(page, 'A-child-1')).toBe(2);
 	});
 
+	test('pasting INTO a collapsed node expands it and reveals the first pasted node (the --stv-scroll-behavior token) — = web-treeview', async ({ page }) => {
+		await clickNode(page, 'A-child-1');
+		await page.keyboard.press('Control+c');
+		await expect(page.getByTestId('last-log')).toHaveText('copied 1');
+
+		await tree(page).locator('.stv__node[data-tree-path="2"] .stv__toggle-icon--expand').first().click(); // collapse Folder B
+		await expect(nodeByName(page, 'B-child-1')).toBeHidden();
+		await clickNode(page, 'Folder B');
+		await expect(nodeByName(page, 'B-child-1')).toBeHidden(); // still collapsed
+
+		await page.evaluate(() => {
+			document.documentElement.style.setProperty('--base-scroll-behavior', 'instant');
+			const calls: { text: string; behavior?: string; block?: string }[] = ((window as any).revealCalls = []);
+			const orig = Element.prototype.scrollIntoView;
+			Element.prototype.scrollIntoView = function (this: Element, o?: boolean | ScrollIntoViewOptions) {
+				const opts = typeof o === 'object' && o ? o : {};
+				calls.push({ text: this.textContent ?? '', behavior: opts.behavior, block: opts.block });
+				return orig.call(this, o);
+			};
+		});
+		await page.keyboard.press('Control+v');
+		await expect(page.getByTestId('last-log')).toHaveText('pasted 1');
+
+		await expect(nodeByName(page, 'B-child-1')).toBeVisible(); // Folder B opened
+		await expect(tree(page).locator('.stv__node[data-tree-path^="2."] span[data-name="A-child-1"]')).toBeVisible();
+		await expect
+			.poll(() => page.evaluate(() => (window as any).revealCalls))
+			.toContainEqual({ text: expect.stringContaining('A-child-1'), behavior: 'instant', block: 'nearest' });
+	});
+
 	test('cut dims the node; Escape cancels and un-dims', async ({ page }) => {
 		await clickNode(page, 'A-child-2');
 		await page.keyboard.press('Control+x');

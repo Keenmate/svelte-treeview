@@ -3045,6 +3045,7 @@ export class TreeController<T> {
 		let skipped = 0;
 		let lastError: string | undefined;
 		const pastedSourcePaths: string[] = [];
+		let firstPasted: LTreeNode<T> | undefined;
 
 		// Build the per-node context with LIVE references, symmetric on both sides:
 		// `source` = the origin node (+ its parent/siblings), `target` = the node you aimed
@@ -3119,6 +3120,7 @@ export class TreeController<T> {
 			}
 			totalCount++;
 			pastedSourcePaths.push(entry.sourcePath);
+			firstPasted ??= addResult.node;
 
 			// Descendants from the snapshot. A descendant the transform vetoes (null)
 			// takes its own subtree with it (parent-first order makes this a prefix skip).
@@ -3182,6 +3184,20 @@ export class TreeController<T> {
 					: undefined
 		};
 		uiLogger.debug(`[clipboard] Pasted ${totalCount} node(s), skipped ${skipped}`);
+
+		// A paste INTO a node: open it and bring the first pasted node into view (a programmatic
+		// jump — the --stv-scroll-behavior token), so the result isn't hidden under a collapsed
+		// parent. 'before' / 'after' land beside a visible node — nothing to open (= web-treeview).
+		if (position === 'child' && !isRootPasteAfter && firstPasted) {
+			const target = targetNodeAfter!;
+			const pasted = firstPasted;
+			void (async () => {
+				if (!target.isExpanded) await this.expandNodes(target.path);
+				await tick();
+				await this._scrollToPath(pasted.path, { block: 'nearest' }, false);
+			})();
+		}
+
 		this.onNodePasteHandler?.(this._ctx(result));
 		return result;
 	}

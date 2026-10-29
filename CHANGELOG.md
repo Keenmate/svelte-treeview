@@ -34,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Keyboard scroll position is `block: 'nearest'`** (was centred, `'center'`): a move to a visible row no
   longer scrolls; an off-screen row is brought in to the nearest edge of the tree's scroll container (virtual
   scroll included) — the same as web-treeview. `scrollToPath` still defaults to `block: 'center'`.
+- **Pasting INTO a node expands it and reveals the first pasted node** (`pasteNodes(path)` / Ctrl+V /
+  the menu's Paste, position `child`): a collapsed target opens (`expandNodes` — expand events fire) and the
+  first pasted node is scrolled in with `block: 'nearest'` and the `--stv-scroll-behavior` token (a
+  programmatic jump). Was: nothing opened, the result could stay hidden. `before` / `after` pastes are
+  unchanged — the same as web-treeview.
 
 ### Changed — BREAKING (shared KeenMate loader — 2026-10-29)
 
