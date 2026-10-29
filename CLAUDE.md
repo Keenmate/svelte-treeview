@@ -2,6 +2,8 @@
 
 PACKAGE: @keenmate/svelte-treeview v5.0.0-rc16 | Svelte 5 hierarchical tree component | MIT | KeenMate
 
+PARITY: Any public API change must update docs/parity.md and be mirrored in the sibling library (@keenmate/web-treeview, C:\Git\KM\web-treeview) — or be recorded there as intentional.
+
 CORE_FILES:
 - src/lib/components/Tree.svelte - main component
 - src/lib/components/Node.svelte - node renderer  
@@ -40,31 +42,15 @@ interface Ltree<T> {
   filterNodes(searchTerm: string): void;
 }
 
-interface ContextMenuDivider {
-  divider: true;
-  text?: string;  // named divider: ──── [text] ────
-}
-
-// rc16: field names follow core's ActionItem/MenuItem (text/onClick/cssClass/isDanger/isToggled)
-interface ContextMenuContext<T> { node; selectedNodes; checkedNodes; closeMenu(): void }
-
-interface ContextMenuItem<T = any> {
-  id?: string;
-  text: string;
-  icon?: string;
-  tooltip?: string;
-  shortcut?: string;
-  isDisabled?: boolean;
-  isVisible?: boolean;
-  isDanger?: boolean;   // .stv__context-menu-item--danger
-  isToggled?: boolean;  // role=menuitemcheckbox + aria-checked
-  cssClass?: string;
-  onClick?: (ctx: ContextMenuContext<T>) => void | Promise<void>;
-  shouldCloseOnClick?: boolean;  // default true; false = menu stays open, handler closes via close()
-  children?: ContextMenuEntry[];
-}
-
-type ContextMenuEntry = ContextMenuItem | ContextMenuDivider;
+// Context menu = web-treeview's model (core /actions vendored in src/lib/vendor/actions; src/lib/core/menu.ts)
+interface TreeMenuContext<T> { node; path; parent; siblings; controller }   // getContextMenuItemsCallback(ctx)
+type TreeMenuEntry<T> = TreeMenuItem<T> | MenuDivider | TreeAction;        // menuDivider(text?)
+// TreeMenuItem = core MenuItem: { action?, id?, text, icon, tooltip, shortcut, cssClass, isVisible,
+//   isDisabled, isDanger, isToggled, get*Callback(ctx), children, onClick(detail), shouldCloseOnClick }
+// TreeAction = copy cut paste delete expand collapse expand-subtree collapse-subtree expand-all
+//   collapse-all sort sort-subtree sort-all (texts from labels; act on the selection when the node is in it)
+// order: beforeActionCallback -> item onClick -> built-in -> onAction(detail)
+// Every callback ctx carries `controller` (non-enumerable; see _ctx / _withController in TreeController).
 ```
 
 TREE_PROPS_REQUIRED:
@@ -177,11 +163,11 @@ CONSTRAINTS:
 - Segments internally prefixed 'x' for ordering
 
 CONTEXT_MENU:
-- Unified types: ContextMenuItem, ContextMenuDivider, ContextMenuEntry (shared with canvas-tree)
-- Two approaches: snippet-based (ContextMenuItemC/ContextMenuDividerC components) and callback-based
-- Callback: getContextMenuItemsCallback(ctx: ContextMenuContext = { node, selectedNodes, checkedNodes, closeMenu }) returns ContextMenuEntry[]; every item's onClick gets the same ctx
-- Divider type: { divider: true, text?: string } — named dividers render as ──── [text] ────
-- Item features: text, icon, tooltip, shortcut, isDisabled, isVisible, isDanger, isToggled, cssClass, onClick(ctx), shouldCloseOnClick (default true; false keeps menu open), children (submenus)
+- Same model as web-treeview (core /actions vendored): types TreeMenuContext / TreeMenuItem / TreeMenuEntry / TreeAction / TreeActionEventDetail (src/lib/core/menu.ts); menuDivider(text?)
+- Two approaches: snippet-based (contextMenu snippet + ContextMenuItemC/ContextMenuDividerC components) and callback-based
+- Callback: getContextMenuItemsCallback(ctx: TreeMenuContext = { node, path, parent, siblings, controller }) returns TreeMenuEntry[] (items, dividers, built-in names); item onClick(detail) gets ctx + { action, id, item, source, ... }
+- Built-ins: copy cut paste delete expand collapse expand-subtree collapse-subtree expand-all collapse-all sort sort-subtree sort-all (labels texts; selection-aware); beforeActionCallback (false cancels) / onAction
+- Item features: text, icon, tooltip, shortcut, isDisabled, isVisible, isDanger, isToggled, cssClass, get*Callback, onClick(detail), shouldCloseOnClick (default true), children / getChildrenCallback
 - Submenus: children[] opens nested menu on hover (CSS position: absolute; left: 100%)
 - Position offset: contextMenuXOffset/YOffset for cursor clearance
 - Auto-close: closes on scroll, click outside, or programmatically
