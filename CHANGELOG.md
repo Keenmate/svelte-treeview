@@ -37,8 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   element, label }`, a returned cleanup runs when loading ends, a throwing hook falls back to the
   default) > the default `.stv-loader`. The overlay keeps `role="status"` + `aria-label` = label
   `loading`. New type exports `LoaderRenderContext`, `RenderLoaderCallback`.
-- `@keenmate/base-css-variables` points to `file:../base-css-variables` (2.0.0-rc06, unpublished,
-  defines `--base-loader-*`) — **switch back to `^2.0.0-rc06` before publishing**.
+- Requires `@keenmate/base-css-variables` ^2.0.0-rc06 (defines `--base-loader-*`).
 
 ### Changed — BREAKING (theming: one token list with web-treeview, contract conversion, motion — 2026-10-29)
 
