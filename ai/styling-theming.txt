@@ -70,7 +70,7 @@ Only the contract's four speeds + easings; no prop turns animations on/off:
   --stv-transition-fast | -normal | -medium | -slow
       = var(--base-duration-*, 0.1s | 0.15s | 0.25s | 0.3s)
   --stv-ease-standard | -out | -in = var(--base-ease-*)
-  --stv-spinner-duration: 0.8s   (spinner loop; keeps turning under reduced motion)
+  --stv-loader-duration = var(--base-loader-duration, 0.8s)   (loader loop; slows, never stops, under reduced motion)
 Motion off (this tree):  .stv__container { --stv-transition-normal: 0s; ... all four }
 Motion off (page-wide):  :root { --base-duration-fast: 0s; ... all four }
 prefers-reduced-motion: reduce -> the four --stv-transition-* are 0s.

@@ -117,21 +117,17 @@
 */
 
 /* Per-node loading state: an async beforeExpandCallback is pending (lazy load). The
-   toggle glyph becomes a small spinning ring; the row carries aria-busy + data-loading. */
+   toggle glyph becomes the shared loader shape; the row carries aria-busy + data-loading. */
 .stv__toggle-icon.stv__toggle-icon--loading,
 .stv__toggle-icon.stv__clickable.stv__toggle-icon--loading {
 	transform: none;
 }
 .stv__toggle-icon.stv__toggle-icon--loading::before {
 	content: '';
-	-webkit-mask-image: none;
-	mask-image: none;
-	background: none;
-	box-sizing: border-box;
-	width: var(--stv-expand-spinner-size);
-	height: var(--stv-expand-spinner-size);
-	border: var(--stv-expand-spinner-width) solid var(--stv-expand-spinner-track);
-	border-top-color: var(--stv-expand-spinner-color);
-	border-radius: 50%;
-	animation: stv-spin var(--stv-spinner-duration) linear infinite;
+	width: var(--stv-loader-inline-size);
+	height: var(--stv-loader-inline-size);
+	-webkit-mask: var(--stv-loader-icon) center / contain no-repeat;
+	mask: var(--stv-loader-icon) center / contain no-repeat;
+	background: var(--stv-loader-color);
+	animation: stv-loader-spin var(--stv-loader-duration) linear infinite;
 }

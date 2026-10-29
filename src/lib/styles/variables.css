@@ -134,9 +134,18 @@
 	--stv-ease-standard: var(--base-ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
 	--stv-ease-out: var(--base-ease-out, cubic-bezier(0, 0, 0.2, 1));
 	--stv-ease-in: var(--base-ease-in, cubic-bezier(0.4, 0, 1, 1));
-	/* One turn of the loading spinners — a loop period, not a transition, so it is
-	   not on the duration scale and keeps turning under reduced motion (it shows state). */
-	--stv-spinner-duration: 0.8s;
+	/* The shared loader (base-css-variables "Loader" contract, = web-treeview / core
+	   renderLoader): shape, rotation, one-turn period and size. The duration is a loop
+	   period, not on the duration scale; under reduced motion the contract slows it
+	   (1.5s) — the loader never stops. */
+	--stv-loader-icon: var(--base-loader-icon, url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M21 12a9 9 0 1 1-6.219-8.56%22/%3E%3C/svg%3E"));
+	--stv-loader-rotate: var(--base-loader-rotate, 1turn);
+	--stv-loader-duration: var(--base-loader-duration, 0.8s);
+	--stv-loader-size: var(--base-loader-size, 1.25em);
+	/* Per-context sizes, derived from the one size: the isLoading overlay (big) and the
+	   per-node lazy-load loader inside the toggle (tiny, CSS-only — the row has aria-busy). */
+	--stv-loader-overlay-size: calc(var(--stv-loader-size) * 2);
+	--stv-loader-inline-size: calc(var(--stv-loader-size) * 0.75);
 
 	/* -------------------------------------------------------------------------
 	   NODE LAYOUT
@@ -348,14 +357,8 @@
 	--stv-loading-bg: color-mix(in srgb, var(--stv-main-bg) 80%, transparent);
 	/* "Loading more…" line of the progressive render */
 	--stv-loading-color: var(--stv-text-color-3);
-	--stv-spinner-size: calc(3.2 * var(--stv-rem));
-	--stv-spinner-track: var(--stv-border-color);
-	--stv-spinner-color: var(--stv-accent-color);
-	/* Per-node loading spinner (async beforeExpandCallback) — replaces the toggle glyph. */
-	--stv-expand-spinner-size: var(--stv-icon-size-glyph);
-	--stv-expand-spinner-width: 2px;
-	--stv-expand-spinner-track: var(--stv-spinner-track);
-	--stv-expand-spinner-color: var(--stv-spinner-color);
+	/* Loader colour (the loader is a currentColor mask) — overlay + per-node loader. */
+	--stv-loader-color: var(--stv-accent-color);
 
 	/* -------------------------------------------------------------------------
 	   DROP PLACEHOLDER (empty tree)
@@ -383,7 +386,7 @@
 	--stv-z-index-overlay: 10;  /* loading overlay, local to the tree */
 }
 
-/* Reduced motion: no transitions / animations (the spinners keep turning). */
+/* Reduced motion: no transitions / animations (the loader keeps turning, slower — the contract's --base-loader-duration). */
 @media (prefers-reduced-motion: reduce) {
 	.stv__container {
 		--stv-transition-fast: 0s;

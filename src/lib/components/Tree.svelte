@@ -56,6 +56,7 @@
 		ScrollToPathOptions
 	} from '../core/TreeController.svelte.js';
 	import { uiLogger } from '../logger.js';
+	import { getPageLoaderCallback, pageLoader } from '../core/loader.js';
 	import { createTreeController } from '../core/createTreeController.js';
 	import type { TreeNavigationOverrides } from '../core/navigation.js';
 	import type { TreeMenuContext, TreeMenuEntry, TreeMenuItem, TreeActionEventDetail } from '../core/menu.js';
@@ -145,7 +146,9 @@
 		contextMenu?: Snippet<[LTreeNode<T>, () => void]>;
 		/** The empty-tree drop zone's content. */
 		dropPlaceholder?: Snippet;
-		/** Shown while `isLoading`. */
+		/** Shown while `isLoading` (inside the `role="status"` overlay). Beats the page-wide
+		 *  `window.components.renderLoaderCallback`; neither: the default `.stv-loader`
+		 *  (`--stv-loader-*` tokens → `--base-loader-*`). */
 		loadingPlaceholder?: Snippet;
 
 		/** UI strings — a partial object merged per key over the English defaults (`''` = render
@@ -2127,13 +2130,25 @@
 
 	{#if controller.isLoading}
 		{@const loadingText = controller.getLabel('loading')}
-		<div class="stv__loading-overlay" role="status" aria-label={loadingText || undefined}>
-			{#if loadingPlaceholder}
-				{@render loadingPlaceholder()}
-			{:else}
-				<div class="stv__loading-spinner"></div>
-			{/if}
-		</div>
+		<!-- Precedence: loadingPlaceholder snippet > page-wide window.components.renderLoaderCallback
+		     (the suite's shared loader hook, read without core) > the default .stv-loader. -->
+		{@const pageLoaderHook = loadingPlaceholder ? undefined : getPageLoaderCallback()}
+		{#if pageLoaderHook}
+			<div
+				class="stv__loading-overlay"
+				role="status"
+				aria-label={loadingText || undefined}
+				use:pageLoader={{ hook: pageLoaderHook, label: loadingText }}
+			></div>
+		{:else}
+			<div class="stv__loading-overlay" role="status" aria-label={loadingText || undefined}>
+				{#if loadingPlaceholder}
+					{@render loadingPlaceholder()}
+				{:else}
+					<span class="stv-loader" aria-hidden="true"></span>
+				{/if}
+			</div>
+		{/if}
 	{/if}
 
 	<div class={controller.bodyClass}>

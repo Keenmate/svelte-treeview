@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > 5.0.0 was never published to npm (the previous `[5.0.0] - 2026-10-13 [PUBLISHED]` heading was wrong — npm `rc` is 5.0.0-rc15, `latest` 4.8.0). Its entries are folded into rc16 below.
 
+### Changed — BREAKING (shared KeenMate loader — 2026-10-29)
+
+- **The `isLoading` overlay and the per-node lazy-load toggle draw the suite's shared loader**
+  (base-css-variables "Loader" contract, = web-treeview / web-components-core `renderLoader`): a
+  single-colour mask shape (`.stv-loader`) instead of the bordered ring. **Removed** tokens
+  `--stv-spinner-duration`, `--stv-spinner-size`, `--stv-spinner-track`, `--stv-spinner-color`,
+  `--stv-expand-spinner-size` / `-width` / `-track` / `-color` and the `.stv__loading-spinner`
+  class / `stv-spin` keyframes. **New** tokens `--stv-loader-icon` / `-rotate` / `-duration` /
+  `-size` (each `var(--base-loader-*, …)`), `--stv-loader-overlay-size` (size × 2, the overlay),
+  `--stv-loader-inline-size` (size × 0.75, the toggle) and `--stv-loader-color` (= accent); keyframes
+  `stv-loader-spin`. Under reduced motion the loader slows (contract: 1.5s), never stops.
+- **Precedence of the overlay content:** `loadingPlaceholder` snippet > the page-wide
+  `window.components.renderLoaderCallback` (the hook web components use; read without depending on
+  web-components-core — ctx `{ component: 'svelte-treeview', context: 'overlay', containerElement,
+  element, label }`, a returned cleanup runs when loading ends, a throwing hook falls back to the
+  default) > the default `.stv-loader`. The overlay keeps `role="status"` + `aria-label` = label
+  `loading`. New type exports `LoaderRenderContext`, `RenderLoaderCallback`.
+- `@keenmate/base-css-variables` points to `file:../base-css-variables` (2.0.0-rc06, unpublished,
+  defines `--base-loader-*`) — **switch back to `^2.0.0-rc06` before publishing**.
+
 ### Changed — BREAKING (theming: one token list with web-treeview, contract conversion, motion — 2026-10-29)
 
 - **CSS variables renamed** so svelte-treeview and web-treeview share ONE token list (only the
@@ -97,13 +117,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Snapped toward faster: 200ms / 0.2s (toggle turn, dragged row, drop placeholder) → normal
   (0.15s); the drag-denied badge pop 0.22s → normal; the drag-denied row tint no longer pulses
   (0.9s, infinite) — it fades in over `--stv-transition-slow` (0.3s) and holds while the node is
-  pressed. The spinners turn once per `--stv-spinner-duration` (0.8s, a loop period). Turn motion
+  pressed. The loader turns once per `--stv-loader-duration` (0.8s, a loop period; see the shared loader entry). Turn motion
   off with `--stv-transition-*: 0s` (this tree) or `--base-duration-*: 0s` (page-wide).
 
 ### Added (theming — 2026-10-29)
 
-- **`prefers-reduced-motion: reduce`** sets the four `--stv-transition-*` to `0s` (the spinners
-  keep turning — they show state).
+- **`prefers-reduced-motion: reduce`** sets the four `--stv-transition-*` to `0s` (the loader
+  keeps turning, slower — it shows state).
 - **`--stv-disabled-opacity`** (→ `--base-disabled-opacity`, 0.65) — disabled checkbox (was 0.6)
   and, through `--stv-context-menu-disabled-opacity`, disabled menu items (was 0.5).
 - Tokens web-treeview already had, now in both: `--stv-hover-bg`, `--stv-active-bg`,
@@ -113,8 +133,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `--stv-spacing-xs … -xl`, `--stv-font-size-xs | -sm`, `--stv-font-weight-medium | -semibold`,
   `--stv-drag-over-border`, `--stv-drag-over-highlight-bg | -border`, `--stv-drop-valid-bg |
   -border-color`, `--stv-drop-invalid-bg | -border-color`, `--stv-drop-placeholder-border`,
-  `--stv-drag-denied-flash-bg` / `-badge-color` (declared), `--stv-expand-spinner-size | -width |
-  -track | -color`, `--stv-z-index-dropdown | -drop-zones | -ghost | -overlay`, `--stv-node-info-*`
+  `--stv-drag-denied-flash-bg` / `-badge-color` (declared), `--stv-z-index-dropdown | -drop-zones | -ghost | -overlay`, `--stv-node-info-*`
   (declared, contract defaults). Context menu (the same names as web-treeview's):
   `--stv-context-menu-z-index`, `-border`, `-text-color-hover`, `-item-gap`, `-toggled-color`
   (+ the `--toggled` item style), `-danger-color` (= `--stv-danger-text-color`; the fill colour read

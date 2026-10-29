@@ -57,6 +57,13 @@ test('async beforeExpandCallback shows the loading state, then expands with the 
 	const row = page.locator('.stv__node[data-tree-path="4"]');
 	await expect(row).toHaveAttribute('aria-busy', 'true');
 	await expect(toggle(page, '4')).toHaveClass(/stv__toggle-icon--loading/);
+	// The glyph becomes the shared loader shape (--stv-loader-icon mask, stv-loader-spin).
+	const glyph = await toggle(page, '4').evaluate((n) => {
+		const s = getComputedStyle(n, '::before');
+		return { mask: s.maskImage, anim: s.animationName };
+	});
+	expect(glyph.mask).toContain('data:image/svg+xml');
+	expect(glyph.anim).toBe('stv-loader-spin');
 	// A repeated toggle while pending is ignored.
 	await toggle(page, '4').click();
 	await page.getByTestId('release-lazy').click();

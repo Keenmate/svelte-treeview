@@ -31,6 +31,7 @@ export { resolveMenuEntries, getMenuChildren } from "./vendor/actions/resolve.js
 export type { ResolvedMenuEntry } from "./vendor/actions/resolve.js"
 export type { TreeMenuContext, TreeMenuItem, TreeMenuEntry, TreeAction, TreeActionEventDetail, ActionItem, MenuItem, MenuEntry, MenuDivider, ActionEventDetail, ActionInvocation, ActionSource, ResolvedActionItem } from "./core/menu.js"
 export type { TreeLabels } from "./core/labels.js"
+export type { LoaderRenderContext, RenderLoaderCallback } from "./core/loader.js"
 export type { NodeCallbacks, NodeConfig, SelectionModifiers } from "./core/TreeController.svelte"
 
 // Export logging utilities

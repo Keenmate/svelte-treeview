@@ -229,7 +229,7 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `treeFooter` | | Tree footer content |
 | `noData` | | Content shown when tree has no data (falls back to `labels.noData` "No data", or `labels.noResults` "No results found" when the search filter matched nothing) |
 | `dropPlaceholder` | | Content shown in empty drop target tree |
-| `loadingPlaceholder` | | Content shown while `isLoading` is true |
+| `loadingPlaceholder` | | Content shown while `isLoading` is true (in the `role="status"` overlay). Beats the page-wide `window.components.renderLoaderCallback`; neither → the default shared loader (`--stv-loader-*`, see [theming](theming.md#loader)) |
 | `contextMenu` | `(node, closeMenu)` | Context menu template (an alternative to `getContextMenuItemsCallback`; use `ContextMenuItemC` / `ContextMenuDividerC`) |
 
 ## Public methods

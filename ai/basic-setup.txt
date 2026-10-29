@@ -269,6 +269,15 @@ Show a loading placeholder while data is being fetched:
   {/snippet}
 </Tree>
 
+Overlay: role="status" + aria-label = labels.loading. Content precedence:
+loadingPlaceholder snippet > page-wide window.components.renderLoaderCallback
+(the KeenMate shared loader hook, ctx { component: 'svelte-treeview',
+context: 'overlay', containerElement, element, label }, may return a cleanup)
+> the default .stv-loader, drawn from --stv-loader-icon / -rotate / -duration /
+-size (-> --base-loader-*); overlay size --stv-loader-overlay-size (size x 2),
+per-node lazy-load toggle --stv-loader-inline-size (size x 0.75), colour
+--stv-loader-color.
+
 DROP PLACEHOLDER
 ----------------
 Custom placeholder for empty trees that accept drops:

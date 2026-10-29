@@ -68,7 +68,7 @@ Only the contract's four speeds and its easings — there is no prop for animati
 |---|---|
 | `--stv-transition-fast` / `-normal` / `-medium` / `-slow` | `var(--base-duration-*, 0.1s / 0.15s / 0.25s / 0.3s)` |
 | `--stv-ease-standard` / `-out` / `-in` | `var(--base-ease-*)` |
-| `--stv-spinner-duration` | `0.8s` — one turn of the loading spinners (a loop period, not on the duration scale) |
+| `--stv-loader-duration` | `var(--base-loader-duration, 0.8s)` — one turn of the loader (a loop period, not on the duration scale; the contract slows it to 1.5s under reduced motion) |
 
 ```css
 /* motion off — this tree */
@@ -78,8 +78,29 @@ Only the contract's four speeds and its easings — there is no prop for animati
 ```
 
 `prefers-reduced-motion: reduce` sets the four `--stv-transition-*` to `0s` (the contract does the
-same for `--base-duration-*`); the spinners keep turning — they show state. Disabled dimming:
+same for `--base-duration-*`); the loader keeps turning, slower — it shows state. Disabled dimming:
 `--stv-disabled-opacity` (→ `--base-disabled-opacity`, 0.65).
+
+## Loader
+
+The `isLoading` overlay and the per-node lazy-load toggle draw the KeenMate shared loader (the
+base-css-variables "Loader" contract — the same look as every web component). One place changes it
+page-wide: `--base-loader-*`.
+
+| Variable | Default |
+|---|---|
+| `--stv-loader-icon` | `var(--base-loader-icon, <arc>)` — the shape, a single-colour mask |
+| `--stv-loader-rotate` | `var(--base-loader-rotate, 1turn)` — `0` = the SVG animates itself |
+| `--stv-loader-duration` | `var(--base-loader-duration, 0.8s)` |
+| `--stv-loader-size` | `var(--base-loader-size, 1.25em)` |
+| `--stv-loader-overlay-size` | `calc(var(--stv-loader-size) * 2)` — the `isLoading` overlay |
+| `--stv-loader-inline-size` | `calc(var(--stv-loader-size) * 0.75)` — the toggle of a lazy-loading node |
+| `--stv-loader-color` | `var(--stv-accent-color)` |
+
+Overlay content, highest first: the `loadingPlaceholder` snippet → the page-wide
+`window.components.renderLoaderCallback` (the hook the web components use; ctx `{ component:
+'svelte-treeview', context: 'overlay', containerElement, element, label }`, may return a cleanup)
+→ the default `.stv-loader`. The overlay always has `role="status"` + `aria-label` = `labels.loading`.
 
 ## Cascade-layer contract
 

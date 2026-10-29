@@ -86,6 +86,8 @@ Every web event has an `on<Name>` twin receiving the detail; every detail / ctx 
 | `getNodeTooltipCallback` (→ `string \| HTMLElement`) | `getNodeTooltipCallback` (→ `string`) + `tooltip` snippet | intentional — rich content is a snippet in svelte |
 | `getContextMenuItemsCallback(ctx)` — ctx `{ node, path, parent, siblings, controller }`; entries = core action items + `menuDivider()` + built-in names `copy cut paste delete expand collapse expand-subtree collapse-subtree expand-all collapse-all sort sort-subtree sort-all`; order `beforeActionCallback` → item `onClick` → built-in → `action` | same model (vendored core types + runner) | same — **no default menu in either** (the menu is what the callback returns) |
 | `renderNodeCallback`, `renderIconCallback`, `renderEmptyStateCallback`, `renderEmptyZoneCallback`, `renderLoadingCallback`, `renderHeaderCallback`, `renderFooterCallback`, `renderContextMenuCallback`, `renderContextMenuItemCallback` | snippets `nodeTemplate`, `icon`, `noData`, `dropPlaceholder`, `loadingPlaceholder`, `treeHeader`, `treeFooter`, `contextMenu` (+ exported `ContextMenuItem`) | intentional — render callbacks vs Svelte snippets |
+| `isLoading` overlay = the suite's shared loader (core `renderLoader`, context `'overlay'`): `renderLoadingCallback` > page-wide `window.components.renderLoaderCallback` > default `.wtv-loader`; container `role="status"` + `aria-label` = label `loading` | `loadingPlaceholder` snippet > page-wide `window.components.renderLoaderCallback` (read without core: `window.components` / `Symbol.for('@keenmate/web-components-core:loader')`; ctx `{ component: 'svelte-treeview', context: 'overlay', containerElement, element: .stv__container, label }`, cleanup honoured, a throwing hook → default) > default `.stv-loader`; same `role` / `aria-label` | same precedence (snippet in place of the instance hook) |
+| per-node lazy-load loader (async `beforeExpandCallback`): the loader shape in the toggle, CSS-only (row `aria-busy` + `data-loading`, no hook, no `role="status"`) | same | same |
 
 ## 6. Methods (web: element + `el.controller`; svelte: `<Tree>` exports + controller)
 
@@ -145,3 +147,10 @@ Every web event has an `on<Name>` twin receiving the detail; every detail / ctx 
 
 Maintained by the theming pass: the shared token list (`--wtv-<name>` = `--stv-<name>`) is tabled in
 web-treeview's `docs/parity.md` §10; both `component-variables.manifest.json` list the same names.
+
+Loader tokens (shared loader, 2026-10-29): `loader-icon`, `loader-rotate`, `loader-duration`,
+`loader-size` (chained to `--base-loader-*`), `loader-overlay-size` (= size × 2, the `isLoading`
+overlay), `loader-inline-size` (= size × 0.75, the per-node toggle loader), `loader-color` (=
+accent) — same names on both sides (`--wtv-*` / `--stv-*`). Replaced in svelte: `spinner-duration`,
+`spinner-size`, `spinner-track`, `spinner-color`, `expand-spinner-size` / `-width` / `-track` /
+`-color`.

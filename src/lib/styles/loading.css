@@ -13,18 +13,26 @@
 	align-items: center;
 	justify-content: center;
 	z-index: var(--stv-z-index-overlay);
+	color: var(--stv-loader-color);
 }
 
-.stv__loading-spinner {
-	width: var(--stv-spinner-size);
-	height: var(--stv-spinner-size);
-	border: 3px solid var(--stv-spinner-track);
-	border-top-color: var(--stv-spinner-color);
-	border-radius: 50%;
-	animation: stv-spin var(--stv-spinner-duration) linear infinite;
+/* The shared loader (base-css-variables drawing contract, = core renderLoader's default
+   element) — the default when no `loadingPlaceholder` snippet / page hook draws it. */
+.stv-loader {
+	display: inline-block;
+	inline-size: var(--stv-loader-size);
+	block-size: var(--stv-loader-size);
+	mask: var(--stv-loader-icon) center / contain no-repeat;
+	background: currentColor;
+	animation: stv-loader-spin var(--stv-loader-duration) linear infinite;
 }
 
-/* (@keyframes stv-spin — moved to animations.css per canonical Tier-2 layout.) */
+.stv__loading-overlay > .stv-loader {
+	inline-size: var(--stv-loader-overlay-size);
+	block-size: var(--stv-loader-overlay-size);
+}
+
+/* (@keyframes stv-loader-spin — in animations.css per canonical Tier-2 layout.) */
 
 /* Progressive rendering loading indicator */
 .stv__loading-more {

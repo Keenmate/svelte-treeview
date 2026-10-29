@@ -78,7 +78,7 @@
 	// and flat rendering dim the identical set.
 	const isDraggedNode = $derived(config.draggedPaths?.has(node.path) ?? false);
 	// An async beforeExpandCallback is in flight for this node (lazy load): the toggle
-	// shows a spinner and the row carries aria-busy + data-loading.
+	// shows the loader and the row carries aria-busy + data-loading.
 	const isExpandPending = $derived(config.expandPendingPaths?.has(node.path) ?? false);
 	// Data-driven per-row classes. The callbacks read node data; recompute when the
 	// node's _rev bumps (same trigger the rest of the render uses).
