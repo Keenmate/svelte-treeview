@@ -127,6 +127,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Public API for custom menu renderers** — `controller.menuContext(node)`,
+  `controller.menuItemDefaults(item, ctx)` and `controller.activateMenuItem(item, ctx, trigger?, event?)`
+  are public (were `@internal`, stripped from the published types); `resolveMenuEntries`,
+  `getMenuChildren` and the `ResolvedMenuEntry` type are exported from the package index.
+  `activateMenuItem` runs the built-in menu's path (`beforeActionCallback` veto → item `onClick` →
+  built-in → `onAction`), so a custom renderer cannot bypass a veto. docs/usage.md "Custom menu
+  renderer"; `/test/custom-menu` + `e2e/custom-menu.spec.ts`.
 - **Expand family (parity with `@keenmate/web-treeview`)** — bindable **`expandedPaths`**
   (`Set<string>`, like `selectedPaths` / `checkedPaths`; assigning replaces the expanded state
   silently; given before the data it applies after the first load), **`onNodeExpand`** /
@@ -214,7 +221,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING: keyboard per WAI-ARIA (same as web-treeview)** — **Enter** = the node's default action
   (expand / collapse) in every mode; **Space** toggles selection: the checkbox when checkboxes are
   shown, the focused node in the selection with `selectionMode: 'multiple'` (Enter used to do this),
-  expand / collapse as a fallback in single mode without checkboxes.
+  **selects** the focused node in single mode without checkboxes (it used to fall back to
+  expand / collapse). Space never expands / collapses.
 
 - **BREAKING: mutation vocabulary — `add` / `insert` / `update` / `remove`** (same as
   `@keenmate/web-treeview`). `applyChanges` operations: `'create'` → `'add'` `{ parentPath, data,

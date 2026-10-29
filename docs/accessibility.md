@@ -24,8 +24,8 @@ The tree is fully navigable from the keyboard. Focus the tree (`Tab` into it), t
 
 | Key | Action |
 |-----|--------|
-| `Space` | Toggle expand/collapse of the focused node. If `isCheckboxesShown={true}` and the node is selectable, toggle its checkbox instead. |
-| `Enter` | In `selectionMode='multiple'`: toggle selection on the focused node. In `'single'` mode: no-op (handled by the consumer's `onNodeClicked`). |
+| `Space` | Selection (WAI-ARIA): with `isCheckboxesShown={true}` toggle the focused node's checkbox; in `selectionMode='multiple'` toggle the focused node in the selection; in `'single'` mode select the focused node. Never expands / collapses. |
+| `Enter` | The node's default action: expand / collapse the focused node (every mode). |
 
 ### Range selection (`selectionMode='multiple'`)
 

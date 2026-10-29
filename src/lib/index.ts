@@ -26,6 +26,9 @@ export type { RenderStats } from "./components/RenderCoordinator.svelte"
 export { DEFAULT_LABELS, resolveLabel } from "./core/labels.js"
 // Context-menu model (same as @keenmate/web-treeview; core /actions vendored)
 export { menuDivider, isMenuDivider } from "./core/menu.js"
+// Custom menu renderers: resolve a level's entries / a submenu the same way the built-in menu does
+export { resolveMenuEntries, getMenuChildren } from "./vendor/actions/resolve.js"
+export type { ResolvedMenuEntry } from "./vendor/actions/resolve.js"
 export type { TreeMenuContext, TreeMenuItem, TreeMenuEntry, TreeAction, TreeActionEventDetail, ActionItem, MenuItem, MenuEntry, MenuDivider, ActionEventDetail, ActionInvocation, ActionSource, ResolvedActionItem } from "./core/menu.js"
 export type { TreeLabels } from "./core/labels.js"
 export type { NodeCallbacks, NodeConfig, SelectionModifiers } from "./core/TreeController.svelte"

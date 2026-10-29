@@ -104,6 +104,7 @@ Every web event has an `on<Name>` twin receiving the detail; every detail / ctx 
 | `checkNode(s)`, `checkAll`, `uncheckNode(s)`, `uncheckAll`, `getCheckedNodes`, `isNodeChecked` | same | same |
 | `focusNode`, `clearFocus` (honour `isSilent`) | same | same |
 | `openContextMenu(path, x, y)`, `closeContextMenu()` | same | same |
+| — (`activateMenuItem` / `menuItemDefaults` / `menuCtx` are private; `renderContextMenuCallback` gets the menu ctx only) | `controller.menuContext(node)`, `controller.menuItemDefaults(item, ctx)`, `controller.activateMenuItem(item, ctx, trigger?, event?)` — public for custom menu renderers; activation = the built-in menu's path (`beforeActionCallback` veto → `onClick` → built-in → `onAction`) | intentional svelte-only extension (headless controller + custom renderers, e.g. svelte-treeview-canvas); web candidate: expose the activator to `renderContextMenuCallback` |
 | `navTo`, `navNext`, `navPrev`, `navNextSibling`, `navPrevSibling`, `navInto`, `navOut`, `navBackOut`, `navToggle`, `navFirst`, `navLast`, `navPageDown`, `navPageUp`, `navSelectNext`, `navSelectPrev`, `navSelectFirst`, `navSelectLast`, `navSelectPageDown`, `navSelectPageUp` | same | same |
 | `copyNodes`, `cutNodes`, `pasteNodes`, `cancelCut`, `hasClipboardContent`, `getClipboardOperation` | same | same |
 | `update(props)` (element) / `WebTreeView.update` | `<Tree>` `update(partial)` | same |
@@ -126,11 +127,12 @@ Every web event has an `on<Name>` twin receiving the detail; every detail / ctx 
 | menu types `TreeMenuContext`, `TreeMenuItem`, `TreeMenuEntry`, `TreeViewAction`, `TreeViewActionEventDetail` | `TreeMenuContext`, `TreeMenuItem`, `TreeMenuEntry`, `TreeAction`, `TreeActionEventDetail` | intentional — named after each library's component (like `TreeViewLabels` / `TreeLabels`) |
 | ctx `controller` + `element` (core component context, non-enumerable) | ctx `controller` (non-enumerable) | intentional — no host element in svelte |
 | `createLTree`, `TreeEngine`, `EventEmitter`, `DomRenderer`, `createRenderCoordinator`, clipboard / drag-set registry helpers, per-category loggers | — | intentional — web is renderer-pluggable / headless-capable |
+| — | `resolveMenuEntries`, `getMenuChildren`, `ResolvedMenuEntry` (vendored core `/actions` resolvers) | intentional svelte-only extension — custom menu renderers (web consumers import them from `@keenmate/web-components-core/actions`) |
 | — | `TreeProvider`, `createTreeController`, `TreeController`, `ContextMenuItem` / divider components, `tooltip` action, environment helpers | intentional — Svelte framework exports |
 
 ## 9. Behaviour notes
 
-- Keyboard (WAI-ARIA, both): `Enter` = the node's default action (expand / collapse); `Space` = toggle selection — the checkbox when checkboxes are shown, the focused node in the selection in `multiple` mode (single mode without checkboxes: expand / collapse). — same
+- Keyboard (WAI-ARIA, both): `Enter` = the node's default action (expand / collapse); `Space` = toggle selection — the checkbox when checkboxes are shown, the focused node in the selection in `multiple` mode / selects the focused node in `single` mode; Space never expands / collapses. — same
 - Assigning the expanded / selected / checked set: web `el.expandedPaths = …` fires `expanded-change`; svelte assigning a `$bindable` set is silent (no `onExpandedChange` / `onSelectionChange`) — intentional: a bound value echoing a callback would loop.
 - `tree-change` / `onTreeChange`: web fires it on every engine state change (selection, expand, focus included); svelte only after data / structure mutations (add / insert / move / remove / update / `applyChanges` / paste / drop / sort), once per batch, not on loading `nodes` — differs (svelte follows the parity brief's "structure changed" definition); open.
 - `onExpandedChange` fires synchronously after the per-node `onNodeExpand` / `onNodeCollapse` in svelte; web emits `expanded-change` on the next state notification — intentional (timing only).

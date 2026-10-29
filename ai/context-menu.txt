@@ -96,6 +96,21 @@ SNIPPET-BASED CONTEXT MENU
   {/snippet}
 </Tree>
 
+CUSTOM MENU RENDERER (public API — same path as the built-in menu)
+--------------------------------------------------------------------
+For your own menu markup (contextMenu snippet, or a headless TreeProvider / createTreeController
+UI like @keenmate/svelte-treeview-canvas):
+  import { resolveMenuEntries, getMenuChildren, type ResolvedMenuEntry } from '@keenmate/svelte-treeview';
+  const ctx = controller.menuContext(node);            // { node, path, parent, siblings } + controller
+  const level = resolveMenuEntries<TreeMenuContext<T>, TreeAction>(
+    entries, ctx, (item) => controller.menuItemDefaults(item, ctx));   // built-in texts / state
+  // level: { kind: 'item', item, resolved, hasChildren } | { kind: 'divider', text? }
+  const sub = await getMenuChildren(item, ctx);        // getChildrenCallback (async) wins over children
+  await controller.activateMenuItem(item, ctx, triggerEl, event);
+  // = beforeActionCallback (false cancels everything) → onClick → built-in → onAction; resolves
+  //   false when cancelled. A custom renderer cannot bypass the veto. Closing the menu is yours
+  //   (respect item.shouldCloseOnClick !== false).
+
 SUBMENUS
 --------
 Nested menus via children array:

@@ -3355,12 +3355,21 @@ export class TreeController<T> {
 		this.contextMenuVisible = true;
 	}
 
-	/** @internal The context menu's surface ctx: the node with its live parent / siblings + controller. */
+	/**
+	 * The context menu's surface ctx for `node`: `{ node, path, parent, siblings }` (live) +
+	 * non-enumerable `controller`. Public for custom menu renderers — pass it to
+	 * `getContextMenuItemsCallback`, `resolveMenuEntries` and `activateMenuItem`.
+	 */
 	menuContext(node: LTreeNode<T>): TreeMenuContext<T> {
 		return this._ctx({ ...this.getNodeRef(node), node }) as TreeMenuContext<T>;
 	}
 
-	/** @internal The built-in state (text from `labels`, disabled, danger) of a built-in action item. */
+	/**
+	 * The built-in state of a built-in action item (`'copy'`, `'expand'`, …): text from `labels`,
+	 * `isDisabled` (e.g. `paste` with an empty clipboard), `isDanger` (`delete`); `undefined` for a
+	 * consumer item. Public for custom menu renderers — the `defaults` argument of
+	 * `resolveMenuEntries(entries, ctx, (item) => controller.menuItemDefaults(item, ctx))`.
+	 */
 	menuItemDefaults(
 		item: TreeMenuItem<T>,
 		ctx: TreeMenuContext<T>
@@ -3389,8 +3398,13 @@ export class TreeController<T> {
 	}
 
 	/**
-	 * @internal Activate a menu item (core `runAction`): `beforeActionCallback` (false cancels)
-	 * → item `onClick(detail)` → built-in → `onAction(detail)`. Resolves false when cancelled.
+	 * Activate a menu item exactly like the built-in menu (core `runAction`):
+	 * `beforeActionCallback` (`false` cancels — nothing else runs) → item `onClick(detail)` →
+	 * the built-in action (on the selection when `ctx.node` is in it, else on `ctx.node`) →
+	 * `onAction(detail)`. `detail.source` is `'context-menu'`; `trigger` gets `aria-busy` while it
+	 * runs (a second activation of the same item meanwhile is ignored). Resolves `false` when
+	 * cancelled or ignored. Public for custom menu renderers — closing the menu is the caller's
+	 * job (honour `item.shouldCloseOnClick !== false`).
 	 */
 	activateMenuItem(
 		item: TreeMenuItem<T>,

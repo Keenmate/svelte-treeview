@@ -169,7 +169,7 @@ Built-in keys:
 - Home/End: first/last visible node
 - Enter: expand/collapse (the node's default action, WAI-ARIA)
 - Space: toggle selection — the checkbox (isCheckboxesShown), the focused node in the selection
-  (selectionMode 'multiple'); in single mode without checkboxes: expand/collapse
+  (selectionMode 'multiple'); in single mode without checkboxes: selects the focused node
 - Backspace: collapse parent and select it
 
 Custom navigation overrides (navigationOverrides prop):

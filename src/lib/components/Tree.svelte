@@ -1975,14 +1975,14 @@
 				break;
 			case ' ':
 				// WAI-ARIA tree: Space toggles selection. With checkboxes: the focused node's
-				// checkbox; multiple mode: the focused node in the selection; single mode
-				// (nothing to toggle): expand / collapse as a fallback.
+				// checkbox; multiple mode: the focused node in the selection; single mode:
+				// selects the focused node (Enter expands / collapses).
 				if (controller.isCheckboxesShown && controller.focusedNode?.isSelectable) {
 					controller.nodeCallbacks.onCheckboxToggle(controller.focusedNode);
 				} else if (controller.selectionMode === 'multiple') {
 					controller.toggleFocusedSelect();
-				} else {
-					controller.navToggle();
+				} else if (controller.focusedNode?.isSelectable) {
+					controller.selectNode(controller.focusedNode.path);
 				}
 				break;
 			case 'Escape':

@@ -219,6 +219,24 @@ test('Space toggles the focused node in the selection (multiple mode), no expand
 	await expect.poll(() => visibleCount(page)).toBe(18);
 })
 
+test('Space selects the focused node in single mode (no checkboxes), no expand change; Enter expands / collapses', async ({ page }) => {
+	await page.getByTestId('btn-single').click();
+	await clickToFocus(page, '2');
+	await expect(page.getByTestId('highlighted-sorted')).toHaveText('2');
+	await page.keyboard.press('Escape'); // clears the selection, focus stays
+	await expect(page.getByTestId('highlighted-sorted')).toHaveText('');
+	await expect(page.getByTestId('focused-path')).toHaveText('2');
+	await page.keyboard.press('Space');
+	await expect(page.getByTestId('highlighted-sorted')).toHaveText('2');
+	await expect.poll(() => visibleCount(page)).toBe(18);
+	// Space again keeps it selected (single mode selects, it doesn't toggle off)
+	await page.keyboard.press('Space');
+	await expect(page.getByTestId('highlighted-sorted')).toHaveText('2');
+	await page.keyboard.press('Enter');
+	await expect.poll(() => visibleCount(page)).toBe(14);
+	await expect(page.getByTestId('highlighted-sorted')).toHaveText('2');
+});
+
 // ── Home / End: jump to ends of visible flat list ──────────────────────────
 
 test.describe('Home / End — jump to first/last visible', () => {

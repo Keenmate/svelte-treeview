@@ -155,6 +155,39 @@ Same model as `@keenmate/web-treeview` (core `/actions`, vendored). No menu by d
 
 Order: `beforeActionCallback` → item `onClick(detail)` → built-in → `onAction(detail)`. The menu closes after an item runs (`shouldCloseOnClick: false` keeps it open — close with `ctx.controller.closeContextMenu()`). A matching item `shortcut` (e.g. `'Ctrl+D'`) activates while the menu is open.
 
+### Custom menu renderer
+
+Rendering your own menu (a `contextMenu` snippet, or a headless `TreeProvider` / `createTreeController` UI such as `@keenmate/svelte-treeview-canvas`) uses the same public pieces as the built-in menu, so built-in texts / state and the activation order stay identical:
+
+| API | Description |
+|-----|-------------|
+| `controller.menuContext(node)` | The menu ctx `{ node, path, parent, siblings }` + non-enumerable `controller` — pass it to `getContextMenuItemsCallback` and the functions below. |
+| `controller.menuItemDefaults(item, ctx)` | The built-in state of a built-in action item (text from `labels`, `isDisabled`, `isDanger`); `undefined` for consumer items. |
+| `resolveMenuEntries(entries, ctx, defaults?)` | Resolves one level: built-in names → items, `get*Callback`s evaluated, hidden items dropped, dividers collapsed (no leading / trailing / doubled). Returns `{ kind: 'item', item, resolved, hasChildren } \| { kind: 'divider', text? }` (`ResolvedMenuEntry`). |
+| `getMenuChildren(item, ctx)` | A submenu's entries: `getChildrenCallback(ctx)` (may be async) wins over `children`. |
+| `controller.activateMenuItem(item, ctx, trigger?, event?)` | Runs the item exactly like the built-in menu: `beforeActionCallback` (`false` cancels — no `onClick`, built-in or `onAction`) → `onClick(detail)` → built-in action → `onAction(detail)`. Resolves `false` when cancelled. A custom renderer cannot bypass the veto. Closing the menu is yours (respect `item.shouldCloseOnClick !== false`). |
+
+```svelte
+<script lang="ts">
+  import { TreeProvider, resolveMenuEntries, type TreeMenuContext, type TreeAction } from '@keenmate/svelte-treeview';
+</script>
+
+<TreeProvider {nodes} {beforeActionCallback} {onAction}>
+  {#snippet children(controller)}
+    {#if menuNode}
+      {@const ctx = controller.menuContext(menuNode)}
+      {#each resolveMenuEntries<TreeMenuContext<Item>, TreeAction>(myEntries(ctx), ctx, (item) => controller.menuItemDefaults(item, ctx)) as entry}
+        {#if entry.kind === 'divider'}<hr />
+        {:else}
+          <button disabled={entry.resolved.isDisabled}
+            onclick={(e) => controller.activateMenuItem(entry.item, ctx, e.currentTarget, e)}>{entry.resolved.text}</button>
+        {/if}
+      {/each}
+    {/if}
+  {/snippet}
+</TreeProvider>
+```
+
 ### Clipboard interceptor properties
 
 The clipboard operations live on the `TreeController` (`copyNodes` / `cutNodes` / `pasteNodes` / `cancelCut`). Built-in key bindings are on by default (`shouldHandleKeyboardShortcuts`, set `false` to opt out), or wire your own via `beforeKeydownCallback(ctx)` (ctx = `{ event, focusedNode, selectedNodes, controller }`). The `before*` interceptors can rewrite or block an operation; `onNodeCopy` / `onNodeCut` / `onNodePaste` above are the post-operation notifications.

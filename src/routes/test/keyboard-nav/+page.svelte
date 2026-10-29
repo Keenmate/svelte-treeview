@@ -70,6 +70,7 @@
 
 	let focusedNode = $state<LTreeNode<Item> | null | undefined>(null);
 	let selectedPaths = $state<Set<string>>(new Set());
+	let selectionMode = $state<'single' | 'multiple'>('multiple');
 
 	const highlightedSorted = $derived(
 		[...selectedPaths].sort((a, b) => a.localeCompare(b)).join(',')
@@ -101,6 +102,7 @@
 		</div>
 		<div class="state-row">
 			<button data-testid="btn-reset" onclick={resetTree}>Reset</button>
+			<button data-testid="btn-single" onclick={() => (selectionMode = 'single')}>Single mode</button>
 		</div>
 	</section>
 
@@ -117,7 +119,7 @@
 				isSorted={true}
 				expandLevel={10}
 				clickBehavior="select"
-				selectionMode="multiple"
+				{selectionMode}
 				bind:focusedNode
 				bind:selectedPaths
 			>
