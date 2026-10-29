@@ -136,7 +136,7 @@
     { "name": "stv-transition-medium", "category": "animation", "usage": "Medium transition (reads --base-duration-medium, 0.25s; 0s under reduced motion)" },
     { "name": "stv-transition-slow", "category": "animation", "usage": "Slow transition — drag-denied tint (reads --base-duration-slow, 0.3s; 0s under reduced motion)" },
     { "name": "stv-ease-standard", "category": "animation", "usage": "Standard easing (reads --base-ease-standard)" },
-    { "name": "stv-scroll-behavior", "category": "animation", "usage": "scrollToPath / keyboard scrolling behaviour when the caller passes none (reads --base-scroll-behavior, smooth; auto under reduced motion)" },
+    { "name": "stv-scroll-behavior", "category": "animation", "usage": "scrollToPath scrolling behaviour when the caller passes none; keyboard moves always scroll instantly (reads --base-scroll-behavior, smooth; auto under reduced motion)" },
     { "name": "stv-ease-out", "category": "animation", "usage": "Ease-out (reads --base-ease-out) — entering feedback" },
     { "name": "stv-ease-in", "category": "animation", "usage": "Ease-in (reads --base-ease-in)" },
     { "name": "stv-node-transition", "category": "animation", "usage": "Row transition (default none = instant hover)" },

@@ -392,31 +392,59 @@ async function spyScroll(page: Page) {
 }
 const scrollCalls = (page: Page) => page.evaluate(() => (window as any).scrollCalls as (string | undefined)[]);
 
-test.describe('--stv-scroll-behavior (→ --base-scroll-behavior)', () => {
-	test('keyboard moves scroll with the token: smooth by default, a page-wide override wins', async ({ page }) => {
+test.describe('scrolling: keyboard moves always instant; --stv-scroll-behavior (→ --base-scroll-behavior) for programmatic jumps', () => {
+	test('keyboard moves (arrows, PageDown, End, Home, Shift+End) scroll with behavior auto whatever the token says', async ({ page }) => {
 		await clickToFocus(page, '1');
 		await spyScroll(page);
-		await page.keyboard.press('ArrowDown');
-		await expect(page.getByTestId('focused-path')).toHaveText('2');
-		await expect.poll(() => scrollCalls(page)).toContain('smooth');
+		for (const key of ['ArrowDown', 'PageDown', 'End', 'Home', 'Shift+End']) await page.keyboard.press(key);
+		await expect(page.getByTestId('focused-path')).toHaveText('5');
+		await expect.poll(async () => (await scrollCalls(page)).length).toBeGreaterThanOrEqual(5);
+		expect(new Set(await scrollCalls(page))).toEqual(new Set(['auto']));
 		await page.evaluate(() => {
-			document.documentElement.style.setProperty('--base-scroll-behavior', 'instant');
+			document.documentElement.style.setProperty('--base-scroll-behavior', 'smooth');
 			(window as any).scrollCalls.length = 0;
 		});
-		await page.keyboard.press('ArrowDown');
-		await expect(page.getByTestId('focused-path')).toHaveText('3');
-		await expect.poll(() => scrollCalls(page)).toContain('instant');
-		expect(await scrollCalls(page)).not.toContain('smooth');
+		await page.keyboard.press('ArrowUp');
+		await expect(page.getByTestId('focused-path')).toHaveText('4');
+		await expect.poll(() => scrollCalls(page)).toEqual(['auto']);
 	});
 
-	test('reduced motion: the contract fallback is auto', async ({ page }) => {
-		await page.emulateMedia({ reducedMotion: 'reduce' });
+	test('holding ArrowDown: every repeat scrolls instantly, the focused row ends in view', async ({ page }) => {
 		await clickToFocus(page, '1');
 		await spyScroll(page);
-		await page.keyboard.press('ArrowDown');
-		await expect(page.getByTestId('focused-path')).toHaveText('2');
-		await expect.poll(() => scrollCalls(page)).toContain('auto');
-		expect(await scrollCalls(page)).not.toContain('smooth');
+		// ArrowDown walks the level-1 siblings here: Root-A → 2 … 5
+		for (let i = 0; i < 4; i++) await page.keyboard.down('ArrowDown'); // repeat = true after the first: a held key
+		await page.keyboard.up('ArrowDown');
+		await expect(page.getByTestId('focused-path')).toHaveText('5');
+		const calls = await scrollCalls(page);
+		expect(calls.length).toBeGreaterThanOrEqual(4);
+		expect(new Set(calls)).toEqual(new Set(['auto']));
+		// (headless Chromium doesn't animate smooth scrolls — the behavior argument above is the real check)
+		const outside = () =>
+			page.evaluate(() => {
+				const host = document.querySelector('.stv__container')!.parentElement as HTMLElement;
+				const r = document.querySelector('.stv__node[data-tree-path="5"] .stv__node-content')!.getBoundingClientRect();
+				const b = host.getBoundingClientRect();
+				return Math.max(0, r.bottom - b.bottom, b.top - r.top);
+			});
+		await expect.poll(outside).toBeLessThan(1);
+	});
+
+	test('scrollToPath: the token (smooth by default), a page-wide override, an explicit behavior wins', async ({ page }) => {
+		await spyScroll(page);
+		const jump = (o?: object) => page.evaluate((o) => (window as any).tree.scrollToPath('5', o), o);
+		await jump();
+		await page.evaluate(() => document.documentElement.style.setProperty('--base-scroll-behavior', 'instant'));
+		await jump();
+		await jump({ behavior: 'smooth' });
+		expect(await scrollCalls(page)).toEqual(['smooth', 'instant', 'smooth']);
+	});
+
+	test('reduced motion: scrollToPath falls back to auto', async ({ page }) => {
+		await page.emulateMedia({ reducedMotion: 'reduce' });
+		await spyScroll(page);
+		await page.evaluate(() => (window as any).tree.scrollToPath('5'));
+		expect(await scrollCalls(page)).toEqual(['auto']);
 	});
 });
 

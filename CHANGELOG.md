@@ -16,7 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   recursive rendering (the toggle column sits inside each row, so the margin is the whole visual step).
   Restore the old density with `--stv-indent-size: 8px` (or page-wide `--base-tree-indent: 0.8`).
 - **`--stv-scroll-behavior`** (`var(--base-scroll-behavior, smooth)`; `auto` under reduced motion): the default
-  `behavior` of `scrollToPath` and keyboard moves (were a hard-coded `'smooth'`); an explicit `behavior` wins.
+  `behavior` of `scrollToPath` (was a hard-coded `'smooth'`); an explicit `behavior` wins. **Keyboard moves**
+  (`navTo`, arrows, PageUp/Down, Home/End, Shift range moves) **always scroll instantly** (`'auto'`; were
+  `'smooth'`), so a held key never lags behind a smooth animation (KeenMate rule, 2026-10-29).
 
 ### Changed — BREAKING (shared KeenMate loader — 2026-10-29)
 

@@ -82,6 +82,11 @@
 		selectedPaths = new Set();
 		treeRef.expandAll();
 	}
+
+	// e2e handle (scrollToPath etc.)
+	$effect(() => {
+		(window as any).tree = treeRef;
+	});
 </script>
 
 <svelte:head>

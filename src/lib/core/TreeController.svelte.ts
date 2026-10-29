@@ -3836,8 +3836,9 @@ export class TreeController<T> {
 		return this._scrollToPath(path, options, false);
 	}
 
-	/** The default scroll behaviour of scrollToPath / keyboard moves (no `behavior` passed): the
-	 *  `--stv-scroll-behavior` token (→ `--base-scroll-behavior`; `auto` under reduced motion). */
+	/** The default scroll behaviour of programmatic jumps — scrollToPath with no `behavior` passed:
+	 *  the `--stv-scroll-behavior` token (→ `--base-scroll-behavior`; `auto` under reduced motion).
+	 *  Keyboard moves (navTo, range moves) never read it — they always scroll instantly (`'auto'`). */
 	private resolveScrollBehavior(): ScrollBehavior {
 		const el = this.containerElement;
 		if (!el || typeof getComputedStyle === 'undefined') return 'smooth';
@@ -6211,7 +6212,7 @@ export class TreeController<T> {
 				const node = this.getNodeByPath(path);
 				if (!node) return;
 				this.selectNode(path, 'replace');
-				this._scrollToPath(path, { shouldExpandAncestors: false, block: 'center' }, true);
+				this._scrollToPath(path, { shouldExpandAncestors: false, block: 'center', behavior: 'auto' }, true);
 			},
 
 			navNext: () => {
@@ -6462,7 +6463,7 @@ export class TreeController<T> {
 		// Move focus to the target without clearing highlights
 		const node = this.tree.getNodeByPath(path);
 		if (node) this._setFocusedNode(node);
-		this._scrollToPath(path, { shouldExpandAncestors: false, block: 'center' }, true);
+		this._scrollToPath(path, { shouldExpandAncestors: false, block: 'center', behavior: 'auto' }, true);
 		this.tree.refresh();
 	}
 

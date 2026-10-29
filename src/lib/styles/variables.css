@@ -146,7 +146,8 @@
 	   per-node lazy-load loader inside the toggle (tiny, CSS-only — the row has aria-busy). */
 	--stv-loader-overlay-size: calc(var(--stv-loader-size) * 2);
 	--stv-loader-inline-size: calc(var(--stv-loader-size) * 0.75);
-	/* scrollToPath / keyboard scrolling (JS reads it unless the caller passes `behavior`);
+	/* Programmatic jumps — scrollToPath (JS reads it unless the caller passes `behavior`).
+	   Keyboard moves never read it: they always scroll instantly;
 	   the contract's --base-scroll-behavior is `auto` under reduced motion. */
 	--stv-scroll-behavior: var(--base-scroll-behavior, smooth);
 

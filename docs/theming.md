@@ -68,7 +68,7 @@ Only the contract's four speeds and its easings — there is no prop for animati
 |---|---|
 | `--stv-transition-fast` / `-normal` / `-medium` / `-slow` | `var(--base-duration-*, 0.1s / 0.15s / 0.25s / 0.3s)` |
 | `--stv-ease-standard` / `-out` / `-in` | `var(--base-ease-*)` |
-| `--stv-scroll-behavior` | `var(--base-scroll-behavior, smooth)` (`auto` under reduced motion) — `scrollToPath` / keyboard scrolling when no `behavior` is passed |
+| `--stv-scroll-behavior` | `var(--base-scroll-behavior, smooth)` (`auto` under reduced motion) — `scrollToPath` when no `behavior` is passed; keyboard moves always scroll instantly |
 | `--stv-loader-duration` | `var(--base-loader-duration, 0.8s)` — one turn of the loader (a loop period, not on the duration scale; the contract slows it to 1.5s under reduced motion) |
 
 ```css

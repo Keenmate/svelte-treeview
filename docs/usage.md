@@ -331,7 +331,7 @@ Read-side helpers: `getSelectedNodes()` / `isNodeSelected(path)` / `getCheckedNo
 |--------|------|---------|-------------|
 | `shouldExpandAncestors` | `boolean` | `true` | Expand the node's collapsed ancestors first so its row exists |
 | `shouldHighlight` | `boolean` | `false` | Flash `scrollHighlightClass` (for `scrollHighlightTimeout`) on the row |
-| `behavior` | `ScrollBehavior` | `--stv-scroll-behavior` (`smooth`; `auto` under reduced motion) | Native `ScrollIntoViewOptions.behavior`; keyboard moves use the same token |
+| `behavior` | `ScrollBehavior` | `--stv-scroll-behavior` (`smooth`; `auto` under reduced motion) | Native `ScrollIntoViewOptions.behavior`; keyboard moves always scroll instantly, never with the token |
 | `block` | `ScrollLogicalPosition` | `'center'` | Native `ScrollIntoViewOptions.block` |
 | `inline` | `ScrollLogicalPosition` | `'nearest'` | Native `ScrollIntoViewOptions.inline` |
 
