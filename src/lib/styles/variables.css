@@ -146,12 +146,17 @@
 	   per-node lazy-load loader inside the toggle (tiny, CSS-only — the row has aria-busy). */
 	--stv-loader-overlay-size: calc(var(--stv-loader-size) * 2);
 	--stv-loader-inline-size: calc(var(--stv-loader-size) * 0.75);
+	/* scrollToPath / keyboard scrolling (JS reads it unless the caller passes `behavior`);
+	   the contract's --base-scroll-behavior is `auto` under reduced motion. */
+	--stv-scroll-behavior: var(--base-scroll-behavior, smooth);
 
 	/* -------------------------------------------------------------------------
 	   NODE LAYOUT
 	   ------------------------------------------------------------------------- */
-	/* Per-level indent step (nested children's margin; flat rows: (level − 1) × this). */
-	--stv-indent-size: calc(0.8 * var(--stv-rem));
+	/* Per-level indent step (nested children's margin; flat rows: (level − 1) × this) — the
+	   visual step in both modes (the toggle column sits inside each row). Reads the contract's
+	   unitless --base-tree-indent multiplier (1.6 → 16px). */
+	--stv-indent-size: calc(var(--base-tree-indent, 1.6) * var(--stv-rem));
 	/* Row pill padding — small horizontal padding keeps the label close to the icon. */
 	--stv-node-padding: var(--stv-spacing-sm) var(--stv-spacing-sm);
 	/* Corner radius of the row pill (hover / selected / focused paint on it). */
@@ -393,6 +398,7 @@
 		--stv-transition-normal: 0s;
 		--stv-transition-medium: 0s;
 		--stv-transition-slow: 0s;
+		--stv-scroll-behavior: var(--base-scroll-behavior, auto);
 	}
 }
 

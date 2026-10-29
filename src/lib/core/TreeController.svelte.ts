@@ -298,7 +298,7 @@ export interface ScrollToPathOptions {
 	shouldExpandAncestors?: boolean;
 	/** Flash `scrollHighlightClass` (for `scrollHighlightTimeout`) on the row. Default `false`. */
 	shouldHighlight?: boolean;
-	/** Native ScrollIntoViewOptions. Defaults `'smooth'` / `'center'` / `'nearest'`. */
+	/** Native ScrollIntoViewOptions. Defaults `--stv-scroll-behavior` (smooth; auto under reduced motion) / `'center'` / `'nearest'`. */
 	behavior?: ScrollBehavior;
 	block?: ScrollLogicalPosition;
 	inline?: ScrollLogicalPosition;
@@ -3830,10 +3830,18 @@ export class TreeController<T> {
 	 * Scroll the node at `path` into view. Resolves `true` when it was found and scrolled.
 	 * `shouldExpandAncestors` (default true) opens its collapsed ancestors first;
 	 * `shouldHighlight` (default false) flashes `scrollHighlightClass`; `behavior` / `block` /
-	 * `inline` = native ScrollIntoViewOptions (defaults `'smooth'` / `'center'` / `'nearest'`).
+	 * `inline` = native ScrollIntoViewOptions (defaults `--stv-scroll-behavior` — smooth, auto under reduced motion — / `'center'` / `'nearest'`).
 	 */
 	async scrollToPath(path: string, options?: ScrollToPathOptions): Promise<boolean> {
 		return this._scrollToPath(path, options, false);
+	}
+
+	/** The default scroll behaviour of scrollToPath / keyboard moves (no `behavior` passed): the
+	 *  `--stv-scroll-behavior` token (→ `--base-scroll-behavior`; `auto` under reduced motion). */
+	private resolveScrollBehavior(): ScrollBehavior {
+		const el = this.containerElement;
+		if (!el || typeof getComputedStyle === 'undefined') return 'smooth';
+		return (getComputedStyle(el).getPropertyValue('--stv-scroll-behavior').trim() || 'smooth') as ScrollBehavior;
 	}
 
 	/** scrollToPath + `isContainerScroll` (keyboard nav: scroll only the tree's scroll container,
@@ -3847,7 +3855,7 @@ export class TreeController<T> {
 		const {
 			shouldExpandAncestors: expand = true,
 			shouldHighlight: highlight = false,
-			behavior = 'smooth',
+			behavior = this.resolveScrollBehavior(),
 			block = 'center',
 			inline = 'nearest'
 		} = options || {};
@@ -3881,7 +3889,7 @@ export class TreeController<T> {
 				nodeIndex * this.vsRowHeight - this.vsContainerRef.clientHeight / 2 + this.vsRowHeight / 2;
 			this.vsContainerRef.scrollTo({
 				top: Math.max(0, targetScroll),
-				behavior: scrollOptions?.behavior || 'smooth'
+				behavior: scrollOptions.behavior
 			});
 
 			// Wait for scroll + re-render — need multiple frames for
@@ -3944,7 +3952,7 @@ export class TreeController<T> {
 					elementRect.height / 2;
 				container.scrollTo({
 					top: scrollTop,
-					behavior: scrollOptions?.behavior || 'smooth'
+					behavior: scrollOptions.behavior
 				});
 			}
 		} else {
@@ -6203,7 +6211,7 @@ export class TreeController<T> {
 				const node = this.getNodeByPath(path);
 				if (!node) return;
 				this.selectNode(path, 'replace');
-				this._scrollToPath(path, { shouldExpandAncestors: false, behavior: 'smooth', block: 'center' }, true);
+				this._scrollToPath(path, { shouldExpandAncestors: false, block: 'center' }, true);
 			},
 
 			navNext: () => {
@@ -6454,7 +6462,7 @@ export class TreeController<T> {
 		// Move focus to the target without clearing highlights
 		const node = this.tree.getNodeByPath(path);
 		if (node) this._setFocusedNode(node);
-		this._scrollToPath(path, { shouldExpandAncestors: false, behavior: 'smooth', block: 'center' }, true);
+		this._scrollToPath(path, { shouldExpandAncestors: false, block: 'center' }, true);
 		this.tree.refresh();
 	}
 

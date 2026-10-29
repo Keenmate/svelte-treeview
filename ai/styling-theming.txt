@@ -24,7 +24,7 @@ Override in your CSS:
   --stv-rem: 10px;
 
   /* Indentation */
-  --stv-indent-size: calc(0.8 * var(--stv-rem));
+  --stv-indent-size: calc(var(--base-tree-indent, 1.6) * var(--stv-rem)); /* 16px */
 
   /* Colors — tints derived automatically via color-mix() */
   --stv-accent-color: #0d6efd;

@@ -142,6 +142,8 @@ Every web event has an `on<Name>` twin receiving the detail; every detail / ctx 
 - svelte only: callbacks invoked while rendering (`getContextMenuItemsCallback`, per-node `get*Callback`s) must not write `$state` synchronously (Svelte's `state_unsafe_mutation`) — defer with `queueMicrotask` if needed.
 - Class prefixes `wtv__` vs `stv__`, CSS custom properties `--wtv-*` vs `--stv-*` — intentional prefix.
 - Neither exposes `::part()` / `<slot>` (render callbacks vs snippets) — intentional.
+- Scrolling: `scrollToPath` (no `behavior` passed) and keyboard moves read `--*-scroll-behavior` (→ `--base-scroll-behavior`: `smooth`, `auto` under reduced motion) — same.
+- Indent: `--*-indent-size` = `calc(var(--base-tree-indent, 1.6) * var(--*-rem))` — a 16px visual step per level in both (web: flat rows padded (level − 1) × it; svelte: flat rows the same, recursive mode nests each child with a margin of it — the toggle column sits inside every row, so the margin is the whole step, measured by an e2e test in each repo).
 
 ## 10. CSS custom properties
 
@@ -154,3 +156,6 @@ overlay), `loader-inline-size` (= size × 0.75, the per-node toggle loader), `lo
 accent) — same names on both sides (`--wtv-*` / `--stv-*`). Replaced in svelte: `spinner-duration`,
 `spinner-size`, `spinner-track`, `spinner-color`, `expand-spinner-size` / `-width` / `-track` /
 `-color`.
+
+Base tokens (2026-10-29): `scroll-behavior` (→ `--base-scroll-behavior`, `auto` under reduced motion) and
+`indent-size` (→ the unitless `--base-tree-indent` × rem, 16px) — same on both sides.

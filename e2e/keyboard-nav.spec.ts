@@ -369,3 +369,63 @@ test.describe('Shift+PageDown / Shift+PageUp — extend highlight by ±10', () =
 		);
 	});
 });
+
+// ── Base tokens: scroll behaviour + indent (base-css-variables contract) ──
+
+async function spyScroll(page: Page) {
+	await page.evaluate(() => {
+		// keyboard moves scroll only the tree's scrollable ancestor — make one
+		const host = document.querySelector('.stv__container')!.parentElement as HTMLElement;
+		host.style.maxHeight = '120px';
+		host.style.overflowY = 'auto';
+		const calls: (string | undefined)[] = ((window as any).scrollCalls = []);
+		const wrap = (name: 'scrollIntoView' | 'scrollTo') => {
+			const orig = Element.prototype[name] as (...a: unknown[]) => void;
+			(Element.prototype as any)[name] = function (this: Element, o?: unknown, ...rest: unknown[]) {
+				calls.push(typeof o === 'object' && o ? (o as ScrollToOptions).behavior : undefined);
+				return orig.call(this, o, ...rest);
+			};
+		};
+		wrap('scrollIntoView');
+		wrap('scrollTo');
+	});
+}
+const scrollCalls = (page: Page) => page.evaluate(() => (window as any).scrollCalls as (string | undefined)[]);
+
+test.describe('--stv-scroll-behavior (→ --base-scroll-behavior)', () => {
+	test('keyboard moves scroll with the token: smooth by default, a page-wide override wins', async ({ page }) => {
+		await clickToFocus(page, '1');
+		await spyScroll(page);
+		await page.keyboard.press('ArrowDown');
+		await expect(page.getByTestId('focused-path')).toHaveText('2');
+		await expect.poll(() => scrollCalls(page)).toContain('smooth');
+		await page.evaluate(() => {
+			document.documentElement.style.setProperty('--base-scroll-behavior', 'instant');
+			(window as any).scrollCalls.length = 0;
+		});
+		await page.keyboard.press('ArrowDown');
+		await expect(page.getByTestId('focused-path')).toHaveText('3');
+		await expect.poll(() => scrollCalls(page)).toContain('instant');
+		expect(await scrollCalls(page)).not.toContain('smooth');
+	});
+
+	test('reduced motion: the contract fallback is auto', async ({ page }) => {
+		await page.emulateMedia({ reducedMotion: 'reduce' });
+		await clickToFocus(page, '1');
+		await spyScroll(page);
+		await page.keyboard.press('ArrowDown');
+		await expect(page.getByTestId('focused-path')).toHaveText('2');
+		await expect.poll(() => scrollCalls(page)).toContain('auto');
+		expect(await scrollCalls(page)).not.toContain('smooth');
+	});
+});
+
+test('--stv-indent-size (→ --base-tree-indent × --stv-rem): a 16px visual step per level', async ({ page }) => {
+	const left = (path: string) =>
+		nodeContent(nodeByPath(page, path)).evaluate((el) => el.getBoundingClientRect().left);
+	const [l1, l2, l3] = [await left('1'), await left('1.1'), await left('1.1.1')];
+	expect(Math.round(l2 - l1)).toBe(16);
+	expect(Math.round(l3 - l2)).toBe(16);
+	await page.evaluate(() => document.documentElement.style.setProperty('--base-tree-indent', '2.4'));
+	expect(Math.round((await left('1.1')) - (await left('1')))).toBe(24);
+});

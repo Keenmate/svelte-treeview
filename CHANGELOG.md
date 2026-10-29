@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > 5.0.0 was never published to npm (the previous `[5.0.0] - 2026-10-13 [PUBLISHED]` heading was wrong — npm `rc` is 5.0.0-rc15, `latest` 4.8.0). Its entries are folded into rc16 below.
 
+### Changed (visual) — base scroll / indent tokens (2026-10-29)
+
+- **`--stv-indent-size`** reads the contract's unitless multiplier: `calc(var(--base-tree-indent, 1.6) *
+  var(--stv-rem))` — the per-level step is now **16px (was 8px)**, the same as web-treeview, in flat and
+  recursive rendering (the toggle column sits inside each row, so the margin is the whole visual step).
+  Restore the old density with `--stv-indent-size: 8px` (or page-wide `--base-tree-indent: 0.8`).
+- **`--stv-scroll-behavior`** (`var(--base-scroll-behavior, smooth)`; `auto` under reduced motion): the default
+  `behavior` of `scrollToPath` and keyboard moves (were a hard-coded `'smooth'`); an explicit `behavior` wins.
+
 ### Changed — BREAKING (shared KeenMate loader — 2026-10-29)
 
 - **The `isLoading` overlay and the per-node lazy-load toggle draw the suite's shared loader**

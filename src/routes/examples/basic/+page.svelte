@@ -49,9 +49,9 @@
 	type Preset = 'condensed' | 'compact' | 'generous';
 	type DisplayVars = { indent: number; toggle: number; pad: number };
 	const presets: Record<Preset, DisplayVars> = {
-		condensed: { indent: 4, toggle: 14, pad: 2 },
-		compact: { indent: 8, toggle: 17, pad: 4 },
-		generous: { indent: 18, toggle: 24, pad: 8 }
+		condensed: { indent: 8, toggle: 14, pad: 2 },
+		compact: { indent: 16, toggle: 17, pad: 4 },
+		generous: { indent: 24, toggle: 24, pad: 8 }
 	};
 	let activePreset = $state<Preset | null>('compact');
 

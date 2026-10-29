@@ -42,7 +42,7 @@ For the full variable inventory, see [`component-variables.manifest.json`](../co
 ```css
 .stv__container {
   --stv-rem: 10px;                              /* Base sizing unit — scale all dimensions */
-  --stv-indent-size: calc(0.8 * var(--stv-rem));  /* Indent per nesting level */
+  --stv-indent-size: calc(var(--base-tree-indent, 1.6) * var(--stv-rem));  /* Indent per nesting level (16px) */
   --stv-accent-color: #0d6efd;                       /* Tints (multi-select, dragover) derived
                                                        automatically via color-mix() */
   --stv-success-color: #198754;
@@ -68,6 +68,7 @@ Only the contract's four speeds and its easings — there is no prop for animati
 |---|---|
 | `--stv-transition-fast` / `-normal` / `-medium` / `-slow` | `var(--base-duration-*, 0.1s / 0.15s / 0.25s / 0.3s)` |
 | `--stv-ease-standard` / `-out` / `-in` | `var(--base-ease-*)` |
+| `--stv-scroll-behavior` | `var(--base-scroll-behavior, smooth)` (`auto` under reduced motion) — `scrollToPath` / keyboard scrolling when no `behavior` is passed |
 | `--stv-loader-duration` | `var(--base-loader-duration, 0.8s)` — one turn of the loader (a loop period, not on the duration scale; the contract slows it to 1.5s under reduced motion) |
 
 ```css
