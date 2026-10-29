@@ -277,9 +277,9 @@
 	--stv-drop-zone-child-text-color: rgba(72, 62, 98, 0.7);
 
 	/* Drag-over states */
-	--stv-drag-over-bg: var(--base-primary-bg-subtle, light-dark(color-mix(in srgb, var(--stv-accent-color) 10%, transparent), color-mix(in srgb, var(--stv-accent-color) 20%, transparent)));
-	--stv-drag-over-border: 2px dashed var(--stv-accent-color);
-	--stv-drag-over-box-shadow: 0 0 8px color-mix(in srgb, var(--stv-accent-color) 40%, transparent);
+	--stv-drag-over-bg: var(--base-drop-target-bg, var(--stv-drop-valid-bg));
+	--stv-drag-over-border: 2px dashed var(--base-drop-target-border-color, var(--stv-success-color));
+	--stv-drag-over-box-shadow: 0 0 8px color-mix(in srgb, var(--base-drop-target-border-color, var(--stv-success-color)) 40%, transparent);
 
 	/* Drop validation */
 	--stv-drop-valid-bg: var(--base-success-bg-subtle, light-dark(color-mix(in srgb, var(--stv-success-color) 10%, transparent), color-mix(in srgb, var(--stv-success-color) 20%, transparent)));
@@ -288,8 +288,8 @@
 	--stv-drop-invalid-border-color: var(--stv-danger-color);
 
 	/* Drag-over highlight (a row accepting the drop) */
-	--stv-drag-over-highlight-bg: var(--base-success-bg-subtle-hover, light-dark(color-mix(in srgb, var(--stv-success-color) 15%, transparent), color-mix(in srgb, var(--stv-success-color) 30%, transparent)));
-	--stv-drag-over-highlight-border: 2px dashed var(--stv-success-color);
+	--stv-drag-over-highlight-bg: var(--base-drop-target-bg-active, var(--base-success-bg-subtle-hover, light-dark(color-mix(in srgb, var(--stv-success-color) 15%, transparent), color-mix(in srgb, var(--stv-success-color) 30%, transparent))));
+	--stv-drag-over-highlight-border: 2px dashed var(--base-drop-target-border-color, var(--stv-success-color));
 
 	/* Can't-drag / can't-drop feedback: the row tint (fades in, held while
 	   pressed) and the no-entry badge */
@@ -369,17 +369,17 @@
 	/* -------------------------------------------------------------------------
 	   DROP PLACEHOLDER (empty tree)
 	   ------------------------------------------------------------------------- */
-	--stv-drop-placeholder-border: 2px dashed var(--stv-accent-color);
-	--stv-drop-placeholder-color: var(--stv-accent-color);
+	--stv-drop-placeholder-border: 2px dashed var(--base-drop-target-border-color, var(--stv-success-color));
+	--stv-drop-placeholder-color: var(--base-drop-target-border-color, var(--stv-success-color));
 	--stv-drop-placeholder-min-height: calc(6 * var(--stv-rem));
 	--stv-drop-placeholder-bg: var(--stv-drag-over-bg);
 	--stv-drop-placeholder-border-radius: var(--stv-border-radius-lg);
 	/* Engaged state (:hover + --active). scale-hover defaults to 1 — a scale() on a
 	   container-width placeholder spills past both edges and surfaces as a
 	   horizontal scrollbar; opt in only if you control the overflow. */
-	--stv-drop-placeholder-bg-hover: color-mix(in srgb, var(--stv-accent-color) 28%, transparent);
-	--stv-drop-placeholder-border-color-hover: var(--stv-accent-color);
-	--stv-drop-placeholder-box-shadow-hover: 0 0 0 4px color-mix(in srgb, var(--stv-accent-color) 30%, transparent);
+	--stv-drop-placeholder-bg-hover: var(--stv-drag-over-highlight-bg);
+	--stv-drop-placeholder-border-color-hover: var(--base-drop-target-border-color, var(--stv-success-color));
+	--stv-drop-placeholder-box-shadow-hover: 0 0 0 4px color-mix(in srgb, var(--base-drop-target-border-color, var(--stv-success-color)) 30%, transparent);
 	--stv-drop-placeholder-scale-hover: 1;
 
 	/* -------------------------------------------------------------------------

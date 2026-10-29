@@ -662,10 +662,10 @@
 				<tr><td><code>--stv-checkbox-gap</code></td><td><code>calc(0.6 * rem)</code></td><td>Space between checkbox and node row</td></tr>
 
 				<tr class="section-row"><td colspan="3">Drag / drop states</td></tr>
-				<tr><td><code>--stv-drag-over-bg</code></td><td><code>color-mix(primary 10%, transparent)</code></td><td>Drag-over background tint</td></tr>
-				<tr><td><code>--stv-drag-over-box-shadow</code></td><td><code>0 0 8px color-mix(primary 40%, transparent)</code></td><td>Drag-over glow shadow</td></tr>
-				<tr><td><code>--stv-drop-placeholder-bg</code></td><td><code>color-mix(primary 10%, transparent)</code></td><td>Empty-tree placeholder background</td></tr>
-				<tr><td><code>--stv-drop-placeholder-color</code></td><td><code>var(--stv-accent-color)</code></td><td>Placeholder text color</td></tr>
+				<tr><td><code>--stv-drag-over-bg</code></td><td><code>var(--base-drop-target-bg, var(--stv-drop-valid-bg))</code></td><td>Drag-over background tint (a valid drop target)</td></tr>
+				<tr><td><code>--stv-drag-over-box-shadow</code></td><td><code>0 0 8px color-mix(drop-target border color 40%, transparent)</code></td><td>Drag-over glow shadow</td></tr>
+				<tr><td><code>--stv-drop-placeholder-bg</code></td><td><code>var(--stv-drag-over-bg)</code></td><td>Empty-tree placeholder background</td></tr>
+				<tr><td><code>--stv-drop-placeholder-color</code></td><td><code>var(--base-drop-target-border-color, var(--stv-success-color))</code></td><td>Placeholder text color</td></tr>
 				<tr><td><code>--stv-drop-placeholder-border-radius</code></td><td><code>0.8 × rem</code> (= 8px)</td><td>Placeholder corner rounding</td></tr>
 				<tr><td><code>--stv-drop-placeholder-min-height</code></td><td><code>6.0 × rem</code> (= 60px)</td><td>Placeholder min height</td></tr>
 				<tr><td><code>--stv-touch-ghost-bg</code></td><td><code>rgba(59, 130, 246, 0.9)</code></td><td>Touch drag ghost background</td></tr>

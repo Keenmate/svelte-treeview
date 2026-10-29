@@ -129,7 +129,7 @@
 	left: -2px;
 	right: -2px;
 	bottom: -2px;
-	background: linear-gradient(45deg, transparent, color-mix(in srgb, var(--stv-accent-color) 5%, transparent));
+	background: linear-gradient(45deg, transparent, color-mix(in srgb, var(--base-drop-target-border-color, var(--stv-success-color)) 5%, transparent));
 	pointer-events: none;
 	border-radius: var(--stv-border-radius-sm);
 }

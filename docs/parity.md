@@ -176,6 +176,8 @@ One token list for both libraries — `--wtv-<name>` (web) = `--stv-<name>` (sve
 
 **Context menu:** the names are the same; web's are unset inputs mapped onto web-components-core's `--_km-menu-*` (defaults live in core, a page-wide `--km-menu-*` reaches the tree), svelte renders its own menu and declares them with defaults.
 
+**Drop target:** the drag-over row, the row accepting the drop (`drag-over-highlight-*`) and the empty-tree drop placeholder read the contract's `--base-drop-target-bg` (valid target while dragging) / `--base-drop-target-bg-active` (target under the pointer; the placeholder's engaged `bg-hover` = `drag-over-highlight-bg`) / `--base-drop-target-border-color` (borders, outline, placeholder text) — standalone fallbacks: the success tints; a refused drop (`drop-invalid-*`, `drag-denied-flash-bg`) keeps the danger tint — same (base-css-variables 2.0.0-rc06; e2e `drop-target-tokens` in each repo).
+
 ### Same name, different default
 
 Kept as each library looked before (aligning them changes one library's look — open).

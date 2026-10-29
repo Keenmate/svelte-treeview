@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > 5.0.0 was never published to npm (the previous `[5.0.0] - 2026-10-13 [PUBLISHED]` heading was wrong — npm `rc` is 5.0.0-rc15, `latest` 4.8.0). Its entries are folded into rc16 below.
 
+### Changed (visual) — drop-target tokens (base-css-variables 2.0.0-rc06, 2026-10-29)
+
+- **Drop targets are green (the contract's drop-target tokens), no longer the primary tint**: the drag-over row
+  `--stv-drag-over-bg` → `var(--base-drop-target-bg, var(--stv-drop-valid-bg))` (was `--base-primary-bg-subtle`);
+  the row accepting the drop `--stv-drag-over-highlight-bg` → `--base-drop-target-bg-active` (then
+  `--base-success-bg-subtle-hover`); `--stv-drag-over-border`, `--stv-drag-over-highlight-border` and
+  `--stv-drop-placeholder-border` / `-color` / `-border-color-hover` → `--base-drop-target-border-color` (then
+  `--stv-success-color`; were accent); the empty-tree drop placeholder idle = `--stv-drag-over-bg`, engaged
+  `--stv-drop-placeholder-bg-hover` = `--stv-drag-over-highlight-bg` (was accent 28%); the drag-over glow / placeholder
+  glow follow the border colour. A refused drop keeps the danger tint (`--stv-drop-invalid-*`). Token names unchanged;
+  `component-variables.manifest.json` lists the three `--base-drop-target-*` reads.
+
 ### Changed (visual) — base scroll / indent tokens (2026-10-29)
 
 - **`--stv-indent-size`** reads the contract's unitless multiplier: `calc(var(--base-tree-indent, 1.6) *
