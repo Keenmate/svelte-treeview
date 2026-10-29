@@ -31,6 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `behavior` of `scrollToPath` (was a hard-coded `'smooth'`); an explicit `behavior` wins. **Keyboard moves**
   (`navTo`, arrows, PageUp/Down, Home/End, Shift range moves) **always scroll instantly** (`'auto'`; were
   `'smooth'`), so a held key never lags behind a smooth animation (KeenMate rule, 2026-10-29).
+- **Keyboard scroll position is `block: 'nearest'`** (was centred, `'center'`): a move to a visible row no
+  longer scrolls; an off-screen row is brought in to the nearest edge of the tree's scroll container (virtual
+  scroll included) — the same as web-treeview. `scrollToPath` still defaults to `block: 'center'`.
 
 ### Changed — BREAKING (shared KeenMate loader — 2026-10-29)
 

@@ -430,6 +430,35 @@ test.describe('scrolling: keyboard moves always instant; --stv-scroll-behavior (
 		await expect.poll(outside).toBeLessThan(1);
 	});
 
+	test("keyboard scroll uses block 'nearest': a visible row doesn't scroll, an off-screen one lands on the edge (= web-treeview)", async ({ page }) => {
+		await clickToFocus(page, '1');
+		await spyScroll(page);
+		const hostTop = () =>
+			page.evaluate(() => (document.querySelector('.stv__container')!.parentElement as HTMLElement).scrollTop);
+		// put row '2' just below the top edge — visible, far from the centre
+		const before = await page.evaluate(() => {
+			const host = document.querySelector('.stv__container')!.parentElement as HTMLElement;
+			const r = document.querySelector('.stv__node[data-tree-path="2"] .stv__node-content')!.getBoundingClientRect();
+			host.scrollTop += r.top - (host.getBoundingClientRect().top + host.clientTop) - 4;
+			return host.scrollTop;
+		});
+		expect(before).toBeGreaterThan(0);
+		await page.keyboard.press('ArrowDown');
+		await expect(page.getByTestId('focused-path')).toHaveText('2');
+		await expect.poll(async () => (await scrollCalls(page)).length).toBeGreaterThanOrEqual(1);
+		expect(await hostTop()).toBe(before);
+		await page.keyboard.press('End');
+		await expect(page.getByTestId('focused-path')).toHaveText('5');
+		const bottomGap = () =>
+			page.evaluate(() => {
+				const host = document.querySelector('.stv__container')!.parentElement as HTMLElement;
+				const r = document.querySelector('.stv__node[data-tree-path="5"] .stv__node-content')!.getBoundingClientRect();
+				return host.getBoundingClientRect().top + host.clientTop + host.clientHeight - r.bottom;
+			});
+		// the row sits on the bottom edge, not centred
+		await expect.poll(async () => Math.abs(await bottomGap())).toBeLessThan(2);
+	});
+
 	test('scrollToPath: the token (smooth by default), a page-wide override, an explicit behavior wins', async ({ page }) => {
 		await spyScroll(page);
 		const jump = (o?: object) => page.evaluate((o) => (window as any).tree.scrollToPath('5', o), o);

@@ -3885,9 +3885,19 @@ export class TreeController<T> {
 				return false;
 			}
 
-			// Scroll virtual container to center the node
+			// Scroll the virtual container: centre the node, or with block 'nearest' (keyboard
+			// moves) only as far as needed to bring it in (stays put while it is visible)
+			const rowTop = nodeIndex * this.vsRowHeight;
+			const viewHeight = this.vsContainerRef.clientHeight;
+			const currentTop = this.vsContainerRef.scrollTop;
 			const targetScroll =
-				nodeIndex * this.vsRowHeight - this.vsContainerRef.clientHeight / 2 + this.vsRowHeight / 2;
+				block === 'nearest'
+					? rowTop < currentTop
+						? rowTop
+						: rowTop + this.vsRowHeight > currentTop + viewHeight
+							? rowTop + this.vsRowHeight - viewHeight
+							: currentTop
+					: rowTop - viewHeight / 2 + this.vsRowHeight / 2;
 			this.vsContainerRef.scrollTo({
 				top: Math.max(0, targetScroll),
 				behavior: scrollOptions.behavior
@@ -3946,11 +3956,23 @@ export class TreeController<T> {
 			if (container) {
 				const containerRect = container.getBoundingClientRect();
 				const elementRect = contentDiv.getBoundingClientRect();
-				const scrollTop =
-					container.scrollTop +
-					(elementRect.top - containerRect.top) -
-					containerRect.height / 2 +
-					elementRect.height / 2;
+				// the visible client box (inside the borders, above a horizontal scrollbar)
+				const viewTop = containerRect.top + container.clientTop;
+				const viewBottom = viewTop + container.clientHeight;
+				let scrollTop: number;
+				if (block === 'nearest') {
+					// keyboard moves: scroll only as far as needed; a visible row stays put
+					// (the call still runs — same top = no-op)
+					scrollTop = container.scrollTop;
+					if (elementRect.top < viewTop) scrollTop += elementRect.top - viewTop;
+					else if (elementRect.bottom > viewBottom) scrollTop += elementRect.bottom - viewBottom;
+				} else {
+					scrollTop =
+						container.scrollTop +
+						(elementRect.top - viewTop) -
+						container.clientHeight / 2 +
+						elementRect.height / 2;
+				}
 				container.scrollTo({
 					top: scrollTop,
 					behavior: scrollOptions.behavior
@@ -6212,7 +6234,7 @@ export class TreeController<T> {
 				const node = this.getNodeByPath(path);
 				if (!node) return;
 				this.selectNode(path, 'replace');
-				this._scrollToPath(path, { shouldExpandAncestors: false, block: 'center', behavior: 'auto' }, true);
+				this._scrollToPath(path, { shouldExpandAncestors: false, block: 'nearest', behavior: 'auto' }, true);
 			},
 
 			navNext: () => {
@@ -6463,7 +6485,7 @@ export class TreeController<T> {
 		// Move focus to the target without clearing highlights
 		const node = this.tree.getNodeByPath(path);
 		if (node) this._setFocusedNode(node);
-		this._scrollToPath(path, { shouldExpandAncestors: false, block: 'center', behavior: 'auto' }, true);
+		this._scrollToPath(path, { shouldExpandAncestors: false, block: 'nearest', behavior: 'auto' }, true);
 		this.tree.refresh();
 	}
 
