@@ -2,10 +2,16 @@
 
 Device / viewport / container-size detection, **transferred 1:1** from
 [`@keenmate/web-components-core`](../../../../web-components-core) `src/environment/`
-(v1.0.0-rc09). Kept byte-for-byte (only the two `*.test.ts` files gained a
+(v1.0.0-rc09), plus the `environment.ts` changes of core v1.0.0-rc15 (unreleased;
+commits 0498405 + bf3cb12): breakpoint defaults 768/1024, the
+`--base-breakpoint-mobile` / `--base-breakpoint-tablet` token read on the first
+browser snapshot, and the discrete channel also firing on a `classifyDevice()` flip.
+Otherwise kept byte-for-byte (the two `*.test.ts` files gained a
 `// @vitest-environment jsdom` docblock, since this repo's default vitest
 environment is `node`) so a future extraction into a shared
-`@keenmate/svelte-components-core` is a move, not a rewrite.
+`@keenmate/svelte-components-core` is a move, not a rewrite. Later core refactors
+(rc10+ `shouldFireImmediately` option rename, shared dom/throttle helpers) are NOT
+ported — the option is still `immediate` here.
 
 - `environment.ts` — the shared, ref-counted `matchMedia` + `resize` observable
   (`observeEnvironment` / `observeViewport` / `classifyDevice` / …). Capability,

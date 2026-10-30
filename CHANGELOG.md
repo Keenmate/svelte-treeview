@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > 5.0.0 was never published to npm (the previous `[5.0.0] - 2026-10-13 [PUBLISHED]` heading was wrong — npm `rc` is 5.0.0-rc15, `latest` 4.8.0). Its entries are folded into rc16 below.
 
+### Changed — vendored environment (web-components-core 1.0.0-rc15)
+
+- **Breakpoint defaults 640 → 768** (`mobile` ≤ 768, `tablet` ≤ 1024 — the pure-css `$mobile-breakpoint` /
+  `$tablet-breakpoint` lines). On the first browser snapshot the base tokens `--base-breakpoint-mobile` /
+  `--base-breakpoint-tablet` (px or unitless) move those lines when the page defines them; `configureBreakpoints()`
+  always wins.
+- The discrete environment channel now also fires when `classifyDevice()` flips inside one width bucket
+  (a foldable opening 390 → 720 px).
+
 ### Changed (visual) — drop-target tokens (base-css-variables 2.0.0-rc06, 2026-10-29)
 
 - **Drop targets are green (the contract's drop-target tokens), no longer the primary tint**: the drag-over row

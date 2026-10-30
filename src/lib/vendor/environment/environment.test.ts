@@ -147,6 +147,60 @@ describe('breakpoints', () => {
     setWidth(1000);
     expect(getEnvironment().breakpoint).toBe('wide');
   });
+
+  it('defaults to the pure-css lines: mobile ≤ 768, tablet ≤ 1024', () => {
+    installMatchMedia({ ...DESKTOP });
+    setWidth(768);
+    expect(getEnvironment().breakpoint).toBe('mobile');
+    setWidth(769);
+    expect(getEnvironment().breakpoint).toBe('tablet');
+    setWidth(1025);
+    expect(getEnvironment().breakpoint).toBe('desktop');
+  });
+
+  describe('base tokens', () => {
+    const root = () => document.documentElement.style;
+    afterEach(() => {
+      root().removeProperty('--base-breakpoint-mobile');
+      root().removeProperty('--base-breakpoint-tablet');
+    });
+
+    it('reads --base-breakpoint-mobile / --base-breakpoint-tablet on the first snapshot', () => {
+      root().setProperty('--base-breakpoint-mobile', '600px');
+      root().setProperty('--base-breakpoint-tablet', ' 900px ');
+      installMatchMedia({ ...DESKTOP });
+      setWidth(700);
+      expect(getEnvironment().breakpoint).toBe('tablet');
+      setWidth(950);
+      expect(getEnvironment().breakpoint).toBe('desktop');
+    });
+
+    it('keeps the default for an absent or unparsable token', () => {
+      root().setProperty('--base-breakpoint-mobile', '48em');
+      root().setProperty('--base-breakpoint-tablet', '1200');
+      installMatchMedia({ ...DESKTOP });
+      setWidth(700);
+      expect(getEnvironment().breakpoint).toBe('mobile'); // 48em ignored → 768
+      setWidth(1100);
+      expect(getEnvironment().breakpoint).toBe('tablet'); // unitless 1200 accepted
+    });
+
+    it('reads the tokens once — a later change is not picked up', () => {
+      installMatchMedia({ ...DESKTOP });
+      setWidth(700);
+      expect(getEnvironment().breakpoint).toBe('mobile');
+      root().setProperty('--base-breakpoint-mobile', '600px');
+      expect(getEnvironment().breakpoint).toBe('mobile');
+    });
+
+    it('configureBreakpoints() wins over the tokens', () => {
+      root().setProperty('--base-breakpoint-mobile', '600px');
+      configureBreakpoints({ mobile: 900, desktop: Infinity });
+      installMatchMedia({ ...DESKTOP });
+      setWidth(700);
+      expect(getEnvironment().breakpoint).toBe('mobile');
+    });
+  });
 });
 
 describe('observeEnvironment', () => {
@@ -195,7 +249,7 @@ describe('observeEnvironment', () => {
 
   it('re-notifies subscribers when breakpoints are reconfigured', () => {
     installMatchMedia({ ...DESKTOP });
-    setWidth(700);
+    setWidth(800);
     const seen: string[] = [];
     const unsub = observeEnvironment((env) => seen.push(env.breakpoint));
     expect(seen).toEqual(['tablet']);
@@ -267,6 +321,18 @@ describe('observeViewport (continuous, throttled)', () => {
     fireResize(500); // desktop → mobile bucket
     expect(seen).toEqual(['mobile']);
     unsub();
+  });
+
+  it('wakes environmentChanged when the device class flips inside one width bucket (foldable opening)', () => {
+    installMatchMedia({ ...PHONE });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 844 });
+    setWidth(390);
+    const seen: string[] = [];
+    const unsub = observeEnvironment((env) => seen.push(`${env.breakpoint}/${classifyDevice(env)}`), { immediate: false });
+    fireResize(720); // still the `mobile` width bucket, but the short side is now ≥ 600
+    expect(seen).toEqual(['mobile/tablet']);
+    unsub();
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 768 });
   });
 
   it('keeps the shared resize listener alive while either channel has a subscriber', () => {

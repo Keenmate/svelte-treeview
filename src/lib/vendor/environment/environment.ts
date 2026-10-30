@@ -104,11 +104,65 @@ const SSR_DEFAULT: EnvironmentSnapshot = {
   isAndroid: false,
 };
 
-/** Default breakpoints: phone ≤ 640, tablet ≤ 1024, everything larger is desktop. */
-const DEFAULT_BREAKPOINTS: BreakpointMap = { mobile: 640, tablet: 1024, desktop: Infinity };
+/**
+ * Default breakpoints: phone ≤ 768, tablet ≤ 1024, everything larger is desktop —
+ * the same lines as pure-css `$mobile-breakpoint` / `$tablet-breakpoint`. In a
+ * browser the `mobile` / `tablet` lines are overridden by the base tokens
+ * `--base-breakpoint-mobile` / `--base-breakpoint-tablet` when the page defines
+ * them (see {@link readBreakpointTokens}).
+ */
+const DEFAULT_BREAKPOINTS: BreakpointMap = { mobile: 768, tablet: 1024, desktop: Infinity };
+
+/** The base-css-variables tokens that move the default `mobile` / `tablet` lines. */
+export const BREAKPOINT_TOKENS = {
+  mobile: '--base-breakpoint-mobile',
+  tablet: '--base-breakpoint-tablet',
+} as const;
 
 /** Breakpoints as `[name, maxWidth]` sorted ascending by width; last entry is the catch-all. */
 let breakpoints: Array<[string, number]> = sortBreakpoints(DEFAULT_BREAKPOINTS);
+
+/**
+ * The breakpoint lines are settled: the base tokens were read (first browser
+ * snapshot) or {@link configureBreakpoints} set them explicitly — which always
+ * wins over the tokens.
+ */
+let breakpointsSettled = false;
+
+/** Parse a token value like `768px` / `768` → 768; anything else (absent, `48em`, junk) → `undefined`. */
+function parsePx(raw: string | undefined | null): number | undefined {
+  const text = (raw ?? '').trim();
+  const m = /^(\d+(?:\.\d+)?)(px)?$/i.exec(text);
+  if (!m) return undefined;
+  const n = Number(m[1]);
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+/**
+ * Read `--base-breakpoint-mobile` / `--base-breakpoint-tablet` from the root
+ * element's computed style (browser only), once, on the first snapshot. Absent or
+ * unparsable tokens keep the {@link DEFAULT_BREAKPOINTS}; an explicit
+ * {@link configureBreakpoints} call is never overridden.
+ */
+function readBreakpointTokens(): void {
+  if (breakpointsSettled) return;
+  if (typeof document === 'undefined' || !document.documentElement || typeof getComputedStyle !== 'function') return;
+  breakpointsSettled = true;
+  let style: CSSStyleDeclaration;
+  try {
+    style = getComputedStyle(document.documentElement);
+  } catch {
+    return;
+  }
+  const mobile = parsePx(style.getPropertyValue(BREAKPOINT_TOKENS.mobile));
+  const tablet = parsePx(style.getPropertyValue(BREAKPOINT_TOKENS.tablet));
+  if (mobile === undefined && tablet === undefined) return;
+  breakpoints = sortBreakpoints({
+    ...DEFAULT_BREAKPOINTS,
+    ...(mobile !== undefined ? { mobile } : {}),
+    ...(tablet !== undefined ? { tablet } : {}),
+  });
+}
 
 /** Discrete-change subscribers: notified only when a *category* field flips (see {@link environmentEqual}). */
 const subscribers = new Set<EnvironmentListener>();
@@ -197,6 +251,7 @@ function matches(query: string): boolean {
 /** Sample the environment right now (pure read; does not attach listeners). */
 function computeSnapshot(): EnvironmentSnapshot {
   if (!canMatchMedia()) return { ...SSR_DEFAULT };
+  readBreakpointTokens();
 
   const hasCoarsePointer = matches('(any-pointer: coarse)');
   const coarsePrimary = matches('(pointer: coarse)');
@@ -224,7 +279,7 @@ function computeSnapshot(): EnvironmentSnapshot {
 
 /**
  * Discrete equality: the *category* fields that change rarely (a bucket flip, a
- * rotation, plugging in a mouse). Raw `viewportWidth`/`viewportHeight` are
+ * rotation, plugging in a mouse, a {@link classifyDevice} class change). Raw `viewportWidth`/`viewportHeight` are
  * DELIBERATELY excluded — they change every frame during a drag-resize, and
  * routing that through `environmentChanged` fired a per-frame storm on every
  * component. The continuous size signal lives on its own throttled channel
@@ -238,7 +293,10 @@ function environmentEqual(a: EnvironmentSnapshot, b: EnvironmentSnapshot): boole
     a.canHover === b.canHover &&
     a.isTouchPrimary === b.isTouchPrimary &&
     a.orientation === b.orientation &&
-    a.breakpoint === b.breakpoint
+    a.breakpoint === b.breakpoint &&
+    // The device class is derived from the short side too (a foldable opening
+    // 390 → 720 px stays in the `mobile` width bucket but becomes a tablet).
+    classifyDevice(a) === classifyDevice(b)
   );
 }
 
@@ -423,9 +481,13 @@ export function observeViewport(listener: EnvironmentListener, opts: ObserveOpti
  * Keys are names, values are inclusive max widths in px (use `Infinity` for the
  * largest bucket). Applies globally and immediately re-notifies active
  * subscribers if the resolved breakpoint changed. Defaults:
- * `{ mobile: 640, tablet: 1024, desktop: Infinity }`.
+ * `{ mobile: 768, tablet: 1024, desktop: Infinity }`, with the `mobile` / `tablet`
+ * lines taken from the `--base-breakpoint-mobile` / `--base-breakpoint-tablet`
+ * tokens when the page defines them. An explicit call here always wins over the
+ * tokens.
  */
 export function configureBreakpoints(map: BreakpointMap): void {
+  breakpointsSettled = true;
   breakpoints = sortBreakpoints(map);
   if (subscribers.size > 0) recompute();
 }
@@ -482,5 +544,6 @@ export function __resetEnvironment(): void {
   viewportSubscribers.clear();
   stop();
   breakpoints = sortBreakpoints(DEFAULT_BREAKPOINTS);
+  breakpointsSettled = false;
   osCache = undefined;
 }
