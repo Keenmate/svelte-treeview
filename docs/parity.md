@@ -5,7 +5,7 @@ Living checklist of the public API of `@keenmate/svelte-treeview` (`<Tree>`) aga
 be mirrored in the sibling library (or recorded here as intentional).**
 
 Status: **same** = identical name, type, default and semantics · **intentional** = a deliberate
-difference (the reason is given). Web names are element properties / `TreeViewConfig` keys (HTML
+difference (the reason is given) · **OPEN** = not decided yet (do not build). Web names are element properties / `TreeViewConfig` keys (HTML
 attribute in parentheses); svelte names are `<Tree>` props / exports. Decided 2026-10-28, synced against both codebases 2026-10-29
 (parity pass: `_agent-progress/parity-brief.md`, audit `_agent-progress/treeview-parity.md`).
 
@@ -39,6 +39,7 @@ attribute in parentheses); svelte names are `<Tree>` props / exports. Decided 20
 | `getCustomStylesCallback` | — | intentional — shadow-DOM style injection; svelte styles are global CSS |
 | `renderer` (pluggable `TreeViewRenderer`) | — | intentional — web-only DOM renderer swap |
 | core element plumbing: `defer` / `release()` / `whenReady()` / `whenSettled()` / `flush()` / `destroy()` / `isDisabled` | — | intentional — `BlissElement` lifecycle |
+| responsive rules (core SPEC §6.7): `responsive` (JSON attribute `responsive`) / `responsiveCallback` per instance + page-wide / per-tag `window.components` rules — a partial config per device class | — | **OPEN** — web = yes, svelte = not decided (don't build until decided) |
 
 ## 2. State
 
