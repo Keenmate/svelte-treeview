@@ -19,6 +19,9 @@ import {
 	type ClickBehavior,
 	type CheckboxMode,
 	type CascadeCheckPolicy,
+	type FilterScope,
+	type IndexProgress,
+	type SearchStatus,
 	type SelectionMode,
 	type SelectMode,
 	type TreeMutationOptions,
@@ -27,14 +30,10 @@ import {
 	type NodeContext,
 	type SortContext,
 	type SortOptions,
-	type NodesReorderContext
+	type NodesReorderContext,
+	type RenderStats
 } from '../ltree/types.js';
 import { tick, untrack } from 'svelte';
-import {
-	createRenderCoordinator,
-	type RenderCoordinator,
-	type RenderStats
-} from '../components/RenderCoordinator.svelte.js';
 import { uiLogger, dragLogger } from '../logger.js';
 import { perfStart, perfEnd } from '../perf-logger.js';
 import { resolveLabel, type TreeLabels } from './labels.js';
@@ -445,8 +444,6 @@ export interface NodeConfig {
 	dropZoneMaxWidth: number;
 	isCopyAllowed: boolean;
 	shouldExpandAsAccordion: boolean;
-	/** Resolved `labels.loading` — the progressive "more children" row. */
-	loadingLabel: string;
 	showFullLabel: string;
 }
 
@@ -544,6 +541,10 @@ export interface TreeControllerProps<T> {
 	rangeSelectionMode?: 'visual' | 'logical';
 	initializeIndexCallback?: () => Index;
 	searchTerm?: string | null | undefined;
+	filterScope?: FilterScope | null | undefined;
+	filterDescendantDepth?: number | null | undefined;
+	shouldExpandFilterDescendants?: boolean | null | undefined;
+	searchResultLimit?: number | null | undefined;
 	shouldUseInternalSearchIndex?: boolean | null | undefined;
 	indexerBatchSize?: number | null | undefined;
 	indexerTimeout?: number | null | undefined;
@@ -556,9 +557,10 @@ export interface TreeControllerProps<T> {
 	onRenderStart?: (ctx: TreeCallbackContext<T>) => void;
 	onRenderProgress?: (stats: RenderStats & TreeCallbackContext<T>) => void;
 	onRenderComplete?: (stats: RenderStats & TreeCallbackContext<T>) => void;
-
-	// Flat rendering
-	isFlatRenderingEnabled?: boolean;
+	/** Search-index fill progress (per idle batch + once on completion). */
+	onIndexProgress?: (ctx: IndexProgress & TreeCallbackContext<T>) => void;
+	/** State of the applied filter: match count, truncation, whether indexing was still running. */
+	onSearchStatusChange?: (ctx: SearchStatus & TreeCallbackContext<T>) => void;
 
 	// Virtual scrolling (flat mode only)
 	/** Enable virtual scrolling in flat mode. Only visible nodes + overscan are rendered. */
@@ -747,7 +749,6 @@ export class TreeController<T> {
 	tree!: Ltree<T>;
 
 	// ── Render coordinator ──────────────────────────────────────────────
-	renderCoordinator!: RenderCoordinator | null;
 
 	// ── Stable callback & config objects for Node context ───────────────
 	/** @internal */
@@ -788,7 +789,6 @@ export class TreeController<T> {
 		dropZoneMaxWidth: 120,
 		isCopyAllowed: false,
 		shouldExpandAsAccordion: false,
-		loadingLabel: 'Loading…',
 		showFullLabel: 'Show full label'
 	});
 
@@ -891,12 +891,15 @@ export class TreeController<T> {
 	}
 	insertResult = $state.raw<InsertArrayResult<T> | null | undefined>(null);
 	searchTerm = $state<string | null | undefined>(undefined);
+	filterScope = $state<FilterScope>('matches');
+	filterDescendantDepth = $state(1);
+	shouldExpandFilterDescendants = $state(true);
+	searchResultLimit = $state<number | undefined>(undefined);
 	isRendering = $state(false);
 
 	// BEHAVIOUR
 	rangeSelectionMode = $state<'visual' | 'logical'>('visual');
 	isLoading = $state(false);
-	isFlatRenderingEnabled = $state(true);
 	isProgressiveRenderEnabled = $state(true);
 	initialBatchSize = $state(20);
 	maxBatchSize = $state(500);
@@ -962,6 +965,12 @@ export class TreeController<T> {
 	onRenderProgressHandler: TreeControllerProps<T>['onRenderProgress'];
 	/** @internal */
 	onRenderCompleteHandler: TreeControllerProps<T>['onRenderComplete'];
+	onIndexProgressHandler: TreeControllerProps<T>['onIndexProgress'];
+	onSearchStatusChangeHandler: TreeControllerProps<T>['onSearchStatusChange'];
+	/** Status of the last applied/cleared filter (reactive); null before the first filter. */
+	searchStatus = $state.raw<SearchStatus | null>(null);
+	/** Latest search-index progress (reactive); null until a load queues indexing. */
+	indexProgress = $state.raw<IndexProgress | null>(null);
 
 	// Interceptor handlers (before*Callback)
 	/** @internal */
@@ -1202,7 +1211,7 @@ export class TreeController<T> {
 	/** @internal */
 	vsRowHeight = $derived(this.virtualScrollItemHeight ?? this.vsMeasuredRowHeight ?? 32);
 	/** @internal */
-	vsActive = $derived(this.isVirtualScrollEnabled && this.isFlatRenderingEnabled);
+	vsActive = $derived(this.isVirtualScrollEnabled);
 	/** @internal */
 	vsContainerStyle = $derived(this.virtualScrollContainerHeight ?? this.vsDetectedHeight ?? '400px');
 	allFlatNodes = $derived(this.tree?.visibleFlatNodes ?? []);
@@ -1234,7 +1243,7 @@ export class TreeController<T> {
 	flatNodesToRender = $derived(
 		this.vsActive
 			? this.allFlatNodes.slice(this.vsStartIndex, this.vsEndIndex)
-			: this.isFlatRenderingEnabled && this.isProgressiveRenderEnabled
+			: this.isProgressiveRenderEnabled
 				? (this.tree?.visibleFlatNodes?.filter((n) => this.flatRenderedIds.has(String(n.id))) ?? [])
 				: (this.tree?.visibleFlatNodes ?? [])
 	);
@@ -1277,11 +1286,14 @@ export class TreeController<T> {
 			this.#pendingExpanded = props.expandedPaths;
 		}
 		this.searchTerm = props.searchTerm;
+		this.filterScope = props.filterScope ?? 'matches';
+		this.filterDescendantDepth = props.filterDescendantDepth ?? 1;
+		this.shouldExpandFilterDescendants = props.shouldExpandFilterDescendants ?? true;
+		this.searchResultLimit = props.searchResultLimit ?? undefined;
 
 		this.rangeSelectionMode = props.rangeSelectionMode ?? 'visual';
 		this.isLoading = props.isLoading ?? false;
 
-		this.isFlatRenderingEnabled = props.isFlatRenderingEnabled ?? true;
 		this.isProgressiveRenderEnabled = props.isProgressiveRenderEnabled ?? true;
 		this.initialBatchSize = props.initialBatchSize ?? 20;
 		this.maxBatchSize = props.maxBatchSize ?? 500;
@@ -1377,6 +1389,8 @@ export class TreeController<T> {
 		this.onRenderStartHandler = props.onRenderStart;
 		this.onRenderProgressHandler = props.onRenderProgress;
 		this.onRenderCompleteHandler = props.onRenderComplete;
+		this.onIndexProgressHandler = props.onIndexProgress;
+		this.onSearchStatusChangeHandler = props.onSearchStatusChange;
 
 		// ── Create LTree ────────────────────────────────────────────────
 		// svelte-ignore non_reactive_update
@@ -1419,23 +1433,19 @@ export class TreeController<T> {
 				displayValueFallback: resolveLabel(props.labels, 'noDisplayValue')
 			}
 		);
-
-		// ── Create render coordinator ───────────────────────────────────
-		this.renderCoordinator = this.isProgressiveRenderEnabled
-			? createRenderCoordinator(2, {
-					onStart: () => {
-						this.isRendering = true;
-						this.onRenderStartHandler?.(this._ctx({}));
-					},
-					onProgress: (stats) => {
-						this.onRenderProgressHandler?.(this._ctx(stats));
-					},
-					onComplete: (stats) => {
-						this.isRendering = false;
-						this.onRenderCompleteHandler?.(this._ctx(stats));
-					}
-				})
-			: null;
+		// Both can fire synchronously inside the searchTerm/filter $effect (filterNodes →
+		// status). untrack() so whatever the consumer's handler READS doesn't become a
+		// dependency of that effect (a handler doing `count++` would loop forever).
+		this.tree.onIndexProgress = (progress) =>
+			untrack(() => {
+				this.indexProgress = progress;
+				this.onIndexProgressHandler?.(this._ctx(progress));
+			});
+		this.tree.onSearchStatus = (status) =>
+			untrack(() => {
+				this.searchStatus = status;
+				this.onSearchStatusChangeHandler?.(this._ctx(status));
+			});
 
 		// ── Create stable nodeCallbacks ─────────────────────────────────
 		this.nodeCallbacks = {
@@ -1486,7 +1496,6 @@ export class TreeController<T> {
 			dropZoneMaxWidth: this.dropZoneMaxWidth,
 			isCopyAllowed: this.isCopyAllowed,
 			shouldExpandAsAccordion: this.shouldExpandAsAccordion,
-			loadingLabel: this.getLabel('loading'),
 			showFullLabel: this.getLabel('showFullLabel')
 		};
 
@@ -1513,6 +1522,7 @@ export class TreeController<T> {
 			Object.assign(this.nodeConfig, {
 				clickBehavior: this.clickBehavior,
 				isCheckboxesShown: this.isCheckboxesShown,
+				checkboxMode: this.checkboxMode,
 				shouldClickToggleCheckbox: this.shouldClickToggleCheckbox,
 				leafIconClass: this.leafIconClass,
 				toggleIconMode: this.toggleIconMode,
@@ -1544,13 +1554,16 @@ export class TreeController<T> {
 				dropZoneMaxWidth: this.dropZoneMaxWidth,
 				isCopyAllowed: this.isCopyAllowed,
 				shouldExpandAsAccordion: this.shouldExpandAsAccordion,
-				loadingLabel: this.getLabel('loading'),
 			showFullLabel: this.getLabel('showFullLabel')
 			});
 		});
 
-		// Filter when searchTerm changes
+		// Filter when searchTerm (or the experimental filterScope / depth) changes
 		$effect(() => {
+			this.tree.filterScope = this.filterScope;
+			this.tree.filterDescendantDepth = this.filterDescendantDepth;
+			this.tree.shouldExpandFilterDescendants = this.shouldExpandFilterDescendants;
+			this.tree.searchResultLimit = this.searchResultLimit;
 			this.tree.filterNodes(this.searchTerm as string);
 		});
 
@@ -1564,9 +1577,9 @@ export class TreeController<T> {
 					this._skipInsertArray = false;
 					return;
 				}
-				this.renderCoordinator?.reset();
 				this.flatRenderedIds = new Set();
 				this.flatRenderQueue = [];
+				untrack(() => this._finishRenderPass());
 				this.currentBatchSize = 0;
 				// Reset virtual scroll measurements
 				this.vsMeasuredRowHeight = null;
@@ -1599,7 +1612,7 @@ export class TreeController<T> {
 
 		// Progressive rendering for flat mode
 		$effect(() => {
-			if (!this.isFlatRenderingEnabled || !this.isProgressiveRenderEnabled || !this.tree?.visibleFlatNodes)
+			if (!this.isProgressiveRenderEnabled || !this.tree?.visibleFlatNodes)
 				return;
 
 			const tracker = this.tree.changeTracker;
@@ -1654,6 +1667,7 @@ export class TreeController<T> {
 
 					if (remaining.length > 0) {
 						this.flatRenderQueue = [...remaining];
+						untrack(() => this._beginRenderPass(immediateBatch.length));
 						this.scheduleFlatRenderBatch();
 					}
 				}
@@ -4058,6 +4072,13 @@ export class TreeController<T> {
 		if (updates.cascadeCheckPolicy !== undefined)
 			this.cascadeCheckPolicy = updates.cascadeCheckPolicy ?? 'rolled-up';
 		if (updates.searchTerm !== undefined) this.searchTerm = updates.searchTerm;
+		if (updates.filterScope !== undefined) this.filterScope = updates.filterScope ?? 'matches';
+		if (updates.filterDescendantDepth !== undefined)
+			this.filterDescendantDepth = updates.filterDescendantDepth ?? 1;
+		if (updates.shouldExpandFilterDescendants !== undefined)
+			this.shouldExpandFilterDescendants = updates.shouldExpandFilterDescendants ?? true;
+		if (updates.searchResultLimit !== undefined)
+			this.searchResultLimit = updates.searchResultLimit ?? undefined;
 		if (updates.rangeSelectionMode !== undefined)
 			this.rangeSelectionMode = updates.rangeSelectionMode ?? 'visual';
 		if (updates.isLoading !== undefined) this.isLoading = updates.isLoading ?? false;
@@ -4342,6 +4363,33 @@ export class TreeController<T> {
 		return result;
 	}
 
+	/**
+	 * Resolve a path against the REAL (unfiltered) tree. While a filter is active,
+	 * `tree.getNodeByPath()` returns the filtered COPY, whose `children` hold only the
+	 * matching subset — checkbox state must live on (and cascade math must see every
+	 * child of) the real node, or a parent with one visible match reads as fully checked
+	 * and checks made while filtered are lost when the filter clears.
+	 */
+	private _realNode(path: string): LTreeNode<T> | null {
+		return this.tree.getNodeByPath(path, this.tree.root);
+	}
+
+	/** Mirror isChecked/visualState from the real nodes onto the filtered copies
+	 *  (bumping `_rev` so they re-render). No-op when no filter is active. */
+	private _syncFilteredCheckState() {
+		if (!this.tree?.isFiltered) return;
+		const visit = (copy: LTreeNode<T>) => {
+			const real = this._realNode(copy.path);
+			if (real && real !== copy && (copy.isChecked !== real.isChecked || copy.visualState !== real.visualState)) {
+				copy.isChecked = real.isChecked;
+				copy.visualState = real.visualState;
+				copy._rev = (copy._rev || 0) + 1;
+			}
+			for (const key in copy.children) visit(copy.children[key]!);
+		};
+		for (const node of this.tree.tree) visit(node);
+	}
+
 	/** Get all descendant paths of a node (depth-first) */
 	private _getDescendantPaths(node: LTreeNode<T>): string[] {
 		const result: string[] = [];
@@ -4357,11 +4405,28 @@ export class TreeController<T> {
 
 	/** Handle checkbox toggle with cascade and interceptor support */
 	private _onCheckboxToggle(node: LTreeNode<T>, options?: { skipFocus?: boolean }) {
-		// In cascade mode, indeterminate → check all (not fully selected yet)
-		const newChecked =
-			this.checkboxMode === 'cascade' && node.visualState === VisualState.indeterminate
-				? true
-				: !node.isChecked;
+		// While a filter is active, a cascade click acts on the VISIBLE matches only
+		// (the filtered copy's children), not the hidden real descendants. The parent's
+		// own box still reflects ALL its real children, so it can stay [-] after the
+		// click — hence the toggle direction comes from the visible set: all visible
+		// descendants checked → uncheck them, otherwise check them.
+		const isFilteredCascade = this.checkboxMode === 'cascade' && !!this.tree.isFiltered;
+		const visibleDescendants = (path: string): string[] => {
+			const copy = this.tree.getNodeByPath(path);
+			return copy ? this._getDescendantPaths(copy) : [];
+		};
+
+		let newChecked: boolean;
+		const clickedVisible = isFilteredCascade ? visibleDescendants(node.path) : [];
+		if (clickedVisible.length > 0) {
+			newChecked = !clickedVisible.every((p) => this._realNode(p)?.isChecked);
+		} else {
+			// In cascade mode, indeterminate → check all (not fully selected yet)
+			newChecked =
+				this.checkboxMode === 'cascade' && node.visualState === VisualState.indeterminate
+					? true
+					: !node.isChecked;
+		}
 
 		// If the clicked node is part of a multi-highlight, apply to all highlighted nodes
 		const isMultiSelected =
@@ -4380,7 +4445,11 @@ export class TreeController<T> {
 		if (this.checkboxMode === 'cascade') {
 			const expanded = new Set(affectedPaths);
 			for (const path of affectedPaths) {
-				const n = this.tree.getNodeByPath(path);
+				if (isFilteredCascade) {
+					for (const dp of visibleDescendants(path)) expanded.add(dp);
+					continue;
+				}
+				const n = this._realNode(path);
 				if (n) {
 					for (const dp of this._getDescendantPaths(n)) {
 						expanded.add(dp);
@@ -4406,7 +4475,7 @@ export class TreeController<T> {
 		// Apply selection changes
 		const newPaths = new Set([...this.checkedPaths]);
 		for (const path of affectedPaths) {
-			const n = this.tree.getNodeByPath(path);
+			const n = this._realNode(path);
 			if (!n) continue;
 			if (newChecked) {
 				newPaths.add(path);
@@ -4424,9 +4493,30 @@ export class TreeController<T> {
 		// Only in cascade mode — in independent mode, checkboxes are standalone and
 		// parents must not be auto-checked just because their descendants are.
 		if (this.checkboxMode === 'cascade') {
+			// A filtered click checked only the visible part of each branch it touched, so
+			// those branches may still have hidden unchecked children. Re-derive every
+			// touched branch from its REAL children, deepest first, so a partial branch
+			// lands at [-] and never sits in the canonical checked set.
+			if (isFilteredCascade) {
+				const branchPaths = affectedPaths
+					.map((p) => this._realNode(p))
+					.filter((n): n is LTreeNode<T> => !!n && Object.keys(n.children).length > 0)
+					.sort((a, b) => (b.level ?? 0) - (a.level ?? 0));
+				const canonical = new Set(this.checkedPaths);
+				for (const bn of branchPaths) {
+					const vs = this._computeVisualState(bn);
+					const shouldBeChecked = vs === VisualState.checked;
+					bn.visualState = vs;
+					bn.isChecked = shouldBeChecked;
+					if (shouldBeChecked) canonical.add(bn.path);
+					else canonical.delete(bn.path);
+					bn._rev = (bn._rev || 0) + 1;
+				}
+				this.checkedPaths = canonical;
+			}
 			const rootPaths = isMultiSelected ? [...this.selectedPaths] : [node.path];
 			for (const rp of rootPaths) {
-				const rn = this.tree.getNodeByPath(rp);
+				const rn = this._realNode(rp);
 				if (!rn) continue;
 				const vs = this._computeVisualState(rn);
 				if (rn.visualState !== vs) {
@@ -4437,6 +4527,7 @@ export class TreeController<T> {
 			}
 		}
 
+		this._syncFilteredCheckState();
 		this.onNodeClickHandler?.(this._ctx(this.getNodeRef(node)));
 		this._notifyCheckedChanged();
 		this.tree.refresh();
@@ -4446,9 +4537,9 @@ export class TreeController<T> {
 	/** Walk up from a node path and set visualState on each ancestor based on descendant selection */
 	private _updateAncestorVisualStates(startPath: string) {
 		const newPaths = new Set([...this.checkedPaths]);
-		let path: string | null | undefined = this.tree.getNodeByPath(startPath)?.parentPath;
+		let path: string | null | undefined = this._realNode(startPath)?.parentPath;
 		while (path) {
-			const ancestor = this.tree.getNodeByPath(path);
+			const ancestor = this._realNode(path);
 			if (!ancestor) break;
 			const vs = this._computeVisualState(ancestor);
 
@@ -4529,6 +4620,7 @@ export class TreeController<T> {
 		for (const key in this.tree.root.children) visit(this.tree.root.children[key]!);
 		if (checkedChanged) this.checkedPaths = newPaths;
 		if (anyChanged) {
+			this._syncFilteredCheckState();
 			this.tree.refresh();
 			if (checkedChanged) this._notifyCheckedChanged();
 		}
@@ -4595,7 +4687,7 @@ export class TreeController<T> {
 			}
 			for (const child of children) walk(child);
 		};
-		for (const root of this.tree.tree) walk(root);
+		for (const key in this.tree.root.children) walk(this.tree.root.children[key]!);
 		return out;
 	}
 
@@ -4641,7 +4733,7 @@ export class TreeController<T> {
 		// First clear isChecked on anything currently in checkedPaths but not in next.
 		for (const path of this.checkedPaths) {
 			if (!next.has(path)) {
-				const n = this.tree.getNodeByPath(path);
+				const n = this._realNode(path);
 				if (n) {
 					n.isChecked = false;
 					n._rev = (n._rev || 0) + 1;
@@ -4650,13 +4742,14 @@ export class TreeController<T> {
 		}
 		// Then set isChecked on the new set.
 		for (const path of next) {
-			const n = this.tree.getNodeByPath(path);
+			const n = this._realNode(path);
 			if (n && !n.isChecked) {
 				n.isChecked = true;
 				n._rev = (n._rev || 0) + 1;
 			}
 		}
 		this.checkedPaths = next;
+		this._syncFilteredCheckState();
 		this._notifyCheckedChanged();
 	}
 
@@ -4674,7 +4767,7 @@ export class TreeController<T> {
 	/** Clear isChecked flag on all currently selected (checkbox) nodes */
 	private _clearAllCheckedFlags() {
 		for (const path of this.checkedPaths) {
-			const n = this.tree.getNodeByPath(path);
+			const n = this._realNode(path);
 			if (n) {
 				n.isChecked = false;
 				n._rev = (n._rev || 0) + 1;
@@ -4948,7 +5041,7 @@ export class TreeController<T> {
 		if (this.checkboxMode === 'cascade') {
 			const expanded = new Set(paths);
 			for (const path of paths) {
-				const n = this.tree.getNodeByPath(path);
+				const n = this._realNode(path);
 				if (n) for (const dp of this._getDescendantPaths(n)) expanded.add(dp);
 			}
 			affected = [...expanded];
@@ -4956,7 +5049,7 @@ export class TreeController<T> {
 		const newPaths = new Set(this.checkedPaths);
 		let changed = false;
 		for (const path of affected) {
-			const n = this.tree.getNodeByPath(path);
+			const n = this._realNode(path);
 			if (!n) continue;
 			if (checked) {
 				if (!newPaths.has(path)) {
@@ -4976,7 +5069,7 @@ export class TreeController<T> {
 		this.checkedPaths = newPaths;
 		if (this.checkboxMode === 'cascade') {
 			for (const rp of paths) {
-				const rn = this.tree.getNodeByPath(rp);
+				const rn = this._realNode(rp);
 				if (!rn) continue;
 				const vs = this._computeVisualState(rn);
 				if (rn.visualState !== vs) {
@@ -4986,6 +5079,7 @@ export class TreeController<T> {
 				this._updateAncestorVisualStates(rp);
 			}
 		}
+		this._syncFilteredCheckState();
 		return changed;
 	}
 
@@ -5018,18 +5112,24 @@ export class TreeController<T> {
 
 	/** Check every selectable node. Pass `{ isSilent: true }` to skip `onCheckedChange`. */
 	checkAll(options?: TreeMutationOptions) {
-		const newPaths = new Set<string>();
+		// While filtered only the visible matches are checked — keep hidden checks.
+		const isFiltered = !!this.tree.isFiltered;
+		const newPaths = isFiltered ? new Set(this.checkedPaths) : new Set<string>();
 		const traverse = (node: LTreeNode<T>) => {
 			if (node.path && node.isSelectable) {
-				node.isChecked = true;
-				if (node.visualState !== VisualState.checked) node.visualState = VisualState.checked;
-				node._rev = (node._rev || 0) + 1;
+				const real = this._realNode(node.path) ?? node;
+				real.isChecked = true;
+				if (real.visualState !== VisualState.checked) real.visualState = VisualState.checked;
+				real._rev = (real._rev || 0) + 1;
 				newPaths.add(node.path);
 			}
 			for (const child of Object.values(node.children)) traverse(child);
 		};
 		for (const root of this.tree.tree) traverse(root);
 		this.checkedPaths = newPaths;
+		// Branches with hidden unchecked children must fall back to [-] in cascade.
+		if (isFiltered && this.checkboxMode === 'cascade') this._reconcileVisualStatesForMode();
+		this._syncFilteredCheckState();
 		if (!options?.isSilent) this._notifyCheckedChanged();
 		this.tree.refresh();
 	}
@@ -5055,6 +5155,7 @@ export class TreeController<T> {
 	uncheckAll(options?: TreeMutationOptions) {
 		this._clearAllCheckedFlags();
 		this.checkedPaths = new Set();
+		this._syncFilteredCheckState();
 		if (!options?.isSilent) this._notifyCheckedChanged();
 		this.tree.refresh();
 	}
@@ -6140,7 +6241,10 @@ export class TreeController<T> {
 
 		this.flatRenderAnimationFrame = requestAnimationFrame(() => {
 			this.flatRenderAnimationFrame = null;
-			if (this.flatRenderQueue.length === 0) return;
+			if (this.flatRenderQueue.length === 0) {
+				this._finishRenderPass();
+				return;
+			}
 
 			const batchSize = this.currentBatchSize || this.initialBatchSize;
 			const batch = this.flatRenderQueue.slice(0, batchSize);
@@ -6153,7 +6257,39 @@ export class TreeController<T> {
 			if (remaining.length > 0) {
 				this.scheduleFlatRenderBatch();
 			}
+
+			if (this.#isRenderPassActive) {
+				this.#renderPassProcessed += batch.length;
+				const pending = remaining.length;
+				const processed = this.#renderPassProcessed;
+				// After the DOM flush, so the batch is on screen when the handler runs.
+				tick().then(() => {
+					if (!this.#isRenderPassActive) return;
+					this.onRenderProgressHandler?.(this._ctx({ pending, processed }));
+					if (pending === 0 && this.flatRenderQueue.length === 0) this._finishRenderPass();
+				});
+			}
 		});
+	}
+
+	#isRenderPassActive = false;
+	#renderPassProcessed = 0;
+
+	/** A progressive (rAF-batched) render pass began: `isRendering` + `onRenderStart`. */
+	private _beginRenderPass(processed: number) {
+		if (this.#isRenderPassActive) return;
+		this.#isRenderPassActive = true;
+		this.#renderPassProcessed = processed;
+		this.isRendering = true;
+		this.onRenderStartHandler?.(this._ctx({}));
+	}
+
+	/** The progressive pass ended (queue drained or reset): `onRenderComplete`. */
+	private _finishRenderPass() {
+		if (!this.#isRenderPassActive) return;
+		this.#isRenderPassActive = false;
+		this.isRendering = false;
+		this.onRenderCompleteHandler?.(this._ctx({ pending: 0, processed: this.#renderPassProcessed }));
 	}
 
 	private generateTreeId(): string {

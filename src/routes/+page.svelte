@@ -85,7 +85,7 @@
 			href: '/examples/performance',
 			icon: '⚡',
 			title: 'Performance Test',
-			description: 'Compare recursive vs flat rendering modes with configurable node counts.'
+			description: 'Compare flat vs virtual-scroll rendering with configurable node counts.'
 		},
 		{
 			href: '/examples/custom-layout',

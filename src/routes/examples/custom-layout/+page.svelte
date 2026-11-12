@@ -790,7 +790,6 @@
 									hoveredNodeForDropPath={null}
 									activeDropPosition={null}
 									dropOperation={'move'}
-									flatMode={true}
 								>
 									{#snippet children(nodeData: any)}
 										<span>{nodeData.data?.icon} {nodeData.data?.name}</span>

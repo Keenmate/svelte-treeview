@@ -23,7 +23,14 @@
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
 	}
 
-	let checkboxMode = $state<CheckboxMode>('cascade');
+	// ?mode=independent starts the tree in independent mode. Regression: the rows'
+	// config never received a runtime checkboxMode change, so a tree that STARTED
+	// independent kept rendering independent (no [-]) after switching to cascade.
+	const initialMode: CheckboxMode =
+		typeof location !== 'undefined' && new URLSearchParams(location.search).get('mode') === 'independent'
+			? 'independent'
+			: 'cascade';
+	let checkboxMode = $state<CheckboxMode>(initialMode);
 	let checkedPaths = $state(new Set<string>());
 </script>
 

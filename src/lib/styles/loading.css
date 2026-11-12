@@ -33,12 +33,3 @@
 }
 
 /* (@keyframes stv-loader-spin — in animations.css per canonical Tier-2 layout.) */
-
-/* Progressive rendering loading indicator */
-.stv__loading-more {
-	padding: var(--stv-spacing-sm) var(--stv-spacing-md);
-	margin-left: var(--stv-indent-size);
-	font-size: var(--stv-font-size-xs);
-	color: var(--stv-loading-color);
-	font-style: italic;
-}

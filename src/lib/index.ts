@@ -11,7 +11,7 @@ export { createTreeController } from "./core/createTreeController.js"
 
 // Export types
 export type { LTreeNode, NodeId, VisualState } from "./ltree/ltree-node.svelte"
-export type { Ltree, DropPosition, DragDropMode, DropOperation, ToggleIconMode, IconSet, NodeTitleOverflow, TooltipPlacement, TooltipDelay, NodeRenderContext, ClickBehavior, CheckboxMode, CascadeCheckPolicy, SelectionMode, SelectMode, TreeMutationOptions, ExpandOptions, InsertPosition, NodeContext, SortContext, SortCompareContext, SortOptions, NodesReorderContext, InsertArrayResult, InsertBranchResult, ReplaceBranchResult, RemoveBranchResult, TreeChange, ApplyChangesResult } from "./ltree/types.js"
+export type { Ltree, DropPosition, DragDropMode, DropOperation, ToggleIconMode, IconSet, NodeTitleOverflow, TooltipPlacement, TooltipDelay, NodeRenderContext, ClickBehavior, CheckboxMode, CascadeCheckPolicy, FilterScope, IndexProgress, SearchStatus, SelectionMode, SelectMode, TreeMutationOptions, ExpandOptions, InsertPosition, NodeContext, SortContext, SortCompareContext, SortOptions, NodesReorderContext, InsertArrayResult, InsertBranchResult, ReplaceBranchResult, RemoveBranchResult, TreeChange, ApplyChangesResult } from "./ltree/types.js"
 
 // Tooltip action (use:tooltip) — the hover/focus tooltip primitive the Tree uses
 // internally; exported so consumers can reuse it on their own markup.
@@ -22,7 +22,7 @@ export type { TooltipParams } from "./actions/tooltip.js"
 export type { ClipboardEntry, TreeClipboard } from "./core/clipboard.js"
 export { setClipboard, getClipboard, clearClipboard, hasClipboard, getClipboardOperation, uniqueName } from "./core/clipboard.js"
 export type { TreeNavigation, TreeNavigationOverrides } from "./core/navigation.js"
-export type { RenderStats } from "./components/RenderCoordinator.svelte"
+export type { RenderStats } from "./ltree/types.js"
 export { DEFAULT_LABELS, resolveLabel } from "./core/labels.js"
 // Context-menu model (same as @keenmate/web-treeview; core /actions vendored)
 export { menuDivider, isMenuDivider } from "./core/menu.js"

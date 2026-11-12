@@ -28,14 +28,14 @@ There's a vanilla-TypeScript sibling, [`@keenmate/web-treeview`](https://github.
 | | svelte-treeview | web-treeview |
 |---|---|---|
 | Framework | Svelte 5 component | Vanilla TS web component (any framework or none) |
-| Rendering modes | Flat (default) + recursive | Flat only |
-| Children DOM | `.stv__children` wrapper (recursive mode) | None; siblings sit under `.wtv__tree` |
-| Virtual scroll | Flat mode | Built in (three-div spacer / `translateY`) |
+| Rendering modes | Flat (+ progressive / virtual) | Flat (+ progressive / virtual) |
+| Children DOM | None; siblings sit under `.stv__tree` | None; siblings sit under `.wtv__tree` |
+| Virtual scroll | `isVirtualScrollEnabled` | Built in (three-div spacer / `translateY`) |
 | Custom node markup | `nodeTemplate` / `icon` / `tooltip` snippets | `renderNodeCallback` / `renderIconCallback` |
 | Drag & drop | Unified Pointer Events (no native drag session, so mid-drag re-renders can't freeze it) | Native HTML5 DnD + a long-press touch path |
 | Update mechanism | Svelte 5 runes + per-node `_rev` keyed `{#each}` | Imperative reconciler diffing `data-rev` / `data-expanded` attributes |
 
-Pick svelte-treeview in a Svelte 5 app, or when you want recursive rendering (easy vertical guide lines via `.stv__children`) or the Svelte ecosystem around it (e.g. the Canvas renderer in `@keenmate/svelte-treeview-canvas`, built on the same headless `TreeController`). Pick web-treeview outside Svelte, or when the job is mainly virtual scrolling over very large datasets with a flat DOM.
+Pick svelte-treeview in a Svelte 5 app, or when you want the Svelte ecosystem around it (e.g. the Canvas renderer in `@keenmate/svelte-treeview-canvas`, built on the same headless `TreeController`). Pick web-treeview outside Svelte, or when the job is mainly virtual scrolling over very large datasets with a flat DOM.
 
 ## What's New in v5.0.0-rc16
 
@@ -78,8 +78,8 @@ Pick svelte-treeview in a Svelte 5 app, or when you want recursive rendering (ea
 
 | Mode | Props | DOM Nodes | Best For |
 |------|-------|-----------|----------|
-| Recursive | `isFlatRenderingEnabled={false}` | All | Small trees (<100 nodes) |
-| Flat (default) | `isFlatRenderingEnabled={true}` | All | Medium trees (100–10K) |
+| Flat (default) | — | All | Small/medium trees (up to ~10K) |
+| Flat + progressive | `isProgressiveRenderEnabled={true}` | All, mounted in rAF batches | Medium trees, no UI freeze on load |
 | Virtual | `isVirtualScrollEnabled={true}` | ~50 | Large trees (10K+) |
 
 ```svelte
@@ -264,7 +264,7 @@ interface InsertArrayResult<T> {
 The component is optimized for large datasets:
 
 - **Virtual Scroll**: Renders only visible rows (~50 DOM nodes) for trees with 50,000+ nodes
-- **Flat Rendering Mode**: Single `{#each}` loop instead of recursive components (default, ~12x faster initial render)
+- **Flat Rendering**: Single `{#each}` loop over the visible rows (the recursive renderer was removed)
 - **Progressive Rendering**: Batched rendering prevents UI freeze during initial load
 - **Async Search Indexing**: Uses `requestIdleCallback` for non-blocking search index building
 - **LTree**: Efficient hierarchical data structure with FlexSearch integration

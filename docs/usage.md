@@ -52,7 +52,8 @@ Full Props, Methods, Events, and Snippets reference for `@keenmate/svelte-treevi
 Without both requirements, no search indexing will occur.
 
 **Performance tuning**:
-- `indexerBatchSize` controls how many nodes are processed per idle callback. Lower values (10-25) provide smoother UI performance but slower indexing, while higher values (50-100) index faster but may cause brief UI pauses. Default: 25.
+- `indexerBatchSize` caps how many nodes are processed per idle callback. Each callback is also time-boxed (≤16 ms of genuine idle time, ≤8 ms when the browser forces it on a busy page), so the time budget — not this cap — is what keeps the UI smooth; a low cap only wastes idle time (55k nodes: ~2 min at 25 vs ~6 s at 1000). Default: 1000.
+- `onIndexProgress({ processed, total, isComplete })` fires per indexing batch and once on completion — search/filter results are partial until `isComplete`, so use it to show an "indexing…" indicator.
 - `indexerTimeout` sets the maximum wait time before forcing indexing when the browser is busy. Lower values (25-50ms) ensure more responsive indexing, while higher values (100-200ms) give more time for genuine idle periods. Default: 50ms.
 
 ### Tree configuration
@@ -75,7 +76,7 @@ Without both requirements, no search indexing will occur.
 | `clickBehavior` | `ClickBehavior` | `'expand-and-focus'` | Node click behavior: `'select'` (click selects, dblclick expands), `'expand'` (click expands only), `'expand-and-focus'` (click selects + expands) |
 | `isCheckboxesShown` | `boolean` | `false` | Show selection checkboxes before each node. Clicking a checkbox toggles the node's selection (same as Ctrl+click). |
 | `orderMember` | `string \| null` | `null` | Property name for sort order (enables before/after positioning in drag-drop) |
-| `indexerBatchSize` | `number \| null` | `25` | Number of nodes to process per batch during search indexing |
+| `indexerBatchSize` | `number \| null` | `1000` | Max nodes per idle callback during search indexing (each callback is also time-boxed) |
 | `indexerTimeout` | `number \| null` | `50` | Maximum time (ms) to wait for idle callback before forcing indexing |
 | `isLoading` | `boolean` | `false` | Show loading placeholder instead of tree content |
 | `labels` | `Partial<TreeLabels>` | English defaults | UI strings merged per key: `noData` "No data" (no nodes), `noResults` "No results found" (search filter matched nothing), `dropHere` "Drop here", `noDisplayValue` "[N/A]" (node without a display value), `loading` "Loading…" (overlay aria-label), `showFullLabel` "Show full label" (the `nodeTitleOverflow: 'info'` button), and the built-in menu texts `copy` `cut` `paste` `delete` `expand` `collapse` `expandSubtree` `collapseSubtree` `expandAll` `collapseAll` `sort` `sortSubtree` `sortAll`. `''` = render nothing. Defaults: `DEFAULT_LABELS` |
@@ -84,11 +85,10 @@ Without both requirements, no search indexing will occur.
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `isFlatRenderingEnabled` | `boolean` | `true` | Use flat rendering mode (faster for large trees) |
 | `isProgressiveRenderEnabled` | `boolean` | `true` | Progressively render nodes in batches |
 | `initialBatchSize` | `number` | `20` | First batch size for progressive rendering |
 | `maxBatchSize` | `number` | `500` | Maximum batch size cap |
-| `isVirtualScrollEnabled` | `boolean` | `false` | Enable virtual scrolling (flat mode only, renders visible + overscan rows) |
+| `isVirtualScrollEnabled` | `boolean` | `false` | Enable virtual scrolling (renders visible + overscan rows) |
 | `virtualScrollItemHeight` | `number` | auto | Explicit row height in px (auto-measured from first row if not set) |
 | `virtualScrollOverscan` | `number` | `5` | Extra rows rendered above/below viewport |
 | `virtualScrollContainerHeight` | `string` | auto/`'400px'` | CSS height for scroll container (auto-detected from parent if not set) |

@@ -1,9 +1,7 @@
 <script lang="ts" generics="T">
 	import {type LTreeNode} from "../ltree/ltree-node.svelte.js"
-	import Node from "./Node.svelte"
-	import {getContext, onDestroy, type Snippet} from "svelte"
+	import {getContext, type Snippet} from "svelte"
 	import type {Ltree, DropPosition, DropOperation, NodeRenderContext} from "../ltree/types.js"
-	import type {RenderCoordinator} from "./RenderCoordinator.svelte.js"
 	import type {NodeCallbacks, NodeConfig} from "../core/TreeController.svelte.js"
 	import { uiLogger } from "../logger.js"
 	import { observeElementSize } from "../vendor/environment/element-size.js"
@@ -16,22 +14,15 @@
 		node: LTreeNode<T>;
 		children?: Snippet<[LTreeNode<T>, NodeRenderContext]>; // nodeTemplate — (node, ctx)
 
-		// Progressive rendering
-		isProgressiveRenderEnabled?: boolean;
-		renderBatchSize?: number;
-
 		// Drag state (passed as props for efficient Svelte diffing).
 		// isDraggedNode is NOT a prop — each node derives it from config.draggedPaths so the
-		// dragged visual dims the whole set in recursive mode too (a forwarded flag would only
-		// mark a dragged subtree's root, never a nested dragged file).
+		// dragged visual dims the whole set (a dragged folder's descendants included).
 		isDragInProgress?: boolean;
 		hoveredNodeForDropPath?: string | null;
 		activeDropPosition?: DropPosition | null;
 		dropOperation?: DropOperation;
 
-		// Flat rendering mode
-		flatMode?: boolean; // When true, don't render children (Tree handles flat rendering)
-		flatGap?: boolean; // When true in flat mode, add margin-top to match recursive .stv__children gap
+		flatGap?: boolean; // margin-top before a first child (level > previous row's level)
 	}
 
 	// Destructure props using Svelte 5 syntax
@@ -39,18 +30,12 @@
 		node,
 		children = undefined,
 
-		// Progressive rendering
-		isProgressiveRenderEnabled = false,
-		renderBatchSize = 50,
-
 		// Drag state
 		isDragInProgress = false,
 		hoveredNodeForDropPath = null,
 		activeDropPosition = null,
 		dropOperation = 'move',
 
-		// Flat rendering mode
-		flatMode = false,
 		flatGap = false,
 	}: Props = $props()
 
@@ -74,8 +59,7 @@
 	// source row (see template). Mirrors selectedNodeClass / focusedNodeClass.
 	const draggedNodeClass = $derived(config.draggedNodeClass);
 	// This node is part of the active drag (lead, a multi-drag member, or a traveling
-	// descendant). Derived per-node from the controller's complete manifest so recursive
-	// and flat rendering dim the identical set.
+	// descendant). Derived per-node from the controller's complete manifest.
 	const isDraggedNode = $derived(config.draggedPaths?.has(node.path) ?? false);
 	// An async beforeExpandCallback is in flight for this node (lazy load): the toggle
 	// shows the loader and the row carries aria-busy + data-loading.
@@ -105,7 +89,6 @@
 	const isHoveredForDrop = $derived(hoveredNodeForDropPath === node.path);
 
 	const tree = getContext<Ltree<T>>("Ltree")
-	const renderCoordinator = getContext<RenderCoordinator | null>("RenderCoordinator")
 
 	// ── Node title overflow (wrap | ellipsis | info) ────────────────────────
 	// wrap/ellipsis are pure CSS (gated by data-node-title-overflow on the container);
@@ -262,99 +245,13 @@
 	// Resolve isCollapsible via tree's resolution method (callback > member > node property)
 	const isCollapsible = $derived(tree.getNodeIsCollapsible(node));
 
-	// Convert reactive statements to derived values
-	// In flat mode, children rendering is handled by Tree.svelte, so we skip these computations
-	const childrenArray = $derived(!flatMode ? Object.values(node?.children || []) : [])
 	const hasChildren = $derived(node?.hasChildren || false)
 	// Root nodes (level 1) sit flush against the left edge; only descendants indent,
 	// so the offset is (level - 1) × indent (matches web-treeview's root-at-zero math).
-	// In recursive mode, each nested Node compounds one level, so a root gets 0 and every
-	// deeper node adds one indent. In flat mode all nodes are siblings, so we multiply
-	// (level - 1) × indent explicitly. Both use the same CSS variable across modes.
-	// flatGap replicates the recursive .stv__children { margin-top: 2px } gap
-	// — only applied before first-child nodes (where level > previous node's level).
+	// flatGap adds a small gap before a first-child row (level > previous row's level).
 	const indentStyle = $derived(
-		flatMode
-			? `margin-left: calc(${Math.max(0, (node?.level || 1) - 1)} * ${config.flatIndentSize || 'var(--stv-indent-size)'})${flatGap ? '; margin-top: 2px' : ''}`
-			: `margin-left: ${(node?.level || 1) <= 1 ? '0px' : 'var(--stv-indent-size)'}`,
+		`margin-left: calc(${Math.max(0, (node?.level || 1) - 1)} * ${config.flatIndentSize || 'var(--stv-indent-size)'})${flatGap ? '; margin-top: 2px' : ''}`
 	)
-
-	// Progressive rendering state - only used in recursive mode
-	let renderedCount = $state(0);
-	let unregisterFromCoordinator: (() => void) | null = null;
-	let lastExpandedState = false;
-	let lastChildrenLength = 0;
-
-	// Get the children to render (all or progressive slice) - only used in recursive mode
-	const childrenToRender = $derived(
-		!flatMode && isProgressiveRenderEnabled && renderCoordinator
-			? childrenArray.slice(0, renderedCount)
-			: childrenArray
-	);
-	const hasMoreToRender = $derived(
-		!flatMode && isProgressiveRenderEnabled && renderCoordinator && renderedCount < childrenArray.length
-	);
-
-	// Handle expansion state changes - use coordinator for progressive rendering
-	// Skip entirely in flat mode since Tree.svelte handles children rendering
-	$effect(() => {
-		if (flatMode) return; // Skip in flat mode - children handled by Tree
-
-		const isExpanded = node?.isExpanded ?? false;
-		const childCount = childrenArray.length;
-		const shouldRenderProgressively = isProgressiveRenderEnabled && renderCoordinator && childCount > 0;
-
-		// Only act on actual state changes
-		if (isExpanded !== lastExpandedState || childCount !== lastChildrenLength) {
-			lastExpandedState = isExpanded;
-			lastChildrenLength = childCount;
-
-			if (isExpanded && shouldRenderProgressively) {
-				// Clean up any existing registration first
-				if (unregisterFromCoordinator) {
-					unregisterFromCoordinator();
-					unregisterFromCoordinator = null;
-				}
-
-				// If this node was already fully rendered (component recreated after changeTracker update),
-				// render all children immediately instead of progressive rendering
-				if (renderCoordinator.isCompleted(node.path)) {
-					renderedCount = childCount;
-					return;
-				}
-
-				// Start with first batch immediately
-				renderedCount = Math.min(renderBatchSize, childCount);
-
-				// Register with coordinator if there are more children to render
-				if (renderedCount < childCount) {
-					unregisterFromCoordinator = renderCoordinator.register(node.path, () => {
-						// Render a batch of children per callback invocation
-						if (renderedCount < childCount) {
-							renderedCount = Math.min(renderedCount + renderBatchSize, childCount);
-							return renderedCount < childCount; // Return true if more work needed
-						}
-						return false;
-					});
-				}
-			} else if (!isExpanded) {
-				// Clean up when collapsed
-				if (unregisterFromCoordinator) {
-					unregisterFromCoordinator();
-					unregisterFromCoordinator = null;
-				}
-				renderedCount = 0;
-			}
-		}
-	});
-
-	// Clean up on component destroy
-	onDestroy(() => {
-		if (unregisterFromCoordinator) {
-			unregisterFromCoordinator();
-			unregisterFromCoordinator = null;
-		}
-	});
 
 	function toggleExpanded() {
 		// Accordion, beforeExpandCallback (lazy loading) and the expand events live in the
@@ -523,26 +420,4 @@
 		<div bind:this={tooltipHostEl} style="display:none">{@render nodeTooltipSnippet(node, renderCtx)}</div>
 	{/if}
 
-	<!-- In flat mode, children are rendered by Tree.svelte, not recursively here -->
-	{#if !flatMode && node?.isExpanded && node?.hasChildren}
-		<div class="stv__children">
-			{#each childrenToRender as item (item.id)}
-				<Node
-					node={item}
-					{children}
-					{isProgressiveRenderEnabled}
-					{renderBatchSize}
-					{isDragInProgress}
-					{hoveredNodeForDropPath}
-					{activeDropPosition}
-					{dropOperation}
-				/>
-			{/each}
-			{#if hasMoreToRender}
-				<div class="stv__loading-more">
-					{#if config.loadingLabel}{config.loadingLabel} {/if}({renderedCount}/{childrenArray.length})
-				</div>
-			{/if}
-		</div>
-	{/if}
 </div>

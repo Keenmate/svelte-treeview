@@ -77,3 +77,19 @@ test.describe('Checkbox mode switch', () => {
 		await expect.poll(() => isIndeterminate(checkboxInput(page, '1'))).toBe(true);
 	});
 });
+
+test('a tree that STARTS independent shows the [-] dash after a runtime switch to cascade', async ({
+	page
+}) => {
+	await page.goto(`${PAGE}?mode=independent`);
+	await page.waitForLoadState('networkidle');
+	await expect(page.getByTestId('mode')).toHaveText('independent');
+
+	await checkboxLabel(page, '1.1').click();
+	await expect.poll(() => isIndeterminate(checkboxInput(page, '1'))).toBe(false);
+
+	await page.getByTestId('mode-cascade').click();
+	await expect(page.getByTestId('mode')).toHaveText('cascade');
+	await expect.poll(() => isIndeterminate(checkboxInput(page, '1'))).toBe(true);
+	await expect(checkboxInput(page, '1')).not.toBeChecked();
+});

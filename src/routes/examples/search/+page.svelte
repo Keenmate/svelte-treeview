@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Tree from '$lib/components/Tree.svelte';
-	import type { LTreeNode } from '$lib/ltree/types.js';
+	import type { LTreeNode, CheckboxMode, CascadeCheckPolicy, FilterScope, IndexProgress, SearchStatus } from '$lib/ltree/types.js';
 	import { untrack } from 'svelte';
 	import RenderModeSwitch from '../RenderModeSwitch.svelte';
 	import { getTreeProps } from '../render-mode.svelte.js';
@@ -208,6 +208,21 @@
 	let searchResults = $state<LTreeNode<LocationItem>[]>([]);
 	let currentResultIndex = $state(-1);
 
+	// Search status (onIndexProgress / onSearchStatusChange)
+	let indexProgress = $state<IndexProgress | null>(null);
+	let filterStatus = $state<SearchStatus | null>(null);
+
+	// Checkbox state
+	let checkboxMode = $state<CheckboxMode>('independent');
+	let cascadeCheckPolicy = $state<CascadeCheckPolicy>('rolled-up');
+	let checkedPaths = $state<Set<string>>(new Set());
+	const itemsByPath = new Map(sampleData.map((item) => [item.path, item]));
+	const checkedItems = $derived(
+		[...checkedPaths]
+			.map((path) => itemsByPath.get(path))
+			.filter((item): item is LocationItem => !!item)
+	);
+
 	function sortByName({ nodes: items }: { nodes: LTreeNode<LocationItem>[] }) {
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
 	}
@@ -285,6 +300,65 @@
 	function scrollToResult(index: number) {
 		navigateToResult(index);
 	}
+
+	// ── SF04 · Filter Scope (experimental) ──────────────────────────────
+	// A deep, RAGGED org chart: Sales is 6 levels deep, IT / Finance only 3.
+	type OrgItem = { id: number; path: string; name: string };
+	const orgData: OrgItem[] = [
+		['1', 'Acme Corp'],
+		['1.1', 'Sales Division'],
+		['1.1.1', 'Sales Europe'],
+		['1.1.1.1', 'Sales Germany'],
+		['1.1.1.1.1', 'Team Berlin'],
+		['1.1.1.1.1.1', 'Anna Weber'],
+		['1.1.1.1.1.2', 'Lukas Schmidt'],
+		['1.1.1.1.2', 'Team Munich'],
+		['1.1.1.1.2.1', 'Mia Fischer'],
+		['1.1.1.1.2.2', 'Jonas Wagner'],
+		['1.1.1.2', 'Sales France'],
+		['1.1.1.2.1', 'Team Paris'],
+		['1.1.1.2.1.1', 'Chloe Martin'],
+		['1.1.1.2.1.2', 'Hugo Bernard'],
+		['1.1.2', 'Sales Americas'],
+		['1.1.2.1', 'Sales USA'],
+		['1.1.2.1.1', 'Team Boston'],
+		['1.1.2.1.1.1', 'Emma Johnson'],
+		['1.1.2.1.1.2', 'Noah Williams'],
+		['1.1.2.1.2', 'Team Austin'],
+		['1.1.2.1.2.1', 'Olivia Brown'],
+		['1.2', 'IT Division'],
+		['1.2.1', 'Platform Team'],
+		['1.2.1.1', 'Petr Novak'],
+		['1.2.1.2', 'Jana Svobodova'],
+		['1.2.2', 'Support Team'],
+		['1.2.2.1', 'Tomas Dvorak'],
+		['1.2.2.2', 'Eva Cerna'],
+		['1.3', 'Finance'],
+		['1.3.1', 'Accounting Team'],
+		['1.3.1.1', 'Karel Horak'],
+		['1.3.2', 'Payroll Team'],
+		['1.3.2.1', 'Lucie Kralova']
+	].map(([path, name], i) => ({ id: 1000 + i, path, name }));
+
+	const scopeVariants: { scope: FilterScope; title: string; rule: string }[] = [
+		{ scope: 'matches', title: 'matches (today)', rule: 'Matches + ancestors only.' },
+		{ scope: 'descendants', title: 'descendants', rule: 'Every match shows its whole subtree.' },
+		{ scope: 'tree-depth', title: 'tree-depth', rule: 'Match at level ≥ (max depth 6 − x) shows its whole subtree.' },
+		{ scope: 'subtree-height', title: 'subtree-height', rule: "Match whose own subtree is ≤ x levels deep shows it." },
+		{ scope: 'levels-below', title: 'levels-below', rule: 'Every match shows x levels beneath it.' }
+	];
+	let scopeTerm = $state('Sales Germany');
+	let scopeDepth = $state(2);
+	let scopeExpandAdded = $state(true);
+	const scopePresets = ['Sales Germany', 'Sales', 'Team', 'Platform', 'Acme', 'Division'];
+
+	function sortOrg({ nodes: items }: { nodes: LTreeNode<OrgItem>[] }) {
+		return [...items].sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
+	}
+	function isScopeMatch(name: string | undefined): boolean {
+		const t = scopeTerm.trim().toLowerCase();
+		return !!t && !!name && name.toLowerCase().includes(t);
+	}
 </script>
 
 <svelte:head>
@@ -354,6 +428,35 @@
 
 		</div>
 
+		<p class="search-status" data-testid="sf01-status">
+			{#if indexProgress && !indexProgress.isComplete}
+				Indexing… {Math.round((indexProgress.processed / Math.max(indexProgress.total, 1)) * 100)}%
+				({indexProgress.processed}/{indexProgress.total}) — results may be incomplete
+			{:else if indexProgress}
+				Index ready ({indexProgress.total} nodes)
+			{/if}
+			{#if filterStatus?.searchTerm}
+				· Filter: {filterStatus.matchCount} matches
+				{#if filterStatus.isLimited}
+					<strong class="search-status-warning">— limited to {filterStatus.limit}, refine the search</strong>
+				{/if}
+			{/if}
+		</p>
+
+		<div class="control-row">
+			<label for="sf01-checkbox-mode">Check mode:</label>
+			<select id="sf01-checkbox-mode" bind:value={checkboxMode}>
+				<option value="independent">Individual (independent)</option>
+				<option value="cascade">Cascade</option>
+			</select>
+			<label for="sf01-cascade-policy">Cascade reports:</label>
+			<select id="sf01-cascade-policy" bind:value={cascadeCheckPolicy} disabled={checkboxMode !== 'cascade'}>
+				<option value="rolled-up">Rolled-up (fully checked branch = its root)</option>
+				<option value="leaves">Leaves only</option>
+				<option value="all">All checked nodes</option>
+			</select>
+		</div>
+
 		<div class="grid-2">
 			<div>
 				<h3>Tree (filtered)</h3>
@@ -366,9 +469,15 @@
 						sortCallback={sortByName}
 						isSorted={true}
 						expandLevel={3}
+						isCheckboxesShown={true}
+						{checkboxMode}
+						{cascadeCheckPolicy}
+						bind:checkedPaths
 						shouldUseInternalSearchIndex={true}
 						searchValueMember="name"
 						bind:searchTerm={searchTerm}
+						onIndexProgress={(ctx) => (indexProgress = { processed: ctx.processed, total: ctx.total, isComplete: ctx.isComplete })}
+						onSearchStatusChange={(ctx) => (filterStatus = { searchTerm: ctx.searchTerm, matchCount: ctx.matchCount, isLimited: ctx.isLimited, limit: ctx.limit, isIndexing: ctx.isIndexing })}
 						{...getTreeProps()}
 					>
 						{#snippet nodeTemplate(node: any)}
@@ -407,6 +516,22 @@
 						<p class="empty-state">
 							{searchTerm.trim() ? 'No results found' : 'Type to search'}
 						</p>
+					{/if}
+				</div>
+
+				<h3>Checked ({checkedItems.length})</h3>
+				<div class="tree-container results-list checked-list">
+					{#if checkedItems.length > 0}
+						<ul>
+							{#each checkedItems as item (item.path)}
+								<li>
+									<span class="result-name">{item.name}</span>
+									<small class="result-path">{item.population} - {item.path.includes('.') ? 'City' : 'Country'}</small>
+								</li>
+							{/each}
+						</ul>
+					{:else}
+						<p class="empty-state">Nothing checked</p>
 					{/if}
 				</div>
 			</div>
@@ -559,12 +684,122 @@ ${"<"}/script>
 		</div>
 	</div>
 
+	<!-- Filter Scope (experimental) -->
+	<div class="card">
+		<h2>SF04 · Filter Scope (experimental)</h2>
+		<p class="description">
+			Which <em>descendants</em> of a filter match stay visible. Ancestors always do.
+			Same term + same <code>x</code> (<code>filterDescendantDepth</code>) across five
+			<code>filterScope</code> values. The org chart is ragged: Sales is 6 levels deep,
+			IT and Finance only 3. <strong>Bold</strong> = an actual match; the rest is context.
+		</p>
+
+		<div class="control-row">
+			<label for="sf04-term">Filter:</label>
+			<input id="sf04-term" type="text" bind:value={scopeTerm} placeholder="Type to filter…" />
+			{#each scopePresets as preset (preset)}
+				<button class="btn" onclick={() => (scopeTerm = preset)}>{preset}</button>
+			{/each}
+		</div>
+		<div class="control-row">
+			<label for="sf04-depth">x (filterDescendantDepth):</label>
+			<input id="sf04-depth" type="number" min="0" max="6" bind:value={scopeDepth} style="width: 4rem;" />
+			<span class="muted">tree-depth threshold = level ≥ {6 - scopeDepth}</span>
+			<label>
+				<input type="checkbox" bind:checked={scopeExpandAdded} />
+				Expand added descendants (<code>shouldExpandFilterDescendants</code>)
+			</label>
+		</div>
+
+		<div class="scope-grid">
+			{#each scopeVariants as variant (variant.scope)}
+				<div class="scope-cell">
+					<h3><code>{variant.title}</code></h3>
+					<p class="scope-rule">{variant.rule}</p>
+					<div class="tree-container scope-tree">
+						<Tree
+							nodes={orgData}
+							idMember="id"
+							pathMember="path"
+							sortCallback={sortOrg}
+							isSorted={true}
+							expandLevel={2}
+							shouldUseInternalSearchIndex={true}
+							searchValueMember="name"
+							searchTerm={scopeTerm}
+							filterScope={variant.scope}
+							filterDescendantDepth={scopeDepth}
+							shouldExpandFilterDescendants={scopeExpandAdded}
+							{...getTreeProps()}
+						>
+							{#snippet nodeTemplate(node: any)}
+								<span class:scope-match={isScopeMatch(node.data?.name)}>{node.data?.name}</span>
+							{/snippet}
+						</Tree>
+					</div>
+				</div>
+			{/each}
+		</div>
+
+		<div class="code-block">
+			<pre>{`<Tree
+  bind:searchTerm
+  shouldUseInternalSearchIndex={true}
+  searchValueMember="name"
+  filterScope="subtree-height"   // 'matches' | 'descendants' | 'tree-depth' | 'subtree-height' | 'levels-below'
+  filterDescendantDepth={2}      // x
+  shouldExpandFilterDescendants={false}  // added subtrees start collapsed
+  ...
+/>`}</pre>
+		</div>
+	</div>
+
 	<footer>
 		<p><a href="/">&larr; Back to Examples</a></p>
 	</footer>
 </div>
 
 <style>
+	.search-status {
+		margin: -0.5rem 0 1rem;
+		font-size: 0.85rem;
+		color: #64748b;
+		min-height: 1.2em;
+	}
+
+	.search-status-warning {
+		color: #c05621;
+	}
+
+	.scope-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+		gap: 1rem;
+		margin-bottom: 1rem;
+	}
+
+	.scope-cell h3 {
+		margin: 0 0 0.25rem;
+		font-size: 1rem;
+	}
+
+	.scope-rule {
+		margin: 0 0 0.5rem;
+		font-size: 0.85rem;
+		color: #64748b;
+		min-height: 2.4em;
+	}
+
+	.scope-tree {
+		height: 420px;
+		overflow: auto;
+	}
+
+	.scope-match {
+		font-weight: 700;
+		color: #4c51bf;
+	}
+
 	.search-bar {
 		display: flex;
 		gap: 0.5rem;
@@ -667,6 +902,14 @@ ${"<"}/script>
 
 	.results-list li:hover {
 		background-color: #f7fafc;
+	}
+
+	.checked-list {
+		max-height: 220px;
+	}
+
+	.checked-list li {
+		cursor: default;
 	}
 
 	.results-list li.active {

@@ -19,9 +19,6 @@
 	setContext('Ltree', controller.tree);
 	setContext('NodeCallbacks', controller.nodeCallbacks);
 	setContext('NodeConfig', controller.nodeConfig);
-	if (controller.renderCoordinator) {
-		setContext('RenderCoordinator', controller.renderCoordinator);
-	}
 
 	onDestroy(() => controller.destroy());
 </script>

@@ -163,7 +163,3 @@
 	font-size: var(--stv-node-path-font-size);
 	color: var(--stv-node-path-color);
 }
-
-.stv__children {
-	margin-top: var(--stv-children-margin-top);
-}

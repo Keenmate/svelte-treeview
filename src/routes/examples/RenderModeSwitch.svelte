@@ -2,7 +2,7 @@
 	import { getRenderMode, setRenderMode, type RenderMode } from './render-mode.svelte.js';
 
 	const modes: { value: RenderMode; label: string; title: string }[] = [
-		{ value: 'recursive', label: 'Recursive', title: 'Traditional nested component rendering' },
+		{ value: 'flat', label: 'Flat', title: 'Every visible row rendered at once' },
 		{ value: 'progressive', label: 'Progressive', title: 'Flat rendering with progressive batching' },
 		{ value: 'virtual', label: 'Virtual', title: 'Flat rendering with virtual scrolling (~50 DOM nodes)' },
 	];

@@ -30,6 +30,9 @@
 
 	let cascadeCheckPolicy = $state<CascadeCheckPolicy>('rolled-up');
 	let checkedPaths = $state(new Set<string>());
+	// Filter regression: while filtered, a parent with one visible match must still
+	// cascade against ALL its real children (Fruits → Apple only ≠ Fruits fully checked).
+	let searchTerm = $state('');
 </script>
 
 <svelte:head>
@@ -49,6 +52,8 @@
 		<button data-testid="policy-all" onclick={() => (cascadeCheckPolicy = 'all')}>
 			policy = all
 		</button>
+		<button data-testid="filter-apple" onclick={() => (searchTerm = 'apple')}>filter "apple"</button>
+		<button data-testid="filter-clear" onclick={() => (searchTerm = '')}>clear filter</button>
 	</div>
 
 	<div class="tree-container">
@@ -63,6 +68,9 @@
 			checkboxMode="cascade"
 			{cascadeCheckPolicy}
 			bind:checkedPaths
+			shouldUseInternalSearchIndex={true}
+			searchValueMember="name"
+			bind:searchTerm
 		>
 			{#snippet nodeTemplate(node: LTreeNode<Item>)}
 				<span>{node.data?.name}</span>

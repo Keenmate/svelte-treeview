@@ -14,12 +14,11 @@
   }
   const savedConfig = loadConfig();
 
-  // Rendering mode: 'recursive' | 'flat' | 'virtual'
-  type RenderMode = 'recursive' | 'flat' | 'virtual';
-  let renderMode = $state<RenderMode>(savedConfig.renderMode ?? 'flat');
+  // Rendering mode: 'flat' | 'virtual' (a saved 'recursive' from older builds falls back to flat)
+  type RenderMode = 'flat' | 'virtual';
+  let renderMode = $state<RenderMode>(savedConfig.renderMode === 'virtual' ? 'virtual' : 'flat');
 
   // Derived props from renderMode
-  const isFlatRenderingEnabled = $derived(renderMode === 'flat' || renderMode === 'virtual');
   const isVirtualScrollEnabled = $derived(renderMode === 'virtual');
 
   // Test configuration with localStorage defaults
@@ -28,7 +27,7 @@
   let isProgressiveRenderEnabled = $state(savedConfig.isProgressiveRenderEnabled ?? false);
   let initialBatchSize = $state(savedConfig.initialBatchSize ?? 20);
   let maxBatchSize = $state(savedConfig.maxBatchSize ?? 500);
-  let indexerBatchSize = $state(savedConfig.indexerBatchSize ?? 25);
+  let indexerBatchSize = $state(savedConfig.indexerBatchSize ?? 1000);
   let shouldUseInternalSearchIndex = $state(savedConfig.shouldUseInternalSearchIndex ?? true);
   let virtualScrollContainerHeight = $state(savedConfig.virtualScrollContainerHeight ?? '500px');
   let virtualScrollOverscan = $state(savedConfig.virtualScrollOverscan ?? 5);
@@ -63,7 +62,7 @@
     isProgressiveRenderEnabled = false;
     initialBatchSize = 20;
     maxBatchSize = 500;
-    indexerBatchSize = 25;
+    indexerBatchSize = 1000;
     shouldUseInternalSearchIndex = true;
     virtualScrollContainerHeight = '500px';
     virtualScrollOverscan = 5;
@@ -499,7 +498,7 @@
   }
 
   // Track previous render mode to detect changes
-  let prevRenderMode = $state<RenderMode>(savedConfig.renderMode ?? 'flat');
+  let prevRenderMode = $state<RenderMode>(savedConfig.renderMode === 'virtual' ? 'virtual' : 'flat');
 
   // Auto-redraw when rendering mode changes (if data is loaded)
   $effect(() => {
@@ -555,17 +554,12 @@
   <header>
     <a href="/" class="back-link">&larr; Back to Examples</a>
     <h1>Performance Test</h1>
-    <p class="subtitle">Compare recursive vs flat rendering with large datasets</p>
+    <p class="subtitle">Compare flat vs virtual-scroll rendering with large datasets</p>
   </header>
 
   <div class="card">
     <h2>PF01 · Rendering Mode</h2>
     <div class="mode-toggle">
-      <label class="toggle-option" class:active={renderMode === 'recursive'}>
-        <input type="radio" bind:group={renderMode} value="recursive" />
-        <span class="toggle-label">Recursive</span>
-        <span class="toggle-desc">Traditional nested rendering with {'{#key}'} block</span>
-      </label>
       <label class="toggle-option" class:active={renderMode === 'flat'}>
         <input type="radio" bind:group={renderMode} value="flat" />
         <span class="toggle-label">Flat</span>
@@ -633,7 +627,7 @@
       {#if shouldUseInternalSearchIndex}
         <label>
           Index Batch:
-          <input type="number" bind:value={indexerBatchSize} min="5" max="500" step="5" />
+          <input type="number" bind:value={indexerBatchSize} min="25" max="5000" step="25" />
         </label>
       {/if}
     </div>
@@ -719,7 +713,7 @@
     <div class="card">
       <h2>
         PF04 · {dataSource === 'countries' ? 'Countries + States' : 'Synthetic Data'}
-        ({metrics.nodeCount.toLocaleString()} nodes) - {renderMode === 'virtual' ? 'Virtual Scroll' : renderMode === 'flat' ? 'Flat Mode' : 'Recursive Mode'}
+        ({metrics.nodeCount.toLocaleString()} nodes) - {renderMode === 'virtual' ? 'Virtual Scroll' : 'Flat Mode'}
       </h2>
       <div class="tree-controls">
         <button class="btn" onclick={timedExpandOneNode}>Expand One</button>
@@ -797,7 +791,6 @@
             {shouldUseInternalSearchIndex}
             searchValueMember="name"
             bind:searchTerm
-            {isFlatRenderingEnabled}
             {isVirtualScrollEnabled}
             {virtualScrollContainerHeight}
             {virtualScrollOverscan}
@@ -838,9 +831,9 @@
     <div class="note">
       <div class="note-title">Expected Results</div>
       <ul>
-        <li><strong>Expand One - Recursive:</strong> Destroys and recreates ALL visible nodes just to add ~10 children</li>
-        <li><strong>Expand One - Flat:</strong> Only adds the new children (~10 nodes) - should be much faster</li>
-        <li>Expand All may be similar because both modes create thousands of new nodes</li>
+        <li><strong>Expand One - Flat:</strong> Only adds the new children (~10 nodes)</li>
+        <li><strong>Expand One - Virtual:</strong> Re-windows the visible rows; DOM size stays ~constant</li>
+        <li>Expand All: flat mounts every visible row (use Progressive Render to spread it over frames); virtual stays windowed</li>
       </ul>
     </div>
   </div>

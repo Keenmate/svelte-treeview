@@ -5,8 +5,7 @@ import { test, expect, Page, Locator } from '@playwright/test';
  * is the full benchmark playground with the same controls plus persistence,
  * countries-data loader, and timing metrics).
  *
- * This page is the benchmark playground: three render modes (recursive / flat
- * / virtual), a synthetic data generator, configurable node count and expand
+ * This page is the benchmark playground: two render modes (flat / virtual), a synthetic data generator, configurable node count and expand
  * level, plus search and timing of updateNode / expandAll / etc. The point of
  * these tests is *not* to measure performance — they're correctness smoke
  * tests that catch regressions in the controls and tree behavior across modes.
@@ -147,6 +146,9 @@ async function gotoPerformance(page: Page) {
 	}, STORAGE_KEY);
 	await page.goto(PAGE);
 	await expect(page.locator('h1', { hasText: 'Performance Test' })).toBeVisible();
+	// The h1 is server-rendered: wait for hydration, else the first Generate click is
+	// lost and generate() burns its 25 s attempt timeout before re-clicking.
+	await page.waitForLoadState('networkidle');
 }
 
 // ── Initial state ──────────────────────────────────────────────────────────
@@ -212,17 +214,22 @@ test.describe('Data lifecycle', () => {
 // ── Render modes ───────────────────────────────────────────────────────────
 
 test.describe('Render modes', () => {
-	test('switching from Flat (default) to Recursive re-renders the tree', async ({ page }) => {
+	test('switching from Virtual back to Flat (default) re-renders the tree', async ({ page }) => {
 		await gotoPerformance(page);
 		await generate(page);
 
 		await expect(dataCard(page).locator('h2')).toContainText('Flat Mode');
+		const flatCount = await visibleNodeCount(page);
 
-		await modeCard(page).getByText('Recursive', { exact: true }).click();
-		await expect(dataCard(page).locator('h2')).toContainText('Recursive Mode', {
+		await modeCard(page).getByText('Virtual Scroll', { exact: true }).click();
+		await expect(dataCard(page).locator('h2')).toContainText('Virtual Scroll', {
 			timeout: ACTION_TIMEOUT
 		});
-		await expect.poll(() => visibleNodeCount(page), { timeout: ACTION_TIMEOUT }).toBeGreaterThan(0);
+		await modeCard(page).getByText('Flat', { exact: true }).click();
+		await expect(dataCard(page).locator('h2')).toContainText('Flat Mode', {
+			timeout: ACTION_TIMEOUT
+		});
+		await expect.poll(() => visibleNodeCount(page), { timeout: ACTION_TIMEOUT }).toBe(flatCount);
 	});
 
 	test('switching to Virtual mode renders only a windowed subset of nodes', async ({ page }) => {

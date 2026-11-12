@@ -20,6 +20,9 @@
 		type NodeRenderContext,
 		type CheckboxMode,
 		type CascadeCheckPolicy,
+		type FilterScope,
+		type IndexProgress,
+		type SearchStatus,
 		type SelectionMode,
 		type SelectMode,
 		type TreeMutationOptions,
@@ -33,7 +36,8 @@
 		type ApplyChangesResult
 	} from '../ltree/types.js';
 	import { setContext, onDestroy, untrack, type Snippet } from 'svelte';
-	import type { RenderStats } from './RenderCoordinator.svelte.js';
+	import type { RenderStats } from '../ltree/types.js';
+	import { DEFAULT_INDEXER_BATCH_SIZE } from '../ltree/indexer.js';
 	import { TreeController } from '../core/TreeController.svelte.js';
 	import type { TreeLabels } from '../core/labels.js';
 	import type {
@@ -178,6 +182,12 @@
 		 * Orthogonal to `checkboxMode`; ignored in `'independent'` mode.
 		 */
 		cascadeCheckPolicy?: CascadeCheckPolicy | null | undefined;
+		/** EXPERIMENTAL — which descendants of a filter match stay visible. See {@link FilterScope}. */
+		filterScope?: FilterScope | null | undefined;
+		/** EXPERIMENTAL — the `x` for the depth-limited filterScopes (default 1). */
+		filterDescendantDepth?: number | null | undefined;
+		/** EXPERIMENTAL — expand the descendants a filterScope adds (default true). */
+		shouldExpandFilterDescendants?: boolean | null | undefined;
 		shouldClickToggleCheckbox?: boolean | null | undefined;
 		beforeCheckboxToggleCallback?: (ctx: BeforeCheckboxToggleContext<T>) => string[] | false | void;
 		rangeSelectionMode?: 'visual' | 'logical';
@@ -196,15 +206,17 @@
 		onRenderStart?: (ctx: TreeCallbackContext<T>) => void;
 		onRenderProgress?: (stats: RenderStats & TreeCallbackContext<T>) => void;
 		onRenderComplete?: (stats: RenderStats & TreeCallbackContext<T>) => void;
+		/** Search-index fill progress: fires per idle batch and once with `isComplete: true`.
+		 *  Search/filter results are partial until then. */
+		onIndexProgress?: (ctx: IndexProgress & TreeCallbackContext<T>) => void;
+		/** Fires whenever a filter is applied/cleared (incl. the automatic re-filter when
+		 *  indexing completes): `{ searchTerm, matchCount, isLimited, limit, isIndexing }`.
+		 *  Use it to tell users the result is truncated or still incomplete. */
+		onSearchStatusChange?: (ctx: SearchStatus & TreeCallbackContext<T>) => void;
+		/** Max matches a search/filter returns (default 1000). FlexSearch's own silent
+		 *  default was 100; check `isLimited` in onSearchStatusChange to surface truncation. */
+		searchResultLimit?: number | null | undefined;
 
-		/**
-		 * Use flat/centralized rendering instead of recursive node rendering.
-		 * This significantly improves performance for large trees by:
-		 * - Removing the {#key changeTracker} block that destroys all nodes on any change
-		 * - Using a single flat loop instead of recursive component instantiation
-		 * - Allowing Svelte's keyed {#each} to efficiently diff only changed nodes
-		 */
-		isFlatRenderingEnabled?: boolean;
 
 		// VIRTUAL SCROLLING (flat mode only)
 		/** Enable virtual scrolling in flat mode. Only visible nodes + overscan are rendered. */
@@ -516,13 +528,17 @@
 		isCheckboxesShown = false,
 		checkboxMode = 'independent',
 		cascadeCheckPolicy = 'rolled-up',
+		filterScope = 'matches',
+		filterDescendantDepth = 1,
+		shouldExpandFilterDescendants = true,
+		searchResultLimit,
 		shouldClickToggleCheckbox = false,
 		beforeCheckboxToggleCallback,
 		rangeSelectionMode = 'visual',
 		shouldUseInternalSearchIndex = true,
 		initializeIndexCallback,
 		searchTerm = $bindable(),
-		indexerBatchSize = 25,
+		indexerBatchSize = DEFAULT_INDEXER_BATCH_SIZE,
 		indexerTimeout = 50,
 		isLoading = false,
 
@@ -534,9 +550,10 @@
 		onRenderStart,
 		onRenderProgress,
 		onRenderComplete,
+		onIndexProgress,
+		onSearchStatusChange,
 
 		// Flat rendering mode
-		isFlatRenderingEnabled = true,
 
 		// Virtual scrolling (flat mode only)
 		isVirtualScrollEnabled = false,
@@ -683,6 +700,10 @@
 		isCheckboxesShown,
 		checkboxMode,
 		cascadeCheckPolicy,
+		filterScope,
+		filterDescendantDepth,
+		shouldExpandFilterDescendants,
+		searchResultLimit,
 		shouldClickToggleCheckbox,
 		beforeCheckboxToggleCallback,
 		rangeSelectionMode,
@@ -698,7 +719,8 @@
 		onRenderStart,
 		onRenderProgress,
 		onRenderComplete,
-		isFlatRenderingEnabled,
+		onIndexProgress,
+		onSearchStatusChange,
 		isVirtualScrollEnabled,
 		virtualScrollItemHeight,
 		virtualScrollOverscan,
@@ -808,9 +830,6 @@
 	// svelte-ignore state_referenced_locally
 	setContext('NodeIcon', icon);
 	setContext('NodeRenderEnv', nodeRenderEnv);
-	if (controller.renderCoordinator) {
-		setContext('RenderCoordinator', controller.renderCoordinator);
-	}
 
 	// ── Cleanup on destroy ──────────────────────────────────────────────
 	onDestroy(() => controller.destroy());
@@ -929,9 +948,6 @@
 		controller.isTreeDropZoneEnabled = isTreeDropZoneEnabled;
 	});
 	$effect(() => {
-		controller.isFlatRenderingEnabled = isFlatRenderingEnabled ?? true;
-	});
-	$effect(() => {
 		controller.isVirtualScrollEnabled = isVirtualScrollEnabled ?? false;
 	});
 	$effect(() => {
@@ -992,6 +1008,15 @@
 	});
 	$effect(() => {
 		controller.cascadeCheckPolicy = cascadeCheckPolicy ?? 'rolled-up';
+	});
+	$effect(() => {
+		controller.filterScope = filterScope ?? 'matches';
+	});
+	$effect(() => {
+		controller.filterDescendantDepth = filterDescendantDepth ?? 1;
+	});
+	$effect(() => {
+		controller.shouldExpandFilterDescendants = shouldExpandFilterDescendants ?? true;
 	});
 	$effect(() => {
 		controller.shouldClickToggleCheckbox = shouldClickToggleCheckbox ?? false;
@@ -1205,6 +1230,15 @@
 	});
 	$effect(() => {
 		controller.onRenderCompleteHandler = onRenderComplete;
+	});
+	$effect(() => {
+		controller.onIndexProgressHandler = onIndexProgress;
+	});
+	$effect(() => {
+		controller.onSearchStatusChangeHandler = onSearchStatusChange;
+	});
+	$effect(() => {
+		controller.searchResultLimit = searchResultLimit ?? undefined;
 	});
 
 	// ── Sync controller → bindable props (outputs flow back to parent) ──
@@ -1660,6 +1694,10 @@
 				| 'isCheckboxesShown'
 				| 'checkboxMode'
 				| 'cascadeCheckPolicy'
+				| 'filterScope'
+				| 'filterDescendantDepth'
+				| 'shouldExpandFilterDescendants'
+				| 'searchResultLimit'
 				| 'shouldClickToggleCheckbox'
 				| 'beforeCheckboxToggleCallback'
 				| 'rangeSelectionMode'
@@ -1795,6 +1833,12 @@
 		if (updates.checkboxMode !== undefined) checkboxMode = updates.checkboxMode;
 		if (updates.cascadeCheckPolicy !== undefined)
 			cascadeCheckPolicy = updates.cascadeCheckPolicy;
+		if (updates.filterScope !== undefined) filterScope = updates.filterScope;
+		if (updates.filterDescendantDepth !== undefined)
+			filterDescendantDepth = updates.filterDescendantDepth;
+		if (updates.shouldExpandFilterDescendants !== undefined)
+			shouldExpandFilterDescendants = updates.shouldExpandFilterDescendants;
+		if (updates.searchResultLimit !== undefined) searchResultLimit = updates.searchResultLimit;
 		if (updates.shouldClickToggleCheckbox !== undefined)
 			shouldClickToggleCheckbox = updates.shouldClickToggleCheckbox;
 		if (updates.beforeCheckboxToggleCallback !== undefined)
@@ -2169,12 +2213,10 @@
 								<Node
 									{node}
 									children={nodeTemplate}
-									isProgressiveRenderEnabled={false}
 									isDragInProgress={controller.isDragInProgress}
 									hoveredNodeForDropPath={controller.hoveredNodeForDrop?.path}
 									activeDropPosition={controller.activeDropPosition}
 									dropOperation={controller.currentDropOperation}
-									flatMode={true}
 									flatGap={false}
 								/>
 							{:else}
@@ -2183,46 +2225,24 @@
 						</div>
 					</div>
 				</div>
-			{:else if controller.isFlatRenderingEnabled}
-				<!-- Flat rendering mode: no {#key} block, uses visibleFlatNodes for efficient updates -->
+			{:else}
+				<!-- Flat rendering: uses visibleFlatNodes (progressively revealed) for efficient updates -->
 				<div class="stv__tree stv__tree--flat">
 					{#each controller.flatNodesToRender as node, i (node.id + '|' + node.path + '|' + node.hasChildren + '|' + node._rev)}
 						{@const prevNode = i > 0 ? controller.flatNodesToRender[i - 1] : null}
 						<Node
 							{node}
 							children={nodeTemplate}
-							isProgressiveRenderEnabled={false}
 							isDragInProgress={controller.isDragInProgress}
 							hoveredNodeForDropPath={controller.hoveredNodeForDrop?.path}
 							activeDropPosition={controller.activeDropPosition}
 							dropOperation={controller.currentDropOperation}
-							flatMode={true}
 							flatGap={prevNode != null && (node.level ?? 0) > (prevNode.level ?? 0)}
 						/>
 					{:else}
 						{@render emptyDropState()}
 					{/each}
 				</div>
-			{:else}
-				<!-- Recursive rendering mode: uses {#key} block for forced re-renders -->
-				{#key controller.tree.changeTracker}
-					<div class="stv__tree">
-						{#each controller.tree.tree as node (node.id)}
-							<Node
-								{node}
-								children={nodeTemplate}
-								isProgressiveRenderEnabled={controller.isProgressiveRenderEnabled}
-								renderBatchSize={controller.initialBatchSize}
-								isDragInProgress={controller.isDragInProgress}
-								hoveredNodeForDropPath={controller.hoveredNodeForDrop?.path}
-								activeDropPosition={controller.activeDropPosition}
-								dropOperation={controller.currentDropOperation}
-							/>
-						{:else}
-							{@render emptyDropState()}
-						{/each}
-					</div>
-				{/key}
 			{/if}
 		{:else}
 			<!-- Empty tree drop zone -->

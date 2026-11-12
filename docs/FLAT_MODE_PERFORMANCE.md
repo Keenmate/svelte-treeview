@@ -2,7 +2,7 @@
 
 ## Overview
 
-Flat mode (`isFlatRenderingEnabled=true`) renders all visible nodes in a single `{#each}` loop instead of recursively nesting Node components. This document explains the performance concepts and optimizations implemented.
+Flat rendering (the only mode since rc16 — the recursive renderer and `isFlatRenderingEnabled` were removed) renders all visible nodes in a single `{#each}` loop instead of recursively nesting Node components. This document explains the performance concepts and optimizations implemented.
 
 ## The Core Problem
 
@@ -134,20 +134,13 @@ setContext('NodeConfig', nodeConfig);
 
 This reduces props from ~25 to ~11 per Node component.
 
-## Flat Mode Node Optimizations
+## Node Has No Child Rendering
 
-In flat mode, Node components skip unnecessary work:
-
-```typescript
-// Skip children computation - Tree handles it
-const childrenArray = $derived(!flatMode ? Object.values(node?.children || []) : []);
-
-// Skip progressive rendering effect
-$effect(() => {
-  if (flatMode) return; // Early exit
-  // ... recursive mode logic
-});
-```
+Node.svelte renders exactly one row — no `childrenArray`, no per-node progressive
+effect, no `.stv__children` wrapper. Tree.svelte owns the row list (`flatNodesToRender`),
+and progressive batching is a single rAF queue on the controller (`flatRenderedIds` /
+`scheduleFlatRenderBatch`), which also fires `onRenderStart` / `onRenderProgress` /
+`onRenderComplete`.
 
 ## Double-Click Detection (and why not native `dblclick`)
 
@@ -181,7 +174,7 @@ if (options?.uiClick && !modifiers?.ctrl && !modifiers?.shift) {
 ```
 
 - **Survives any re-render strategy** — it tracks `(path, timestamp)` on the controller, which outlives the recreated DOM element. It ignores DOM identity entirely, so future rendering optimizations can't silently break it.
-- **Identical in flat and recursive modes** — both route clicks through the same controller method.
+- **Identical in flat and virtual-scroll rendering** — both route clicks through the same controller method.
 - **Gated to genuine UI clicks** (`uiClick`), so programmatic `selectNode` / `checkNode` calls are never mistaken for a double-click.
 - **Threshold is a hardcoded 400ms** — slightly tighter than Windows' 500ms default to avoid coupling unrelated clicks. (It does *not* read the OS double-click interval; switching to a configurable threshold would be the realistic path if native-like timing is ever needed.)
 

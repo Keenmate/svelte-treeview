@@ -4,9 +4,23 @@ import type { LTreeNode } from './ltree-node.svelte.js';
 import { isNotEmptyString } from '../helpers/string-helpers.js';
 import { indexLogger } from '../logger.js';
 
+/** Default max items per idle slot. The per-slot TIME budget (below) is what keeps
+ *  frames smooth; this cap only bounds a single slot, so it is generous — 25 left most
+ *  of every idle slot unused (55k nodes took ~2 min vs ~6 s at 1000). */
+export const DEFAULT_INDEXER_BATCH_SIZE = 1000;
+/** Max ms of indexing per idle slot (one frame). */
+const MAX_IDLE_BATCH_MS = 16;
+/** Max ms per FORCED slot (requestIdleCallback timed out = page is busy) — kept short. */
+const MAX_FORCED_BATCH_MS = 8;
+
 export class Indexer<T> {
 	private treeId: string;
 	private processingQueue: { node: LTreeNode<T>; index: number }[] = [];
+	// Read cursor into processingQueue — shift() on a large array is O(n) per call.
+	private queueHead = 0;
+	// Bumped by clearQueue() so an idle callback scheduled before the clear exits
+	// instead of running a second processing loop alongside the new one.
+	private generation = 0;
 	private batchSize: number;
 	private searchIndex: Index;
 	private isProcessing: boolean = false;
@@ -25,7 +39,7 @@ export class Indexer<T> {
 		shouldCalculateSearchValue: boolean,
 		searchValueMember?: string | null | undefined,
 		getSearchValueCallback?: (ctx: NodeContext<T>) => string,
-		batchSize: number = 25,
+		batchSize: number = DEFAULT_INDEXER_BATCH_SIZE,
 		private timeout: number = 50
 	) {
 		this.treeId = treeId;
@@ -40,11 +54,13 @@ export class Indexer<T> {
 
 	// Add items to the processing queue
 	addToQueue(items: { node: LTreeNode<T>; index: number }[]): void {
-		// Use concat instead of push(...items) to avoid stack overflow with large arrays
-		this.processingQueue = this.processingQueue.concat(items);
+		// Use concat instead of push(...items) to avoid stack overflow with large arrays.
+		// Drop the already-consumed head first so the array doesn't grow unbounded.
+		this.processingQueue = this.processingQueue.slice(this.queueHead).concat(items);
+		this.queueHead = 0;
 		this.totalItemsAdded += items.length;
 
-		indexLogger.debug(`[${this.treeId}] Added ${items.length} items to queue. Queue size: ${this.processingQueue.length}`);
+		indexLogger.debug(`[${this.treeId}] Added ${items.length} items to queue. Queue size: ${this.pendingCount}`);
 
 		// Start processing if not already running
 		if (!this.isProcessing) {
@@ -77,81 +93,71 @@ export class Indexer<T> {
 		indexLogger.debug(`[${this.treeId}] Batch size updated to: ${this.batchSize}`);
 	}
 
+	private get pendingCount(): number {
+		return this.processingQueue.length - this.queueHead;
+	}
+
 	// Start the processing loop
 	private startProcessing(): void {
-		if (this.isProcessing || this.processingQueue.length === 0) {
+		if (this.isProcessing || this.pendingCount === 0) {
 			return;
 		}
 
 		this.isProcessing = true;
-		indexLogger.debug(`[${this.treeId}] Starting indexing. Queue size: ${this.processingQueue.length}`);
+		indexLogger.debug(`[${this.treeId}] Starting indexing. Queue size: ${this.pendingCount}`);
 
 		this.processNextBatch();
 	}
 
 	// Process the next batch using requestIdleCallback
 	private processNextBatch(): void {
-		requestIdleCallback((deadline) => this.processBatch(deadline), { timeout: this.timeout });
+		const generation = this.generation;
+		requestIdleCallback((deadline) => this.processBatch(deadline, generation), { timeout: this.timeout });
 	}
 
-	// Process a batch of items from the queue
-	private processBatch(deadline: IdleDeadline): void {
+	// Process a batch of items from the queue. Bounded by TIME, not item count:
+	// genuine idle time → up to MAX_IDLE_BATCH_MS (and the slot's remaining time);
+	// a forced slot (timeout, page busy) → a short MAX_FORCED_BATCH_MS so indexing
+	// still advances without hogging a busy main thread.
+	private processBatch(deadline: IdleDeadline, generation: number): void {
+		// Superseded by clearQueue() while this callback was pending.
+		if (generation !== this.generation) return;
+
 		const startTime = performance.now();
 		let itemsProcessedInBatch = 0;
 		const isTimeout = deadline.didTimeout;
-		const maxBatchTime = 16; // Max 16ms per batch to stay under one frame
+		const maxBatchTime = isTimeout ? MAX_FORCED_BATCH_MS : MAX_IDLE_BATCH_MS;
 
-		indexLogger.trace(`[${this.treeId}] Batch start: timeout=${isTimeout}, timeRemaining=${deadline.timeRemaining().toFixed(1)}ms, queueSize=${this.processingQueue.length}`);
+		indexLogger.trace(`[${this.treeId}] Batch start: timeout=${isTimeout}, timeRemaining=${deadline.timeRemaining().toFixed(1)}ms, queueSize=${this.pendingCount}`);
 
-		// Determine how many items to process
-		let maxItemsInBatch: number;
-
-		if (isTimeout) {
-			// Browser forced us to run - be conservative
-			maxItemsInBatch = Math.min(5, Math.ceil(this.batchSize / 5));
-		} else {
-			// Browser has genuine idle time - use full batch size
-			maxItemsInBatch = this.batchSize;
-		}
-
-		// Process items from the queue
 		while (
-			this.processingQueue.length > 0 &&
-			itemsProcessedInBatch < maxItemsInBatch &&
-			((!isTimeout && deadline.timeRemaining() > 1) || isTimeout)
+			this.queueHead < this.processingQueue.length &&
+			itemsProcessedInBatch < this.batchSize &&
+			(isTimeout || deadline.timeRemaining() > 1)
 		) {
-			// Hard time limit to prevent long-running callbacks
 			const elapsed = performance.now() - startTime;
 			if (elapsed > maxBatchTime) {
 				indexLogger.trace(`[${this.treeId}] Time limit hit after ${elapsed.toFixed(2)}ms, processed ${itemsProcessedInBatch} items`);
 				break;
 			}
 
-			const item = this.processingQueue.shift()!;
+			const item = this.processingQueue[this.queueHead++]!;
 			this.indexItem(item);
 			itemsProcessedInBatch++;
 			this.totalItemsProcessed++;
-
-			// For timeout scenarios, break after processing the conservative amount
-			if (isTimeout && itemsProcessedInBatch >= maxItemsInBatch) {
-				break;
-			}
 		}
 
 		const batchTime = performance.now() - startTime;
 		indexLogger.trace(`[${this.treeId}] Batch end: ${itemsProcessedInBatch} items in ${batchTime.toFixed(2)}ms`);
 
-		// Report progress
-		if (this.onProgressCallback) {
-			this.onProgressCallback(this.totalItemsProcessed, this.totalItemsAdded);
-		}
-
-		// Check if more work needs to be done
-		if (this.processingQueue.length > 0) {
-			// More items in queue - schedule next batch
+		if (this.pendingCount > 0) {
+			// Report progress, then schedule the next batch
+			this.onProgressCallback?.(this.totalItemsProcessed, this.totalItemsAdded);
 			this.processNextBatch();
 		} else {
-			// Queue is empty - processing complete
+			// Queue drained — release it and finish (finishProcessing reports completion)
+			this.processingQueue = [];
+			this.queueHead = 0;
 			this.finishProcessing();
 		}
 	}
@@ -192,7 +198,7 @@ export class Indexer<T> {
 		batchSize: number;
 	} {
 		return {
-			queueSize: this.processingQueue.length,
+			queueSize: this.pendingCount,
 			isProcessing: this.isProcessing,
 			processed: this.totalItemsProcessed,
 			total: this.totalItemsAdded,
@@ -203,6 +209,8 @@ export class Indexer<T> {
 	// Clear the queue and reset counters
 	clearQueue(): void {
 		this.processingQueue = [];
+		this.queueHead = 0;
+		this.generation++;
 		this.isProcessing = false;
 		this.totalItemsAdded = 0;
 		this.totalItemsProcessed = 0;
@@ -211,7 +219,7 @@ export class Indexer<T> {
 
 	// Check if indexer is busy
 	isBusy(): boolean {
-		return this.isProcessing || this.processingQueue.length > 0;
+		return this.isProcessing || this.pendingCount > 0;
 	}
 
 	// Wait for all current items to be processed

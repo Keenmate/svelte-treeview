@@ -89,4 +89,56 @@ test.describe('Cascade select policy', () => {
 		await checkboxLabel(page, '2.1').click();
 		await expect(selection(page)).toHaveText('(empty)');
 	});
+
+	test('checking a filtered match cascades against the REAL children, not the visible subset', async ({
+		page
+	}) => {
+		// Filter to "apple": Fruits shows with only Apple under it (Banana hidden).
+		await page.getByTestId('filter-apple').click();
+		await expect(tree(page).locator('.stv__node[data-tree-path="1.2"]')).toHaveCount(0);
+		await expect(checkboxLabel(page, '1.1')).toBeVisible();
+
+		await checkboxLabel(page, '1.1').click();
+		// Fruits must be indeterminate (Banana is unchecked), NOT fully checked.
+		await expect(checkboxLabel(page, '1')).toHaveClass(/stv__checkbox--indeterminate/);
+		await expect(checkboxLabel(page, '1')).not.toBeChecked();
+		await expect(selection(page)).toHaveText('1.1');
+
+		// The check made while filtered survives clearing the filter.
+		await page.getByTestId('filter-clear').click();
+		await expect(checkboxLabel(page, '1.2')).toBeVisible();
+		await expect(checkboxLabel(page, '1.1')).toBeChecked();
+		await expect(checkboxLabel(page, '1.2')).not.toBeChecked();
+		await expect(checkboxLabel(page, '1')).toHaveClass(/stv__checkbox--indeterminate/);
+		await expect(selection(page)).toHaveText('1.1');
+	});
+
+	test('clicking a filtered PARENT checks only its visible matches; a second click unchecks them', async ({
+		page
+	}) => {
+		await page.getByTestId('filter-apple').click();
+		await expect(tree(page).locator('.stv__node[data-tree-path="1.2"]')).toHaveCount(0);
+
+		// Click Fruits: only the visible Apple is checked; hidden Banana stays unchecked,
+		// so Fruits itself lands at [-], not checked.
+		await checkboxLabel(page, '1').click();
+		await expect(checkboxLabel(page, '1.1')).toBeChecked();
+		await expect(checkboxLabel(page, '1')).toHaveClass(/stv__checkbox--indeterminate/);
+		await expect(selection(page)).toHaveText('1.1');
+
+		// Second click: every visible descendant is checked → unchecks them (not stuck at [-]).
+		await checkboxLabel(page, '1').click();
+		await expect(checkboxLabel(page, '1.1')).not.toBeChecked();
+		await expect(checkboxLabel(page, '1')).not.toHaveClass(/stv__checkbox--indeterminate/);
+		await expect(selection(page)).toHaveText('(empty)');
+
+		// Check it again, then clear the filter: Banana was never touched.
+		await checkboxLabel(page, '1').click();
+		await page.getByTestId('filter-clear').click();
+		await expect(checkboxLabel(page, '1.2')).toBeVisible();
+		await expect(checkboxLabel(page, '1.1')).toBeChecked();
+		await expect(checkboxLabel(page, '1.2')).not.toBeChecked();
+		await expect(checkboxLabel(page, '1')).toHaveClass(/stv__checkbox--indeterminate/);
+		await expect(selection(page)).toHaveText('1.1');
+	});
 });

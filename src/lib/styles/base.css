@@ -24,8 +24,7 @@
 /* Ensure all tree ancestors allow overflow for drop zones */
 .stv__tree,
 .stv__node,
-.stv__node-row,
-.stv__children {
+.stv__node-row {
 	overflow: visible !important;
 }
 

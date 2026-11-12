@@ -165,7 +165,6 @@
 	/* Row transition. Default none = instant hover (crisper). Restore a fade with
 	   `background-color var(--stv-transition-normal) var(--stv-ease-standard)`. */
 	--stv-node-transition: none;
-	--stv-children-margin-top: var(--stv-spacing-xs);
 
 	/* Per-node icon: colour inherits the row text (a per-node iconColor overrides
 	   it); width is the reserved column used when shouldAlignNodeIcons is on. */

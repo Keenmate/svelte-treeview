@@ -3,21 +3,20 @@
 
 const STORAGE_KEY = 'svelte-treeview-example-render-mode';
 
-export type RenderMode = 'recursive' | 'progressive' | 'virtual';
+export type RenderMode = 'flat' | 'progressive' | 'virtual';
 
 function loadMode(): RenderMode {
 	try {
 		const saved = localStorage?.getItem(STORAGE_KEY);
-		if (saved === 'recursive' || saved === 'progressive' || saved === 'virtual') return saved;
+		if (saved === 'flat' || saved === 'progressive' || saved === 'virtual') return saved;
 	} catch {}
-	return 'recursive';
+	return 'flat';
 }
 
 // Private state - can't export reassigned $state or $derived from module
 let _renderMode = $state<RenderMode>(loadMode());
 
 const _treeProps = $derived({
-	isFlatRenderingEnabled: _renderMode === 'progressive' || _renderMode === 'virtual',
 	isProgressiveRenderEnabled: _renderMode === 'progressive',
 	isVirtualScrollEnabled: _renderMode === 'virtual',
 });

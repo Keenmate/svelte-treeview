@@ -8,7 +8,7 @@
 	// metrics, "What to Test" docs, and all styling chrome — the spec only
 	// asserts on the controls/labels/title pattern listed below.
 
-	type RenderMode = 'recursive' | 'flat' | 'virtual';
+	type RenderMode = 'flat' | 'virtual';
 
 	type Item = {
 		id: number;
@@ -20,7 +20,6 @@
 	};
 
 	let renderMode = $state<RenderMode>('flat');
-	const isFlatRenderingEnabled = $derived(renderMode === 'flat' || renderMode === 'virtual');
 	const isVirtualScrollEnabled = $derived(renderMode === 'virtual');
 
 	let nodeCountTarget = $state(300);
@@ -153,7 +152,7 @@
 	}
 
 	function modeLabel(m: RenderMode): string {
-		return m === 'virtual' ? 'Virtual Scroll' : m === 'flat' ? 'Flat Mode' : 'Recursive Mode';
+		return m === 'virtual' ? 'Virtual Scroll' : 'Flat Mode';
 	}
 </script>
 
@@ -167,10 +166,6 @@
 	<div class="card">
 		<h2>Rendering Mode</h2>
 		<div class="modes">
-			<label>
-				<input type="radio" bind:group={renderMode} value="recursive" />
-				Recursive
-			</label>
 			<label>
 				<input type="radio" bind:group={renderMode} value="flat" />
 				Flat
@@ -248,7 +243,6 @@
 						shouldUseInternalSearchIndex={true}
 						searchValueMember="name"
 						bind:searchTerm
-						{isFlatRenderingEnabled}
 						{isVirtualScrollEnabled}
 						virtualScrollContainerHeight="400px"
 						virtualScrollOverscan={5}

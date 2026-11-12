@@ -127,7 +127,7 @@ test.describe('single-tree drag', () => {
 		await expect(page.getByTestId('single-drop-position')).toHaveText('child');
 	});
 
-	test('dragged visual covers a folder\'s whole subtree; a nested file dims alone (recursive mode)', async ({
+	test('dragged visual covers a folder\'s whole subtree; a nested file dims alone', async ({
 		page
 	}) => {
 		await gotoFixture(page);

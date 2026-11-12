@@ -164,7 +164,6 @@
 				selectionMode="multiple"
 				isCheckboxesShown={true}
 				dragDropMode="both"
-				isFlatRenderingEnabled={true}
 				getIsDraggableCallback={() => true}
 				getIsDropAllowedCallback={() => true}
 				shouldHandleKeyboardShortcuts={true}
@@ -199,7 +198,6 @@
 				clickBehavior="select"
 				selectionMode="multiple"
 				dragDropMode="both"
-				isFlatRenderingEnabled={true}
 				getIsDraggableCallback={() => true}
 				getIsDropAllowedCallback={() => true}
 				bind:focusedNode={focusedB}

@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > 5.0.0 was never published to npm (the previous `[5.0.0] - 2026-10-13 [PUBLISHED]` heading was wrong — npm `rc` is 5.0.0-rc15, `latest` 4.8.0). Its entries are folded into rc16 below.
 
+### Changed — single render mode, search & indexing (2026-11-12)
+
+- **Recursive rendering removed.** Flat is the only renderer (plain, `isProgressiveRenderEnabled`, or `isVirtualScrollEnabled`). Removed: the `isFlatRenderingEnabled` prop, `RenderCoordinator`, Node's nested child rendering, the `.stv__children` wrapper + `--stv-children-margin-top`, the `.stv__loading-more` row. `onRenderStart` / `onRenderProgress` / `onRenderComplete` and bindable `isRendering` now fire around the flat progressive pass (`processed` counts rows).
+- **Indexer**: time-boxed idle batches; `indexerBatchSize` default 25 → 1000. 55k nodes index in ~2 s (was ~125 s). New `onIndexProgress({ processed, total, isComplete })`.
+- **Search limit**: `searchResultLimit` (default 1000) replaces FlexSearch's silent 100-match cap; new `onSearchStatusChange({ searchTerm, matchCount, isLimited, limit, isIndexing })`.
+- **filterScope** (experimental): `filterScope` / `filterDescendantDepth` / `shouldExpandFilterDescendants` decide which descendants of a filter match stay visible.
+- **Fixed**: a tree that started with a `searchTerm` showed "No results" forever; checking a node while filtered used only the visible children for cascade math; runtime `checkboxMode` switches didn't reach rendered rows.
+
 ### Changed — vendored environment (web-components-core 1.0.0-rc15)
 
 - **Breakpoint defaults 640 → 768** (`mobile` ≤ 768, `tablet` ≤ 1024 — the pure-css `$mobile-breakpoint` /

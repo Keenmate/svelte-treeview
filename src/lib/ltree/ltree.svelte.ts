@@ -12,7 +12,11 @@ import {
 
 import type { Ltree, InsertArrayResult, InsertBranchResult, ReplaceBranchResult, RemoveBranchResult, NodeContext, SortContext, ExpandOptions, InsertPosition, SortOptions, NodesReorderContext } from './types.js';
 import { createSearchIndex } from './flex.js';
-import { Indexer } from './indexer.js';
+import { Indexer, DEFAULT_INDEXER_BATCH_SIZE } from './indexer.js';
+
+/** Default max matches a search/filter returns (FlexSearch's silent default is 100).
+ *  Override with the `searchResultLimit` prop or a per-call `{ limit }`. */
+export const DEFAULT_SEARCH_RESULT_LIMIT = 1000;
 import { perfStart, perfEnd, perfSummary } from '../perf-logger.js';
 import { dataLogger } from '../logger.js';
 
@@ -144,7 +148,7 @@ export function createLTree<T>(
 			shouldCalculateSearchValue,
 			_searchValueMember,
 			_getSearchValueCallback,
-			_indexerBatchSize || 25, // batch size with fallback
+			_indexerBatchSize || DEFAULT_INDEXER_BATCH_SIZE, // batch size with fallback
 			_indexerTimeout || 50 // timeout with fallback
 		);
 	}
@@ -283,6 +287,9 @@ export function createLTree<T>(
 
 			// Clear existing tree data - reset root children
 			root.children = {};
+			// Drop the filtered view's copies of the PREVIOUS data; an active filter is
+			// re-applied against the new data when indexing completes (see setCallbacks below).
+			filteredRoot.children = {};
 			nodeCount = 0;
 			maxLevel = 0;
 
@@ -463,7 +470,7 @@ export function createLTree<T>(
 			// Batch add items to indexer
 			if (itemsToIndex.length > 0 && indexer) {
 				indexer.setCallbacks(
-					undefined, // no progress callback for now
+					(processed, total) => this.onIndexProgress?.({ processed, total, isComplete: false }),
 					() => {
 						// Completion callback. Re-apply any active filter before
 						// emitting — a filterNodes() call that landed while indexing
@@ -476,6 +483,8 @@ export function createLTree<T>(
 						if (!noEmitChanges) {
 							this._emitTreeChanged();
 						}
+						const { total } = indexer!.getStatus();
+						this.onIndexProgress?.({ processed: total, total, isComplete: true });
 					}
 				);
 				indexer.addToQueue(itemsToIndex);
@@ -511,7 +520,10 @@ export function createLTree<T>(
 			newNode: LTreeNode<T>,
 			noEmitChanges?: boolean
 		): string | null {
-			const parentNode = this.getNodeByPath(parentPath);
+			// Always resolve against the REAL root: while a filter is active the default
+			// lookup returns the filtered COPY, and inserting there loses the data (a tree
+			// that started with a searchTerm got its whole dataset inserted into the view).
+			const parentNode = this.getNodeByPath(parentPath, root);
 
 			if (!parentNode) {
 				return `Node: ${newNode.path} - Could not find parent node: ${parentPath}`;
@@ -560,6 +572,13 @@ export function createLTree<T>(
 				filteredRoot.children = {};
 				this.isFiltered = false;
 				this._emitTreeChanged();
+				this.onSearchStatus?.({
+					searchTerm: '',
+					matchCount: 0,
+					isLimited: false,
+					limit: this._resolveSearchLimit(_searchOptions),
+					isIndexing: indexer?.isBusy() ?? false
+				});
 				return;
 			}
 
@@ -568,14 +587,41 @@ export function createLTree<T>(
 			}
 
 			perfStart(`[${_treeId}] filterNodes:search`);
-			const resultIndices = searchIndex!.search(_searchTerm!, _searchOptions);
-			const foundPaths = resultIndices
-				.map((row) => flatTreeNodes[row as number])
-				.filter((n): n is LTreeNode<T> => n != null)
-				.map((n) => n.path);
-			perfEnd(`[${_treeId}] filterNodes:search`, resultIndices.length);
+			const { nodes, isLimited, limit } = this._runSearch(_searchTerm!, _searchOptions);
+			const foundPaths = nodes.map((n) => n.path);
+			perfEnd(`[${_treeId}] filterNodes:search`, nodes.length);
 
 			this.createFilteredTree(foundPaths);
+			this.onSearchStatus?.({
+				searchTerm: _searchTerm!,
+				matchCount: nodes.length,
+				isLimited,
+				limit,
+				isIndexing: indexer?.isBusy() ?? false
+			});
+		},
+
+		_resolveSearchLimit(_searchOptions?: SearchOptions): number {
+			const explicit = (_searchOptions as { limit?: number } | undefined)?.limit;
+			return explicit ?? this.searchResultLimit ?? DEFAULT_SEARCH_RESULT_LIMIT;
+		},
+
+		_runSearch(
+			_searchTerm: string,
+			_searchOptions?: SearchOptions
+		): { nodes: LTreeNode<T>[]; isLimited: boolean; limit: number } {
+			// Ask for ONE more than the limit so we can tell "exactly N" from "N+, cut off".
+			// (FlexSearch's own default limit is 100 and silent — this replaces it.)
+			const limit = this._resolveSearchLimit(_searchOptions);
+			const resultIndices = searchIndex!.search(_searchTerm, {
+				...(_searchOptions as object),
+				limit: limit + 1
+			} as SearchOptions);
+			const isLimited = resultIndices.length > limit;
+			const nodes = (isLimited ? resultIndices.slice(0, limit) : resultIndices)
+				.map((row) => flatTreeNodes[row as number])
+				.filter((n): n is LTreeNode<T> => n != null);
+			return { nodes, isLimited, limit };
 		},
 
 		searchNodes(
@@ -590,12 +636,7 @@ export function createLTree<T>(
 				return [];
 			}
 
-			const resultIndices = searchIndex!.search(_searchTerm!, _searchOptions);
-			const foundNodes = resultIndices
-				.map((row) => flatTreeNodes[row as number])
-				.filter((n): n is LTreeNode<T> => n != null);
-
-			return foundNodes;
+			return this._runSearch(_searchTerm!, _searchOptions).nodes;
 		},
 
 		createFilteredTree(targetPaths: string[]): void {
@@ -612,6 +653,13 @@ export function createLTree<T>(
 				}
 			});
 
+			// 1b. EXPERIMENTAL filterScope — pull in (some of) each match's descendants.
+			// Matches + ancestors are the "context" rows and always expand; the added
+			// descendants expand only when shouldExpandFilterDescendants (default true).
+			const contextPaths = new Set(allRequiredPaths);
+			this._addFilterScopeDescendants(targetPaths, allRequiredPaths);
+			const expandAdded = this.shouldExpandFilterDescendants ?? true;
+
 			// 2. Build filtered tree with only required paths
 			const pathToNode = new Map<string, LTreeNode<T>>();
 
@@ -625,7 +673,7 @@ export function createLTree<T>(
 						...originalNode,
 						children: {},
 						hasChildren: false,
-						isExpanded: true // Expand all nodes in filtered tree
+						isExpanded: expandAdded || contextPaths.has(path)
 					};
 					pathToNode.set(path, copiedNode);
 				}
@@ -672,6 +720,44 @@ export function createLTree<T>(
 			this._emitTreeChanged();
 
 			perfEnd(`[${_treeId}] createFilteredTree`, rootNodes.length);
+		},
+
+		_addFilterScopeDescendants(targetPaths: string[], required: Set<string>): void {
+			const scope = this.filterScope ?? 'matches';
+			if (scope === 'matches') return;
+			const x = Math.max(0, this.filterDescendantDepth ?? 1);
+
+			const heights = new Map<LTreeNode<T>, number>();
+			const heightOf = (n: LTreeNode<T>): number => {
+				let h = heights.get(n);
+				if (h !== undefined) return h;
+				h = 0;
+				for (const key in n.children) h = Math.max(h, heightOf(n.children[key]!) + 1);
+				heights.set(n, h);
+				return h;
+			};
+			const addSubtree = (n: LTreeNode<T>, levelsLeft: number) => {
+				if (levelsLeft <= 0) return;
+				for (const key in n.children) {
+					const child = n.children[key]!;
+					required.add(child.path);
+					addSubtree(child, levelsLeft - 1);
+				}
+			};
+			// Root sits at level 0, so its height = the deepest node's level.
+			const treeDepth = scope === 'tree-depth' ? heightOf(root) : 0;
+
+			for (const path of targetPaths) {
+				const node = this.getNodeByPath(path, root);
+				if (!node) continue;
+				if (scope === 'descendants') addSubtree(node, Infinity);
+				else if (scope === 'levels-below') addSubtree(node, x);
+				else if (scope === 'subtree-height') {
+					if (heightOf(node) <= x) addSubtree(node, Infinity);
+				} else if (scope === 'tree-depth') {
+					if ((node.level ?? 0) >= treeDepth - x) addSubtree(node, Infinity);
+				}
+			}
 		},
 
 		clearFilter(): void {
