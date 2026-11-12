@@ -50,6 +50,10 @@ Working branch: `feature/core-render-split`. NOTHING COMMITTED yet, in either re
 - **Not run in web**: `kmwc doctor`, `check:pages`, regenerate `custom-elements.json` / `web-types.json`.
 - **Vestigial `isFlatRenderingEnabled` in web** (engine/types/treeview/web-component/docs/tests) — parity.md
   marks it "pending removal"; remove to match svelte.
+- **web docs (uncommitted, reviewed 2026-11-12)**: parity.md/usage.md fixed (stale recursive lines, duplicate
+  indexerBatchSize row, wrong ~2 s indexing claim, event-table order). svelte parity.md is now synced FROM web's
+  newer copy; web's copy still says `createMenuDivider` is "same" — svelte exports `menuDivider` (row added in
+  svelte's copy as "to mirror"); copy that row back to web.
 - **Mixed uncommitted work in web**: search/index port sits on top of the earlier (also uncommitted)
   checkbox-filter port — commit in sensible chunks.
 
