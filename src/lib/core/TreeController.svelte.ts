@@ -1678,9 +1678,8 @@ export class TreeController<T> {
 		// Virtual scroll assumes UNIFORM row heights: the spacer is count * rowHeight,
 		// so if the measured height is smaller than the real row stride the spacer
 		// under-estimates total content and the last rows fall outside the scroll
-		// range (can't reach the bottom + near-bottom jitter). The flat rows carry no
-		// inter-row margin in virtual mode (flatGap is forced off — see Tree.svelte),
-		// so getBoundingClientRect().height is the exact, sub-pixel-accurate stride.
+		// range (can't reach the bottom + near-bottom jitter). Flat rows carry no
+		// inter-row margin, so getBoundingClientRect().height is the exact, sub-pixel-accurate stride.
 		$effect(() => {
 			if (!this.vsActive || this.virtualScrollItemHeight || this.vsMeasuredRowHeight) return;
 			if (this.allFlatNodes.length === 0) return;

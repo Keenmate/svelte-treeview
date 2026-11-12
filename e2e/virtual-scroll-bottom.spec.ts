@@ -49,3 +49,25 @@ test('virtual mode: rows are uniform height (no flatGap margin desync)', async (
 	console.log('REACH', JSON.stringify(reach));
 	expect(reach.overshoot).toBeLessThanOrEqual(1); // last row fully visible
 });
+
+test('flat mode: rows have the same uniform pitch as virtual (no first-child gap)', async ({ page }) => {
+	await page.addInitScript(() =>
+		localStorage.setItem('svelte-treeview-example-render-mode', 'flat')
+	);
+	await page.goto('/examples/search');
+	const tree = page.locator('.stv__tree--flat').first();
+	await tree.locator('.stv__node').first().waitFor();
+
+	const { margins, pitches } = await tree.evaluate((n: HTMLElement) => {
+		const rows = Array.from(n.querySelectorAll(':scope > .stv__node')) as HTMLElement[];
+		const pitches: number[] = [];
+		for (let i = 1; i < rows.length; i++) pitches.push(rows[i].offsetTop - rows[i - 1].offsetTop);
+		return {
+			margins: Array.from(new Set(rows.map((r) => getComputedStyle(r).marginTop))),
+			pitches: Array.from(new Set(pitches))
+		};
+	});
+	expect(margins).toEqual(['0px']);
+	// Uniform within sub-pixel rounding — a first-child gap row would be 2px off.
+	expect(Math.max(...pitches) - Math.min(...pitches)).toBeLessThanOrEqual(1);
+});

@@ -22,7 +22,6 @@
 		activeDropPosition?: DropPosition | null;
 		dropOperation?: DropOperation;
 
-		flatGap?: boolean; // margin-top before a first child (level > previous row's level)
 	}
 
 	// Destructure props using Svelte 5 syntax
@@ -36,7 +35,6 @@
 		activeDropPosition = null,
 		dropOperation = 'move',
 
-		flatGap = false,
 	}: Props = $props()
 
 	// Get stable references from context (avoids prop drilling and re-renders from inline functions)
@@ -248,9 +246,8 @@
 	const hasChildren = $derived(node?.hasChildren || false)
 	// Root nodes (level 1) sit flush against the left edge; only descendants indent,
 	// so the offset is (level - 1) × indent (matches web-treeview's root-at-zero math).
-	// flatGap adds a small gap before a first-child row (level > previous row's level).
 	const indentStyle = $derived(
-		`margin-left: calc(${Math.max(0, (node?.level || 1) - 1)} * ${config.flatIndentSize || 'var(--stv-indent-size)'})${flatGap ? '; margin-top: 2px' : ''}`
+		`margin-left: calc(${Math.max(0, (node?.level || 1) - 1)} * ${config.flatIndentSize || 'var(--stv-indent-size)'})`
 	)
 
 	function toggleExpanded() {

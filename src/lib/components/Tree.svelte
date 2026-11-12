@@ -2217,7 +2217,6 @@
 									hoveredNodeForDropPath={controller.hoveredNodeForDrop?.path}
 									activeDropPosition={controller.activeDropPosition}
 									dropOperation={controller.currentDropOperation}
-									flatGap={false}
 								/>
 							{:else}
 								{@render emptyDropState()}
@@ -2228,8 +2227,7 @@
 			{:else}
 				<!-- Flat rendering: uses visibleFlatNodes (progressively revealed) for efficient updates -->
 				<div class="stv__tree stv__tree--flat">
-					{#each controller.flatNodesToRender as node, i (node.id + '|' + node.path + '|' + node.hasChildren + '|' + node._rev)}
-						{@const prevNode = i > 0 ? controller.flatNodesToRender[i - 1] : null}
+					{#each controller.flatNodesToRender as node (node.id + '|' + node.path + '|' + node.hasChildren + '|' + node._rev)}
 						<Node
 							{node}
 							children={nodeTemplate}
@@ -2237,7 +2235,6 @@
 							hoveredNodeForDropPath={controller.hoveredNodeForDrop?.path}
 							activeDropPosition={controller.activeDropPosition}
 							dropOperation={controller.currentDropOperation}
-							flatGap={prevNode != null && (node.level ?? 0) > (prevNode.level ?? 0)}
 						/>
 					{:else}
 						{@render emptyDropState()}
