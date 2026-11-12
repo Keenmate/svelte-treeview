@@ -1,0 +1,198 @@
+/* Component-only example rules for the showcase (unlayered → always beat the devkit's
+   @layer kmwc). Colours from --kmwc-* tokens only, so light / dark / auto follow the kit's
+   theme switch. The tree-container + search-bar blocks are web-treeview's examples-local.css
+   verbatim (same demos, same look); the rest is svelte-treeview's own vocabulary that has no
+   kit equivalent yet. Page-specific rules stay in each page's own <style>.
+   If a SECOND component needs a block below, it belongs in the devkit instead. */
+
+/* ==========================================================================
+   TREE FRAMES (shared with web-treeview)
+   ========================================================================== */
+
+/* A bordered, scrollable frame around a live <Tree>. The inner padding keeps a full-width
+   row's focus ring (a box-shadow painted outside the row) from being clipped at the scroll edge. */
+.tree-container {
+	border: 1px solid var(--kmwc-border-color);
+	border-radius: var(--kmwc-radius-md);
+	min-height: 200px;
+	max-height: 500px;
+	overflow: auto;
+	padding: 1rem;
+	margin-bottom: 1rem;
+	background: var(--kmwc-main-bg);
+}
+
+.tree-container-sm {
+	min-height: 100px;
+	max-height: 300px;
+}
+
+.tree-container-lg {
+	min-height: 300px;
+	max-height: 700px;
+}
+
+/* Performance page: flat mode scrolls inside a tall frame; virtual scroll sizes and scrolls
+   itself, so .tree-container-vs must not cap or clip it. */
+.tree-container-tall {
+	min-height: 400px;
+	max-height: 500px;
+	overflow-x: visible;
+	overflow-y: auto;
+}
+
+.tree-container-vs {
+	max-height: none;
+	overflow: visible;
+}
+
+.trees-side-by-side {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 2rem;
+}
+
+@media (max-width: 768px) {
+	.trees-side-by-side {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* ==========================================================================
+   SEARCH BAR (shared with web-treeview) — search + performance pages
+   ==========================================================================
+   One input-looking frame holding a mode toggle, the borderless input, a hit counter and
+   prev / next / clear buttons, on the kit's input tokens. */
+.search-bar {
+	display: flex;
+	align-items: center;
+	background: var(--kmwc-input-bg);
+	border: var(--kmwc-input-border);
+	border-radius: var(--kmwc-radius-sm);
+	padding: 0 0.5rem;
+	margin-bottom: 1rem;
+	transition: border-color 0.2s, box-shadow 0.2s;
+}
+.search-bar:hover { border: var(--kmwc-input-border-hover); }
+.search-bar:focus-within {
+	border: var(--kmwc-input-border-focus);
+	box-shadow: var(--kmwc-input-box-shadow-focus);
+}
+.search-bar .search-input,
+.search-bar .search-input:hover,
+.search-bar .search-input:focus {
+	flex: 1;
+	min-width: 0;
+	height: calc(var(--kmwc-control-height) - 2px);
+	padding: 0 0.5rem;
+	border: none;
+	background: transparent;
+	box-shadow: none;
+	outline: none;
+}
+.search-mode-btn,
+.search-nav-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 28px;
+	height: 28px;
+	min-height: 0;
+	padding: 0;
+	border: none;
+	border-radius: var(--kmwc-radius-sm);
+	background: transparent;
+	color: var(--kmwc-text-color-3);
+}
+.search-mode-btn { width: 32px; height: 32px; }
+.search-mode-btn:hover,
+.search-nav-btn:hover {
+	background: var(--kmwc-hover-bg);
+	color: var(--kmwc-accent-color);
+}
+.search-mode-label {
+	min-width: 46px;
+	padding: 0 0.25rem;
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	color: var(--kmwc-accent-color);
+}
+.search-counter {
+	padding: 0 0.5rem;
+	font-size: 0.75rem;
+	font-weight: 600;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+	color: var(--kmwc-text-color-2);
+}
+.search-counter.no-results { color: var(--kmwc-danger-color); }
+
+/* ==========================================================================
+   SVELTE-TREEVIEW-ONLY VOCABULARY (no kit equivalent yet)
+   ========================================================================== */
+
+.controls-label {
+	font-weight: 600;
+	color: var(--kmwc-text-color-2);
+	margin-right: 0.25rem;
+}
+
+/* Tabs (scenario / mode switcher). */
+.tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	margin-bottom: 1rem;
+	border-bottom: 2px solid var(--kmwc-border-color);
+	padding-bottom: 0.5rem;
+}
+.tabs .tab {
+	background: var(--kmwc-neutral-fill-color);
+	color: var(--kmwc-text-color-on-neutral);
+	border-radius: var(--kmwc-radius-sm) var(--kmwc-radius-sm) 0 0;
+	font-weight: 500;
+}
+.tabs .tab:hover { background: var(--kmwc-neutral-fill-color-hover); }
+.tabs .tab.active {
+	background: var(--kmwc-accent-color);
+	color: var(--kmwc-text-color-on-accent);
+}
+
+/* Metric tiles (performance page). */
+.metrics {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1rem;
+}
+.metric {
+	background: var(--kmwc-elevated-bg);
+	border: 1px solid var(--kmwc-border-color);
+	padding: 1rem 1.5rem;
+	border-radius: var(--kmwc-radius-md);
+	text-align: center;
+	min-width: 120px;
+}
+.metric .value {
+	display: block;
+	font-size: 1.5rem;
+	font-weight: 600;
+}
+.metric .label {
+	display: block;
+	font-size: 0.8rem;
+	color: var(--kmwc-text-color-3);
+}
+
+/* Unsaved / dirty-state pill. */
+.unsaved-badge {
+	display: inline-block;
+	background: var(--kmwc-warning-color);
+	color: var(--kmwc-text-color-on-accent);
+	padding: 0.2rem 0.5rem;
+	border-radius: 9999px;
+	font-size: 0.75rem;
+	font-weight: 600;
+}

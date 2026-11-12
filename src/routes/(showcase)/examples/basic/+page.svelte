@@ -146,152 +146,151 @@
 	<title>Basic Usage - Svelte Treeview</title>
 </svelte:head>
 
-<div class="container">
-	<header class="example-header">
-		<a href="/" class="back-link">&larr; Back to Examples</a>
-		<h1>Basic Usage</h1>
-		<p class="subtitle">
-			The essentials — render a tree, control the initial expansion, scroll to a node, and drive
-			expand/collapse programmatically (array + exclusive-focus variants).
+<header>
+	<a href="/" class="back-link">&larr; Back to Examples</a>
+	<h1>Basic Usage</h1>
+	<p class="subtitle">
+		The essentials — render a tree, control the initial expansion, scroll to a node, and drive
+		expand/collapse programmatically (array + exclusive-focus variants).
+	</p>
+	<RenderModeSwitch />
+</header>
+
+<!-- Simple Tree -->
+<div class="card">
+	<h2>BU01 · Simple Tree</h2>
+	<p class="description">A basic tree with hierarchical data. Click nodes to select them.</p>
+
+	<div class="controls">
+		<span class="controls-label">Display:</span>
+		<button
+			class:secondary={activePreset !== 'condensed'}
+			onclick={() => applyPreset('condensed')}
+		>Condensed</button>
+		<button
+			class:secondary={activePreset !== 'compact'}
+			onclick={() => applyPreset('compact')}
+		>Compact</button>
+		<button
+			class:secondary={activePreset !== 'generous'}
+			onclick={() => applyPreset('generous')}
+		>Generous</button>
+	</div>
+
+	<div class="display-sliders">
+		<label for="sl-indent">--stv-indent-size</label>
+		<input id="sl-indent" type="range" min="0" max="32" step="1"
+			bind:value={indent} oninput={() => (activePreset = null)} />
+		<output>{indent}px</output>
+
+		<label for="sl-toggle">--stv-toggle-icon-width</label>
+		<input id="sl-toggle" type="range" min="12" max="32" step="1"
+			bind:value={toggleWidth} oninput={() => (activePreset = null)} />
+		<output>{toggleWidth}px</output>
+
+		<label for="sl-pad">--stv-node-padding (left)</label>
+		<input id="sl-pad" type="range" min="0" max="16" step="1"
+			bind:value={padLeft} oninput={() => (activePreset = null)} />
+		<output>{padLeft}px</output>
+	</div>
+
+	<div class="css-readout">
+		{#each cssReadout as v (v.name)}
+			<code class:is-gap={v.isGap}>{v.name}: <b>{v.value}</b></code>
+		{/each}
+	</div>
+
+	<div class="tree-container tree-container-tall" bind:this={simpleTreeWrap}>
+		<Tree
+			nodes={sampleData}
+			idMember="id"
+			pathMember="path"
+			sortCallback={sortByName}
+			isSorted={true}
+			expandLevel={2}
+			bind:focusedNode={selectedNode}
+			onNodeClick={handleNodeClick}
+			{...getTreeProps()}
+		>
+			{#snippet nodeTemplate(node: any)}
+				<!-- "Work" (1.1) and "Reports" (1.1.1) intentionally have no icon to show label alignment for icon-less nodes -->
+				<span>{#if node.path !== '1.1' && node.path !== '1.1.1'}{node.data?.icon} {/if}{node.data?.name}</span>
+			{/snippet}
+		</Tree>
+	</div>
+
+	<div class="note">
+		<p class="note-title">What makes a row's left offset</p>
+		<p>
+			A row sits in by <strong>toggle gutter + toggle margin + content left-pad + level × indent</strong>.
+			Three CSS variables control the fixed part and the per-level step — there are no props for
+			them. They're declared <em>on</em> the tree's root element (<code>.stv__container</code>), so a
+			value must be set there too; a value on an ancestor wrapper is shadowed by the tree's own
+			declaration. The sliders above write them inline on the container (inline wins); the readout
+			shows the resolved px and the derived <em>root gap</em> (the fixed part, independent of indent).
 		</p>
-		<RenderModeSwitch />
-	</header>
-
-	<!-- Simple Tree -->
-	<div class="card">
-		<h2>BU01 · Simple Tree</h2>
-		<p class="description">A basic tree with hierarchical data. Click nodes to select them.</p>
-
-		<div class="controls">
-			<span class="controls-label">Display:</span>
-			<button
-				class="btn {activePreset === 'condensed' ? '' : 'btn-secondary'}"
-				onclick={() => applyPreset('condensed')}
-			>Condensed</button>
-			<button
-				class="btn {activePreset === 'compact' ? '' : 'btn-secondary'}"
-				onclick={() => applyPreset('compact')}
-			>Compact</button>
-			<button
-				class="btn {activePreset === 'generous' ? '' : 'btn-secondary'}"
-				onclick={() => applyPreset('generous')}
-			>Generous</button>
+		<div class="code-block">
+			<pre>{`/* one instance — scope by a wrapper class */
+.my-tree .stv__container {
+  --stv-indent-size: ${indent}px;
+  --stv-toggle-icon-width: ${toggleWidth}px;
+  --stv-node-padding: calc(0.4 * var(--stv-rem)) ${padLeft}px;
+}`}</pre>
 		</div>
+	</div>
 
-		<div class="display-sliders">
-			<label for="sl-indent">--stv-indent-size</label>
-			<input id="sl-indent" type="range" min="0" max="32" step="1"
-				bind:value={indent} oninput={() => (activePreset = null)} />
-			<output>{indent}px</output>
-
-			<label for="sl-toggle">--stv-toggle-icon-width</label>
-			<input id="sl-toggle" type="range" min="12" max="32" step="1"
-				bind:value={toggleWidth} oninput={() => (activePreset = null)} />
-			<output>{toggleWidth}px</output>
-
-			<label for="sl-pad">--stv-node-padding (left)</label>
-			<input id="sl-pad" type="range" min="0" max="16" step="1"
-				bind:value={padLeft} oninput={() => (activePreset = null)} />
-			<output>{padLeft}px</output>
+	{#if selectedNode}
+		<div class="output">
+			<p class="output-label">Selected Node:</p>
+			<pre>{JSON.stringify({ path: selectedNode.path, name: selectedNode.data?.name }, null, 2)}</pre>
 		</div>
+	{/if}
 
-		<div class="css-readout">
-			{#each cssReadout as v (v.name)}
-				<code class:is-gap={v.isGap}><span class="css-readout-name">{v.name}</span>: <span class="css-readout-value">{v.value}</span></code>
-			{/each}
+	{#if clickedNode}
+		<div class="output">
+			<p class="output-label">Last Clicked:</p>
+			<pre>{clickedNode}</pre>
 		</div>
+	{/if}
+</div>
 
-		<div class="tree-container tree-container-tall" bind:this={simpleTreeWrap}>
+<!-- Expand Level -->
+<div class="card">
+	<h2>BU02 · Expand Level</h2>
+	<p class="description">Control how many levels are expanded by default using the <code>expandLevel</code> prop. Enable <code>shouldExpandAsAccordion</code> to auto-collapse siblings when a node is expanded.</p>
+
+	<div class="controls">
+		<label>
+			Expand Level:
+			<input type="number" bind:value={expandLevel} min="0" max="5" class="w-xs" />
+		</label>
+		<label>
+			<input type="checkbox" bind:checked={shouldExpandAsAccordion} />
+			Accordion Expand
+		</label>
+	</div>
+
+	<div class="tree-container">
+		{#key expandLevel}
 			<Tree
 				nodes={sampleData}
 				idMember="id"
 				pathMember="path"
 				sortCallback={sortByName}
 				isSorted={true}
-				expandLevel={2}
-				bind:focusedNode={selectedNode}
-				onNodeClick={handleNodeClick}
+				{expandLevel}
+				{shouldExpandAsAccordion}
 				{...getTreeProps()}
 			>
 				{#snippet nodeTemplate(node: any)}
-					<!-- "Work" (1.1) and "Reports" (1.1.1) intentionally have no icon to show label alignment for icon-less nodes -->
-					<span>{#if node.path !== '1.1' && node.path !== '1.1.1'}{node.data?.icon} {/if}{node.data?.name}</span>
+					<span>{node.data?.icon} {node.data?.name} <code class="muted">({node.path})</code></span>
 				{/snippet}
 			</Tree>
-		</div>
-
-		<div class="note">
-			<p class="note-title">What makes a row's left offset</p>
-			<p>
-				A row sits in by <strong>toggle gutter + toggle margin + content left-pad + level × indent</strong>.
-				Three CSS variables control the fixed part and the per-level step — there are no props for
-				them. They're declared <em>on</em> the tree's root element (<code>.stv__container</code>), so a
-				value must be set there too; a value on an ancestor wrapper is shadowed by the tree's own
-				declaration. The sliders above write them inline on the container (inline wins); the readout
-				shows the resolved px and the derived <em>root gap</em> (the fixed part, independent of indent).
-			</p>
-			<div class="code-block">
-				<pre>{`/* one instance — scope by a wrapper class */
-.my-tree .stv__container {
-  --stv-indent-size: ${indent}px;
-  --stv-toggle-icon-width: ${toggleWidth}px;
-  --stv-node-padding: calc(0.4 * var(--stv-rem)) ${padLeft}px;
-}`}</pre>
-			</div>
-		</div>
-
-		{#if selectedNode}
-			<div class="output">
-				<p class="output-label">Selected Node:</p>
-				<pre>{JSON.stringify({ path: selectedNode.path, name: selectedNode.data?.name }, null, 2)}</pre>
-			</div>
-		{/if}
-
-		{#if clickedNode}
-			<div class="output">
-				<p class="output-label">Last Clicked:</p>
-				<pre>{clickedNode}</pre>
-			</div>
-		{/if}
+		{/key}
 	</div>
 
-	<!-- Expand Level -->
-	<div class="card">
-		<h2>BU02 · Expand Level</h2>
-		<p class="description">Control how many levels are expanded by default using the <code>expandLevel</code> prop. Enable <code>shouldExpandAsAccordion</code> to auto-collapse siblings when a node is expanded.</p>
-
-		<div class="controls">
-			<label>
-				Expand Level:
-				<input type="number" bind:value={expandLevel} min="0" max="5" style="width: 60px" />
-			</label>
-			<label>
-				<input type="checkbox" bind:checked={shouldExpandAsAccordion} />
-				Accordion Expand
-			</label>
-		</div>
-
-		<div class="tree-container">
-			{#key expandLevel}
-				<Tree
-					nodes={sampleData}
-					idMember="id"
-					pathMember="path"
-					sortCallback={sortByName}
-					isSorted={true}
-					{expandLevel}
-					{shouldExpandAsAccordion}
-					{...getTreeProps()}
-				>
-					{#snippet nodeTemplate(node: any)}
-						<span>{node.data?.icon} {node.data?.name} <code style="font-size: 0.8em; color: #718096;">({node.path})</code></span>
-					{/snippet}
-				</Tree>
-			{/key}
-		</div>
-
-		<div class="code-block">
-			<pre>{`<Tree
+	<div class="code-block">
+		<pre>{`<Tree
   nodes={sampleData}
   idMember="id"
   pathMember="path"
@@ -299,73 +298,73 @@
   expandLevel={${expandLevel}}
   shouldExpandAsAccordion={${shouldExpandAsAccordion}}
 />`}</pre>
-		</div>
+	</div>
+</div>
+
+<!-- Scroll to Path -->
+<div class="card">
+	<h2>BU03 · Scroll to Path</h2>
+	<p class="description">Use <code>scrollToPath()</code> to programmatically scroll to and highlight a specific node. Enter a path from the tree below.</p>
+
+	<div class="controls">
+		<input type="text" bind:value={scrollPath} placeholder="Enter path (e.g., 1.2.1)" />
+		<button onclick={scrollToPath}>Scroll to Path</button>
 	</div>
 
-	<!-- Scroll to Path -->
-	<div class="card">
-		<h2>BU03 · Scroll to Path</h2>
-		<p class="description">Use <code>scrollToPath()</code> to programmatically scroll to and highlight a specific node. Enter a path from the tree below.</p>
-
-		<div class="controls">
-			<input type="text" bind:value={scrollPath} placeholder="Enter path (e.g., 1.2.1)" />
-			<button class="btn" onclick={scrollToPath}>Scroll to Path</button>
-		</div>
-
-		<div class="tree-container tree-container-tall">
-			<Tree
-				bind:this={scrollTreeRef}
-				nodes={sampleData}
-				idMember="id"
-				pathMember="path"
-				sortCallback={sortByName}
-				isSorted={true}
-				expandLevel={3}
-				{...getTreeProps()}
-			>
-				{#snippet nodeTemplate(node: any)}
-					<span>{node.data?.icon} {node.data?.name} <code style="font-size: 0.8em; color: #718096;">({node.path})</code></span>
-				{/snippet}
-			</Tree>
-		</div>
-
-		<div class="note">
-			<p class="note-title">Note</p>
-			<p>The <code>scrollToPath()</code> method accepts scroll options like <code>behavior</code> and <code>block</code> for smooth scrolling and positioning.</p>
-		</div>
+	<div class="tree-container tree-container-tall">
+		<Tree
+			bind:this={scrollTreeRef}
+			nodes={sampleData}
+			idMember="id"
+			pathMember="path"
+			sortCallback={sortByName}
+			isSorted={true}
+			expandLevel={3}
+			{...getTreeProps()}
+		>
+			{#snippet nodeTemplate(node: any)}
+				<span>{node.data?.icon} {node.data?.name} <code class="muted">({node.path})</code></span>
+			{/snippet}
+		</Tree>
 	</div>
 
-	<!-- Programmatic Expand/Collapse -->
-	<div class="card">
-		<h2>BU04 · Programmatic Expand / Collapse</h2>
-		<p class="description">Use <code>expandAll()</code>, <code>collapseAll()</code>, <code>expandNodes(path)</code>, and <code>collapseNodes(path)</code> to control the tree programmatically.</p>
+	<div class="note">
+		<p class="note-title">Note</p>
+		<p>The <code>scrollToPath()</code> method accepts scroll options like <code>behavior</code> and <code>block</code> for smooth scrolling and positioning.</p>
+	</div>
+</div>
 
-		<div class="controls">
-			<button class="btn" onclick={() => expandCollapseTreeRef?.expandAll()}>Expand All</button>
-			<button class="btn btn-secondary" onclick={() => expandCollapseTreeRef?.collapseAll()}>Collapse All</button>
-			<button class="btn" onclick={() => expandCollapseTreeRef?.expandNodes('1')}>Expand "Documents" (1)</button>
-			<button class="btn btn-secondary" onclick={() => expandCollapseTreeRef?.collapseNodes('1')}>Collapse "Documents" (1)</button>
-		</div>
+<!-- Programmatic Expand/Collapse -->
+<div class="card">
+	<h2>BU04 · Programmatic Expand / Collapse</h2>
+	<p class="description">Use <code>expandAll()</code>, <code>collapseAll()</code>, <code>expandNodes(path)</code>, and <code>collapseNodes(path)</code> to control the tree programmatically.</p>
 
-		<div class="tree-container tree-container-tall">
-			<Tree
-				bind:this={expandCollapseTreeRef}
-				nodes={sampleData}
-				idMember="id"
-				pathMember="path"
-				sortCallback={sortByName}
-				isSorted={true}
-				expandLevel={1}
-				{...getTreeProps()}
-			>
-				{#snippet nodeTemplate(node: any)}
-					<span>{node.data?.icon} {node.data?.name} <code style="font-size: 0.8em; color: #718096;">({node.path})</code></span>
-				{/snippet}
-			</Tree>
-		</div>
+	<div class="controls">
+		<button onclick={() => expandCollapseTreeRef?.expandAll()}>Expand All</button>
+		<button class="secondary" onclick={() => expandCollapseTreeRef?.collapseAll()}>Collapse All</button>
+		<button onclick={() => expandCollapseTreeRef?.expandNodes('1')}>Expand "Documents" (1)</button>
+		<button class="secondary" onclick={() => expandCollapseTreeRef?.collapseNodes('1')}>Collapse "Documents" (1)</button>
+	</div>
 
-		<div class="code-block">
-			<pre>{`// Get tree reference
+	<div class="tree-container tree-container-tall">
+		<Tree
+			bind:this={expandCollapseTreeRef}
+			nodes={sampleData}
+			idMember="id"
+			pathMember="path"
+			sortCallback={sortByName}
+			isSorted={true}
+			expandLevel={1}
+			{...getTreeProps()}
+		>
+			{#snippet nodeTemplate(node: any)}
+				<span>{node.data?.icon} {node.data?.name} <code class="muted">({node.path})</code></span>
+			{/snippet}
+		</Tree>
+	</div>
+
+	<div class="code-block">
+		<pre>{`// Get tree reference
 let treeRef: Tree;
 
 // Expand/collapse methods
@@ -373,56 +372,55 @@ treeRef.expandAll();
 treeRef.collapseAll();
 treeRef.expandNodes('1');      // Expand specific path
 treeRef.collapseNodes('1');    // Collapse specific path`}</pre>
-		</div>
+	</div>
+</div>
+
+<!-- Array variants -->
+<div class="card">
+	<h2>BU05 · Array Variants</h2>
+	<p class="description">
+		All four methods accept either a single path or an array of paths. The array form runs once
+		and emits a single change notification — useful when you need to open or close several places
+		in the tree at the same time.
+	</p>
+
+	<div class="controls">
+		<button onclick={() => arrayTreeRef?.collapseAll()}>Reset (collapseAll)</button>
+		<button
+			onclick={() => arrayTreeRef?.expandNodes(['1.1.1', '3.1.2'])}
+		>
+			expandNodes(['1.1.1', '3.1.2'])
+		</button>
+		<button onclick={() => arrayTreeRef?.expandAll(['1', '3'])}>
+			expandAll(['1', '3'])
+		</button>
+		<button onclick={() => arrayTreeRef?.collapseNodes(['1.1', '3.1'])}>
+			collapseNodes(['1.1', '3.1'])
+		</button>
+		<button class="secondary" onclick={() => arrayTreeRef?.collapseAll(['1', '3'])}>
+			collapseAll(['1', '3'])
+		</button>
 	</div>
 
-	<!-- Array variants -->
-	<div class="card">
-		<h2>BU05 · Array Variants</h2>
-		<p class="description">
-			All four methods accept either a single path or an array of paths. The array form runs once
-			and emits a single change notification — useful when you need to open or close several places
-			in the tree at the same time.
-		</p>
+	<div class="tree-container tree-container-tall">
+		<Tree
+			bind:this={arrayTreeRef}
+			nodes={sampleData}
+			idMember="id"
+			pathMember="path"
+			sortCallback={sortByPath}
+			isSorted={true}
+			expandLevel={0}
+			{...getTreeProps()}
+		>
+			{#snippet nodeTemplate(node: LTreeNode<Item>)}
+				<span>{node.data?.icon} {node.data?.name}</span>
+			{/snippet}
+		</Tree>
+	</div>
 
-		<div class="controls">
-			<button class="btn" onclick={() => arrayTreeRef?.collapseAll()}>Reset (collapseAll)</button>
-			<button
-				class="btn"
-				onclick={() => arrayTreeRef?.expandNodes(['1.1.1', '3.1.2'])}
-			>
-				expandNodes(['1.1.1', '3.1.2'])
-			</button>
-			<button class="btn" onclick={() => arrayTreeRef?.expandAll(['1', '3'])}>
-				expandAll(['1', '3'])
-			</button>
-			<button class="btn" onclick={() => arrayTreeRef?.collapseNodes(['1.1', '3.1'])}>
-				collapseNodes(['1.1', '3.1'])
-			</button>
-			<button class="btn btn-secondary" onclick={() => arrayTreeRef?.collapseAll(['1', '3'])}>
-				collapseAll(['1', '3'])
-			</button>
-		</div>
-
-		<div class="tree-container tree-container-tall">
-			<Tree
-				bind:this={arrayTreeRef}
-				nodes={sampleData}
-				idMember="id"
-				pathMember="path"
-				sortCallback={sortByPath}
-				isSorted={true}
-				expandLevel={0}
-				{...getTreeProps()}
-			>
-				{#snippet nodeTemplate(node: LTreeNode<Item>)}
-					<span>{node.data?.icon} {node.data?.name}</span>
-				{/snippet}
-			</Tree>
-		</div>
-
-		<div class="code-block">
-			<pre>{`// Open multiple spines in one pass
+	<div class="code-block">
+		<pre>{`// Open multiple spines in one pass
 tree.expandNodes(['1.1.1', '3.1.2']);
 
 // Open entire subtrees
@@ -433,67 +431,63 @@ tree.collapseNodes(['1.1', '3.1']);
 
 // Close entire subtrees
 tree.collapseAll(['1', '3']);`}</pre>
-		</div>
+	</div>
+</div>
+
+<!-- Exclusive focus -->
+<div class="card">
+	<h2>BU06 · Exclusive Focus</h2>
+	<p class="description">
+		Pass <code>{`{ isExclusive: true }`}</code> to <code>expandNodes</code> or
+		<code>expandAll</code> to open the target path <em>and</em> collapse everything currently
+		open that isn't on its spine. Equivalent to <code>collapseAll() + expandNodes(path)</code> —
+		but in a single pass with one emit, so listeners and CSS animations don't see the
+		intermediate "all collapsed" state.
+	</p>
+
+	<div class="controls">
+		<button onclick={() => focusTreeRef?.expandAll()}>Open everything (reset)</button>
+		<button
+			onclick={() => focusTreeRef?.expandNodes('1.1.1', { isExclusive: true })}
+		>
+			Focus on 1.1.1
+		</button>
+		<button
+			onclick={() => focusTreeRef?.expandNodes(['1.1.1', '3.1.2'], { isExclusive: true })}
+		>
+			Focus on 1.1.1 + 3.1.2
+		</button>
+		<button
+			onclick={() => focusTreeRef?.expandAll('1', { isExclusive: true })}
+		>
+			Focus on whole "Documents" subtree
+		</button>
+		<button
+			onclick={() => focusTreeRef?.expandAll('3.1', { isExclusive: true })}
+		>
+			Focus on "Web App" subtree
+		</button>
 	</div>
 
-	<!-- Exclusive focus -->
-	<div class="card">
-		<h2>BU06 · Exclusive Focus</h2>
-		<p class="description">
-			Pass <code>{`{ isExclusive: true }`}</code> to <code>expandNodes</code> or
-			<code>expandAll</code> to open the target path <em>and</em> collapse everything currently
-			open that isn't on its spine. Equivalent to <code>collapseAll() + expandNodes(path)</code> —
-			but in a single pass with one emit, so listeners and CSS animations don't see the
-			intermediate "all collapsed" state.
-		</p>
+	<div class="tree-container tree-container-tall">
+		<Tree
+			bind:this={focusTreeRef}
+			nodes={sampleData}
+			idMember="id"
+			pathMember="path"
+			sortCallback={sortByPath}
+			isSorted={true}
+			expandLevel={3}
+			{...getTreeProps()}
+		>
+			{#snippet nodeTemplate(node: LTreeNode<Item>)}
+				<span>{node.data?.icon} {node.data?.name}</span>
+			{/snippet}
+		</Tree>
+	</div>
 
-		<div class="controls">
-			<button class="btn" onclick={() => focusTreeRef?.expandAll()}>Open everything (reset)</button>
-			<button
-				class="btn"
-				onclick={() => focusTreeRef?.expandNodes('1.1.1', { isExclusive: true })}
-			>
-				Focus on 1.1.1
-			</button>
-			<button
-				class="btn"
-				onclick={() => focusTreeRef?.expandNodes(['1.1.1', '3.1.2'], { isExclusive: true })}
-			>
-				Focus on 1.1.1 + 3.1.2
-			</button>
-			<button
-				class="btn"
-				onclick={() => focusTreeRef?.expandAll('1', { isExclusive: true })}
-			>
-				Focus on whole "Documents" subtree
-			</button>
-			<button
-				class="btn"
-				onclick={() => focusTreeRef?.expandAll('3.1', { isExclusive: true })}
-			>
-				Focus on "Web App" subtree
-			</button>
-		</div>
-
-		<div class="tree-container tree-container-tall">
-			<Tree
-				bind:this={focusTreeRef}
-				nodes={sampleData}
-				idMember="id"
-				pathMember="path"
-				sortCallback={sortByPath}
-				isSorted={true}
-				expandLevel={3}
-				{...getTreeProps()}
-			>
-				{#snippet nodeTemplate(node: LTreeNode<Item>)}
-					<span>{node.data?.icon} {node.data?.name}</span>
-				{/snippet}
-			</Tree>
-		</div>
-
-		<div class="code-block">
-			<pre>{`// "Focus" — open this path, close everything else. Single emit.
+	<div class="code-block">
+		<pre>{`// "Focus" — open this path, close everything else. Single emit.
 tree.expandNodes('1.1.1', { isExclusive: true });
 
 // Multi-focus — union of spines stays open, rest collapses.
@@ -502,26 +496,26 @@ tree.expandNodes(['1.1.1', '3.1.2'], { isExclusive: true });
 // "Focus on whole subtree" — opens the spine to the target AND its
 // full subtree; collapses everything outside.
 tree.expandAll('1', { isExclusive: true });`}</pre>
-		</div>
-
-		<div class="note">
-			<p class="note-title">When to use isExclusive</p>
-			<p>
-				Best for "spotlight" or "drill-in" UX where you want a single branch in focus. Without
-				<code>isExclusive</code>, doing the same thing with <code>collapseAll()</code> followed by
-				<code>expandNodes(path)</code> works, but emits twice — downstream listeners (transition
-				animations, sync to a URL, virtualized renderers) see the intermediate fully-collapsed
-				state. <code>isExclusive: true</code> walks only currently-expanded nodes (cheap) and
-				emits once.
-			</p>
-		</div>
 	</div>
 
-	<!-- Expand / Collapse API -->
-	<div class="card">
-		<h2>BU07 · Expand / Collapse API</h2>
-		<div class="code-block">
-			<pre>{`interface ExpandOptions { isExclusive?: boolean; isSilent?: boolean }
+	<div class="note">
+		<p class="note-title">When to use isExclusive</p>
+		<p>
+			Best for "spotlight" or "drill-in" UX where you want a single branch in focus. Without
+			<code>isExclusive</code>, doing the same thing with <code>collapseAll()</code> followed by
+			<code>expandNodes(path)</code> works, but emits twice — downstream listeners (transition
+			animations, sync to a URL, virtualized renderers) see the intermediate fully-collapsed
+			state. <code>isExclusive: true</code> walks only currently-expanded nodes (cheap) and
+			emits once.
+		</p>
+	</div>
+</div>
+
+<!-- Expand / Collapse API -->
+<div class="card">
+	<h2>BU07 · Expand / Collapse API</h2>
+	<div class="code-block">
+		<pre>{`interface ExpandOptions { isExclusive?: boolean; isSilent?: boolean }
 
 expandNodes(paths: string | string[], options?: ExpandOptions)   // one level, ancestors opened
 collapseNodes(paths: string | string[], options?: ExpandOptions)
@@ -529,14 +523,9 @@ toggleNodeExpanded(path: string, options?: ExpandOptions)
 
 expandAll(paths?: string | string[] | null, options?: ExpandOptions)   // null = whole tree,
 collapseAll(paths?: string | string[] | null, options?: ExpandOptions) // paths = those + descendants`}</pre>
-		</div>
-		<p class="description">
-			<code>isSilent: true</code> suppresses events / callbacks only — the tree always re-renders
-			(svelte-treeview has no expand callbacks; the option exists for parity with web-treeview).
-		</p>
 	</div>
-
-	<footer>
-		<p><a href="/">&larr; Back to Examples</a></p>
-	</footer>
+	<p class="description">
+		<code>isSilent: true</code> suppresses events / callbacks only — the tree always re-renders
+		(svelte-treeview has no expand callbacks; the option exists for parity with web-treeview).
+	</p>
 </div>

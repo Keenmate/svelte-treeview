@@ -13,6 +13,7 @@
 	import type { LTreeNode, DropPosition } from '$lib/ltree/types.js';
 	import type { NodeRef } from '$lib/index.js';
 	import RenderModeSwitch from '../RenderModeSwitch.svelte';
+	import LogPanel, { logLine, type LogEntry } from '../../LogPanel.svelte';
 	import { getTreeProps } from '../render-mode.svelte.js';
 
 	// One order-aware sort shared by every tree on this page (editor + scenarios).
@@ -86,7 +87,7 @@
 	// While fanning out an in-place duplicate we issue several copy/paste ops; mute
 	// their per-op logs so the activity log shows one summary line instead.
 	let suppressClipboardLog = false;
-	let activityLog = $state<string[]>([]);
+	let activityLog = $state<LogEntry[]>([]);
 	let dropWarning = $state<string | null>(null);
 	let nextId = 200;
 
@@ -153,7 +154,7 @@
 
 		if (mod && key === 'c') {
 			const paths = clipboardPaths(controller);
-			if (!paths.length) { addLog('Nothing selected to copy'); return false; }
+			if (!paths.length) { addLog('copy', 'Nothing selected to copy', 'warning'); return false; }
 			controller.copyNodes(paths);
 			copiedPaths = paths;
 			cutPaths = new Set(); // copying supersedes any pending cut
@@ -162,7 +163,7 @@
 
 		if (mod && key === 'x') {
 			const paths = clipboardPaths(controller);
-			if (!paths.length) { addLog('Nothing selected to cut'); return false; }
+			if (!paths.length) { addLog('cut', 'Nothing selected to cut', 'warning'); return false; }
 			controller.cutNodes(paths);
 			copiedPaths = paths;
 			cutPaths = new Set(controller.cutPaths); // mirror dim set for the template
@@ -170,7 +171,7 @@
 		}
 
 		if (mod && key === 'v') {
-			if (!controller.hasClipboardContent()) { addLog('Clipboard is empty'); return false; }
+			if (!controller.hasClipboardContent()) { addLog('paste', 'Clipboard is empty', 'warning'); return false; }
 			const target = selectedNode?.path ?? '';
 
 			// Duplicate-in-place: Ctrl+V onto one of the copied nodes when several were
@@ -190,7 +191,7 @@
 				}
 				controller.copyNodes(copiedPaths); // restore the full clipboard for repeats
 				suppressClipboardLog = false;
-				addLog(`Duplicated ${pasted} node(s) in place`);
+				addLog('paste', `Duplicated ${pasted} node(s) in place`);
 				cutPaths = new Set();
 				return false;
 			}
@@ -206,7 +207,7 @@
 		// library leaves to the consumer, so we wire it here just like copy/cut/paste.
 		if (event.key === 'Delete') {
 			const paths = clipboardPaths(controller);
-			if (!paths.length) { addLog('Nothing selected to delete'); return false; }
+			if (!paths.length) { addLog('delete', 'Nothing selected to delete', 'warning'); return false; }
 			// Remove only top-level paths: removing a parent takes its descendants with it.
 			const sep = '.';
 			const topLevel = paths.filter((p) => !paths.some((o) => o !== p && p.startsWith(o + sep)));
@@ -226,10 +227,10 @@
 			cutPaths = new Set();
 			if (blocked > 0) {
 				const msg = `Cannot delete ${blocked} node(s) with subnodes — remove their contents first`;
-				addLog(`Deleted ${removed} node(s); skipped ${blocked} with subnodes`);
+				addLog('delete', `Deleted ${removed} node(s); skipped ${blocked} with subnodes`, 'warning');
 				showWarning(msg);
 			} else {
-				addLog(`Deleted ${removed} node(s)`);
+				addLog('delete', `Deleted ${removed} node(s)`);
 			}
 			return false;
 		}
@@ -238,7 +239,7 @@
 		if (event.key === 'Escape' && cutPaths.size > 0) {
 			controller.cancelCut();
 			cutPaths = new Set();
-			addLog('Cut cancelled');
+			addLog('cut', 'Cut cancelled');
 			return false;
 		}
 
@@ -282,8 +283,11 @@
 		localStorage.setItem('dropZoneConfig', JSON.stringify(config));
 	});
 
-	function addLog(message: string) {
-		activityLog = [...activityLog.slice(-9), `${new Date().toLocaleTimeString()} - ${message}`];
+	type LogVariant = 'info' | 'success' | 'warning' | 'danger';
+
+	// Timeline lines (time · operation · detail) for the kit's log panel; newest at the bottom.
+	function addLog(name: string, detail: string, variant?: LogVariant) {
+		activityLog = [...activityLog.slice(-49), logLine(name, detail, variant)];
 	}
 
 	// Show a transient warning in the same banner used for drop rejections.
@@ -296,7 +300,7 @@
 
 	function handleAddNode() {
 		if (!newNodeName.trim()) {
-			addLog('Error: Node name is required');
+			addLog('error', 'Node name is required', 'danger');
 			return;
 		}
 
@@ -311,16 +315,16 @@
 		});
 
 		if (result.success) {
-			addLog(`Added "${newNodeName}" ${parentPath ? `under "${selectedNode?.data?.name}"` : 'at root'}`);
+			addLog('add', `Added "${newNodeName}" ${parentPath ? `under "${selectedNode?.data?.name}"` : 'at root'}`);
 			newNodeName = '';
 		} else {
-			addLog(`Error: ${result.error}`);
+			addLog('error', String(result.error), 'danger');
 		}
 	}
 
 	function handleRemoveNode() {
 		if (!selectedNode) {
-			addLog('Error: Select a node to remove');
+			addLog('error', 'Select a node to remove', 'danger');
 			return;
 		}
 
@@ -328,16 +332,16 @@
 		const result = treeRef.removeNode(selectedNode.path);
 
 		if (result.success) {
-			addLog(`Removed "${nodeName}"`);
+			addLog('remove', `Removed "${nodeName}"`);
 			selectedNode = null;
 		} else {
-			addLog(`Error: ${result.error}`);
+			addLog('error', String(result.error), 'danger');
 		}
 	}
 
 	function handleMoveUp() {
 		if (!selectedNode) {
-			addLog('Error: Select a node to move');
+			addLog('error', 'Select a node to move', 'danger');
 			return;
 		}
 
@@ -345,7 +349,7 @@
 		const currentIndex = siblings.findIndex((s) => s.path === selectedNode!.path);
 
 		if (currentIndex <= 0) {
-			addLog('Already at top');
+			addLog('move', 'Already at top', 'warning');
 			return;
 		}
 
@@ -353,15 +357,15 @@
 		const result = treeRef.moveNode(selectedNode.path, targetNode.path, 'before');
 
 		if (result.success) {
-			addLog(`Moved "${selectedNode.data?.name}" before "${targetNode.data?.name}"`);
+			addLog('move', `Moved "${selectedNode.data?.name}" before "${targetNode.data?.name}"`);
 		} else {
-			addLog(`Error: ${result.error}`);
+			addLog('error', String(result.error), 'danger');
 		}
 	}
 
 	function handleMoveDown() {
 		if (!selectedNode) {
-			addLog('Error: Select a node to move');
+			addLog('error', 'Select a node to move', 'danger');
 			return;
 		}
 
@@ -369,7 +373,7 @@
 		const currentIndex = siblings.findIndex((s) => s.path === selectedNode!.path);
 
 		if (currentIndex >= siblings.length - 1) {
-			addLog('Already at bottom');
+			addLog('move', 'Already at bottom', 'warning');
 			return;
 		}
 
@@ -377,9 +381,9 @@
 		const result = treeRef.moveNode(selectedNode.path, targetNode.path, 'after');
 
 		if (result.success) {
-			addLog(`Moved "${selectedNode.data?.name}" after "${targetNode.data?.name}"`);
+			addLog('move', `Moved "${selectedNode.data?.name}" after "${targetNode.data?.name}"`);
 		} else {
-			addLog(`Error: ${result.error}`);
+			addLog('error', String(result.error), 'danger');
 		}
 	}
 
@@ -398,7 +402,7 @@
 
 		// Rule 1: Images cannot be dropped under Documents folder
 		if (isImage(draggedNode) && position === 'child' && isDocumentsFolder(dropNode)) {
-			addLog(`Cannot drop images under Documents folder - cancelled`);
+			addLog('drop', `Cannot drop images under Documents folder - cancelled`, 'warning');
 			dropWarning = `Cannot drop images under Documents folder`;
 			return false; // Cancel the drop
 		}
@@ -407,11 +411,11 @@
 		if (position === 'child' && dropNode && !isFolder(dropNode)) {
 			const choice = await showDropDialog(dropNode.data?.name || 'item');
 			if (choice === 'cancel') {
-				addLog(`Drop cancelled by user`);
+				addLog('drop', `Drop cancelled by user`, 'warning');
 				return false;
 			}
 			if (choice === 'sibling') {
-				addLog(`User chose to drop as sibling of "${dropNode.data?.name}"`);
+				addLog('drop', `User chose to drop as sibling of "${dropNode.data?.name}"`);
 				return { position: 'after' as DropPosition };
 			}
 		}
@@ -437,16 +441,16 @@
 		const dropNode = target?.node ?? null;
 		const draggedNode = source.node;
 		if (!dropNode || !draggedNode) {
-			addLog(`Dropped "${draggedNode?.data?.name}" at root`);
+			addLog('drop', `Dropped "${draggedNode?.data?.name}" at root`);
 			return;
 		}
 
 		const result = treeRef.moveNode(draggedNode.path, dropNode.path, position as 'before' | 'after' | 'child');
 
 		if (result.success) {
-			addLog(`Dropped "${draggedNode.data?.name}" ${position} "${dropNode.data?.name}"`);
+			addLog('drop', `Dropped "${draggedNode.data?.name}" ${position} "${dropNode.data?.name}"`);
 		} else {
-			addLog(`Error: ${result.error}`);
+			addLog('error', String(result.error), 'danger');
 		}
 	}
 
@@ -454,7 +458,7 @@
 		const children = treeRef.getChildren('');
 		const exportData = collectNodes(children);
 		console.log('Exported tree data:', exportData);
-		addLog(`Exported ${exportData.length} nodes to console`);
+		addLog('export', `Exported ${exportData.length} nodes to console`);
 	}
 
 	function collectNodes(nodes: LTreeNode<EditorNode>[]): EditorNode[] {
@@ -472,7 +476,7 @@
 		treeData = initialTreeData();
 		selectedNode = null;
 		activityLog = [];
-		addLog('Tree reset to initial state');
+		addLog('reset', 'Tree reset to initial state');
 	}
 
 	// ════════════════════════════════════════════════════════════════════
@@ -570,11 +574,11 @@
 	let mockDatabaseD = $state<ScenarioNode[]>([]);
 	let mockDatabaseE = $state<ScenarioNode[]>([]);
 
-	let activityLogA = $state<string[]>([]);
-	let activityLogB = $state<string[]>([]);
-	let activityLogC = $state<string[]>([]);
-	let activityLogD = $state<string[]>([]);
-	let activityLogE = $state<string[]>([]);
+	let activityLogA = $state<LogEntry[]>([]);
+	let activityLogB = $state<LogEntry[]>([]);
+	let activityLogC = $state<LogEntry[]>([]);
+	let activityLogD = $state<LogEntry[]>([]);
+	let activityLogE = $state<LogEntry[]>([]);
 
 	let selectedNodeC = $state<LTreeNode<ScenarioNode> | null>(null);
 	let editNameC = $state('');
@@ -596,20 +600,20 @@
 	let treeRefE = $state<Tree<ScenarioNode>>(undefined!);
 
 	// Logging helpers
-	function addLogA(message: string) {
-		activityLogA = [...activityLogA.slice(-19), `${new Date().toLocaleTimeString()} - ${message}`];
+	function addLogA(name: string, detail: string, variant?: LogVariant) {
+		activityLogA = [...activityLogA.slice(-49), logLine(name, detail, variant)];
 	}
-	function addLogB(message: string) {
-		activityLogB = [...activityLogB.slice(-19), `${new Date().toLocaleTimeString()} - ${message}`];
+	function addLogB(name: string, detail: string, variant?: LogVariant) {
+		activityLogB = [...activityLogB.slice(-49), logLine(name, detail, variant)];
 	}
-	function addLogC(message: string) {
-		activityLogC = [...activityLogC.slice(-19), `${new Date().toLocaleTimeString()} - ${message}`];
+	function addLogC(name: string, detail: string, variant?: LogVariant) {
+		activityLogC = [...activityLogC.slice(-49), logLine(name, detail, variant)];
 	}
-	function addLogD(message: string) {
-		activityLogD = [...activityLogD.slice(-19), `${new Date().toLocaleTimeString()} - ${message}`];
+	function addLogD(name: string, detail: string, variant?: LogVariant) {
+		activityLogD = [...activityLogD.slice(-49), logLine(name, detail, variant)];
 	}
-	function addLogE(message: string) {
-		activityLogE = [...activityLogE.slice(-19), `${new Date().toLocaleTimeString()} - ${message}`];
+	function addLogE(name: string, detail: string, variant?: LogVariant) {
+		activityLogE = [...activityLogE.slice(-49), logLine(name, detail, variant)];
 	}
 
 	// Simulated DB operations with random latency (50-450ms)
@@ -639,16 +643,16 @@
 
 		// Step 1: Save expanded state BEFORE any changes
 		const expandedPaths = [...expandedA];
-		addLogA(`Saved ${expandedPaths.length} expanded paths`);
+		addLogA('state', `Saved ${expandedPaths.length} expanded paths`);
 
 		isLoadingA = true;
 
 		if (isSameTree && operation === 'move') {
-			addLogA(`Moving "${draggedNode.data?.name}" ${position} "${dropNode?.data?.name || 'root'}"`);
+			addLogA('move', `Moving "${draggedNode.data?.name}" ${position} "${dropNode?.data?.name || 'root'}"`);
 			const delay = await simulateLatency();
 			const nodeData = mockDatabaseA.find((n) => n.id === draggedNode.data?.id);
 			if (nodeData) {
-				addLogA(`Saved move to DB (${delay}ms)`);
+				addLogA('db', `Saved move to DB (${delay}ms)`, 'success');
 			}
 		} else {
 			const parentPath = dropNode === null ? '' : position === 'child' ? dropNode.path : dropNode.parentPath || '';
@@ -687,26 +691,26 @@
 
 			const delay = await simulateLatency();
 			mockDatabaseA = [...mockDatabaseA, ...nodesToAdd];
-			addLogA(`Added ${nodesToAdd.length} node(s) at "${rootPath}" with sortOrder=${rootSortOrder} (${position} ${dropNode?.data?.name || 'root'}) (${delay}ms)`);
+			addLogA('add', `Added ${nodesToAdd.length} node(s) at "${rootPath}" with sortOrder=${rootSortOrder} (${position} ${dropNode?.data?.name || 'root'}) (${delay}ms)`);
 		}
 
 		// Step 2: Reload FULL tree from database (simulating server round-trip)
-		addLogA(`Reloading tree from DB...`);
+		addLogA('db', `Reloading tree from DB...`, 'info');
 		const reloadDelay = await simulateLatency();
 		targetDataA = [...mockDatabaseA];
-		addLogA(`Loaded ${mockDatabaseA.length} records (${reloadDelay}ms)`);
+		addLogA('db', `Loaded ${mockDatabaseA.length} records (${reloadDelay}ms)`);
 
 		// Step 3: Restore expanded state
 		await tick();
 		expandedA = new Set(expandedPaths);
-		addLogA(`Restored ${expandedPaths.length} expanded paths`);
+		addLogA('state', `Restored ${expandedPaths.length} expanded paths`);
 
 		isLoadingA = false;
 	}
 
 	async function reloadFromDbA() {
 		const expandedPaths = [...expandedA];
-		addLogA(`Reloading from DB (saving ${expandedPaths.length} expanded paths)...`);
+		addLogA('db', `Reloading from DB (saving ${expandedPaths.length} expanded paths)...`, 'info');
 
 		isLoadingA = true;
 		const delay = await simulateLatency();
@@ -714,7 +718,7 @@
 
 		await tick();
 		expandedA = new Set(expandedPaths);
-		addLogA(`Reload complete (${delay}ms), restored expanded state`);
+		addLogA('db', `Reload complete (${delay}ms), restored expanded state`);
 		isLoadingA = false;
 	}
 
@@ -723,7 +727,7 @@
 		targetDataA = [...mockDatabaseA];
 		activityLogA = [];
 		nextIdA = 1000;
-		addLogA('Reset to initial state');
+		addLogA('reset', 'Reset to initial state');
 	}
 
 	// ── Scenario B: Partial Redraw ───────────────────────────────────────
@@ -736,9 +740,9 @@
 		isLoadingB = true;
 
 		if (isSameTree && operation === 'move') {
-			addLogB(`[AUTO-HANDLED] Moved "${draggedNode.data?.name}" ${position} "${dropNode?.data?.name || 'root'}"`);
+			addLogB('move', `[AUTO-HANDLED] Moved "${draggedNode.data?.name}" ${position} "${dropNode?.data?.name || 'root'}"`);
 			const delay = await simulateLatency();
-			addLogB(`Saved to DB (${delay}ms) - no tree rebuild needed!`);
+			addLogB('db', `Saved to DB (${delay}ms) - no tree rebuild needed!`, 'success');
 		} else {
 			const parentPath = dropNode === null ? '' : position === 'child' ? dropNode.path : dropNode.parentPath || '';
 
@@ -757,9 +761,9 @@
 			});
 
 			if (result.success) {
-				addLogB(`Copied ${result.count} node(s) with sortOrder=${rootSortOrder} (${position} ${dropNode?.data?.name || 'root'})`);
+				addLogB('copy', `Copied ${result.count} node(s) with sortOrder=${rootSortOrder} (${position} ${dropNode?.data?.name || 'root'})`);
 				const delay = await simulateLatency();
-				addLogB(`Saved to DB (${delay}ms)`);
+				addLogB('db', `Saved to DB (${delay}ms)`, 'success');
 			}
 		}
 
@@ -771,7 +775,7 @@
 		mockDatabaseB = [...createInitialTargetData()];
 		activityLogB = [];
 		nextIdB = 2000;
-		addLogB('Reset to initial state');
+		addLogB('reset', 'Reset to initial state');
 	}
 
 	// ── Scenario C: Individual CRUD ──────────────────────────────────────
@@ -784,9 +788,9 @@
 		isLoadingC = true;
 
 		if (isSameTree && operation === 'move') {
-			addLogC(`Moved "${draggedNode.data?.name}"`);
+			addLogC('move', `Moved "${draggedNode.data?.name}"`);
 			const delay = await simulateLatency();
-			addLogC(`Saved move to DB (${delay}ms)`);
+			addLogC('db', `Saved move to DB (${delay}ms)`, 'success');
 		} else {
 			const parentPath = dropNode === null ? '' : position === 'child' ? dropNode.path : dropNode.parentPath || '';
 
@@ -803,7 +807,7 @@
 			if (result.success) {
 				const delay = await simulateLatency();
 				mockDatabaseC = [...mockDatabaseC, result.node!.data!];
-				addLogC(`Added "${newNode.name}" with sortOrder=${sortOrder} (${position} ${dropNode?.data?.name || 'root'}) (${delay}ms)`);
+				addLogC('add', `Added "${newNode.name}" with sortOrder=${sortOrder} (${position} ${dropNode?.data?.name || 'root'}) (${delay}ms)`);
 			}
 		}
 
@@ -825,7 +829,7 @@
 		if (result.success) {
 			const delay = await simulateLatency();
 			mockDatabaseC = [...mockDatabaseC, result.node!.data!];
-			addLogC(`Added "${newNode.name}" under "${parentPath || 'root'}" - saved to DB (${delay}ms)`);
+			addLogC('add', `Added "${newNode.name}" under "${parentPath || 'root'}" - saved to DB (${delay}ms)`, 'success');
 		}
 		isLoadingC = false;
 	}
@@ -839,7 +843,7 @@
 			const delay = await simulateLatency();
 			const dbNode = mockDatabaseC.find((n) => n.id === selectedNodeC!.data?.id);
 			if (dbNode) dbNode.name = editNameC.trim();
-			addLogC(`Updated "${selectedNodeC.path}" to "${editNameC}" - saved to DB (${delay}ms)`);
+			addLogC('update', `Updated "${selectedNodeC.path}" to "${editNameC}" - saved to DB (${delay}ms)`, 'success');
 		}
 		isLoadingC = false;
 	}
@@ -853,7 +857,7 @@
 		if (result.success) {
 			const delay = await simulateLatency();
 			mockDatabaseC = mockDatabaseC.filter((n) => n.id !== selectedNodeC!.data?.id);
-			addLogC(`Deleted "${nodeName}" - saved to DB (${delay}ms)`);
+			addLogC('delete', `Deleted "${nodeName}" - saved to DB (${delay}ms)`, 'success');
 			selectedNodeC = null;
 		}
 		isLoadingC = false;
@@ -871,7 +875,7 @@
 		nextIdC = 3000;
 		selectedNodeC = null;
 		editNameC = '';
-		addLogC('Reset to initial state');
+		addLogC('reset', 'Reset to initial state');
 	}
 
 	// ── Scenario D: Empty + One by One ───────────────────────────────────
@@ -884,9 +888,9 @@
 		isLoadingD = true;
 
 		if (isSameTree && operation === 'move') {
-			addLogD(`Moved "${draggedNode.data?.name}"`);
+			addLogD('move', `Moved "${draggedNode.data?.name}"`);
 			const delay = await simulateLatency();
-			addLogD(`Saved to DB (${delay}ms)`);
+			addLogD('db', `Saved to DB (${delay}ms)`, 'success');
 			isLoadingD = false;
 			return;
 		}
@@ -906,7 +910,7 @@
 		if (result.success) {
 			const delay = await simulateLatency();
 			mockDatabaseD = [...mockDatabaseD, result.node!.data!];
-			addLogD(`Added "${newNode.name}" with sortOrder=${sortOrder} (${position} ${dropNode?.data?.name || 'root'}) (${delay}ms)`);
+			addLogD('add', `Added "${newNode.name}" with sortOrder=${sortOrder} (${position} ${dropNode?.data?.name || 'root'}) (${delay}ms)`);
 		}
 
 		isLoadingD = false;
@@ -920,7 +924,7 @@
 		if (result.success) {
 			const delay = await simulateLatency();
 			mockDatabaseD = [...mockDatabaseD, result.node!.data!];
-			addLogD(`Added root node "${newNode.name}" - saved to DB (${delay}ms)`);
+			addLogD('add', `Added root node "${newNode.name}" - saved to DB (${delay}ms)`, 'success');
 		}
 		isLoadingD = false;
 	}
@@ -930,7 +934,7 @@
 		mockDatabaseD = [];
 		activityLogD = [];
 		nextIdD = 4000;
-		addLogD('Cleared tree and database');
+		addLogD('reset', 'Cleared tree and database');
 	}
 
 	// ── Scenario E: Batch Create Then Save ───────────────────────────────
@@ -941,7 +945,7 @@
 		const isSameTree = draggedNode.treeId === 'tree-e';
 
 		if (isSameTree && operation === 'move') {
-			addLogE(`Moved "${draggedNode.data?.name}" (not saved yet)`);
+			addLogE('move', `Moved "${draggedNode.data?.name}" (not saved yet)`, 'warning');
 			unsavedCountE++;
 			return;
 		}
@@ -964,7 +968,7 @@
 
 		if (result.success) {
 			unsavedCountE += result.count;
-			addLogE(`Added ${result.count} node(s) with sortOrder=${rootSortOrder} (${position} ${dropNode?.data?.name || 'root'}) - NOT saved`);
+			addLogE('add', `Added ${result.count} node(s) with sortOrder=${rootSortOrder} (${position} ${dropNode?.data?.name || 'root'}) - NOT saved`, 'warning');
 		}
 	}
 
@@ -974,7 +978,7 @@
 		const result = treeRefE.addNode('', newNode);
 		if (result.success) {
 			unsavedCountE++;
-			addLogE(`Added "${newNode.name}" (NOT saved - ${unsavedCountE} unsaved total)`);
+			addLogE('add', `Added "${newNode.name}" (NOT saved - ${unsavedCountE} unsaved total)`, 'warning');
 		}
 	}
 
@@ -982,15 +986,15 @@
 		isLoadingE = true;
 
 		const allData = $state.snapshot(targetDataE) as ScenarioNode[];
-		addLogE(`Extracting ${allData.length} nodes from bind:nodes...`);
+		addLogE('save', `Extracting ${allData.length} nodes from bind:nodes...`, 'info');
 
 		const delay1 = await simulateLatency();
-		addLogE(`Preparing batch insert (${delay1}ms)...`);
+		addLogE('save', `Preparing batch insert (${delay1}ms)...`, 'info');
 		const delay2 = await simulateLatency();
 
 		mockDatabaseE = [...allData];
 		unsavedCountE = 0;
-		addLogE(`Batch saved ${allData.length} nodes to DB! (total: ${delay1 + delay2}ms)`);
+		addLogE('save', `Batch saved ${allData.length} nodes to DB! (total: ${delay1 + delay2}ms)`, 'success');
 
 		isLoadingE = false;
 	}
@@ -1001,11 +1005,11 @@
 		activityLogE = [];
 		nextIdE = 5000;
 		unsavedCountE = 0;
-		addLogE('Cleared tree (database was already empty)');
+		addLogE('reset', 'Cleared tree (database was already empty)');
 	}
 
 	// Get current scenario's activity log
-	function getCurrentLog(): string[] {
+	function getCurrentLog(): LogEntry[] {
 		switch (activeTab) {
 			case 'A': return activityLogA;
 			case 'B': return activityLogB;
@@ -1031,166 +1035,167 @@
 	<title>Tree Editor - Svelte Treeview</title>
 </svelte:head>
 
-<div class="container">
-	<header class="example-header">
-		<a href="/" class="back-link">&larr; Back to Examples</a>
-		<h1>Tree Editor</h1>
-		<p class="subtitle">
-			Add, remove, move, and clipboard-edit nodes — plus real-world DB-integration workflows.
-		</p>
-		<RenderModeSwitch />
-	</header>
+<header class="example-header">
+	<a href="/" class="back-link">&larr; Back to Examples</a>
+	<h1>Tree Editor</h1>
+	<p class="subtitle">
+		Add, remove, move, and clipboard-edit nodes — plus real-world DB-integration workflows.
+	</p>
+	<RenderModeSwitch />
+</header>
 
-	<!-- Main Editor -->
-	<div class="card">
-		<h2>TE01 · Interactive Tree Editor</h2>
-		<p class="description">
-			Click to select a node (double-click to expand), then use the controls to add
-			children, remove, or reorder. <strong>Ctrl/Cmd+click</strong> or
-			<strong>Shift+click</strong> to multi-select, then <strong>Ctrl/Cmd+C / X / V</strong>
-			to copy, cut, and paste — paste lands under the focused node (or at root), and a
-			pasted copy whose name already exists there becomes <em>"Name Copy 1"</em>, <em>"Name Copy 2"</em>, …. Copying a
-			node and pasting it without moving (<strong>Ctrl/Cmd+C</strong> then
-			<strong>Ctrl/Cmd+V</strong>) drops the copy next to it in the same folder. Cut nodes
-			dim until pasted; <strong>Esc</strong> cancels a pending cut. <strong>Delete</strong>
-			removes the selected node(s). Drag and drop also moves nodes. Some files carry an
-			internal <code>secret</code> token —
-			<code>nodeOutputTransformationCallback</code> redacts it on copy, so a pasted copy shows
-			<em>🔒 redacted</em> while the original keeps its value. Pasting onto a file (which
-			can't hold children) drops the copy beside it instead of inside.
-		</p>
+<!-- Main Editor -->
+<div class="card">
+	<h2>TE01 · Interactive Tree Editor</h2>
+	<p class="description">
+		Click to select a node (double-click to expand), then use the controls to add
+		children, remove, or reorder. <strong>Ctrl/Cmd+click</strong> or
+		<strong>Shift+click</strong> to multi-select, then <strong>Ctrl/Cmd+C / X / V</strong>
+		to copy, cut, and paste — paste lands under the focused node (or at root), and a
+		pasted copy whose name already exists there becomes <em>"Name Copy 1"</em>, <em>"Name Copy 2"</em>, …. Copying a
+		node and pasting it without moving (<strong>Ctrl/Cmd+C</strong> then
+		<strong>Ctrl/Cmd+V</strong>) drops the copy next to it in the same folder. Cut nodes
+		dim until pasted; <strong>Esc</strong> cancels a pending cut. <strong>Delete</strong>
+		removes the selected node(s). Drag and drop also moves nodes. Some files carry an
+		internal <code>secret</code> token —
+		<code>nodeOutputTransformationCallback</code> redacts it on copy, so a pasted copy shows
+		<em>🔒 redacted</em> while the original keeps its value. Pasting onto a file (which
+		can't hold children) drops the copy beside it instead of inside.
+	</p>
 
-		<div class="editor-layout">
-			<div class="tree-section">
-				<div class="tree-container" class:tree-container-tall={!getTreeProps().isVirtualScrollEnabled}>
-					<Tree
-						bind:this={treeRef}
-						nodes={treeData}
-						idMember="id"
-						pathMember="path"
-						orderMember="sortOrder"
-						sortCallback={sortByOrder}
-						isSorted={true}
-						expandLevel={3}
-						clickBehavior="select"
-						selectionMode="multiple"
-						dragDropMode="both"
-						getIsDraggableCallback={() => true}
-						getIsDropAllowedCallback={() => true}
-						getAllowedDropPositionsCallback={({ node }): DropPosition[] | undefined =>
-							canHaveChildren(node) ? undefined : ['before', 'after']}
-						bind:focusedNode={selectedNode}
-						bind:selectedPaths={selectedPaths}
-						beforeKeydownCallback={handleTreeKeydown}
-						onNodeCopy={({ paths }) => { if (!suppressClipboardLog) addLog(`Copied ${paths.length} node(s) to clipboard`); }}
-						onNodeCut={({ paths }) => addLog(`Cut ${paths.length} node(s) — paste to move`)}
-						onNodePaste={(result) => { if (!suppressClipboardLog) addLog(result.success ? `Pasted ${result.count} node(s)` : `Paste failed: ${result.error}`); }}
-						beforePasteCallback={beforePaste}
-						nodeOutputTransformationCallback={cleanOnCopy}
-						nodeInputTransformationCallback={pasteTransform}
-						beforeDropCallback={beforeDrop}
-						onNodeDrop={handleDrop}
-						onNodeDragStart={handleDragStart}
-						{dropZoneMode}
-						{dropZoneLayout}
-						{dropZoneStart}
-						{dropZoneMaxWidth}
-						{...getTreeProps()}
-					>
-						{#snippet nodeTemplate(node: any)}
-							<span
-								class:selected-node={selectedNode?.path === node.path}
-								class:cut-dimmed={cutPaths.has(node.path)}
-							>
-								{node.data?.icon} {node.data?.name}
-								<span class="node-type">{node.data?.type}</span>
-								{#if node.data?.secret}
-									<span class="node-secret">{node.data.secret}</span>
-								{/if}
-							</span>
-						{/snippet}
-					</Tree>
+	<div class="editor-layout">
+		<div class="tree-section">
+			<div class="tree-container" class:tree-container-tall={!getTreeProps().isVirtualScrollEnabled}>
+				<Tree
+					bind:this={treeRef}
+					nodes={treeData}
+					idMember="id"
+					pathMember="path"
+					orderMember="sortOrder"
+					sortCallback={sortByOrder}
+					isSorted={true}
+					expandLevel={3}
+					clickBehavior="select"
+					selectionMode="multiple"
+					dragDropMode="both"
+					getIsDraggableCallback={() => true}
+					getIsDropAllowedCallback={() => true}
+					getAllowedDropPositionsCallback={({ node }): DropPosition[] | undefined =>
+						canHaveChildren(node) ? undefined : ['before', 'after']}
+					bind:focusedNode={selectedNode}
+					bind:selectedPaths={selectedPaths}
+					beforeKeydownCallback={handleTreeKeydown}
+					onNodeCopy={({ paths }) => { if (!suppressClipboardLog) addLog('copy', `Copied ${paths.length} node(s) to clipboard`); }}
+					onNodeCut={({ paths }) => addLog('cut', `Cut ${paths.length} node(s) — paste to move`)}
+					onNodePaste={(result) => { if (!suppressClipboardLog) addLog('paste', result.success ? `Pasted ${result.count} node(s)` : `Paste failed: ${result.error}`, result.success ? undefined : 'danger'); }}
+					beforePasteCallback={beforePaste}
+					nodeOutputTransformationCallback={cleanOnCopy}
+					nodeInputTransformationCallback={pasteTransform}
+					beforeDropCallback={beforeDrop}
+					onNodeDrop={handleDrop}
+					onNodeDragStart={handleDragStart}
+					{dropZoneMode}
+					{dropZoneLayout}
+					{dropZoneStart}
+					{dropZoneMaxWidth}
+					{...getTreeProps()}
+				>
+					{#snippet nodeTemplate(node: any)}
+						<span
+							class:selected-node={selectedNode?.path === node.path}
+							class:cut-dimmed={cutPaths.has(node.path)}
+						>
+							{node.data?.icon} {node.data?.name}
+							<span class="node-type">{node.data?.type}</span>
+							{#if node.data?.secret}
+								<span class="node-secret">{node.data.secret}</span>
+							{/if}
+						</span>
+					{/snippet}
+				</Tree>
+			</div>
+			{#if dropWarning}
+				<div class="note warning">
+					{dropWarning}
 				</div>
-				{#if dropWarning}
-					<div class="drop-warning">
-						{dropWarning}
-					</div>
-				{/if}
+			{/if}
+		</div>
+
+		<div class="controls-section">
+			<div class="demo-card">
+				<h3>Add Node</h3>
+				<p>
+					{selectedNode ? `Adding to: ${selectedNode.data?.name}` : 'Adding at root level'}
+				</p>
+				<div class="field-row">
+					<input
+						class="field-grow"
+						type="text"
+						placeholder="Node name"
+						bind:value={newNodeName}
+						onkeydown={(e) => e.key === 'Enter' && handleAddNode()}
+					/>
+					<select bind:value={newNodeIcon}>
+						<option value="📄">📄 File</option>
+						<option value="📁">📁 Folder</option>
+						<option value="📂">📂 Open Folder</option>
+						<option value="🖼️">🖼️ Image</option>
+						<option value="🎵">🎵 Music</option>
+						<option value="📝">📝 Note</option>
+						<option value="🚀">🚀 Project</option>
+					</select>
+				</div>
+				<button class="mt-1" onclick={handleAddNode}>Add Node</button>
 			</div>
 
-			<div class="controls-section">
-				<div class="control-group">
-					<h3>Add Node</h3>
-					<p class="help-text">
-						{selectedNode ? `Adding to: ${selectedNode.data?.name}` : 'Adding at root level'}
-					</p>
-					<div class="input-row">
-						<input
-							type="text"
-							placeholder="Node name"
-							bind:value={newNodeName}
-							onkeydown={(e) => e.key === 'Enter' && handleAddNode()}
-						/>
-						<select bind:value={newNodeIcon}>
-							<option value="📄">📄 File</option>
-							<option value="📁">📁 Folder</option>
-							<option value="📂">📂 Open Folder</option>
-							<option value="🖼️">🖼️ Image</option>
-							<option value="🎵">🎵 Music</option>
-							<option value="📝">📝 Note</option>
-							<option value="🚀">🚀 Project</option>
-						</select>
-					</div>
-					<button class="btn" onclick={handleAddNode}>Add Node</button>
-				</div>
-
-				<div class="control-group">
-					<h3>Move Node</h3>
-					<p class="help-text">
-						{selectedNode ? `Moving: ${selectedNode.data?.name}` : 'Select a node first'}
-					</p>
-					<div class="button-row">
-						<button class="btn btn-secondary" onclick={handleMoveUp} disabled={!selectedNode}>
-							Move Up
-						</button>
-						<button class="btn btn-secondary" onclick={handleMoveDown} disabled={!selectedNode}>
-							Move Down
-						</button>
-					</div>
-				</div>
-
-				<div class="control-group">
-					<h3>Remove Node</h3>
-					<button class="btn btn-danger" onclick={handleRemoveNode} disabled={!selectedNode}>
-						Remove Selected
+			<div class="demo-card">
+				<h3>Move Node</h3>
+				<p>
+					{selectedNode ? `Moving: ${selectedNode.data?.name}` : 'Select a node first'}
+				</p>
+				<div class="field-row">
+					<button class="secondary field-grow" onclick={handleMoveUp} disabled={!selectedNode}>
+						Move Up
+					</button>
+					<button class="secondary field-grow" onclick={handleMoveDown} disabled={!selectedNode}>
+						Move Down
 					</button>
 				</div>
+			</div>
 
-				<div class="control-group">
-					<h3>Actions</h3>
-					<div class="button-row">
-						<button class="btn btn-secondary" onclick={handleExport}>Export to Console</button>
-						<button class="btn btn-secondary" onclick={resetTree}>Reset Tree</button>
-					</div>
+			<div class="demo-card">
+				<h3>Remove Node</h3>
+				<button class="btn-danger" onclick={handleRemoveNode} disabled={!selectedNode}>
+					Remove Selected
+				</button>
+			</div>
+
+			<div class="demo-card">
+				<h3>Actions</h3>
+				<div class="field-row">
+					<button class="secondary field-grow" onclick={handleExport}>Export to Console</button>
+					<button class="secondary field-grow" onclick={resetTree}>Reset Tree</button>
 				</div>
+			</div>
 
-				<div class="control-group">
-					<h3>Drop Zones</h3>
-					<div class="input-row">
-						<select bind:value={dropZoneMode} style="flex: 1;">
+			<div class="demo-card">
+				<h3>Drop Zones</h3>
+				<div class="control-row">
+					<div class="control-group">
+						<label for="dz-mode">Mode</label>
+						<select id="dz-mode" bind:value={dropZoneMode}>
 							<option value="floating">Floating</option>
 							<option value="glow">Glow</option>
 						</select>
 					</div>
-					<div class="input-row">
-						<label style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
-							Start:
-							<input type="text" bind:value={dropZoneStart} placeholder="50% or 50px" style="width: 80px;" />
-						</label>
+					<div class="control-group">
+						<label for="dz-start">Start</label>
+						<input id="dz-start" class="w-sm" type="text" bind:value={dropZoneStart} placeholder="50% or 50px" />
 					</div>
 					{#if dropZoneMode === 'floating'}
-						<div class="input-row">
-							<select bind:value={dropZoneLayout} style="flex: 1;">
+						<div class="control-group">
+							<label for="dz-layout">Layout</label>
+							<select id="dz-layout" bind:value={dropZoneLayout}>
 								<option value="around">Around</option>
 								<option value="before">Before</option>
 								<option value="after">After</option>
@@ -1198,178 +1203,175 @@
 								<option value="wave2">Wave2</option>
 							</select>
 						</div>
-						<div class="input-row">
-							<label style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
-								Max W:
-								<input type="number" bind:value={dropZoneMaxWidth} min="50" max="300" style="width: 60px;" />
-							</label>
+						<div class="control-group">
+							<label for="dz-max-width">Max W</label>
+							<input id="dz-max-width" class="w-sm" type="number" bind:value={dropZoneMaxWidth} min="50" max="300" />
 						</div>
 					{/if}
 				</div>
 			</div>
 		</div>
-
-		{#if activityLog.length > 0}
-			<div class="output">
-				<p class="output-label">Activity Log:</p>
-				<pre>{activityLog.join('\n')}</pre>
-			</div>
-		{/if}
 	</div>
 
-	<!-- API Reference -->
-	<div class="card">
-		<h2>TE02 · Tree Editor API</h2>
-		<p class="description">Methods available for programmatic tree manipulation.</p>
+	<div class="output">
+		<p class="output-label">Activity Log</p>
+		<LogPanel entries={activityLog} empty="No activity yet. Select a node and use the controls, or Ctrl/Cmd+C / X / V." />
+	</div>
+</div>
 
-		<table>
-			<thead>
-				<tr>
-					<th>Method</th>
-					<th>Description</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr>
-					<td><code>addNode(parentPath, data, pathSegment?)</code></td>
-					<td>Add a new node under the specified parent</td>
-				</tr>
-				<tr>
-					<td><code>moveNode(sourcePath, targetPath, position)</code></td>
-					<td>Move a node to a new location ('before', 'after', 'child')</td>
-				</tr>
-				<tr>
-					<td><code>removeNode(path, includeDescendants?)</code></td>
-					<td>Remove a node (and optionally its descendants)</td>
-				</tr>
-				<tr>
-					<td><code>updateNode(path, dataUpdates)</code></td>
-					<td>Update data properties of a node in place</td>
-				</tr>
-				<tr>
-					<td><code>copyNodeWithDescendants(node, parentPath, transformFn)</code></td>
-					<td>Deep-copy a node and its subtree under a new parent</td>
-				</tr>
-				<tr>
-					<td><code>getNodeByPath(path)</code></td>
-					<td>Get a node by its path</td>
-				</tr>
-				<tr>
-					<td><code>getChildren(parentPath)</code></td>
-					<td>Get direct children of a node</td>
-				</tr>
-				<tr>
-					<td><code>getSiblings(path)</code></td>
-					<td>Get siblings of a node (including itself)</td>
-				</tr>
-				<tr>
-					<td><code>refreshSiblings(parentPath)</code></td>
-					<td>Re-sort siblings using orderMember</td>
-				</tr>
-				<tr>
-					<td><code>refreshNode(path)</code></td>
-					<td>Force re-render of a single node</td>
-				</tr>
-				<tr>
-					<td><code>bind:expandedPaths</code></td>
-					<td>The expanded set (<code>Set&lt;string&gt;</code>) — read it to save, assign it to restore</td>
-				</tr>
-				<tr>
-					<td><code>bind:nodes</code></td>
-					<td>Input AND current state — after a mutation the bound array holds the tree's data</td>
-				</tr>
-			</tbody>
-		</table>
+<!-- API Reference -->
+<div class="card">
+	<h2>TE02 · Tree Editor API</h2>
+	<p class="description">Methods available for programmatic tree manipulation.</p>
 
-		<div class="note">
-			<p class="note-title">orderMember Prop</p>
-			<p>
-				For proper before/after positioning, set the <code>orderMember</code> prop to specify
-				which field in your data contains the sort order value. The tree will automatically
-				calculate new order values when moving nodes.
-			</p>
-			<pre style="margin-top: 0.5rem;">{`<Tree
+	<table>
+		<thead>
+			<tr>
+				<th>Method</th>
+				<th>Description</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>addNode(parentPath, data, pathSegment?)</code></td>
+				<td>Add a new node under the specified parent</td>
+			</tr>
+			<tr>
+				<td><code>moveNode(sourcePath, targetPath, position)</code></td>
+				<td>Move a node to a new location ('before', 'after', 'child')</td>
+			</tr>
+			<tr>
+				<td><code>removeNode(path, includeDescendants?)</code></td>
+				<td>Remove a node (and optionally its descendants)</td>
+			</tr>
+			<tr>
+				<td><code>updateNode(path, dataUpdates)</code></td>
+				<td>Update data properties of a node in place</td>
+			</tr>
+			<tr>
+				<td><code>copyNodeWithDescendants(node, parentPath, transformFn)</code></td>
+				<td>Deep-copy a node and its subtree under a new parent</td>
+			</tr>
+			<tr>
+				<td><code>getNodeByPath(path)</code></td>
+				<td>Get a node by its path</td>
+			</tr>
+			<tr>
+				<td><code>getChildren(parentPath)</code></td>
+				<td>Get direct children of a node</td>
+			</tr>
+			<tr>
+				<td><code>getSiblings(path)</code></td>
+				<td>Get siblings of a node (including itself)</td>
+			</tr>
+			<tr>
+				<td><code>refreshSiblings(parentPath)</code></td>
+				<td>Re-sort siblings using orderMember</td>
+			</tr>
+			<tr>
+				<td><code>refreshNode(path)</code></td>
+				<td>Force re-render of a single node</td>
+			</tr>
+			<tr>
+				<td><code>bind:expandedPaths</code></td>
+				<td>The expanded set (<code>Set&lt;string&gt;</code>) — read it to save, assign it to restore</td>
+			</tr>
+			<tr>
+				<td><code>bind:nodes</code></td>
+				<td>Input AND current state — after a mutation the bound array holds the tree's data</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<div class="note">
+		<p class="note-title">orderMember Prop</p>
+		<p>
+			For proper before/after positioning, set the <code>orderMember</code> prop to specify
+			which field in your data contains the sort order value. The tree will automatically
+			calculate new order values when moving nodes.
+		</p>
+		<pre>{`<Tree
   nodes={data}
   orderMember="sortOrder"
   ...
 />`}</pre>
-		</div>
-
-		<h3 class="subsection">Clipboard API</h3>
-		<p class="description">
-			Controller methods (call via <code>beforeKeydownCallback</code>'s <code>controller</code> arg or
-			<code>bind:this</code>) backed by a module-level, cross-tree clipboard.
-		</p>
-		<table>
-			<thead>
-				<tr><th>Method</th><th>Description</th></tr>
-			</thead>
-			<tbody>
-				<tr>
-					<td><code>copyNodes(paths?)</code></td>
-					<td>Snapshot nodes onto the shared clipboard (defaults to the highlight set)</td>
-				</tr>
-				<tr>
-					<td><code>cutNodes(paths?)</code></td>
-					<td>Mark nodes for a move; they dim until pasted (tracked on <code>cutPaths</code>)</td>
-				</tr>
-				<tr>
-					<td><code>pasteNodes(targetPath, transform?, position?)</code></td>
-					<td>Insert clipboard content; returns <code>PasteResult</code> (<code>{`{ count, skipped }`}</code>)</td>
-				</tr>
-				<tr>
-					<td><code>cancelCut()</code></td>
-					<td>Clear a pending cut (also bound to <code>Esc</code>)</td>
-				</tr>
-				<tr>
-					<td><code>hasClipboardContent()</code> / <code>getClipboardOperation()</code></td>
-					<td>Query whether the clipboard has data, and whether it's a copy or cut</td>
-				</tr>
-			</tbody>
-		</table>
-
-		<table style="margin-top: 1rem;">
-			<thead>
-				<tr><th>Prop / helper</th><th>Description</th></tr>
-			</thead>
-			<tbody>
-				<tr>
-					<td><code>nodeInputTransformationCallback(data, ctx) =&gt; T | null</code></td>
-					<td>Per-node paste derivation — fresh ids/values/names; return <code>null</code> to skip a node (skipping a root skips its subtree)</td>
-				</tr>
-				<tr>
-					<td><code>nodeOutputTransformationCallback(data, ctx) =&gt; T</code></td>
-					<td>Per-node clean at copy time — strip/redact fields before they hit the shared clipboard</td>
-				</tr>
-				<tr>
-					<td><code>beforePasteCallback(targetPath, op, entries)</code></td>
-					<td>Batch policy — redirect target/position or return <code>false</code> to block. Entries are <strong>readonly</strong></td>
-				</tr>
-				<tr>
-					<td><code>uniqueName(base, taken, suffix?)</code></td>
-					<td>Exported helper — collision-free name (default <code>"Name Copy N"</code>); use with names read off the roots' landing neighbours (<code>ctx.target.node.children</code> for a <code>'child'</code> paste, else <code>ctx.target.siblings</code>)</td>
-				</tr>
-			</tbody>
-		</table>
-
-		<div class="note">
-			<p class="note-title">Two roles, two hooks</p>
-			<p>
-				<code>beforePasteCallback</code> is batch <strong>policy</strong> (redirect/block, readonly
-				entries); <code>nodeInputTransformationCallback</code> is per-node <strong>derivation</strong>
-				(ids, values, naming, skip). The clipboard snapshot is immutable — each paste runs on a
-				fresh working copy, so naming never compounds.
-			</p>
-		</div>
 	</div>
 
-	<!-- Code Example -->
-	<div class="card">
-		<h2>TE03 · Code Example</h2>
-		<p class="description">Example of handling tree editing operations.</p>
+	<h3 class="subsection">Clipboard API</h3>
+	<p class="description">
+		Controller methods (call via <code>beforeKeydownCallback</code>'s <code>controller</code> arg or
+		<code>bind:this</code>) backed by a module-level, cross-tree clipboard.
+	</p>
+	<table>
+		<thead>
+			<tr><th>Method</th><th>Description</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>copyNodes(paths?)</code></td>
+				<td>Snapshot nodes onto the shared clipboard (defaults to the highlight set)</td>
+			</tr>
+			<tr>
+				<td><code>cutNodes(paths?)</code></td>
+				<td>Mark nodes for a move; they dim until pasted (tracked on <code>cutPaths</code>)</td>
+			</tr>
+			<tr>
+				<td><code>pasteNodes(targetPath, transform?, position?)</code></td>
+				<td>Insert clipboard content; returns <code>PasteResult</code> (<code>{`{ count, skipped }`}</code>)</td>
+			</tr>
+			<tr>
+				<td><code>cancelCut()</code></td>
+				<td>Clear a pending cut (also bound to <code>Esc</code>)</td>
+			</tr>
+			<tr>
+				<td><code>hasClipboardContent()</code> / <code>getClipboardOperation()</code></td>
+				<td>Query whether the clipboard has data, and whether it's a copy or cut</td>
+			</tr>
+		</tbody>
+	</table>
 
-		<div class="code-block">
-			<pre>{`<script lang="ts">
+	<table class="mt-1">
+		<thead>
+			<tr><th>Prop / helper</th><th>Description</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>nodeInputTransformationCallback(data, ctx) =&gt; T | null</code></td>
+				<td>Per-node paste derivation — fresh ids/values/names; return <code>null</code> to skip a node (skipping a root skips its subtree)</td>
+			</tr>
+			<tr>
+				<td><code>nodeOutputTransformationCallback(data, ctx) =&gt; T</code></td>
+				<td>Per-node clean at copy time — strip/redact fields before they hit the shared clipboard</td>
+			</tr>
+			<tr>
+				<td><code>beforePasteCallback(targetPath, op, entries)</code></td>
+				<td>Batch policy — redirect target/position or return <code>false</code> to block. Entries are <strong>readonly</strong></td>
+			</tr>
+			<tr>
+				<td><code>uniqueName(base, taken, suffix?)</code></td>
+				<td>Exported helper — collision-free name (default <code>"Name Copy N"</code>); use with names read off the roots' landing neighbours (<code>ctx.target.node.children</code> for a <code>'child'</code> paste, else <code>ctx.target.siblings</code>)</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<div class="note">
+		<p class="note-title">Two roles, two hooks</p>
+		<p>
+			<code>beforePasteCallback</code> is batch <strong>policy</strong> (redirect/block, readonly
+			entries); <code>nodeInputTransformationCallback</code> is per-node <strong>derivation</strong>
+			(ids, values, naming, skip). The clipboard snapshot is immutable — each paste runs on a
+			fresh working copy, so naming never compounds.
+		</p>
+	</div>
+</div>
+
+<!-- Code Example -->
+<div class="card">
+	<h2>TE03 · Code Example</h2>
+	<p class="description">Example of handling tree editing operations.</p>
+
+	<div class="code-block">
+		<pre>{`<script lang="ts">
   import { Tree } from '@keenmate/svelte-treeview';
   import type { LTreeNode, DropPosition, DropOperation } from '@keenmate/svelte-treeview';
 
@@ -1437,23 +1439,23 @@
     <span>{node.data?.name}</span>
   {/snippet}
 </Tree>`}</pre>
-		</div>
 	</div>
+</div>
 
-	<!-- Multi-select + Clipboard -->
-	<div class="card">
-		<h2>TE04 · Multi-select &amp; Clipboard (Ctrl/Cmd + C / X / V)</h2>
-		<p class="description">
-			The controller implements the clipboard operations and a shared cross-tree
-			clipboard; the key bindings are left to you via <code>beforeKeydownCallback</code>.
-			Per-node paste derivation (fresh ids, values, "Copy N" naming, per-entry skip)
-			lives in <code>nodeInputTransformationCallback</code>; <code>beforePasteCallback</code>
-			is policy only (redirect/block) and gets <strong>readonly</strong> entries.
-			Enable multi-select with <code>selectionMode="multiple"</code>.
-		</p>
+<!-- Multi-select + Clipboard -->
+<div class="card">
+	<h2>TE04 · Multi-select &amp; Clipboard (Ctrl/Cmd + C / X / V)</h2>
+	<p class="description">
+		The controller implements the clipboard operations and a shared cross-tree
+		clipboard; the key bindings are left to you via <code>beforeKeydownCallback</code>.
+		Per-node paste derivation (fresh ids, values, "Copy N" naming, per-entry skip)
+		lives in <code>nodeInputTransformationCallback</code>; <code>beforePasteCallback</code>
+		is policy only (redirect/block) and gets <strong>readonly</strong> entries.
+		Enable multi-select with <code>selectionMode="multiple"</code>.
+	</p>
 
-		<div class="code-block">
-			<pre>{`import { uniqueName } from '@keenmate/svelte-treeview';
+	<div class="code-block">
+		<pre>{`import { uniqueName } from '@keenmate/svelte-treeview';
 import type { TreeController, NodeTransformContext } from '@keenmate/svelte-treeview';
 
 let focusedNode = $state<LTreeNode<MyNode> | null>(null);
@@ -1518,279 +1520,272 @@ function handleKeydown({ event, controller }) {
   }
   return;  // let the tree handle everything else
 }`}</pre>
+	</div>
+
+	<div class="note">
+		<p class="note-title">Two roles, two hooks</p>
+		<p>
+			<code>beforePasteCallback</code> is <strong>batch policy</strong> — redirect
+			target/position or block; it sees <strong>readonly</strong> entries and never
+			mutates data. <code>nodeInputTransformationCallback(data, ctx) =&gt; T | null</code>
+			is <strong>per-node derivation</strong> — ids, values, <code>"Copy N"</code> naming,
+			and per-entry skip (return <code>null</code>). The clipboard snapshot is immutable; each
+			paste runs on a fresh working copy, and <code>nodeOutputTransformationCallback</code> can
+			clean data before it ever lands on the shared clipboard.
+		</p>
+	</div>
+</div>
+
+<!-- Business Scenarios -->
+<div class="card">
+	<h2>TE05 · Business Scenarios</h2>
+	<p class="description">
+		Real-world tree-manipulation workflows with (mock) database integration. Switch tabs to
+		compare five persistence strategies — each drags from the shared source tree into a target
+		tree and logs the DB round-trip.
+	</p>
+	<div class="tabs">
+		{#each ['A', 'B', 'C', 'D', 'E'] as tab}
+			<button
+				class="tab"
+				class:active={activeTab === tab}
+				onclick={() => (activeTab = tab as Scenario)}
+			>
+				Scenario {tab}
+			</button>
+		{/each}
+	</div>
+
+	<div class="demo-area">
+		<h3>{scenarioDescriptions[activeTab].title}</h3>
+		<p>{scenarioDescriptions[activeTab].description}</p>
+		<p>Key feature: <code>{scenarioDescriptions[activeTab].keyFeature}</code></p>
+	</div>
+</div>
+
+<!-- Trees Side by Side -->
+<div class="card">
+	<div class="trees-side-by-side">
+		<!-- Source Tree (shared) -->
+		<div>
+			<h3>Source Tree (drag from here)</h3>
+			<div class="tree-container">
+				<Tree
+					treeId="source-tree"
+					nodes={sourceData}
+					idMember="id"
+					pathMember="path"
+					orderMember="sortOrder"
+					sortCallback={sortByOrder}
+					isSorted={true}
+					expandLevel={3}
+					dragDropMode="cross"
+					getIsDraggableCallback={() => true}
+					getIsDropAllowedCallback={() => true}
+					{...getTreeProps()}
+				>
+					{#snippet nodeTemplate(node: any)}
+						<span><small class="muted mono">[{node.data?.id}]</small> {node.data?.icon} {node.data?.name}</span>
+					{/snippet}
+				</Tree>
+			</div>
 		</div>
 
-		<div class="note">
-			<p class="note-title">Two roles, two hooks</p>
-			<p>
-				<code>beforePasteCallback</code> is <strong>batch policy</strong> — redirect
-				target/position or block; it sees <strong>readonly</strong> entries and never
-				mutates data. <code>nodeInputTransformationCallback(data, ctx) =&gt; T | null</code>
-				is <strong>per-node derivation</strong> — ids, values, <code>"Copy N"</code> naming,
-				and per-entry skip (return <code>null</code>). The clipboard snapshot is immutable; each
-				paste runs on a fresh working copy, and <code>nodeOutputTransformationCallback</code> can
-				clean data before it ever lands on the shared clipboard.
-			</p>
+		<!-- Target Tree (per scenario) -->
+		<div>
+			<h3>
+				Target Tree
+				{#if activeTab === 'E' && unsavedCountE > 0}
+					<span class="unsaved-badge">{unsavedCountE} unsaved</span>
+				{/if}
+			</h3>
+			<div class="tree-container">
+				{#if activeTab === 'A'}
+					<Tree
+						bind:this={treeRefA}
+						bind:expandedPaths={expandedA}
+						treeId="tree-a"
+						nodes={targetDataA}
+						idMember="id"
+						pathMember="path"
+						orderMember="sortOrder"
+						sortCallback={sortByOrder}
+						expandLevel={3}
+						dragDropMode="cross"
+						getIsDraggableCallback={() => true}
+						getIsDropAllowedCallback={() => true}
+						onNodeDrop={handleDropA}
+						isLoading={isLoadingA}
+						{...getTreeProps()}
+					>
+						{#snippet nodeTemplate(node: any)}
+							<span><small class="muted mono">[{node.data?.id}]</small> {node.data?.icon} {node.data?.name}</span>
+						{/snippet}
+					</Tree>
+				{:else if activeTab === 'B'}
+					<Tree
+						bind:this={treeRefB}
+						treeId="tree-b"
+						nodes={targetDataB}
+						idMember="id"
+						pathMember="path"
+						orderMember="sortOrder"
+						sortCallback={sortByOrder}
+						expandLevel={3}
+						dragDropMode="cross"
+						getIsDraggableCallback={() => true}
+						getIsDropAllowedCallback={() => true}
+						onNodeDrop={handleDropB}
+						isLoading={isLoadingB}
+						{...getTreeProps()}
+					>
+						{#snippet nodeTemplate(node: any)}
+							<span><small class="muted mono">[{node.data?.id}]</small> {node.data?.icon} {node.data?.name}</span>
+						{/snippet}
+					</Tree>
+				{:else if activeTab === 'C'}
+					<Tree
+						bind:this={treeRefC}
+						treeId="tree-c"
+						nodes={targetDataC}
+						idMember="id"
+						pathMember="path"
+						orderMember="sortOrder"
+						sortCallback={sortByOrder}
+						expandLevel={3}
+						dragDropMode="cross"
+						getIsDraggableCallback={() => true}
+						getIsDropAllowedCallback={() => true}
+						onNodeDrop={handleDropC}
+						onNodeClick={onNodeClickC}
+						focusedNode={selectedNodeC}
+						isLoading={isLoadingC}
+						{...getTreeProps()}
+					>
+						{#snippet nodeTemplate(node: any)}
+							<span><small class="muted mono">[{node.data?.id}]</small> {node.data?.icon} {node.data?.name}</span>
+						{/snippet}
+					</Tree>
+				{:else if activeTab === 'D'}
+					<Tree
+						bind:this={treeRefD}
+						treeId="tree-d"
+						nodes={targetDataD}
+						idMember="id"
+						pathMember="path"
+						orderMember="sortOrder"
+						sortCallback={sortByOrder}
+						expandLevel={3}
+						dragDropMode="cross"
+						getIsDraggableCallback={() => true}
+						getIsDropAllowedCallback={() => true}
+						onNodeDrop={handleDropD}
+						isLoading={isLoadingD}
+						{...getTreeProps()}
+					>
+						{#snippet nodeTemplate(node: any)}
+							<span><small class="muted mono">[{node.data?.id}]</small> {node.data?.icon} {node.data?.name}</span>
+						{/snippet}
+						{#snippet noData()}
+							<div class="drop-placeholder-content">
+								<p class="placeholder-icon">📂</p>
+								<p>Empty tree — drag items here or click "Add Root Node"</p>
+							</div>
+						{/snippet}
+						{#snippet dropPlaceholder()}
+							<div class="drop-placeholder-content">
+								<p class="placeholder-icon">📥</p>
+								<p>Drag items here or click "Add Root Node"</p>
+							</div>
+						{/snippet}
+					</Tree>
+				{:else if activeTab === 'E'}
+					<Tree
+						bind:this={treeRefE}
+						treeId="tree-e"
+						bind:nodes={targetDataE}
+						idMember="id"
+						pathMember="path"
+						orderMember="sortOrder"
+						sortCallback={sortByOrder}
+						expandLevel={3}
+						dragDropMode="cross"
+						getIsDraggableCallback={() => true}
+						getIsDropAllowedCallback={() => true}
+						onNodeDrop={handleDropE}
+						isLoading={isLoadingE}
+						{...getTreeProps()}
+					>
+						{#snippet nodeTemplate(node: any)}
+							<span><small class="muted mono">[{node.data?.id}]</small> {node.data?.icon} {node.data?.name}</span>
+						{/snippet}
+						{#snippet noData()}
+							<div class="drop-placeholder-content">
+								<p class="placeholder-icon">📂</p>
+								<p>Empty tree — drag items here or add nodes</p>
+							</div>
+						{/snippet}
+						{#snippet dropPlaceholder()}
+							<div class="drop-placeholder-content">
+								<p class="placeholder-icon">📥</p>
+								<p>Build your tree structure, then "Save All"</p>
+							</div>
+						{/snippet}
+					</Tree>
+				{/if}
+			</div>
 		</div>
 	</div>
 
-	<!-- Business Scenarios -->
-	<div class="scenarios">
-		<div class="card">
-			<h2>TE05 · Business Scenarios</h2>
-			<p class="description">
-				Real-world tree-manipulation workflows with (mock) database integration. Switch tabs to
-				compare five persistence strategies — each drags from the shared source tree into a target
-				tree and logs the DB round-trip.
-			</p>
-			<div class="tabs">
-				{#each ['A', 'B', 'C', 'D', 'E'] as tab}
-					<button
-						class="tab"
-						class:active={activeTab === tab}
-						onclick={() => (activeTab = tab as Scenario)}
-					>
-						Scenario {tab}
-					</button>
-				{/each}
-			</div>
+	<!-- Scenario-specific Controls -->
+	<div class="controls form-actions">
+		{#if activeTab === 'A'}
+			<button onclick={reloadFromDbA}>Reload from DB</button>
+			<button class="secondary" onclick={resetA}>Reset</button>
+		{:else if activeTab === 'B'}
+			<button class="secondary" onclick={resetB}>Reset</button>
+			<span class="muted">Same-tree moves are auto-handled by the library</span>
+		{:else if activeTab === 'C'}
+			<button onclick={handleAddC}>Add Child</button>
+			<input class="w-md" type="text" bind:value={editNameC} placeholder="New name..." />
+			<button onclick={handleUpdateC} disabled={!selectedNodeC}>Update Name</button>
+			<button class="btn-danger" onclick={handleDeleteC} disabled={!selectedNodeC}>Delete</button>
+			<button class="secondary" onclick={resetC}>Reset</button>
+		{:else if activeTab === 'D'}
+			<button onclick={addRootNodeD}>Add Root Node</button>
+			<button class="secondary" onclick={clearD}>Clear All</button>
+		{:else if activeTab === 'E'}
+			<button onclick={addRootNodeE}>Add Node</button>
+			<button onclick={saveAllE} disabled={unsavedCountE === 0}>
+				Save All ({unsavedCountE} unsaved)
+			</button>
+			<button class="secondary" onclick={clearE}>Clear All</button>
+		{/if}
+	</div>
+</div>
 
-			<div class="scenario-info">
-				<h3>{scenarioDescriptions[activeTab].title}</h3>
-				<p>{scenarioDescriptions[activeTab].description}</p>
-				<p class="key-feature">Key feature: <code>{scenarioDescriptions[activeTab].keyFeature}</code></p>
-			</div>
+<!-- Activity Log -->
+<div class="card">
+	<h3>Activity Log</h3>
+	<LogPanel entries={getCurrentLog()} empty="No activity yet. Try dragging nodes or using the controls above." />
+</div>
+
+<!-- Mock Database -->
+<div class="card">
+	<details>
+		<summary>Mock Database ({getCurrentDb().length} records)</summary>
+		<div class="output">
+			<pre>{JSON.stringify(getCurrentDb(), null, 2)}</pre>
 		</div>
+	</details>
+</div>
 
-		<!-- Trees Side by Side -->
-		<div class="card">
-			<div class="trees-side-by-side">
-				<!-- Source Tree (shared) -->
-				<div>
-					<h3>Source Tree (drag from here)</h3>
-					<div class="tree-container">
-						<Tree
-							treeId="source-tree"
-							nodes={sourceData}
-							idMember="id"
-							pathMember="path"
-							orderMember="sortOrder"
-							sortCallback={sortByOrder}
-							isSorted={true}
-							expandLevel={3}
-							dragDropMode="cross"
-							getIsDraggableCallback={() => true}
-							getIsDropAllowedCallback={() => true}
-							{...getTreeProps()}
-						>
-							{#snippet nodeTemplate(node: any)}
-								<span><small class="node-id">[{node.data?.id}]</small> {node.data?.icon} {node.data?.name}</span>
-							{/snippet}
-						</Tree>
-					</div>
-				</div>
-
-				<!-- Target Tree (per scenario) -->
-				<div>
-					<h3>
-						Target Tree
-						{#if activeTab === 'E' && unsavedCountE > 0}
-							<span class="unsaved-badge">{unsavedCountE} unsaved</span>
-						{/if}
-					</h3>
-					<div class="tree-container">
-						{#if activeTab === 'A'}
-							<Tree
-								bind:this={treeRefA}
-								bind:expandedPaths={expandedA}
-								treeId="tree-a"
-								nodes={targetDataA}
-								idMember="id"
-								pathMember="path"
-								orderMember="sortOrder"
-								sortCallback={sortByOrder}
-								expandLevel={3}
-								dragDropMode="cross"
-								getIsDraggableCallback={() => true}
-								getIsDropAllowedCallback={() => true}
-								onNodeDrop={handleDropA}
-								isLoading={isLoadingA}
-								{...getTreeProps()}
-							>
-								{#snippet nodeTemplate(node: any)}
-									<span><small class="node-id">[{node.data?.id}]</small> {node.data?.icon} {node.data?.name}</span>
-								{/snippet}
-							</Tree>
-						{:else if activeTab === 'B'}
-							<Tree
-								bind:this={treeRefB}
-								treeId="tree-b"
-								nodes={targetDataB}
-								idMember="id"
-								pathMember="path"
-								orderMember="sortOrder"
-								sortCallback={sortByOrder}
-								expandLevel={3}
-								dragDropMode="cross"
-								getIsDraggableCallback={() => true}
-								getIsDropAllowedCallback={() => true}
-								onNodeDrop={handleDropB}
-								isLoading={isLoadingB}
-								{...getTreeProps()}
-							>
-								{#snippet nodeTemplate(node: any)}
-									<span><small class="node-id">[{node.data?.id}]</small> {node.data?.icon} {node.data?.name}</span>
-								{/snippet}
-							</Tree>
-						{:else if activeTab === 'C'}
-							<Tree
-								bind:this={treeRefC}
-								treeId="tree-c"
-								nodes={targetDataC}
-								idMember="id"
-								pathMember="path"
-								orderMember="sortOrder"
-								sortCallback={sortByOrder}
-								expandLevel={3}
-								dragDropMode="cross"
-								getIsDraggableCallback={() => true}
-								getIsDropAllowedCallback={() => true}
-								onNodeDrop={handleDropC}
-								onNodeClick={onNodeClickC}
-								focusedNode={selectedNodeC}
-								isLoading={isLoadingC}
-								{...getTreeProps()}
-							>
-								{#snippet nodeTemplate(node: any)}
-									<span><small class="node-id">[{node.data?.id}]</small> {node.data?.icon} {node.data?.name}</span>
-								{/snippet}
-							</Tree>
-						{:else if activeTab === 'D'}
-							<Tree
-								bind:this={treeRefD}
-								treeId="tree-d"
-								nodes={targetDataD}
-								idMember="id"
-								pathMember="path"
-								orderMember="sortOrder"
-								sortCallback={sortByOrder}
-								expandLevel={3}
-								dragDropMode="cross"
-								getIsDraggableCallback={() => true}
-								getIsDropAllowedCallback={() => true}
-								onNodeDrop={handleDropD}
-								isLoading={isLoadingD}
-								{...getTreeProps()}
-							>
-								{#snippet nodeTemplate(node: any)}
-									<span><small class="node-id">[{node.data?.id}]</small> {node.data?.icon} {node.data?.name}</span>
-								{/snippet}
-								{#snippet noData()}
-									<div class="drop-placeholder-content">
-										<p class="placeholder-icon">📂</p>
-										<p>Empty tree — drag items here or click "Add Root Node"</p>
-									</div>
-								{/snippet}
-								{#snippet dropPlaceholder()}
-									<div class="drop-placeholder-content">
-										<p class="placeholder-icon">📥</p>
-										<p>Drag items here or click "Add Root Node"</p>
-									</div>
-								{/snippet}
-							</Tree>
-						{:else if activeTab === 'E'}
-							<Tree
-								bind:this={treeRefE}
-								treeId="tree-e"
-								bind:nodes={targetDataE}
-								idMember="id"
-								pathMember="path"
-								orderMember="sortOrder"
-								sortCallback={sortByOrder}
-								expandLevel={3}
-								dragDropMode="cross"
-								getIsDraggableCallback={() => true}
-								getIsDropAllowedCallback={() => true}
-								onNodeDrop={handleDropE}
-								isLoading={isLoadingE}
-								{...getTreeProps()}
-							>
-								{#snippet nodeTemplate(node: any)}
-									<span><small class="node-id">[{node.data?.id}]</small> {node.data?.icon} {node.data?.name}</span>
-								{/snippet}
-								{#snippet noData()}
-									<div class="drop-placeholder-content">
-										<p class="placeholder-icon">📂</p>
-										<p>Empty tree — drag items here or add nodes</p>
-									</div>
-								{/snippet}
-								{#snippet dropPlaceholder()}
-									<div class="drop-placeholder-content">
-										<p class="placeholder-icon">📥</p>
-										<p>Build your tree structure, then "Save All"</p>
-									</div>
-								{/snippet}
-							</Tree>
-						{/if}
-					</div>
-				</div>
-			</div>
-
-			<!-- Scenario-specific Controls -->
-			<div class="controls scenario-controls">
-				{#if activeTab === 'A'}
-					<button class="btn" onclick={reloadFromDbA}>Reload from DB</button>
-					<button class="btn btn-secondary" onclick={resetA}>Reset</button>
-				{:else if activeTab === 'B'}
-					<button class="btn btn-secondary" onclick={resetB}>Reset</button>
-					<span class="hint">Same-tree moves are auto-handled by the library</span>
-				{:else if activeTab === 'C'}
-					<button class="btn" onclick={handleAddC}>Add Child</button>
-					<input type="text" bind:value={editNameC} placeholder="New name..." />
-					<button class="btn" onclick={handleUpdateC} disabled={!selectedNodeC}>Update Name</button>
-					<button class="btn btn-danger" onclick={handleDeleteC} disabled={!selectedNodeC}>Delete</button>
-					<button class="btn btn-secondary" onclick={resetC}>Reset</button>
-				{:else if activeTab === 'D'}
-					<button class="btn" onclick={addRootNodeD}>Add Root Node</button>
-					<button class="btn btn-secondary" onclick={clearD}>Clear All</button>
-				{:else if activeTab === 'E'}
-					<button class="btn" onclick={addRootNodeE}>Add Node</button>
-					<button class="btn btn-primary" onclick={saveAllE} disabled={unsavedCountE === 0}>
-						Save All ({unsavedCountE} unsaved)
-					</button>
-					<button class="btn btn-secondary" onclick={clearE}>Clear All</button>
-				{/if}
-			</div>
-		</div>
-
-		<!-- Activity Log -->
-		<div class="card">
-			<h3>Activity Log</h3>
-			<div class="output">
-				{#if getCurrentLog().length > 0}
-					<pre>{getCurrentLog().join('\n')}</pre>
-				{:else}
-					<p class="empty-log">No activity yet. Try dragging nodes or using the controls above.</p>
-				{/if}
-			</div>
-		</div>
-
-		<!-- Mock Database -->
-		<div class="card">
-			<details>
-				<summary>Mock Database ({getCurrentDb().length} records)</summary>
-				<div class="output">
-					<pre>{JSON.stringify(getCurrentDb(), null, 2)}</pre>
-				</div>
-			</details>
-		</div>
-
-		<!-- Code Example -->
-		<div class="card">
-			<h3>Code Example — Scenario {activeTab}</h3>
-			<div class="code-block">
-				{#if activeTab === 'A'}
-					<pre>{`// Scenario A: Full Redraw with State Preservation
+<!-- Code Example -->
+<div class="card">
+	<h3>Code Example — Scenario {activeTab}</h3>
+	<div class="code-block">
+		{#if activeTab === 'A'}
+			<pre>{`// Scenario A: Full Redraw with State Preservation
 async function handleDrop({ source, target, position }) {
   const draggedNode = source.node, dropNode = target?.node ?? null;
   // 1. Save expanded state BEFORE changes
@@ -1806,8 +1801,8 @@ async function handleDrop({ source, target, position }) {
   await tick();
   expandedPaths = saved;
 }`}</pre>
-				{:else if activeTab === 'B'}
-					<pre>{`// Scenario B: Partial Redraw (Recommended)
+		{:else if activeTab === 'B'}
+			<pre>{`// Scenario B: Partial Redraw (Recommended)
 async function handleDrop({ source, target, position }) {
   const draggedNode = source.node, dropNode = target?.node ?? null;
   // Same-tree moves are AUTO-HANDLED by the library!
@@ -1823,8 +1818,8 @@ async function handleDrop({ source, target, position }) {
 
   // Tree is already updated - no reload needed!
 }`}</pre>
-				{:else if activeTab === 'C'}
-					<pre>{`// Scenario C: Individual CRUD Operations
+		{:else if activeTab === 'C'}
+			<pre>{`// Scenario C: Individual CRUD Operations
 async function handleAdd() {
   const result = treeRef.addNode(parentPath, newData);
   if (result.success) {
@@ -1845,8 +1840,8 @@ async function handleDelete() {
     await deleteFromDatabase(path);
   }
 }`}</pre>
-				{:else if activeTab === 'D'}
-					<pre>{`// Scenario D: Empty Tree + One by One
+		{:else if activeTab === 'D'}
+			<pre>{`// Scenario D: Empty Tree + One by One
 // Use dropPlaceholder for empty state
 <Tree onNodeDrop={handleDrop}>
   {#snippet dropPlaceholder()}
@@ -1864,8 +1859,8 @@ async function handleDrop({ source, target, position }) {
     await saveToDatabase(result.node.data);
   }
 }`}</pre>
-				{:else if activeTab === 'E'}
-					<pre>{`// Scenario E: Batch Create Then Save
+		{:else if activeTab === 'E'}
+			<pre>{`// Scenario E: Batch Create Then Save
 function handleDrop({ source, target, position }) {
   const draggedNode = source.node, dropNode = target?.node ?? null;
   // Add to tree WITHOUT saving
@@ -1884,117 +1879,35 @@ async function saveAll() {
   // Batch save to database
   await saveBatchToDatabase(allData);
 }`}</pre>
-				{/if}
-			</div>
-		</div>
+		{/if}
 	</div>
-
-	<footer>
-		<p><a href="/">&larr; Back to Examples</a></p>
-	</footer>
 </div>
 
 <style>
-	/* ── Interactive editor ─────────────────────────────────────────── */
+	/* TE01 — tree beside a 300px controls column. minmax(0, 1fr) lets the tree column
+	   shrink below its rows' min-content (otherwise the tree widens the page on a phone). */
 	.editor-layout {
 		display: grid;
-		grid-template-columns: 1fr 300px;
+		grid-template-columns: minmax(0, 1fr) 300px;
 		gap: 1.5rem;
 	}
 
 	@media (max-width: 768px) {
 		.editor-layout {
-			grid-template-columns: 1fr;
+			grid-template-columns: minmax(0, 1fr);
 		}
 	}
 
-	.tree-section {
-		min-height: 400px;
-	}
-
 	.controls-section {
-		display: flex;
-		flex-direction: column;
-		gap: 1.5rem;
+		display: grid;
+		gap: 1rem;
+		align-content: start;
 	}
 
-	.control-group {
-		background: rgba(255, 255, 255, 0.5);
-		padding: 1rem;
-		border-radius: 8px;
-		border: 1px solid rgba(102, 126, 234, 0.2);
-	}
-
-	.control-group h3 {
-		margin: 0 0 0.5rem 0;
-		font-size: 0.9rem;
-		color: #4a5568;
-	}
-
-	.help-text {
-		font-size: 0.8rem;
-		color: #718096;
-		margin: 0 0 0.75rem 0;
-	}
-
-	.input-row {
-		display: flex;
-		gap: 0.5rem;
-		margin-bottom: 0.75rem;
-	}
-
-	.input-row input {
-		flex: 1;
-		padding: 0.5rem;
-		border: 1px solid #e2e8f0;
-		border-radius: 4px;
-		font-size: 0.9rem;
-	}
-
-	.input-row select {
-		padding: 0.5rem;
-		border: 1px solid #e2e8f0;
-		border-radius: 4px;
-		font-size: 0.9rem;
-		background: white;
-	}
-
-	.button-row {
-		display: flex;
-		gap: 0.5rem;
-	}
-
-	.button-row .btn {
-		flex: 1;
-	}
-
-	.btn-danger {
-		background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
-		color: white;
-	}
-
-	.btn-danger:hover:not(:disabled) {
-		transform: translateY(-1px);
-		box-shadow: 0 4px 12px rgba(229, 62, 62, 0.3);
-	}
-
-	.btn-danger:disabled {
-		background: #e2e8f0;
-		color: #a0aec0;
-		cursor: not-allowed;
-	}
-
-	.btn:disabled {
-		background: #e2e8f0;
-		color: #a0aec0;
-		cursor: not-allowed;
-		transform: none;
-		box-shadow: none;
-	}
-
+	/* TE01 node row: name + muted type + (copy-redacted) secret token. */
 	.selected-node {
 		font-weight: 600;
-		color: #667eea;
+		color: var(--kmwc-accent-color);
 	}
 
 	.cut-dimmed {
@@ -2003,127 +1916,35 @@ async function saveAll() {
 	}
 
 	.node-type {
-		font-size: 0.7rem;
-		color: #a0aec0;
 		margin-left: 0.35rem;
+		font-size: 0.7rem;
+		color: var(--kmwc-text-color-3);
 	}
 
 	.node-secret {
-		font-size: 0.65rem;
-		font-family: ui-monospace, monospace;
-		color: #b7791f;
-		background: #fefcbf;
-		border-radius: 3px;
-		padding: 0 0.3rem;
 		margin-left: 0.35rem;
+		padding: 0 0.3rem;
+		border-radius: var(--kmwc-radius-sm);
+		font-family: var(--kmwc-mono-font-family);
+		font-size: 0.65rem;
+		color: var(--kmwc-warning-color);
+		background: color-mix(in srgb, var(--kmwc-warning-color) 14%, transparent);
 	}
 
-	.drop-warning {
-		margin-top: 0.75rem;
-		padding: 0.5rem 0.75rem;
-		background: #fef3c7;
-		border: 1px solid #f59e0b;
-		border-radius: 4px;
-		color: #92400e;
-		font-size: 0.85rem;
-	}
-
-	/* ── Business scenarios (scoped so styling doesn't leak to the editor) ── */
-	.scenarios .scenario-info {
-		padding: 1rem;
-		background: #f8fafc;
-		border-radius: 4px;
-	}
-
-	.scenarios .scenario-info h3 {
-		margin: 0 0 0.5rem 0;
-		font-size: 1.25rem;
-	}
-
-	.scenarios .scenario-info p {
-		margin: 0.5rem 0;
-		color: #475569;
-	}
-
-	.scenarios .key-feature {
-		font-weight: 500;
-	}
-
-	.scenarios .key-feature code {
-		background: #e0e7ff;
-		color: #4338ca;
-		padding: 0.2rem 0.5rem;
-		border-radius: 4px;
-	}
-
-	.scenarios .trees-side-by-side {
-		gap: 1.5rem;
-		margin-bottom: 1rem;
-	}
-
-	.scenarios .trees-side-by-side h3 {
-		margin: 0 0 0.5rem 0;
-		font-size: 1rem;
-		color: #374151;
-	}
-
-	.scenarios .tree-container {
-		min-height: 300px;
-		max-height: 400px;
-		overflow: auto;
-		background: #fafafa;
-	}
-
-	.scenarios .scenario-controls {
-		padding-top: 1rem;
-		border-top: 1px solid #e2e8f0;
-	}
-
-	.scenarios .controls input[type='text'] {
-		padding: 0.5rem;
-		border: 1px solid #e2e8f0;
-		border-radius: 4px;
-		width: 150px;
-	}
-
-	.scenarios .output pre {
-		max-height: 220px;
-		overflow: auto;
-	}
-
-	.btn-primary {
-		background: #22c55e;
-		color: white;
-	}
-
-	.btn-primary:hover:not(:disabled) {
-		background: #16a34a;
-	}
-
-	.scenarios details {
-		cursor: pointer;
-	}
-
-	.scenarios details summary {
-		font-weight: 500;
-		padding: 0.5rem 0;
-	}
-
+	/* TE05 — the library's empty-tree / drop-placeholder snippets (scenarios D + E). */
 	.drop-placeholder-content {
-		text-align: center;
 		padding: 2rem;
-		color: #667eea;
+		text-align: center;
+		color: var(--kmwc-accent-color);
 	}
 
 	.placeholder-icon {
-		font-size: 2rem;
 		margin: 0;
+		font-size: 2rem;
 	}
 
-	.node-id {
-		color: #94a3b8;
-		font-family: monospace;
-		font-size: 0.75rem;
-		margin-right: 0.25rem;
+	summary {
+		cursor: pointer;
+		font-weight: 500;
 	}
 </style>

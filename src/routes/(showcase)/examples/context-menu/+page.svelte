@@ -5,6 +5,7 @@
 	import type { LTreeNode } from '$lib/ltree/types.js';
 	import type { TreeMenuContext, TreeMenuEntry } from '$lib/core/menu.js';
 	import RenderModeSwitch from '../RenderModeSwitch.svelte';
+	import LogPanel, { logLine, type LogEntry } from '../../LogPanel.svelte';
 	import { getTreeProps } from '../render-mode.svelte.js';
 
 	type FileItem = {
@@ -27,8 +28,8 @@
 		{ id: 8, path: '2.2', name: 'Logo.png', icon: '🎨', type: 'file' }
 	];
 
-	let activityLog = $state<string[]>([]);
-	let snippetLog = $state<string[]>([]);
+	let activityLog = $state<LogEntry[]>([]);
+	let snippetLog = $state<LogEntry[]>([]);
 	let xOffset = $state(8);
 	let yOffset = $state(0);
 
@@ -36,12 +37,15 @@
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
 	}
 
-	function addLog(message: string) {
-		activityLog = [...activityLog.slice(-9), `${new Date().toLocaleTimeString()} - ${message}`];
+	// Timeline lines for the kit log panel: the menu item is the name, the node the detail.
+	type LogVariant = 'info' | 'success' | 'warning' | 'danger';
+
+	function addLog(name: string, detail: string, variant?: LogVariant) {
+		activityLog = [...activityLog.slice(-9), logLine(name, detail, variant)];
 	}
 
-	function addSnippetLog(message: string) {
-		snippetLog = [...snippetLog.slice(-9), `${new Date().toLocaleTimeString()} - ${message}`];
+	function addSnippetLog(name: string, detail: string, variant?: LogVariant) {
+		snippetLog = [...snippetLog.slice(-9), logLine(name, detail, variant)];
 	}
 
 	function clearLog() {
@@ -65,13 +69,13 @@
 				icon: '📄',
 				text: 'New File',
 				shortcut: 'N',
-				onClick: () => { addLog(`New file in "${node.data?.name}"`); close(); }
+				onClick: () => { addLog('New File', `in "${node.data?.name}"`); close(); }
 			});
 			entries.push({
 				icon: '📁',
 				text: 'New Folder',
 				shortcut: 'Shift+N',
-				onClick: () => { addLog(`New folder in "${node.data?.name}"`); close(); }
+				onClick: () => { addLog('New Folder', `in "${node.data?.name}"`); close(); }
 			});
 			entries.push({ divider: true });
 		}
@@ -80,7 +84,7 @@
 			icon: '📋',
 			text: 'Copy',
 			shortcut: 'C',
-			onClick: () => { addLog(`Copied "${node.data?.name}"`); close(); }
+			onClick: () => { addLog('Copy', `"${node.data?.name}"`); close(); }
 		});
 
 		entries.push({
@@ -88,7 +92,7 @@
 			text: 'Cut',
 			shortcut: 'X',
 			isDisabled: isReadonly,
-			onClick: () => { addLog(`Cut "${node.data?.name}"`); close(); }
+			onClick: () => { addLog('Cut', `"${node.data?.name}"`); close(); }
 		});
 
 		entries.push({
@@ -96,7 +100,7 @@
 			text: 'Paste',
 			shortcut: 'V',
 			isDisabled: !isFolder,
-			onClick: () => { addLog(`Paste into "${node.data?.name}"`); close(); }
+			onClick: () => { addLog('Paste', `into "${node.data?.name}"`); close(); }
 		});
 
 		// Submenu example: Export As...
@@ -104,9 +108,9 @@
 			icon: '📤',
 			text: 'Export As...',
 			children: [
-				{ text: 'JSON', shortcut: 'J', onClick: () => { addLog(`Export "${node.data?.name}" as JSON`); close(); } },
-				{ text: 'XML', shortcut: 'X', onClick: () => { addLog(`Export "${node.data?.name}" as XML`); close(); } },
-				{ text: 'CSV', shortcut: 'C', onClick: () => { addLog(`Export "${node.data?.name}" as CSV`); close(); } },
+				{ text: 'JSON', shortcut: 'J', onClick: () => { addLog('Export', `"${node.data?.name}" as JSON`); close(); } },
+				{ text: 'XML', shortcut: 'X', onClick: () => { addLog('Export', `"${node.data?.name}" as XML`); close(); } },
+				{ text: 'CSV', shortcut: 'C', onClick: () => { addLog('Export', `"${node.data?.name}" as CSV`); close(); } },
 			]
 		});
 
@@ -117,7 +121,7 @@
 			text: 'Rename',
 			shortcut: 'F2',
 			isDisabled: isReadonly,
-			onClick: () => { addLog(`Rename "${node.data?.name}"`); close(); }
+			onClick: () => { addLog('Rename', `"${node.data?.name}"`); close(); }
 		});
 
 		entries.push({
@@ -125,7 +129,7 @@
 			text: 'Delete',
 			isDanger: true,
 			isDisabled: isReadonly,
-			onClick: () => { addLog(`Delete "${node.data?.name}"`); close(); }
+			onClick: () => { addLog('Delete', `"${node.data?.name}"`, 'danger'); close(); }
 		});
 
 		// isVisible example: only show lock info for readonly
@@ -144,127 +148,122 @@
 	<title>Context Menu Examples - Svelte Treeview</title>
 </svelte:head>
 
-<div class="container">
-	<header class="example-header">
-		<a href="/" class="back-link">&larr; Back to Examples</a>
-		<h1>Context Menu</h1>
-		<p class="subtitle">Right-click context menus with callbacks, snippets, shortcuts, submenus, and named dividers</p>
-		<RenderModeSwitch />
-	</header>
+<header class="example-header">
+	<a href="/" class="back-link">&larr; Back to Examples</a>
+	<h1>Context Menu</h1>
+	<p class="subtitle">Right-click context menus with callbacks, snippets, shortcuts, submenus, and named dividers</p>
+	<RenderModeSwitch />
+</header>
 
-	<div class="note">
-		<p class="note-title">Positioning is handled by Floating UI</p>
-		<p>The menu and its submenus are placed by <a href="https://floating-ui.com/" target="_blank" rel="noopener"><code>@floating-ui/dom</code></a> (a runtime dependency). It uses <code>computePosition</code> with <code>offset</code>, <code>flip</code>, and <code>shift</code> middleware so the menu stays inside the viewport — submenus automatically flip to the left edge when there's no room on the right, and <code>autoUpdate</code> keeps everything anchored on scroll/resize. The <code>contextMenuXOffset</code>/<code>contextMenuYOffset</code> props feed into the root menu's offset from the cursor.</p>
+<div class="note">
+	<p class="note-title">Positioning is handled by Floating UI</p>
+	<p>The menu and its submenus are placed by <a href="https://floating-ui.com/" target="_blank" rel="noopener"><code>@floating-ui/dom</code></a> (a runtime dependency). It uses <code>computePosition</code> with <code>offset</code>, <code>flip</code>, and <code>shift</code> middleware so the menu stays inside the viewport — submenus automatically flip to the left edge when there's no room on the right, and <code>autoUpdate</code> keeps everything anchored on scroll/resize. The <code>contextMenuXOffset</code>/<code>contextMenuYOffset</code> props feed into the root menu's offset from the cursor.</p>
+</div>
+
+<!-- Dynamic Context Menu (Callback approach) -->
+<div class="card">
+	<h2>CM01 · Callback Approach</h2>
+	<p class="description">Right-click on any node. Demonstrates shortcuts, submenus, named dividers, <code>className="danger"</code>, and <code>isVisible</code>.</p>
+
+	<div class="controls">
+		<label>
+			X Offset:
+			<input type="number" class="w-xs" bind:value={xOffset} />
+			<span class="muted">px</span>
+		</label>
+		<label>
+			Y Offset:
+			<input type="number" class="w-xs" bind:value={yOffset} />
+			<span class="muted">px</span>
+		</label>
+		<button class="secondary" onclick={clearLog}>Clear Log</button>
 	</div>
 
-	<!-- Dynamic Context Menu (Callback approach) -->
-	<div class="card">
-		<h2>CM01 · Callback Approach</h2>
-		<p class="description">Right-click on any node. Demonstrates shortcuts, submenus, named dividers, <code>className="danger"</code>, and <code>isVisible</code>.</p>
-
-		<div class="controls">
-			<label>
-				X Offset:
-				<input type="number" bind:value={xOffset} style="width: 70px;" />
-				<span class="hint">px</span>
-			</label>
-			<label>
-				Y Offset:
-				<input type="number" bind:value={yOffset} style="width: 70px;" />
-				<span class="hint">px</span>
-			</label>
-			<button class="btn btn-secondary" onclick={clearLog}>Clear Log</button>
-		</div>
-
-		<div class="tree-container tree-container-tall">
-			<Tree
-				nodes={sampleData}
-				idMember="id"
-				pathMember="path"
-				sortCallback={sortByName}
-				isSorted={true}
-				expandLevel={3}
-				getContextMenuItemsCallback={getContextMenu}
-				contextMenuXOffset={xOffset}
-				contextMenuYOffset={yOffset}
-				{...getTreeProps()}
-			>
-				{#snippet nodeTemplate(node: any)}
-					<span>
-						{node.data?.icon} {node.data?.name}
-						{#if node.data?.readonly}
-							<span style="color: #999; font-size: 0.8em;">(read-only)</span>
-						{/if}
-					</span>
-				{/snippet}
-			</Tree>
-		</div>
-
-		{#if activityLog.length > 0}
-			<div class="output">
-				<p class="output-label">Activity Log:</p>
-				<pre>{activityLog.join('\n')}</pre>
-			</div>
-		{/if}
-	</div>
-
-	<!-- Snippet Approach -->
-	<div class="card">
-		<h2>CM02 · Snippet + Component Approach</h2>
-		<p class="description">Uses <code>ContextMenuItemC</code> and <code>ContextMenuDividerC</code> Svelte components inside a <code>contextMenu</code> snippet for declarative menus with conditional rendering.</p>
-
-		<div class="controls">
-			<button class="btn btn-secondary" onclick={clearSnippetLog}>Clear Log</button>
-		</div>
-
-		<div class="tree-container tree-container-tall">
-			<Tree
-				nodes={sampleData}
-				idMember="id"
-				pathMember="path"
-				sortCallback={sortByName}
-				isSorted={true}
-				expandLevel={3}
-				{...getTreeProps()}
-			>
-				{#snippet nodeTemplate(node: any)}
-					<span>
-						{node.data?.icon} {node.data?.name}
-						{#if node.data?.readonly}
-							<span style="color: #999; font-size: 0.8em;">(read-only)</span>
-						{/if}
-					</span>
-				{/snippet}
-				{#snippet contextMenu(node: LTreeNode<FileItem>, close: () => void)}
-					<ContextMenuItemC text="Copy" icon="📋" shortcut="C" onClick={() => { addSnippetLog(`Copied "${node.data?.name}"`); close(); }} />
-					<ContextMenuItemC text="Cut" icon="✂️" shortcut="X" isDisabled={!!node.data?.readonly} onClick={() => { addSnippetLog(`Cut "${node.data?.name}"`); close(); }} />
-					{#if node.data?.type === 'folder'}
-						<ContextMenuItemC text="Export As..." icon="📤">
-							<ContextMenuItemC text="JSON" shortcut="J" onClick={() => { addSnippetLog(`Export "${node.data?.name}" as JSON`); close(); }} />
-							<ContextMenuItemC text="XML" shortcut="X" onClick={() => { addSnippetLog(`Export "${node.data?.name}" as XML`); close(); }} />
-						</ContextMenuItemC>
+	<div class="tree-container tree-container-tall">
+		<Tree
+			nodes={sampleData}
+			idMember="id"
+			pathMember="path"
+			sortCallback={sortByName}
+			isSorted={true}
+			expandLevel={3}
+			getContextMenuItemsCallback={getContextMenu}
+			contextMenuXOffset={xOffset}
+			contextMenuYOffset={yOffset}
+			{...getTreeProps()}
+		>
+			{#snippet nodeTemplate(node: any)}
+				<span>
+					{node.data?.icon} {node.data?.name}
+					{#if node.data?.readonly}
+						<small class="muted">(read-only)</small>
 					{/if}
-					<ContextMenuDividerC text="Danger zone" />
-					<ContextMenuItemC text="Delete" icon="🗑️" isDanger isDisabled={!!node.data?.readonly} onClick={() => { addSnippetLog(`Delete "${node.data?.name}"`); close(); }} />
-				{/snippet}
-			</Tree>
-		</div>
-
-		{#if snippetLog.length > 0}
-			<div class="output">
-				<p class="output-label">Activity Log:</p>
-				<pre>{snippetLog.join('\n')}</pre>
-			</div>
-		{/if}
+				</span>
+			{/snippet}
+		</Tree>
 	</div>
 
-	<!-- Callback API Reference -->
-	<div class="card">
-		<h2>CM03 · Callback API</h2>
-		<p class="description">Use <code>getContextMenuItemsCallback</code> to dynamically generate menu entries based on the node.</p>
+	<div class="output">
+		<p class="output-label">Activity log</p>
+		<LogPanel entries={activityLog} empty="Right-click a node and pick an item…" />
+	</div>
+</div>
 
-		<div class="code-block">
-			<pre>{`import { menuDivider } from '@keenmate/svelte-treeview';
+<!-- Snippet Approach -->
+<div class="card">
+	<h2>CM02 · Snippet + Component Approach</h2>
+	<p class="description">Uses <code>ContextMenuItemC</code> and <code>ContextMenuDividerC</code> Svelte components inside a <code>contextMenu</code> snippet for declarative menus with conditional rendering.</p>
+
+	<div class="controls">
+		<button class="secondary" onclick={clearSnippetLog}>Clear Log</button>
+	</div>
+
+	<div class="tree-container tree-container-tall">
+		<Tree
+			nodes={sampleData}
+			idMember="id"
+			pathMember="path"
+			sortCallback={sortByName}
+			isSorted={true}
+			expandLevel={3}
+			{...getTreeProps()}
+		>
+			{#snippet nodeTemplate(node: any)}
+				<span>
+					{node.data?.icon} {node.data?.name}
+					{#if node.data?.readonly}
+						<small class="muted">(read-only)</small>
+					{/if}
+				</span>
+			{/snippet}
+			{#snippet contextMenu(node: LTreeNode<FileItem>, close: () => void)}
+				<ContextMenuItemC text="Copy" icon="📋" shortcut="C" onClick={() => { addSnippetLog('Copy', `"${node.data?.name}"`); close(); }} />
+				<ContextMenuItemC text="Cut" icon="✂️" shortcut="X" isDisabled={!!node.data?.readonly} onClick={() => { addSnippetLog('Cut', `"${node.data?.name}"`); close(); }} />
+				{#if node.data?.type === 'folder'}
+					<ContextMenuItemC text="Export As..." icon="📤">
+						<ContextMenuItemC text="JSON" shortcut="J" onClick={() => { addSnippetLog('Export', `"${node.data?.name}" as JSON`); close(); }} />
+						<ContextMenuItemC text="XML" shortcut="X" onClick={() => { addSnippetLog('Export', `"${node.data?.name}" as XML`); close(); }} />
+					</ContextMenuItemC>
+				{/if}
+				<ContextMenuDividerC text="Danger zone" />
+				<ContextMenuItemC text="Delete" icon="🗑️" isDanger isDisabled={!!node.data?.readonly} onClick={() => { addSnippetLog('Delete', `"${node.data?.name}"`, 'danger'); close(); }} />
+			{/snippet}
+		</Tree>
+	</div>
+
+	<div class="output">
+		<p class="output-label">Activity log</p>
+		<LogPanel entries={snippetLog} empty="Right-click a node and pick an item…" />
+	</div>
+</div>
+
+<!-- Callback API Reference -->
+<div class="card">
+	<h2>CM03 · Callback API</h2>
+	<p class="description">Use <code>getContextMenuItemsCallback</code> to dynamically generate menu entries based on the node.</p>
+
+	<div class="code-block">
+		<pre>{`import { menuDivider } from '@keenmate/svelte-treeview';
 import type { TreeMenuContext, TreeMenuEntry } from '@keenmate/svelte-treeview';
 
 // ctx = { node, path, parent, siblings, controller }; the menu closes after an item runs.
@@ -281,16 +280,16 @@ function getContextMenu({ node }: TreeMenuContext<FileItem>): TreeMenuEntry<File
   ];
 }
 // Order: beforeActionCallback(detail) → item onClick(detail) → built-in → onAction(detail)`}</pre>
-		</div>
 	</div>
+</div>
 
-	<!-- Snippet API Reference -->
-	<div class="card">
-		<h2>CM04 · Snippet + Component API</h2>
-		<p class="description">Use <code>ContextMenuItemC</code> and <code>ContextMenuDividerC</code> components inside the <code>contextMenu</code> snippet.</p>
+<!-- Snippet API Reference -->
+<div class="card">
+	<h2>CM04 · Snippet + Component API</h2>
+	<p class="description">Use <code>ContextMenuItemC</code> and <code>ContextMenuDividerC</code> components inside the <code>contextMenu</code> snippet.</p>
 
-		<div class="code-block">
-			<pre>{'<'}script{'>'}
+	<div class="code-block">
+		<pre>{'<'}script{'>'}
   import {"{"} ContextMenuItemC, ContextMenuDividerC {"}"} from '@keenmate/svelte-treeview';
 {'<'}/script{'>'}
 
@@ -312,16 +311,16 @@ function getContextMenu({ node }: TreeMenuContext<FileItem>): TreeMenuEntry<File
       onClick={() => { del(node); close(); }} />
   {/snippet}
 </Tree>`}</pre>
-		</div>
 	</div>
+</div>
 
-	<!-- TreeMenuEntry Types -->
-	<div class="card">
-		<h2>CM05 · TreeMenuEntry Types</h2>
-		<p class="description">The unified type definition shared across svelte-treeview and canvas-tree.</p>
+<!-- TreeMenuEntry Types -->
+<div class="card">
+	<h2>CM05 · TreeMenuEntry Types</h2>
+	<p class="description">The unified type definition shared across svelte-treeview and canvas-tree.</p>
 
-		<div class="code-block">
-			<pre>{`// Divider (simple or named) — create with menuDivider(text?)
+	<div class="code-block">
+		<pre>{`// Divider (simple or named) — create with menuDivider(text?)
 interface MenuDivider { divider: true; text?: string; }
 
 // Menu item — core MenuItem (same model as @keenmate/web-treeview)
@@ -347,139 +346,135 @@ type TreeMenuEntry<T> = TreeMenuItem<T> | MenuDivider | TreeAction;
 type TreeAction = 'copy' | 'cut' | 'paste' | 'delete' | 'expand' | 'collapse'
   | 'expand-subtree' | 'collapse-subtree' | 'expand-all' | 'collapse-all'
   | 'sort' | 'sort-subtree' | 'sort-all';`}</pre>
-		</div>
-
-		<table>
-			<thead>
-				<tr>
-					<th>Property</th>
-					<th>Type</th>
-					<th>Description</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr>
-					<td><code>label</code></td>
-					<td><code>string</code></td>
-					<td>Display text (required for items, optional for dividers)</td>
-				</tr>
-				<tr>
-					<td><code>onclick</code></td>
-					<td><code>() =&gt; void | Promise</code></td>
-					<td>Click handler (optional: parent items with children may omit)</td>
-				</tr>
-				<tr>
-					<td><code>icon</code></td>
-					<td><code>string</code></td>
-					<td>Emoji or text icon shown before the label</td>
-				</tr>
-				<tr>
-					<td><code>shortcut</code></td>
-					<td><code>string</code></td>
-					<td>Keyboard shortcut hint (right-aligned, muted)</td>
-				</tr>
-				<tr>
-					<td><code>isDisabled</code></td>
-					<td><code>boolean</code></td>
-					<td>If true, item is grayed out and not clickable</td>
-				</tr>
-				<tr>
-					<td><code>isVisible</code></td>
-					<td><code>boolean</code></td>
-					<td>If false, item is not rendered (callback approach)</td>
-				</tr>
-				<tr>
-					<td><code>className</code></td>
-					<td><code>string</code></td>
-					<td>CSS class name (e.g. "danger" for red styling)</td>
-				</tr>
-				<tr>
-					<td><code>children</code></td>
-					<td><code>TreeMenuEntry[]</code></td>
-					<td>Nested submenu items (opens on hover)</td>
-				</tr>
-				<tr>
-					<td><code>divider</code></td>
-					<td><code>true</code></td>
-					<td>Type discriminator for divider entries</td>
-				</tr>
-			</tbody>
-		</table>
 	</div>
 
-	<!-- Menu Position Offset -->
-	<div class="card">
-		<h2>CM06 · Menu Position Offset</h2>
-		<p class="description">Adjust the context menu position relative to the cursor using <code>contextMenuXOffset</code> and <code>contextMenuYOffset</code>.</p>
+	<table class="reference-table">
+		<thead>
+			<tr>
+				<th>Property</th>
+				<th>Type</th>
+				<th>Description</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>label</code></td>
+				<td><code>string</code></td>
+				<td>Display text (required for items, optional for dividers)</td>
+			</tr>
+			<tr>
+				<td><code>onclick</code></td>
+				<td><code>() =&gt; void | Promise</code></td>
+				<td>Click handler (optional: parent items with children may omit)</td>
+			</tr>
+			<tr>
+				<td><code>icon</code></td>
+				<td><code>string</code></td>
+				<td>Emoji or text icon shown before the label</td>
+			</tr>
+			<tr>
+				<td><code>shortcut</code></td>
+				<td><code>string</code></td>
+				<td>Keyboard shortcut hint (right-aligned, muted)</td>
+			</tr>
+			<tr>
+				<td><code>isDisabled</code></td>
+				<td><code>boolean</code></td>
+				<td>If true, item is grayed out and not clickable</td>
+			</tr>
+			<tr>
+				<td><code>isVisible</code></td>
+				<td><code>boolean</code></td>
+				<td>If false, item is not rendered (callback approach)</td>
+			</tr>
+			<tr>
+				<td><code>className</code></td>
+				<td><code>string</code></td>
+				<td>CSS class name (e.g. "danger" for red styling)</td>
+			</tr>
+			<tr>
+				<td><code>children</code></td>
+				<td><code>TreeMenuEntry[]</code></td>
+				<td>Nested submenu items (opens on hover)</td>
+			</tr>
+			<tr>
+				<td><code>divider</code></td>
+				<td><code>true</code></td>
+				<td>Type discriminator for divider entries</td>
+			</tr>
+		</tbody>
+	</table>
+</div>
 
-		<div class="code-block">
-			<pre>{`<Tree
+<!-- Menu Position Offset -->
+<div class="card">
+	<h2>CM06 · Menu Position Offset</h2>
+	<p class="description">Adjust the context menu position relative to the cursor using <code>contextMenuXOffset</code> and <code>contextMenuYOffset</code>.</p>
+
+	<div class="code-block">
+		<pre>{`<Tree
   getContextMenuItemsCallback={getContextMenu}
   contextMenuXOffset={8}   // Default: 8px right of cursor
   contextMenuYOffset={0}   // Default: 0px below cursor
 />`}</pre>
-		</div>
-
 	</div>
 
-	<!-- CSS Customization -->
-	<div class="card">
-		<h2>CM07 · CSS Customization</h2>
-		<p class="description">Style the context menu using these CSS classes.</p>
-
-		<table>
-			<thead>
-				<tr>
-					<th>Class</th>
-					<th>Description</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr>
-					<td><code>.stv__context-menu</code></td>
-					<td>The menu container</td>
-				</tr>
-				<tr>
-					<td><code>.stv__context-menu-item</code></td>
-					<td>Each menu item</td>
-				</tr>
-				<tr>
-					<td><code>.stv__context-menu-item--disabled</code></td>
-					<td>Disabled menu items</td>
-				</tr>
-				<tr>
-					<td><code>.stv__context-menu-label</code></td>
-					<td>Label text span</td>
-				</tr>
-				<tr>
-					<td><code>.stv__context-menu-shortcut</code></td>
-					<td>Right-aligned shortcut hint</td>
-				</tr>
-				<tr>
-					<td><code>.stv__context-menu-arrow</code></td>
-					<td>Submenu arrow indicator</td>
-				</tr>
-				<tr>
-					<td><code>.stv__context-menu-divider</code></td>
-					<td>Divider lines</td>
-				</tr>
-				<tr>
-					<td><code>.stv__context-menu-divider-label</code></td>
-					<td>Named divider label text</td>
-				</tr>
-				<tr>
-					<td><code>.stv__context-submenu</code></td>
-					<td>Nested submenu container</td>
-				</tr>
-				<tr>
-					<td><code>.danger</code></td>
-					<td>Danger-styled item (red text)</td>
-				</tr>
-			</tbody>
-		</table>
-	</div>
-
-	<footer>
-		<p><a href="/">&larr; Back to Examples</a></p>
-	</footer>
 </div>
+
+<!-- CSS Customization -->
+<div class="card">
+	<h2>CM07 · CSS Customization</h2>
+	<p class="description">Style the context menu using these CSS classes.</p>
+
+	<table class="reference-table">
+		<thead>
+			<tr>
+				<th>Class</th>
+				<th>Description</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>.stv__context-menu</code></td>
+				<td>The menu container</td>
+			</tr>
+			<tr>
+				<td><code>.stv__context-menu-item</code></td>
+				<td>Each menu item</td>
+			</tr>
+			<tr>
+				<td><code>.stv__context-menu-item--disabled</code></td>
+				<td>Disabled menu items</td>
+			</tr>
+			<tr>
+				<td><code>.stv__context-menu-label</code></td>
+				<td>Label text span</td>
+			</tr>
+			<tr>
+				<td><code>.stv__context-menu-shortcut</code></td>
+				<td>Right-aligned shortcut hint</td>
+			</tr>
+			<tr>
+				<td><code>.stv__context-menu-arrow</code></td>
+				<td>Submenu arrow indicator</td>
+			</tr>
+			<tr>
+				<td><code>.stv__context-menu-divider</code></td>
+				<td>Divider lines</td>
+			</tr>
+			<tr>
+				<td><code>.stv__context-menu-divider-label</code></td>
+				<td>Named divider label text</td>
+			</tr>
+			<tr>
+				<td><code>.stv__context-submenu</code></td>
+				<td>Nested submenu container</td>
+			</tr>
+			<tr>
+				<td><code>.danger</code></td>
+				<td>Danger-styled item (red text)</td>
+			</tr>
+		</tbody>
+	</table>
+</div>
+

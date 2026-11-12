@@ -461,21 +461,54 @@
 </div>
 
 <style>
+	/* kmwc-fixed-colors: imitation of the Windows 11 File Explorer skin — its own light and
+	   dark palettes (light-dark(), so it follows the examples theme switch like Windows'
+	   app mode). The red title bar is the demo's window chrome in both modes. */
 	.winx {
-		--winx-accent: #0067c0;
-		--winx-border: #d9d9d9;
+		--winx-accent: light-dark(#0067c0, #4cc2ff);
+		--winx-border: light-dark(#d9d9d9, #3a3a3a);
+		--winx-frame-border: light-dark(#c8c8c8, #454545);
+		--winx-text: light-dark(#1b1b1b, #ffffff);
+		--winx-text-2: light-dark(#444444, #c8c8c8);
+		--winx-text-3: light-dark(#8a8a8a, #9d9d9d);
+		--winx-disabled: light-dark(#b0b0b0, #6e6e6e);
+		--winx-bg: light-dark(#f3f3f3, #202020);
+		--winx-bar-bg: light-dark(#fafafa, #2b2b2b);
+		--winx-field-bg: light-dark(#ffffff, #1f1f1f);
+		--winx-nav-bg: light-dark(#fbfbfb, #1c1c1c);
+		--winx-pane-bg: light-dark(#ffffff, #191919);
+		--winx-hover: light-dark(#eaeaea, #333333);
+		--winx-crumb-hover: light-dark(#eef5fd, #333333);
+		--winx-action-hover-bg: light-dark(#eaf2fb, #2d2d2d);
+		--winx-action-hover-border: light-dark(#cfe3f7, #454545);
+		--winx-danger-hover-bg: light-dark(#fdeaea, #3d2526);
+		--winx-danger-hover-border: light-dark(#f3caca, #6a3335);
+		--winx-col-rule: light-dark(#eeeeee, #2e2e2e);
+		--winx-col-hover: light-dark(#f5f5f5, #262626);
+		--winx-row-hover: light-dark(#f2f7fd, #262626);
+		--winx-sel-bg: light-dark(#cfe5fb, #1d3a55);
+		--winx-sel-ring: light-dark(#a8cef0, #2f6390);
+		--winx-sel-hover: light-dark(#c3ddf8, #234563);
+		--winx-cols: minmax(180px, 2fr) 1.2fr 1.2fr 0.8fr; /* header + row grid tracks */
+		container: winx / inline-size;
 		font-family: 'Segoe UI', system-ui, sans-serif;
 		font-size: 13px;
-		color: #1b1b1b;
-		background: #f3f3f3;
-		border: 1px solid #c8c8c8;
+		color: var(--winx-text);
+		background: var(--winx-bg);
+		border: 1px solid var(--winx-frame-border);
 		border-radius: 8px;
 		overflow: hidden;
-		box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+		box-shadow: 0 12px 40px light-dark(rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0.6));
 		display: flex;
 		flex-direction: column;
 		height: 620px;
 		user-select: none;
+	}
+
+	/* Skin buttons are sized by the skin, not by the kit's control height / button fill. */
+	.winx button {
+		min-height: 0;
+		line-height: normal;
 	}
 
 	/* Title bar */
@@ -484,12 +517,20 @@
 		align-items: center;
 		justify-content: space-between;
 		height: 32px;
+		flex-shrink: 0;
 		padding: 0 0 0 12px;
 		background: linear-gradient(180deg, #d23b3b 0%, #c42d2d 100%);
 		color: #fff;
 	}
-	.winx__title { font-size: 12.5px; font-weight: 500; }
-	.winx__winbtns { display: flex; height: 100%; }
+	.winx__title {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		font-size: 12.5px;
+		font-weight: 500;
+	}
+	.winx__winbtns { display: flex; height: 100%; flex-shrink: 0; }
 	.winx__winbtn {
 		display: flex; align-items: center; justify-content: center;
 		width: 46px; height: 100%; font-size: 12px;
@@ -499,120 +540,151 @@
 	/* Command bar */
 	.winx__commandbar {
 		display: flex; align-items: center; gap: 4px;
-		padding: 6px 8px; background: #fafafa; border-bottom: 1px solid var(--winx-border);
+		padding: 6px 8px; background: var(--winx-bar-bg); border-bottom: 1px solid var(--winx-border);
 	}
 	.winx__navbtn {
-		width: 30px; height: 28px; border: none; background: transparent; border-radius: 4px;
-		font-size: 15px; color: #444; cursor: pointer;
+		width: 30px; height: 28px; padding: 0; border: none; background: transparent; border-radius: 4px;
+		font-size: 15px; color: var(--winx-text-2); flex-shrink: 0;
 	}
-	.winx__navbtn:hover:not(:disabled) { background: #eaeaea; }
-	.winx__navbtn:disabled { color: #bbb; cursor: default; }
+	.winx__navbtn:hover { background: transparent; }
+	.winx__navbtn:hover:not(:disabled) { background: var(--winx-hover); }
+	.winx__navbtn:disabled { color: var(--winx-disabled); cursor: default; opacity: 1; }
 
 	.winx__address {
 		flex: 1; display: flex; align-items: center; gap: 1px; min-width: 0;
 		height: 28px; padding: 0 8px; margin: 0 4px;
-		background: #fff; border: 1px solid var(--winx-border); border-radius: 4px;
+		background: var(--winx-field-bg); border: 1px solid var(--winx-border); border-radius: 4px;
 		overflow: hidden; white-space: nowrap;
 	}
 	.winx__crumb {
-		border: none; background: transparent; cursor: pointer; padding: 3px 6px;
-		border-radius: 3px; font-size: 13px; color: #1b1b1b;
+		border: none; background: transparent; padding: 3px 6px;
+		border-radius: 3px; font-size: 13px; color: var(--winx-text); flex-shrink: 0;
 	}
-	.winx__crumb:hover { background: #eef5fd; }
-	.winx__crumb-sep { color: #999; font-size: 12px; }
+	.winx__crumb:hover { background: var(--winx-crumb-hover); }
+	.winx__crumb-sep { color: var(--winx-text-3); font-size: 12px; }
 
 	.winx__search {
-		display: flex; align-items: center; gap: 4px; width: 200px; height: 28px;
-		padding: 0 8px; background: #fff; border: 1px solid var(--winx-border); border-radius: 4px;
+		display: flex; align-items: center; gap: 4px; width: 200px; height: 28px; flex-shrink: 0;
+		padding: 0 8px; background: var(--winx-field-bg); border: 1px solid var(--winx-border); border-radius: 4px;
 	}
 	.winx__search-icon { font-size: 11px; opacity: 0.6; }
-	.winx__search input { flex: 1; border: none; outline: none; font: inherit; background: transparent; }
+	.winx__search input {
+		flex: 1; min-width: 0; height: auto; padding: 0;
+		border: none; outline: none; box-shadow: none; font: inherit; color: var(--winx-text); background: transparent;
+	}
+	.winx__search input::placeholder { color: var(--winx-text-3); }
 
 	/* Action bar */
 	.winx__actionbar {
-		display: flex; align-items: center; gap: 2px;
-		padding: 4px 8px; background: #f3f3f3; border-bottom: 1px solid var(--winx-border);
+		display: flex; flex-wrap: wrap; align-items: center; gap: 2px;
+		padding: 4px 8px; background: var(--winx-bg); border-bottom: 1px solid var(--winx-border);
 	}
 	.winx__action {
 		display: inline-flex; align-items: center; gap: 6px;
 		border: 1px solid transparent; background: transparent; border-radius: 4px;
-		padding: 4px 10px; font: inherit; color: #1b1b1b; cursor: pointer;
+		padding: 4px 10px; font: inherit; color: var(--winx-text);
 	}
-	.winx__action:hover:not(:disabled) { background: #eaf2fb; border-color: #cfe3f7; }
-	.winx__action:disabled { color: #b0b0b0; cursor: default; }
-	.winx__action--danger:hover:not(:disabled) { background: #fdeaea; border-color: #f3caca; }
+	.winx__action:hover { background: transparent; }
+	.winx__action:hover:not(:disabled) { background: var(--winx-action-hover-bg); border-color: var(--winx-action-hover-border); }
+	.winx__action:disabled { color: var(--winx-disabled); cursor: default; opacity: 1; }
+	.winx__action--danger:hover:not(:disabled) { background: var(--winx-danger-hover-bg); border-color: var(--winx-danger-hover-border); }
 	.winx__sep { width: 1px; height: 20px; background: var(--winx-border); margin: 0 6px; }
 
 	/* Body */
 	.winx__body { flex: 1; display: flex; min-height: 0; }
 	.winx__nav {
 		width: 250px; flex-shrink: 0; overflow: auto;
-		background: #fbfbfb; border-right: 1px solid var(--winx-border); padding: 6px 4px;
-		/* tighten the tree to Explorer density + Windows-blue selection */
+		background: var(--winx-nav-bg); border-right: 1px solid var(--winx-border); padding: 6px 4px;
+	}
+	/* The library declares its --stv-* on .stv__container, so the skin sets them there:
+	   Explorer density, the pane colours, Windows-blue selection. */
+	.winx__nav :global(.stv__container) {
 		--stv-node-padding: 2px 6px;
 		--stv-font-size: 13px;
-		--stv-accent-color: var(--winx-accent);
 		--stv-node-border-radius: 4px;
+		--stv-main-bg: var(--winx-nav-bg);
+		--stv-text-color-1: var(--winx-text);
+		--stv-accent-color: var(--winx-accent);
 	}
 	.winx__navrow { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 	.winx__navicon { font-size: 13px; }
 
 	/* Right pane: header + the details <Tree> share ONE sticky-header scroll area,
 	   so the column tracks line up regardless of the scrollbar. */
-	.winx__contents { flex: 1; min-width: 0; overflow: auto; background: #fff; }
+	.winx__contents { flex: 1; min-width: 0; overflow: auto; background: var(--winx-pane-bg); }
 
-	/* Column header (sticky, same 4-track template as each row) */
+	/* Column header (sticky, same track template as each row) */
 	.winx__cols {
 		position: sticky; top: 0; z-index: 2;
-		display: grid; grid-template-columns: minmax(180px, 2fr) 1.2fr 1.2fr 0.8fr;
-		border-bottom: 1px solid var(--winx-border); background: #fff;
+		display: grid; grid-template-columns: var(--winx-cols);
+		border-bottom: 1px solid var(--winx-border); background: var(--winx-pane-bg);
 	}
 	.winx__col {
-		text-align: left; border: none; background: transparent; cursor: pointer;
-		padding: 6px 10px; font: inherit; font-weight: 500; color: #444;
-		border-right: 1px solid #eee; white-space: nowrap; overflow: hidden;
+		text-align: left; border: none; border-radius: 0; background: transparent;
+		padding: 6px 10px; font: inherit; font-weight: 500; color: var(--winx-text-2);
+		border-right: 1px solid var(--winx-col-rule); white-space: nowrap; overflow: hidden;
 	}
-	.winx__col:hover { background: #f5f5f5; }
+	.winx__col:hover { background: var(--winx-col-hover); }
 	.winx__col--size { text-align: right; }
 
 	/* The right <Tree>: flatten the row chrome and turn each row's content into the
-	   same 4-track grid as the header so columns align. */
-	.winx-right {
+	   same grid as the header so columns align. */
+	.winx-right :global(.stv__container) {
 		--stv-indent-size: 0; /* flat list — no indentation */
+		--stv-main-bg: var(--winx-pane-bg);
+		--stv-text-color-1: var(--winx-text);
+		--stv-accent-color: var(--winx-accent);
 	}
 	.winx-right :global(.stv__toggle-icon) { display: none; }       /* no chevrons in a flat list */
 	.winx-right :global(.stv__node) { margin-left: 0 !important; }
 	.winx-right :global(.stv__node-row) { display: block; }
 	.winx-right :global(.stv__node-content) {
 		display: grid;
-		grid-template-columns: minmax(180px, 2fr) 1.2fr 1.2fr 0.8fr;
+		grid-template-columns: var(--winx-cols);
 		align-items: center;
 		width: 100%;
 		padding: 0;
 		border: 0;
 		border-radius: 0;
 	}
-	.winx-right :global(.stv__node-content:hover) { background: #f2f7fd; }
+	.winx-right :global(.stv__node-content:hover) { background: var(--winx-row-hover); }
 	/* library highlight = our selection look (background-only so the grid never shifts) */
-	.winx-right :global(.stv__node-content--selected) { background: #cfe5fb; box-shadow: inset 0 0 0 1px #a8cef0; }
-	.winx-right :global(.stv__node-content--selected:hover) { background: #c3ddf8; }
+	.winx-right :global(.stv__node-content--selected) { background: var(--winx-sel-bg); box-shadow: inset 0 0 0 1px var(--winx-sel-ring); }
+	.winx-right :global(.stv__node-content--selected:hover) { background: var(--winx-sel-hover); }
 
-	.winx__cell { padding: 3px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #1b1b1b; min-width: 0; }
+	.winx__cell { padding: 3px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--winx-text); min-width: 0; }
 	.winx__cell--name { display: flex; align-items: center; gap: 8px; }
-	.winx__cell--date, .winx__cell--type { color: #444; }
-	.winx__cell--size { text-align: right; color: #444; }
+	.winx__cell--date, .winx__cell--type { color: var(--winx-text-2); }
+	.winx__cell--size { text-align: right; color: var(--winx-text-2); }
 	.winx__rowicon { font-size: 14px; }
 	.winx__namebox { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
 	.winx__rowname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-	.winx__rowloc { font-size: 11px; color: #8a8a8a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-	.winx__empty { padding: 24px; text-align: center; color: #888; }
+	.winx__rowloc { font-size: 11px; color: var(--winx-text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.winx__empty { padding: 24px; text-align: center; color: var(--winx-text-3); }
 
 	/* Status bar */
 	.winx__status {
-		display: flex; align-items: center; gap: 16px; height: 26px;
-		padding: 0 12px; background: #f3f3f3; border-top: 1px solid var(--winx-border);
-		font-size: 12px; color: #444;
+		display: flex; align-items: center; gap: 16px; height: 26px; flex-shrink: 0;
+		padding: 0 12px; background: var(--winx-bg); border-top: 1px solid var(--winx-border);
+		font-size: 12px; color: var(--winx-text-2); white-space: nowrap; overflow: hidden;
 	}
-	.winx__status-sel { color: #1b1b1b; }
-	.winx__status-info { color: var(--winx-accent); margin-left: auto; }
+	.winx__status-sel { color: var(--winx-text); }
+	.winx__status-info { color: var(--winx-accent); margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+	/* A narrow window (a phone): the search drops under the address bar, the nav pane
+	   stacks above the details list, and the details keep only Name + Size. */
+	@container winx (max-width: 640px) {
+		.winx__commandbar { flex-wrap: wrap; }
+		.winx__search { order: 1; width: 100%; }
+		.winx__body { flex-direction: column; }
+		.winx__nav {
+			width: auto; max-height: 38%;
+			border-right: none; border-bottom: 1px solid var(--winx-border);
+		}
+		.winx__contents { --winx-cols: minmax(0, 1fr) 5.5rem; }
+		.winx__col--date,
+		.winx__col--type,
+		.winx__cell--date,
+		.winx__cell--type { display: none; }
+	}
 </style>

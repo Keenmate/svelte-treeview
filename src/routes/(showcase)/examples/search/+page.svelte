@@ -365,185 +365,188 @@
 	<title>Search & Filter - Svelte Treeview</title>
 </svelte:head>
 
-<div class="container">
-	<header class="example-header">
-		<a href="/" class="back-link">&larr; Back to Examples</a>
-		<h1>Search & Filter</h1>
-		<p class="subtitle">Internal search index with result navigation</p>
-		<RenderModeSwitch />
-	</header>
+<header>
+	<a href="/" class="back-link">&larr; Back to Examples</a>
+	<h1>Search & Filter</h1>
+	<p class="subtitle">Internal search index with result navigation</p>
+	<RenderModeSwitch />
+</header>
 
-	<!-- Unified Search Card -->
-	<div class="card">
-		<h2>SF01 · Search & Navigate</h2>
-		<p class="description">
-			Type to search the tree. <strong>Filter</strong> mode hides non-matching nodes.
-			<strong>Search</strong> mode keeps the tree visible and navigates to results.
-			Use <kbd>Enter</kbd> for next, <kbd>Shift+Enter</kbd> for previous, <kbd>Esc</kbd> to clear.
-		</p>
+<!-- Unified Search Card -->
+<div class="card">
+	<h2>SF01 · Search & Navigate</h2>
+	<p class="description">
+		Type to search the tree. <strong>Filter</strong> mode hides non-matching nodes.
+		<strong>Search</strong> mode keeps the tree visible and navigates to results.
+		Use <kbd>Enter</kbd> for next, <kbd>Shift+Enter</kbd> for previous, <kbd>Esc</kbd> to clear.
+	</p>
 
-		<div class="search-bar">
-			<button class="search-mode-btn" onclick={toggleSearchMode} title="Toggle filter/search mode">
-				{#if searchMode === 'filter'}
-					<!-- Funnel icon -->
-					<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-						<path d="M1.5 1.5h13l-5 6v5l-3 2v-7z"/>
-					</svg>
-				{:else}
-					<!-- Magnifying glass icon -->
-					<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-						<circle cx="6.5" cy="6.5" r="5" fill="none" stroke="currentColor" stroke-width="2"/>
-						<line x1="10" y1="10" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-					</svg>
-				{/if}
+	<div class="search-bar">
+		<button class="search-mode-btn" onclick={toggleSearchMode} title="Toggle filter/search mode">
+			{#if searchMode === 'filter'}
+				<!-- Funnel icon -->
+				<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+					<path d="M1.5 1.5h13l-5 6v5l-3 2v-7z"/>
+				</svg>
+			{:else}
+				<!-- Magnifying glass icon -->
+				<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+					<circle cx="6.5" cy="6.5" r="5" fill="none" stroke="currentColor" stroke-width="2"/>
+					<line x1="10" y1="10" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+				</svg>
+			{/if}
+		</button>
+		<span class="search-mode-label">{searchMode === 'filter' ? 'Filter' : 'Search'}</span>
+
+		<input
+			type="text"
+			bind:value={searchInputValue}
+			oninput={onSearchInput}
+			onkeydown={onSearchKeydown}
+			placeholder="Search... (try 'london' or 'san')"
+			class="search-input"
+		/>
+
+		{#if searchResults.length > 0}
+			<span class="search-counter">{currentResultIndex + 1}/{searchResults.length}</span>
+			<button class="search-nav-btn" title="Previous (Shift+Enter)" aria-label="Previous result" onclick={searchPrev}>
+				<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M6 2L1 7h10z"/></svg>
 			</button>
-			<span class="search-mode-label">{searchMode === 'filter' ? 'Filter' : 'Search'}</span>
+			<button class="search-nav-btn" title="Next (Enter)" aria-label="Next result" onclick={searchNext}>
+				<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M6 10L1 5h10z"/></svg>
+			</button>
+		{:else if searchInputValue.trim()}
+			<span class="search-counter no-results">0 results</span>
+		{/if}
 
-			<input
-				type="text"
-				bind:value={searchInputValue}
-				oninput={onSearchInput}
-				onkeydown={onSearchKeydown}
-				placeholder="Search... (try 'london' or 'san')"
-				class="search-input"
-			/>
+		{#if searchInputValue}
+			<button class="search-nav-btn" title="Clear (Esc)" aria-label="Clear search" onclick={clearSearch}>
+				<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+			</button>
+		{/if}
 
-			{#if searchResults.length > 0}
-				<span class="search-counter">{currentResultIndex + 1}/{searchResults.length}</span>
-				<button class="search-nav-btn" title="Previous (Shift+Enter)" aria-label="Previous result" onclick={searchPrev}>
-					<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M6 2L1 7h10z"/></svg>
-				</button>
-				<button class="search-nav-btn" title="Next (Enter)" aria-label="Next result" onclick={searchNext}>
-					<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M6 10L1 5h10z"/></svg>
-				</button>
-			{:else if searchInputValue.trim()}
-				<span class="search-counter no-results">0 results</span>
+	</div>
+
+	<p class="muted search-status" data-testid="sf01-status">
+		{#if indexProgress && !indexProgress.isComplete}
+			Indexing… {Math.round((indexProgress.processed / Math.max(indexProgress.total, 1)) * 100)}%
+			({indexProgress.processed}/{indexProgress.total}) — results may be incomplete
+		{:else if indexProgress}
+			Index ready ({indexProgress.total} nodes)
+		{/if}
+		{#if filterStatus?.searchTerm}
+			· Filter: {filterStatus.matchCount} matches
+			{#if filterStatus.isLimited}
+				<strong class="pill pill--warn">— limited to {filterStatus.limit}, refine the search</strong>
 			{/if}
+		{/if}
+	</p>
 
-			{#if searchInputValue}
-				<button class="search-nav-btn" title="Clear (Esc)" aria-label="Clear search" onclick={clearSearch}>
-					<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
-				</button>
-			{/if}
-
-		</div>
-
-		<p class="search-status" data-testid="sf01-status">
-			{#if indexProgress && !indexProgress.isComplete}
-				Indexing… {Math.round((indexProgress.processed / Math.max(indexProgress.total, 1)) * 100)}%
-				({indexProgress.processed}/{indexProgress.total}) — results may be incomplete
-			{:else if indexProgress}
-				Index ready ({indexProgress.total} nodes)
-			{/if}
-			{#if filterStatus?.searchTerm}
-				· Filter: {filterStatus.matchCount} matches
-				{#if filterStatus.isLimited}
-					<strong class="search-status-warning">— limited to {filterStatus.limit}, refine the search</strong>
-				{/if}
-			{/if}
-		</p>
-
-		<div class="control-row">
-			<label for="sf01-checkbox-mode">Check mode:</label>
+	<div class="controls">
+		<label for="sf01-checkbox-mode">
+			Check mode:
 			<select id="sf01-checkbox-mode" bind:value={checkboxMode}>
 				<option value="independent">Individual (independent)</option>
 				<option value="cascade">Cascade</option>
 			</select>
-			<label for="sf01-cascade-policy">Cascade reports:</label>
+		</label>
+		<label for="sf01-cascade-policy">
+			Cascade reports:
 			<select id="sf01-cascade-policy" bind:value={cascadeCheckPolicy} disabled={checkboxMode !== 'cascade'}>
 				<option value="rolled-up">Rolled-up (fully checked branch = its root)</option>
 				<option value="leaves">Leaves only</option>
 				<option value="all">All checked nodes</option>
 			</select>
-		</div>
+		</label>
+	</div>
 
-		<div class="grid-2">
-			<div>
-				<h3>Tree (filtered)</h3>
-				<div class="tree-container tree-container-tall">
-					<Tree
-						bind:this={treeRef}
-						nodes={sampleData}
-						idMember="id"
-						pathMember="path"
-						sortCallback={sortByName}
-						isSorted={true}
-						expandLevel={3}
-						isCheckboxesShown={true}
-						{checkboxMode}
-						{cascadeCheckPolicy}
-						bind:checkedPaths
-						shouldUseInternalSearchIndex={true}
-						searchValueMember="name"
-						bind:searchTerm={searchTerm}
-						onIndexProgress={(ctx) => (indexProgress = { processed: ctx.processed, total: ctx.total, isComplete: ctx.isComplete })}
-						onSearchStatusChange={(ctx) => (filterStatus = { searchTerm: ctx.searchTerm, matchCount: ctx.matchCount, isLimited: ctx.isLimited, limit: ctx.limit, isIndexing: ctx.isIndexing })}
-						{...getTreeProps()}
-					>
-						{#snippet nodeTemplate(node: any)}
-							<span class="location-node">
-								<span class="location-name">{node.data?.name}</span>
-								{#if node.data?.population}
-									<span class="location-pop">{node.data.population}</span>
-								{/if}
-							</span>
-						{/snippet}
-					</Tree>
-				</div>
-			</div>
-
-			<div>
-				<h3>Results ({searchResults.length})</h3>
-				<div class="tree-container tree-container-tall results-list">
-					{#if searchResults.length > 0}
-						<ul>
-							{#each searchResults as result, i}
-								<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-								<li
-									class:active={i === currentResultIndex}
-									onclick={() => scrollToResult(i)}
-									onkeydown={(e) => { if (e.key === "Enter") scrollToResult(i); }}
-									role="option"
-									aria-selected={i === currentResultIndex}
-									tabindex="0"
-								>
-									<span class="result-name">{result.data?.name}</span>
-									<small class="result-path">{result.data?.population} - {result.level === 1 ? 'Country' : 'City'}</small>
-								</li>
-							{/each}
-						</ul>
-					{:else}
-						<p class="empty-state">
-							{searchTerm.trim() ? 'No results found' : 'Type to search'}
-						</p>
-					{/if}
-				</div>
-
-				<h3>Checked ({checkedItems.length})</h3>
-				<div class="tree-container results-list checked-list">
-					{#if checkedItems.length > 0}
-						<ul>
-							{#each checkedItems as item (item.path)}
-								<li>
-									<span class="result-name">{item.name}</span>
-									<small class="result-path">{item.population} - {item.path.includes('.') ? 'City' : 'Country'}</small>
-								</li>
-							{/each}
-						</ul>
-					{:else}
-						<p class="empty-state">Nothing checked</p>
-					{/if}
-				</div>
+	<div class="grid-2">
+		<div>
+			<h3>Tree (filtered)</h3>
+			<div class="tree-container tree-container-tall">
+				<Tree
+					bind:this={treeRef}
+					nodes={sampleData}
+					idMember="id"
+					pathMember="path"
+					sortCallback={sortByName}
+					isSorted={true}
+					expandLevel={3}
+					isCheckboxesShown={true}
+					{checkboxMode}
+					{cascadeCheckPolicy}
+					bind:checkedPaths
+					shouldUseInternalSearchIndex={true}
+					searchValueMember="name"
+					bind:searchTerm={searchTerm}
+					onIndexProgress={(ctx) => (indexProgress = { processed: ctx.processed, total: ctx.total, isComplete: ctx.isComplete })}
+					onSearchStatusChange={(ctx) => (filterStatus = { searchTerm: ctx.searchTerm, matchCount: ctx.matchCount, isLimited: ctx.isLimited, limit: ctx.limit, isIndexing: ctx.isIndexing })}
+					{...getTreeProps()}
+				>
+					{#snippet nodeTemplate(node: any)}
+						<span class="location-node">
+							<span class="location-name">{node.data?.name}</span>
+							{#if node.data?.population}
+								<span class="pill pill--muted">{node.data.population}</span>
+							{/if}
+						</span>
+					{/snippet}
+				</Tree>
 			</div>
 		</div>
 
-		<div class="note" style="margin-top: 1rem;">
-			<p class="note-title">Note</p>
-			<p>The search index is built asynchronously after page load. If no results appear immediately, wait a moment.</p>
-		</div>
+		<div>
+			<h3>Results ({searchResults.length})</h3>
+			<div class="tree-container tree-container-tall results-list">
+				{#if searchResults.length > 0}
+					<ul>
+						{#each searchResults as result, i}
+							<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+							<li
+								class:active={i === currentResultIndex}
+								onclick={() => scrollToResult(i)}
+								onkeydown={(e) => { if (e.key === "Enter") scrollToResult(i); }}
+								role="option"
+								aria-selected={i === currentResultIndex}
+								tabindex="0"
+							>
+								<span class="result-name">{result.data?.name}</span>
+								<small class="muted">{result.data?.population} - {result.level === 1 ? 'Country' : 'City'}</small>
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="muted empty-state">
+						{searchTerm.trim() ? 'No results found' : 'Type to search'}
+					</p>
+				{/if}
+			</div>
 
-		<div class="code-block">
-			<pre>{`${"<"}script>
+			<h3>Checked ({checkedItems.length})</h3>
+			<div class="tree-container results-list checked-list">
+				{#if checkedItems.length > 0}
+					<ul>
+						{#each checkedItems as item (item.path)}
+							<li>
+								<span class="result-name">{item.name}</span>
+								<small class="muted">{item.population} - {item.path.includes('.') ? 'City' : 'Country'}</small>
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="muted empty-state">Nothing checked</p>
+				{/if}
+			</div>
+		</div>
+	</div>
+
+	<div class="note">
+		<p class="note-title">Note</p>
+		<p>The search index is built asynchronously after page load. If no results appear immediately, wait a moment.</p>
+	</div>
+
+	<div class="code-block">
+		<pre>{`${"<"}script>
   let searchInputValue = $state('');
   let searchTerm = $state('');
   let searchMode = $state('filter'); // 'filter' | 'search'
@@ -582,71 +585,71 @@ ${"<"}/script>
   searchValueMember="name"
   ...
 />`}</pre>
-		</div>
 	</div>
+</div>
 
-	<!-- Search Configuration -->
-	<div class="card">
-		<h2>SF02 · Search Configuration</h2>
-		<p class="description">Configure how the search index is built and queried.</p>
+<!-- Search Configuration -->
+<div class="card">
+	<h2>SF02 · Search Configuration</h2>
+	<p class="description">Configure how the search index is built and queried.</p>
 
-		<table>
-			<thead>
-				<tr>
-					<th>Prop</th>
-					<th>Type</th>
-					<th>Description</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr>
-					<td><code>shouldUseInternalSearchIndex</code></td>
-					<td><code>boolean</code></td>
-					<td>Enable the internal search index (required for search/filter)</td>
-				</tr>
-				<tr>
-					<td><code>searchValueMember</code></td>
-					<td><code>string</code></td>
-					<td>Property name to index for searching (e.g., "name")</td>
-				</tr>
-				<tr>
-					<td><code>getSearchValueCallback</code></td>
-					<td><code>(node: LTreeNode&lt;T&gt;) =&gt; string</code></td>
-					<td>Custom function to extract search value from node</td>
-				</tr>
-				<tr>
-					<td><code>searchTerm</code></td>
-					<td><code>string</code></td>
-					<td>Bindable prop for filtering the tree visually</td>
-				</tr>
-			</tbody>
-		</table>
+	<table class="reference-table">
+		<thead>
+			<tr>
+				<th>Prop</th>
+				<th>Type</th>
+				<th>Description</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>shouldUseInternalSearchIndex</code></td>
+				<td><code>boolean</code></td>
+				<td>Enable the internal search index (required for search/filter)</td>
+			</tr>
+			<tr>
+				<td><code>searchValueMember</code></td>
+				<td><code>string</code></td>
+				<td>Property name to index for searching (e.g., "name")</td>
+			</tr>
+			<tr>
+				<td><code>getSearchValueCallback</code></td>
+				<td><code>(node: LTreeNode&lt;T&gt;) =&gt; string</code></td>
+				<td>Custom function to extract search value from node</td>
+			</tr>
+			<tr>
+				<td><code>searchTerm</code></td>
+				<td><code>string</code></td>
+				<td>Bindable prop for filtering the tree visually</td>
+			</tr>
+		</tbody>
+	</table>
 
-		<h3 style="margin-top: 1.5rem;">Methods</h3>
-		<table>
-			<thead>
-				<tr>
-					<th>Method</th>
-					<th>Returns</th>
-					<th>Description</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr>
-					<td><code>searchNodes(text)</code></td>
-					<td><code>LTreeNode&lt;T&gt;[]</code></td>
-					<td>Query the index without filtering - returns matching nodes</td>
-				</tr>
-				<tr>
-					<td><code>scrollToPath(path, options)</code></td>
-					<td><code>void</code></td>
-					<td>Scroll tree to make a node visible (expands parents automatically)</td>
-				</tr>
-			</tbody>
-		</table>
+	<h3 class="subsection">Methods</h3>
+	<table class="reference-table">
+		<thead>
+			<tr>
+				<th>Method</th>
+				<th>Returns</th>
+				<th>Description</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>searchNodes(text)</code></td>
+				<td><code>LTreeNode&lt;T&gt;[]</code></td>
+				<td>Query the index without filtering - returns matching nodes</td>
+			</tr>
+			<tr>
+				<td><code>scrollToPath(path, options)</code></td>
+				<td><code>void</code></td>
+				<td>Scroll tree to make a node visible (expands parents automatically)</td>
+			</tr>
+		</tbody>
+	</table>
 
-		<div class="code-block">
-			<pre>{`// Using searchValueMember (simple)
+	<div class="code-block">
+		<pre>{`// Using searchValueMember (simple)
 <Tree
   shouldUseInternalSearchIndex={true}
   searchValueMember="name"
@@ -659,21 +662,21 @@ ${"<"}/script>
   getSearchValueCallback={({ node }) => \`\${node.data?.name} \${node.data?.description}\`}
   ...
 />`}</pre>
-		</div>
+	</div>
+</div>
+
+<!-- FlexSearch Integration -->
+<div class="card">
+	<h2>SF03 · FlexSearch Integration</h2>
+	<p class="description">For advanced full-text search, integrate with FlexSearch (optional peer dependency).</p>
+
+	<div class="note">
+		<p class="note-title">Installation</p>
+		<pre>npm install flexsearch</pre>
 	</div>
 
-	<!-- FlexSearch Integration -->
-	<div class="card">
-		<h2>SF03 · FlexSearch Integration</h2>
-		<p class="description">For advanced full-text search, integrate with FlexSearch (optional peer dependency).</p>
-
-		<div class="note">
-			<p class="note-title">Installation</p>
-			<pre style="margin-top: 0.5rem;">npm install flexsearch</pre>
-		</div>
-
-		<div class="code-block">
-			<pre>{`// FlexSearch provides advanced features:
+	<div class="code-block">
+		<pre>{`// FlexSearch provides advanced features:
 // - Fuzzy matching
 // - Phonetic search
 // - Language-specific tokenization
@@ -681,68 +684,72 @@ ${"<"}/script>
 
 // The tree component can work with FlexSearch
 // by providing a custom search callback`}</pre>
-		</div>
+	</div>
+</div>
+
+<!-- Filter Scope (experimental) -->
+<div class="card">
+	<h2>SF04 · Filter Scope (experimental)</h2>
+	<p class="description">
+		Which <em>descendants</em> of a filter match stay visible. Ancestors always do.
+		Same term + same <code>x</code> (<code>filterDescendantDepth</code>) across five
+		<code>filterScope</code> values. The org chart is ragged: Sales is 6 levels deep,
+		IT and Finance only 3. <strong>Bold</strong> = an actual match; the rest is context.
+	</p>
+
+	<div class="controls">
+		<label for="sf04-term">
+			Filter:
+			<input id="sf04-term" type="text" bind:value={scopeTerm} placeholder="Type to filter…" />
+		</label>
+		{#each scopePresets as preset (preset)}
+			<button class="btn-outline" onclick={() => (scopeTerm = preset)}>{preset}</button>
+		{/each}
+	</div>
+	<div class="controls">
+		<label for="sf04-depth">
+			x (filterDescendantDepth):
+			<input id="sf04-depth" type="number" min="0" max="6" bind:value={scopeDepth} class="w-xs" />
+		</label>
+		<span class="muted">tree-depth threshold = level ≥ {6 - scopeDepth}</span>
+		<label>
+			<input type="checkbox" bind:checked={scopeExpandAdded} />
+			Expand added descendants (<code>shouldExpandFilterDescendants</code>)
+		</label>
 	</div>
 
-	<!-- Filter Scope (experimental) -->
-	<div class="card">
-		<h2>SF04 · Filter Scope (experimental)</h2>
-		<p class="description">
-			Which <em>descendants</em> of a filter match stay visible. Ancestors always do.
-			Same term + same <code>x</code> (<code>filterDescendantDepth</code>) across five
-			<code>filterScope</code> values. The org chart is ragged: Sales is 6 levels deep,
-			IT and Finance only 3. <strong>Bold</strong> = an actual match; the rest is context.
-		</p>
-
-		<div class="control-row">
-			<label for="sf04-term">Filter:</label>
-			<input id="sf04-term" type="text" bind:value={scopeTerm} placeholder="Type to filter…" />
-			{#each scopePresets as preset (preset)}
-				<button class="btn" onclick={() => (scopeTerm = preset)}>{preset}</button>
-			{/each}
-		</div>
-		<div class="control-row">
-			<label for="sf04-depth">x (filterDescendantDepth):</label>
-			<input id="sf04-depth" type="number" min="0" max="6" bind:value={scopeDepth} style="width: 4rem;" />
-			<span class="muted">tree-depth threshold = level ≥ {6 - scopeDepth}</span>
-			<label>
-				<input type="checkbox" bind:checked={scopeExpandAdded} />
-				Expand added descendants (<code>shouldExpandFilterDescendants</code>)
-			</label>
-		</div>
-
-		<div class="scope-grid">
-			{#each scopeVariants as variant (variant.scope)}
-				<div class="scope-cell">
-					<h3><code>{variant.title}</code></h3>
-					<p class="scope-rule">{variant.rule}</p>
-					<div class="tree-container scope-tree">
-						<Tree
-							nodes={orgData}
-							idMember="id"
-							pathMember="path"
-							sortCallback={sortOrg}
-							isSorted={true}
-							expandLevel={2}
-							shouldUseInternalSearchIndex={true}
-							searchValueMember="name"
-							searchTerm={scopeTerm}
-							filterScope={variant.scope}
-							filterDescendantDepth={scopeDepth}
-							shouldExpandFilterDescendants={scopeExpandAdded}
-							{...getTreeProps()}
-						>
-							{#snippet nodeTemplate(node: any)}
-								<span class:scope-match={isScopeMatch(node.data?.name)}>{node.data?.name}</span>
-							{/snippet}
-						</Tree>
-					</div>
+	<div class="grid scope-grid" style="--grid-min: 260px; --grid-gap: 1rem">
+		{#each scopeVariants as variant (variant.scope)}
+			<div class="scope-cell">
+				<h3><code>{variant.title}</code></h3>
+				<p class="muted scope-rule">{variant.rule}</p>
+				<div class="tree-container scope-tree">
+					<Tree
+						nodes={orgData}
+						idMember="id"
+						pathMember="path"
+						sortCallback={sortOrg}
+						isSorted={true}
+						expandLevel={2}
+						shouldUseInternalSearchIndex={true}
+						searchValueMember="name"
+						searchTerm={scopeTerm}
+						filterScope={variant.scope}
+						filterDescendantDepth={scopeDepth}
+						shouldExpandFilterDescendants={scopeExpandAdded}
+						{...getTreeProps()}
+					>
+						{#snippet nodeTemplate(node: any)}
+							<span class:scope-match={isScopeMatch(node.data?.name)}>{node.data?.name}</span>
+						{/snippet}
+					</Tree>
 				</div>
-			{/each}
-		</div>
+			</div>
+		{/each}
+	</div>
 
-		<div class="code-block">
-			<pre>{`<Tree
+	<div class="code-block">
+		<pre>{`<Tree
   bind:searchTerm
   shouldUseInternalSearchIndex={true}
   searchValueMember="name"
@@ -751,157 +758,59 @@ ${"<"}/script>
   shouldExpandFilterDescendants={false}  // added subtrees start collapsed
   ...
 />`}</pre>
-		</div>
 	</div>
-
-	<footer>
-		<p><a href="/">&larr; Back to Examples</a></p>
-	</footer>
 </div>
 
+
 <style>
+	/* Index / filter status line under the search bar (reserved height: no jump when it fills). */
 	.search-status {
 		margin: -0.5rem 0 1rem;
 		font-size: 0.85rem;
-		color: #64748b;
 		min-height: 1.2em;
 	}
 
-	.search-status-warning {
-		color: #c05621;
-	}
-
-	.scope-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-		gap: 1rem;
-		margin-bottom: 1rem;
-	}
-
+	/* SF04: one column per filterScope variant. */
 	.scope-cell h3 {
-		margin: 0 0 0.25rem;
+		margin-bottom: 0.25rem;
 		font-size: 1rem;
 	}
 
 	.scope-rule {
-		margin: 0 0 0.5rem;
+		margin-bottom: 0.5rem;
 		font-size: 0.85rem;
-		color: #64748b;
 		min-height: 2.4em;
 	}
 
 	.scope-tree {
 		height: 420px;
-		overflow: auto;
 	}
 
 	.scope-match {
 		font-weight: 700;
-		color: #4c51bf;
+		color: var(--kmwc-accent-color);
 	}
 
-	.search-bar {
-		display: flex;
-		gap: 0.5rem;
-		align-items: center;
-		flex-wrap: wrap;
-		padding: 0.5rem;
-		background: #f7fafc;
-		border: 1px solid #e2e8f0;
-		border-radius: 6px;
-	}
-
-	.search-mode-btn {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 32px;
-		height: 32px;
-		border: 1px solid #cbd5e0;
-		border-radius: 4px;
-		background: white;
-		cursor: pointer;
-		color: #667eea;
-		transition: background-color 0.15s;
-	}
-
-	.search-mode-btn:hover {
-		background: #edf2f7;
-	}
-
-	.search-mode-label {
-		font-size: 0.8rem;
-		font-weight: 600;
-		color: #667eea;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		min-width: 40px;
-	}
-
-	.search-input {
-		flex: 1;
-		min-width: 200px;
-		padding: 0.4rem 0.75rem;
-		border: 1px solid #cbd5e0;
-		border-radius: 4px;
-		font-size: 0.9rem;
-	}
-
-	.search-input:focus {
-		outline: none;
-		border-color: #667eea;
-		box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
-	}
-
-	.search-counter {
-		font-size: 0.85rem;
-		font-weight: 500;
-		color: #4a5568;
-		min-width: 50px;
-		text-align: center;
-	}
-
-	.search-counter.no-results {
-		color: #e53e3e;
-	}
-
-	.search-nav-btn {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 28px;
-		height: 28px;
-		border: 1px solid #cbd5e0;
-		border-radius: 4px;
-		background: white;
-		cursor: pointer;
-		color: #4a5568;
-		transition: background-color 0.15s;
-	}
-
-	.search-nav-btn:hover {
-		background: #edf2f7;
-	}
-
-	.results-list {
-		overflow-y: auto;
-	}
-
+	/* SF01 results / checked lists: clickable rows beside the tree. */
 	.results-list ul {
 		list-style: none;
-		padding: 0;
-		margin: 0;
 	}
 
 	.results-list li {
-		padding: 0.75rem 1rem;
-		border-bottom: 1px solid #e2e8f0;
+		padding: 0.5rem 0.75rem;
+		border-bottom: 1px solid var(--kmwc-border-color);
+		border-left: 3px solid transparent;
 		cursor: pointer;
-		transition: background-color 0.15s;
+		line-height: 1.4;
 	}
 
 	.results-list li:hover {
-		background-color: #f7fafc;
+		background: var(--kmwc-hover-bg);
+	}
+
+	.results-list li.active {
+		background: var(--kmwc-accent-light-bg);
+		border-left-color: var(--kmwc-accent-color);
 	}
 
 	.checked-list {
@@ -912,37 +821,18 @@ ${"<"}/script>
 		cursor: default;
 	}
 
-	.results-list li.active {
-		background-color: #ebf4ff;
-		border-left: 3px solid #667eea;
-	}
-
 	.result-name {
 		display: block;
 		font-weight: 500;
-	}
-
-	.result-path {
-		color: #718096;
-		font-size: 0.85em;
+		color: var(--kmwc-text-color-1);
 	}
 
 	.empty-state {
-		color: #718096;
 		text-align: center;
-		padding: 2rem;
+		padding: 2rem 0;
 	}
 
-	kbd {
-		background: #edf2f7;
-		color: #2d3748;
-		border: 1px solid #cbd5e0;
-		border-radius: 3px;
-		padding: 0.1em 0.4em;
-		font-size: 0.9em;
-		font-family: inherit;
-	}
-
+	/* Node template: city name + population pill. */
 	.location-node {
 		display: flex;
 		gap: 0.5rem;
@@ -951,13 +841,5 @@ ${"<"}/script>
 
 	.location-name {
 		font-weight: 500;
-	}
-
-	.location-pop {
-		font-size: 0.8em;
-		color: #718096;
-		background: #edf2f7;
-		padding: 0.1em 0.4em;
-		border-radius: 3px;
 	}
 </style>

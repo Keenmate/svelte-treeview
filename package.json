@@ -53,6 +53,7 @@
     "@eslint/compat": "^1.2.5",
     "@eslint/js": "^9.18.0",
     "@keenmate/base-css-variables": "^2.0.0-rc06",
+    "@keenmate/web-components-devkit": "^1.0.0-rc13",
     "@playwright/test": "^1.59.1",
     "@sveltejs/adapter-auto": "^6.0.0",
     "@sveltejs/adapter-static": "^3.0.0",
@@ -60,6 +61,7 @@
     "@sveltejs/package": "^2.0.0",
     "@sveltejs/vite-plugin-svelte": "^6.0.0",
     "@types/flexsearch": "^0.7.42",
+    "@types/node": "^26.6.6",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-svelte": "^3.0.0",
@@ -109,5 +111,15 @@
   },
   "dependencies": {
     "@floating-ui/dom": "^1.7.6"
+  },
+  "kmwc": {
+    "title": "Svelte TreeView",
+    "tagline": "Hierarchical tree component for Svelte 5 with path-based data structure",
+    "tag": "svelte-treeview",
+    "prefix": "stv",
+    "theme": {
+      "accentColor": "#667eea",
+      "accentEndColor": "#764ba2"
+    }
   }
 }

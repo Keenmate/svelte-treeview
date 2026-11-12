@@ -14,6 +14,7 @@
 	import { uniqueName } from '$lib/core/clipboard.js';
 	import type { LTreeNode, DropPosition } from '$lib/ltree/types.js';
 	import RenderModeSwitch from '../RenderModeSwitch.svelte';
+	import LogPanel, { logLine, type LogEntry } from '../../LogPanel.svelte';
 	import { getTreeProps } from '../render-mode.svelte.js';
 
 	type FileItem = {
@@ -62,8 +63,9 @@
 	// Target tree data (starts empty for drop placeholder demo)
 	let targetData = $state<FileItem[]>([]);
 
-	// Activity log
-	let activityLog = $state<string[]>([]);
+	// Activity logs — kit timeline lines (time · name · detail) rendered by <LogPanel>
+	type LogVariant = 'info' | 'success' | 'warning' | 'danger';
+	let activityLog = $state<LogEntry[]>([]);
 	let nextId = 100;
 
 	// Drop zone configuration (with localStorage persistence)
@@ -137,12 +139,12 @@
 		});
 	}
 
-	function addLog(message: string) {
-		activityLog = [...activityLog.slice(-9), `${new Date().toLocaleTimeString()} - ${message}`];
+	function addLog(name: string, detail?: string, variant?: LogVariant) {
+		activityLog = [...activityLog.slice(-9), logLine(name, detail, variant)];
 	}
 
 	function handleSourceDragStart({ node }: NodeEventContext<FileItem>) {
-		addLog(`Started dragging: ${node?.data?.name}`);
+		addLog('Drag start', `"${node?.data?.name}"`);
 	}
 
 	// ── Cross-tree clipboard + Delete ────────────────────────────────────────
@@ -197,7 +199,9 @@
 		const isSameTreeDrag = draggedNode.treeId === 'target-tree';
 		if (isSameTreeDrag) {
 			addLog(
-				`[${operation.toUpperCase()}] ${operation === 'move' ? 'Moved' : 'Copied'} "${draggedNode.data?.name}" ${position} "${dropNode?.data?.name || 'root'}"`
+				operation === 'move' ? 'Move' : 'Copy',
+				`"${draggedNode.data?.name}" ${position} "${dropNode?.data?.name || 'root'}"`,
+				'success'
 			);
 			return;
 		}
@@ -274,10 +278,12 @@
 					? `${sourcePaths.length} subtrees (${copied} nodes)`
 					: `${copied} node(s)`;
 			addLog(
-				`[CROSS-TREE] Copied ${label} to "${parentPath || 'root'}"${siblingPath ? ` ${copyPosition} "${siblingPath}"` : ''}`
+				'Cross-tree copy',
+				`${label} to "${parentPath || 'root'}"${siblingPath ? ` ${copyPosition} "${siblingPath}"` : ''}`,
+				'success'
 			);
 		} else {
-			addLog(`Error: ${failed} of ${sourcePaths.length} subtree(s) failed to copy`);
+			addLog('Error', `${failed} of ${sourcePaths.length} subtree(s) failed to copy`, 'danger');
 		}
 	}
 
@@ -287,18 +293,20 @@
 		if (!draggedNode) return;
 		// Same-tree moves and copies are auto-handled by the library - just log
 		if (!dropNode) {
-			addLog(`Cannot drop at root level in source tree`);
+			addLog('Rejected', 'Cannot drop at root level in source tree', 'warning');
 			return;
 		}
 
 		addLog(
-			`[${operation.toUpperCase()}] ${operation === 'move' ? 'Moved' : 'Copied'} "${draggedNode.data?.name}" ${position} "${dropNode.data?.name}"`
+			operation === 'move' ? 'Move' : 'Copy',
+			`"${draggedNode.data?.name}" ${position} "${dropNode.data?.name}"`,
+			'success'
 		);
 	}
 
 	function clearTarget() {
 		targetData = [];
-		addLog('Cleared target tree');
+		addLog('Clear', 'target tree');
 	}
 
 	function resetTarget() {
@@ -348,7 +356,7 @@
 		}
 
 		targetData = nodes;
-		addLog(`Reset target tree with ${nodes.length} nodes`);
+		addLog('Reset', `target tree with ${nodes.length} nodes`);
 	}
 
 	function clearLog() {
@@ -402,10 +410,10 @@
 	]);
 
 	let restrictedTreeRef: Tree<RestrictedFileItem>;
-	let restrictedLog = $state<string[]>([]);
+	let restrictedLog = $state<LogEntry[]>([]);
 
-	function addRestrictedLog(message: string) {
-		restrictedLog = [...restrictedLog.slice(-4), `${new Date().toLocaleTimeString()} - ${message}`];
+	function addRestrictedLog(name: string, detail?: string) {
+		restrictedLog = [...restrictedLog.slice(-4), logLine(name, detail)];
 	}
 
 	// === Touch Drag Demo ===
@@ -424,19 +432,21 @@
 			isDraggable: false
 		}
 	]);
-	let touchLog = $state<string[]>([]);
+	let touchLog = $state<LogEntry[]>([]);
 
-	function addTouchLog(message: string) {
-		touchLog = [...touchLog.slice(-9), `${new Date().toLocaleTimeString()} - ${message}`];
+	function addTouchLog(name: string, detail?: string, variant?: LogVariant) {
+		touchLog = [...touchLog.slice(-9), logLine(name, detail, variant)];
 	}
 
 	function handleTouchDragStart({ node }: NodeEventContext<FileItem>) {
-		addTouchLog(`dragStart: "${node?.data?.name}"`);
+		addTouchLog('dragStart', `"${node?.data?.name}"`, 'info');
 	}
 
 	function handleTouchDrop({ source, target, position }: NodeDropContext<FileItem>) {
 		addTouchLog(
-			`drop: "${source.node?.data?.name}" ${position} "${target?.node?.data?.name || 'root'}"`
+			'drop',
+			`"${source.node?.data?.name}" ${position} "${target?.node?.data?.name || 'root'}"`,
+			'success'
 		);
 	}
 
@@ -449,7 +459,7 @@
 			'touchstart',
 			(e) => {
 				const touch = (e as TouchEvent).touches[0];
-				addTouchLog(`touchstart: (${Math.round(touch.clientX)}, ${Math.round(touch.clientY)})`);
+				addTouchLog('touchstart', `(${Math.round(touch.clientX)}, ${Math.round(touch.clientY)})`);
 			},
 			{ passive: true }
 		);
@@ -458,18 +468,18 @@
 			'touchmove',
 			(e) => {
 				const touch = (e as TouchEvent).touches[0];
-				addTouchLog(`touchmove: (${Math.round(touch.clientX)}, ${Math.round(touch.clientY)})`);
+				addTouchLog('touchmove', `(${Math.round(touch.clientX)}, ${Math.round(touch.clientY)})`);
 			},
 			{ passive: false }
 		);
 
 		touchTree.addEventListener('touchend', (e) => {
 			const touch = (e as TouchEvent).changedTouches[0];
-			addTouchLog(`touchend: (${Math.round(touch.clientX)}, ${Math.round(touch.clientY)})`);
+			addTouchLog('touchend', `(${Math.round(touch.clientX)}, ${Math.round(touch.clientY)})`);
 		});
 
 		touchTree.addEventListener('touchcancel', () => {
-			addTouchLog(`touchcancel`);
+			addTouchLog('touchcancel', undefined, 'warning');
 		});
 	});
 
@@ -480,7 +490,8 @@
 				? `(only ${dropNode.data.allowedDropPositions[0]} allowed)`
 				: '';
 		addRestrictedLog(
-			`Dropped "${source.node?.data?.name}" ${position} "${dropNode?.data?.name || 'root'}" ${positionLabel}`
+			'Drop',
+			`"${source.node?.data?.name}" ${position} "${dropNode?.data?.name || 'root'}" ${positionLabel}`
 		);
 	}
 
@@ -544,11 +555,11 @@
 	let guardSourceRef: Tree<GuardItem>;
 	let guardDestRef: Tree<GuardItem>;
 	let guardHighlighted = $state(new Set<string>());
-	let guardLog = $state<string[]>([]);
+	let guardLog = $state<LogEntry[]>([]);
 	let guardNextId = 900;
 
-	function addGuardLog(m: string) {
-		guardLog = [...guardLog.slice(-6), `${new Date().toLocaleTimeString()} - ${m}`];
+	function addGuardLog(name: string, detail?: string, variant?: LogVariant) {
+		guardLog = [...guardLog.slice(-6), logLine(name, detail, variant)];
 	}
 
 	function beforeGuardDragStart(ctx: DragStartContext<GuardItem>): string[] | false | void {
@@ -557,7 +568,7 @@
 		// with no view of what else is being dragged.
 		const protectedRef = ctx.dragged.find((r) => r.node?.data?.isProtected);
 		if (protectedRef) {
-			addGuardLog(`Vetoed — "${protectedRef.node?.data?.name}" is protected`);
+			addGuardLog('Vetoed', `"${protectedRef.node?.data?.name}" is protected`, 'danger');
 			return false;
 		}
 		// PRUNE locked files OUT of the dragged set (drag a folder + a selected lock → only the
@@ -571,7 +582,9 @@
 		const result = [...kept, ...companions];
 		if (pruned.length || companions.length) {
 			addGuardLog(
-				`Reshaped set → ${result.length} node(s): pruned ${pruned.length} locked, added ${companions.length} linked`
+				'Reshaped',
+				`set → ${result.length} node(s): pruned ${pruned.length} locked, added ${companions.length} linked`,
+				'info'
 			);
 		}
 		return result;
@@ -593,7 +606,7 @@
 		// Destination tree. ctx.dropped is what it placed (the root copies) — log it. Which nodes
 		// arrive PROVES the guard worked (no locked file, plus any linked companion).
 		const arrived = (dropped ?? []).map((r) => r.node?.data?.name ?? '').filter(Boolean);
-		addGuardLog(`Arrived in Destination: ${arrived.join(', ') || '(nothing)'}`);
+		addGuardLog('Arrived', `in Destination: ${arrived.join(', ') || '(nothing)'}`, 'success');
 	}
 
 	function resetGuard() {
@@ -629,23 +642,23 @@
 
 	let leaveBehindData = $state<LbItem[]>(initialLeaveBehind());
 	let leaveBehindHighlighted = $state(new Set<string>());
-	let leaveBehindLog = $state<string[]>([]);
+	let leaveBehindLog = $state<LogEntry[]>([]);
 
-	function addLbLog(m: string) {
-		leaveBehindLog = [...leaveBehindLog.slice(-5), `${new Date().toLocaleTimeString()} - ${m}`];
+	function addLbLog(name: string, detail?: string, variant?: LogVariant) {
+		leaveBehindLog = [...leaveBehindLog.slice(-5), logLine(name, detail, variant)];
 	}
 
 	function beforeLeaveBehindDragStart(ctx: DragStartContext<LbItem>): string[] {
 		// Keep everything except locked nodes; the omitted lock becomes a hole left behind.
 		const kept = ctx.dragged.filter((r) => !r.node?.data?.locked);
 		const held = ctx.dragged.length - kept.length;
-		if (held) addLbLog(`Held back ${held} locked file(s) — they stay put`);
+		if (held) addLbLog('Held back', `${held} locked file(s) — they stay put`, 'warning');
 		return kept.map((r) => r.path);
 	}
 
 	function onLeaveBehindDrop({ dropped }: NodeDropContext<LbItem>) {
 		const names = (dropped ?? []).map((r) => r.node?.data?.name).filter(Boolean);
-		if (names.length) addLbLog(`Moved: ${names.join(', ')}`);
+		if (names.length) addLbLog('Moved', names.join(', '), 'success');
 	}
 
 	function resetLeaveBehind() {
@@ -686,11 +699,11 @@
 	let pantryRef: Tree<ProduceItem>;
 	let basketHighlighted = $state(new Set<string>());
 	let pantryHighlighted = $state(new Set<string>());
-	let produceLog = $state<string[]>([]);
+	let produceLog = $state<LogEntry[]>([]);
 	let produceNextId = 950;
 
-	function addProduceLog(m: string) {
-		produceLog = [...produceLog.slice(-6), `${new Date().toLocaleTimeString()} - ${m}`];
+	function addProduceLog(name: string, detail?: string, variant?: LogVariant) {
+		produceLog = [...produceLog.slice(-6), logLine(name, detail, variant)];
 	}
 
 	const categoryPathFor = (kind?: string) => (kind === 'vegetable' ? '2' : '1'); // Vegetables : Fruits
@@ -723,7 +736,9 @@
 				counts.set(parentName, (counts.get(parentName) ?? 0) + 1);
 			}
 			addProduceLog(
-				'Re-sorted within pantry → ' + [...counts.entries()].map(([n, c]) => `${c}→${n}`).join(', ')
+				'Re-sorted',
+				'within pantry → ' + [...counts.entries()].map(([n, c]) => `${c}→${n}`).join(', '),
+				'success'
 			);
 			return;
 		}
@@ -745,8 +760,9 @@
 			}
 		}
 		addProduceLog(
-			'Sorted basket → ' +
-				([...counts.entries()].map(([n, c]) => `${c}→${n}`).join(', ') || 'nothing')
+			'Sorted',
+			'basket → ' + ([...counts.entries()].map(([n, c]) => `${c}→${n}`).join(', ') || 'nothing'),
+			'success'
 		);
 	}
 
@@ -764,360 +780,345 @@
 	<title>Drag & Drop Examples - Svelte Treeview</title>
 </svelte:head>
 
-<div class="container">
-	<header class="example-header">
-		<a href="/" class="back-link">&larr; Back to Examples</a>
-		<h1>Drag & Drop</h1>
-		<p class="subtitle">Desktop and mobile drag and drop between trees</p>
-		<RenderModeSwitch />
-	</header>
+<header class="example-header">
+	<a href="/" class="back-link">&larr; Back to Examples</a>
+	<h1>Drag & Drop</h1>
+	<p class="subtitle">Desktop and mobile drag and drop between trees</p>
+	<RenderModeSwitch />
+</header>
 
-	<!-- Two Trees Side by Side -->
-	<div class="card">
-		<h2>DD01 · Drag Between Trees</h2>
-		<p class="description">
-			<strong>Source tree (left):</strong> Drag to reorganize nodes (move). Enable "Allow Ctrl+drag
-			to copy" then hold Ctrl while dragging to copy nodes. With <code>selectionMode="multiple"</code>
-			(default below), Ctrl/Shift+click multiple nodes and drag any one of them — the whole
-			highlight set moves together (top-level subtrees only; descendants ride along inside).
-			<strong>Target tree (right):</strong> Drag from source to add nodes. Starts empty to demo drop
-			placeholder. Once it has nodes, multi-drag works inside the target tree the same way.
+<!-- Two Trees Side by Side -->
+<div class="card">
+	<h2>DD01 · Drag Between Trees</h2>
+	<p class="description">
+		<strong>Source tree (left):</strong> Drag to reorganize nodes (move). Enable "Allow Ctrl+drag
+		to copy" then hold Ctrl while dragging to copy nodes. With <code>selectionMode="multiple"</code>
+		(default below), Ctrl/Shift+click multiple nodes and drag any one of them — the whole
+		highlight set moves together (top-level subtrees only; descendants ride along inside).
+		<strong>Target tree (right):</strong> Drag from source to add nodes. Starts empty to demo drop
+		placeholder. Once it has nodes, multi-drag works inside the target tree the same way.
+	</p>
+	<p class="description">
+		<strong>Clipboard (cross-tree):</strong> select nodes in either tree and press
+		<strong>Ctrl/Cmd+C</strong> (copy) or <strong>X</strong> (cut), then click the other tree and
+		<strong>Ctrl/Cmd+V</strong>
+		to paste. While the target tree is empty it uses
+		<code>isEmptyDropPlaceholderShown</code> — the drop zone stays visible and grabs
+		keyboard focus on hover, so you can copy in the left tree, hover the drop zone, and press
+		<strong>Ctrl/Cmd+V</strong> to fill it without clicking first. The clipboard is a shared
+		singleton, so it works across both trees — copy duplicates, cut moves (the source nodes are
+		removed on paste).
+		<strong>Delete</strong> removes the selected node(s) (a folder takes its whole subtree with
+		it);
+		<strong>Esc</strong> cancels a pending cut. The classic <strong>Ctrl+Insert</strong> /
+		<strong>Shift+Insert</strong> / <strong>Shift+Delete</strong> aliases work too. These keys
+		come from the library's built-in <code>shouldHandleKeyboardShortcuts</code> — no hand-rolled
+		keymap; this demo only supplies the paste transform (fresh ids / <em>Copy N</em> names) and a self-paste
+		redirect.
+	</p>
+
+	<div class="note">
+		<p class="note-title">About 🔒 File C (pinned)</p>
+		<p>
+			<code>getIsDraggableCallback</code> is <strong>per-node</strong>: it stops you grabbing 🔒
+			<code>File C</code> on its own (its row renders <code>draggable="false"</code>), but it can't
+			stop the node from riding along when you drag its <strong>parent</strong> — dragging
+			<code>Source Folder</code> moves the whole subtree, File C included. That's expected: a drag
+			carries complete subtrees. To keep a locked child <em>behind</em> even when its parent moves,
+			reshape the dragged set in <code>beforeDragStartCallback</code> — see the
+			<a href="#drag-set-guard">Drag-Set Guard</a> and
+			<a href="#leave-behind">Leave a locked child behind</a> demos below.
 		</p>
-		<p class="description">
-			<strong>Clipboard (cross-tree):</strong> select nodes in either tree and press
-			<strong>Ctrl/Cmd+C</strong> (copy) or <strong>X</strong> (cut), then click the other tree and
-			<strong>Ctrl/Cmd+V</strong>
-			to paste. While the target tree is empty it uses
-			<code>isEmptyDropPlaceholderShown</code> — the drop zone stays visible and grabs
-			keyboard focus on hover, so you can copy in the left tree, hover the drop zone, and press
-			<strong>Ctrl/Cmd+V</strong> to fill it without clicking first. The clipboard is a shared
-			singleton, so it works across both trees — copy duplicates, cut moves (the source nodes are
-			removed on paste).
-			<strong>Delete</strong> removes the selected node(s) (a folder takes its whole subtree with
-			it);
-			<strong>Esc</strong> cancels a pending cut. The classic <strong>Ctrl+Insert</strong> /
-			<strong>Shift+Insert</strong> / <strong>Shift+Delete</strong> aliases work too. These keys
-			come from the library's built-in <code>shouldHandleKeyboardShortcuts</code> — no hand-rolled
-			keymap; this demo only supplies the paste transform (fresh ids / <em>Copy N</em> names) and a self-paste
-			redirect.
-		</p>
-
-		<div class="note">
-			<p class="note-title">About 🔒 File C (pinned)</p>
-			<p style="margin: 0;">
-				<code>getIsDraggableCallback</code> is <strong>per-node</strong>: it stops you grabbing 🔒
-				<code>File C</code> on its own (its row renders <code>draggable="false"</code>), but it can't
-				stop the node from riding along when you drag its <strong>parent</strong> — dragging
-				<code>Source Folder</code> moves the whole subtree, File C included. That's expected: a drag
-				carries complete subtrees. To keep a locked child <em>behind</em> even when its parent moves,
-				reshape the dragged set in <code>beforeDragStartCallback</code> — see the
-				<a href="#drag-set-guard">Drag-Set Guard</a> and
-				<a href="#leave-behind">Leave a locked child behind</a> demos below.
-			</p>
-		</div>
-
-		<div class="note">
-			<p class="note-title">Custom drag visual (<code>draggedNodeClass</code>)</p>
-			<p style="margin: 0;">
-				The source tree passes <code>draggedNodeClass="dd-source-dragging"</code>, which
-				<strong>replaces</strong> the built-in <code>.stv__node-content--dragged</code> look on the
-				dimmed row left in place while you drag. To merely tune the default instead of replacing it,
-				set <code>--stv-dragged-opacity</code> / <code>--stv-dragged-scale</code> (the scale is
-				anchored to the left edge so it never shifts the label — the fix for the old "phantom indent"
-				on grab). Mirrors <code>selectedNodeClass</code> / <code>scrollHighlightClass</code>.
-				The visual dims <strong>every traveling node</strong>: drag a folder and its whole
-				subtree dims; Ctrl/Shift+click several rows and drag any one and the entire set dims —
-				not just the grabbed node.
-			</p>
-		</div>
-
-		<div class="controls">
-			<button class="btn btn-secondary" onclick={clearTarget}>Clear Target Tree</button>
-			<button class="btn" onclick={resetTarget}>Reset Target Tree (100 nodes)</button>
-			<button class="btn btn-secondary" onclick={clearLog}>Clear Log</button>
-		</div>
-
-		<div class="controls" style="align-items: center;">
-			<label style="display: flex; align-items: center; gap: 0.5rem;">
-				Drop Zone Mode:
-				<select bind:value={dropZoneMode}>
-					<option value="glow">Glow (border indicators)</option>
-					<option value="floating">Floating (popup zones)</option>
-				</select>
-			</label>
-			{#if dropZoneMode === 'floating'}
-				<label style="display: flex; align-items: center; gap: 0.5rem;">
-					Layout:
-					<select bind:value={dropZoneLayout}>
-						<option value="around">Around (before + after/child)</option>
-						<option value="before">Before (all 3 in a row above the node)</option>
-						<option value="after">After (all 3 in a row below the node)</option>
-						<option value="wave">Wave (stacked vertically)</option>
-						<option value="wave2">Wave2 (diagonal pattern)</option>
-					</select>
-				</label>
-				<label style="display: flex; align-items: center; gap: 0.5rem;">
-					Zone Start:
-					<input
-						type="text"
-						bind:value={dropZoneStart}
-						placeholder="33% or 50px"
-						style="width: 80px;"
-					/>
-				</label>
-				<label style="display: flex; align-items: center; gap: 0.5rem;">
-					Max Width (px):
-					<input
-						type="number"
-						bind:value={dropZoneMaxWidth}
-						min="50"
-						max="300"
-						style="width: 60px;"
-					/>
-				</label>
-			{/if}
-			<label style="display: flex; align-items: center; gap: 0.5rem; margin-left: 1rem;">
-				<input type="checkbox" bind:checked={isCopyAllowed} />
-				Allow Ctrl+drag to copy
-			</label>
-			<label style="display: flex; align-items: center; gap: 0.5rem;">
-				<input type="checkbox" bind:checked={showDropZoneWhenEmpty} />
-				Show drop zone when target empty
-			</label>
-			<label
-				style="display: flex; align-items: center; gap: 0.5rem;"
-				title="Ctrl/Cmd+C/X/V, Delete, Esc + Ctrl+Insert / Shift+Insert / Shift+Delete"
-			>
-				<input type="checkbox" bind:checked={handleKeyboardShortcuts} />
-				Built-in keyboard shortcuts
-			</label>
-			<label style="display: flex; align-items: center; gap: 0.5rem;">
-				Selection mode:
-				<select bind:value={selectionMode}>
-					<option value="single">single (one highlight; one node per drag)</option>
-					<option value="multiple">multiple (Ctrl/Shift+click; drag the whole highlight set)</option>
-				</select>
-			</label>
-		</div>
-
-		<div class="trees-side-by-side">
-			<div>
-				<h3>Source Tree (Reorganizable)</h3>
-				<div class="tree-container tree-container-tall">
-					<Tree
-						bind:this={sourceTreeRef}
-						treeId="source-tree"
-						clickBehavior="select"
-						nodes={sourceData}
-						idMember="id"
-						pathMember="path"
-						displayValueMember="name"
-						orderMember="sortOrder"
-						getIsDraggableCallback={({ node }) => node.data?.isDraggable !== false}
-						getIsDropAllowedCallback={({ node }) => node.data?.isFolder === true}
-						sortCallback={sortByOrder}
-						isSorted={true}
-						expandLevel={3}
-						dragDropMode="both"
-						{selectionMode}
-						selectedNodeClass="stv__node-content--selected-bold"
-						bind:selectedPaths={sourceSelectedPaths}
-						shouldHandleKeyboardShortcuts={handleKeyboardShortcuts}
-						nodeInputTransformationCallback={transformPasted}
-						beforePasteCallback={selfPasteRedirect}
-						onNodeCopy={(c) => addLog(`Copied ${c.paths.length} from source-tree`)}
-						onNodeCut={(c) => addLog(`Cut ${c.paths.length} from source-tree`)}
-						onNodePaste={(r) =>
-							addLog(
-								`Pasted ${r.count} into source-tree${r.skipped ? ` (skipped ${r.skipped})` : ''}`
-							)}
-						onNodeDelete={(c) => addLog(`Deleted ${c.paths.length} node(s) from source-tree`)}
-						onNodeDragStart={handleSourceDragStart}
-						onNodeDrop={handleSourceDrop}
-						draggedNodeClass="dd-source-dragging"
-						{isCopyAllowed}
-						{dropZoneMode}
-						{dropZoneLayout}
-						{dropZoneStart}
-						{dropZoneMaxWidth}
-						{...getTreeProps()}
-					>
-						{#snippet nodeTemplate(node: any)}
-							<span>{node.data?.icon} {node.data?.name}</span>
-							<small style="color: #999; margin-left: 0.5rem; font-size: 0.75em;"
-								>(#{node.data?.sortOrder})</small
-							>
-						{/snippet}
-					</Tree>
-				</div>
-			</div>
-
-			<div>
-				<h3>Target Tree {targetData.length === 0 ? '(Empty - Drop Here!)' : ''}</h3>
-				<div class="tree-container tree-container-tall">
-					<Tree
-						bind:this={targetTreeRef}
-						treeId="target-tree"
-						clickBehavior="select"
-						nodes={targetData}
-						idMember="id"
-						pathMember="path"
-						displayValueMember="name"
-						orderMember="sortOrder"
-						getIsDraggableCallback={({ node }) => node.data?.isDraggable !== false}
-						getIsDropAllowedCallback={({ node }) => node.data?.isFolder === true}
-						sortCallback={sortByOrder}
-						expandLevel={3}
-						dragDropMode="both"
-						{selectionMode}
-						selectedNodeClass="stv__node-content--selected-bold"
-						bind:selectedPaths={targetSelectedPaths}
-						shouldHandleKeyboardShortcuts={handleKeyboardShortcuts}
-						nodeInputTransformationCallback={transformPasted}
-						beforePasteCallback={selfPasteRedirect}
-						onNodeCopy={(c) => addLog(`Copied ${c.paths.length} from target-tree`)}
-						onNodeCut={(c) => addLog(`Cut ${c.paths.length} from target-tree`)}
-						onNodePaste={(r) =>
-							addLog(
-								`Pasted ${r.count} into target-tree${r.skipped ? ` (skipped ${r.skipped})` : ''}`
-							)}
-						onNodeDelete={(c) => addLog(`Deleted ${c.paths.length} node(s) from target-tree`)}
-						onNodeDrop={handleTargetDrop}
-						isEmptyDropPlaceholderShown={showDropZoneWhenEmpty}
-						{isCopyAllowed}
-						{dropZoneMode}
-						{dropZoneLayout}
-						{dropZoneStart}
-						{dropZoneMaxWidth}
-						{...getTreeProps()}
-					>
-						{#snippet nodeTemplate(node: any)}
-							<span>{node.data?.icon} {node.data?.name}</span>
-							<small style="color: #999; margin-left: 0.5rem; font-size: 0.75em;"
-								>(#{node.data?.sortOrder})</small
-							>
-						{/snippet}
-						{#snippet dropPlaceholder()}
-							<div style="text-align: center; color: #667eea;">
-								<p style="font-size: 2rem;">📥</p>
-								<p>Drop items here to add them</p>
-								<p style="font-size: 0.8em; color: #999;">
-									…or copy in the left tree, hover here, and press Ctrl/Cmd+V
-								</p>
-							</div>
-						{/snippet}
-					</Tree>
-				</div>
-			</div>
-		</div>
-
-		{#if sourceSelectedPaths.size > 0}
-			<div class="output">
-				<p class="output-label">
-					Source highlight ({sourceSelectedPaths.size}) — dragging any of these moves the whole
-					set
-				</p>
-				<pre>{[...sourceSelectedPaths].join(', ')}</pre>
-			</div>
-		{/if}
-
-		{#if targetSelectedPaths.size > 0}
-			<div class="output">
-				<p class="output-label">
-					Target highlight ({targetSelectedPaths.size}) — dragging any of these moves the whole
-					set within the target tree
-				</p>
-				<pre>{[...targetSelectedPaths].join(', ')}</pre>
-			</div>
-		{/if}
-
-		{#if activityLog.length > 0}
-			<div class="output">
-				<p class="output-label">Activity Log:</p>
-				<pre>{activityLog.join('\n')}</pre>
-			</div>
-		{/if}
 	</div>
 
-	<!-- Restricted Drop Positions Demo -->
-	<div class="card">
-		<h2>DD02 · Restricted Drop Positions</h2>
-		<p class="description">
-			Control which drop positions are valid per node using <code>allowedDropPositions</code>. Try
-			dragging items to different targets. With <code>selectionMode="multiple"</code>, Ctrl/Shift+click
-			several items first and drag any one of them to move the whole set — per-node
-			<code>allowedDropPositions</code> are still enforced on the drop target.
+	<div class="note">
+		<p class="note-title">Custom drag visual (<code>draggedNodeClass</code>)</p>
+		<p>
+			The source tree passes <code>draggedNodeClass="dd-source-dragging"</code>, which
+			<strong>replaces</strong> the built-in <code>.stv__node-content--dragged</code> look on the
+			dimmed row left in place while you drag. To merely tune the default instead of replacing it,
+			set <code>--stv-dragged-opacity</code> / <code>--stv-dragged-scale</code> (the scale is
+			anchored to the left edge so it never shifts the label — the fix for the old "phantom indent"
+			on grab). Mirrors <code>selectedNodeClass</code> / <code>scrollHighlightClass</code>.
+			The visual dims <strong>every traveling node</strong>: drag a folder and its whole
+			subtree dims; Ctrl/Shift+click several rows and drag any one and the entire set dims —
+			not just the grabbed node.
 		</p>
+	</div>
 
-		<div class="note">
-			<p class="note-title">Node Types</p>
-			<ul>
-				<li>
-					<strong>🗑️ Trash</strong> - Only accepts <code>child</code> drops (drop INTO, not before/after)
-				</li>
-				<li><strong>📁 Projects</strong> - All positions allowed (default behavior)</li>
-				<li>
-					<strong>📄 Files</strong> - Only <code>before</code> and <code>after</code> (can't drop INTO
-					a file)
-				</li>
-			</ul>
+	<div class="controls">
+		<button class="secondary" onclick={clearTarget}>Clear Target Tree</button>
+		<button onclick={resetTarget}>Reset Target Tree (100 nodes)</button>
+		<button class="secondary" onclick={clearLog}>Clear Log</button>
+	</div>
+
+	<div class="controls">
+		<label>
+			Drop Zone Mode:
+			<select bind:value={dropZoneMode}>
+				<option value="glow">Glow (border indicators)</option>
+				<option value="floating">Floating (popup zones)</option>
+			</select>
+		</label>
+		{#if dropZoneMode === 'floating'}
+			<label>
+				Layout:
+				<select bind:value={dropZoneLayout}>
+					<option value="around">Around (before + after/child)</option>
+					<option value="before">Before (all 3 in a row above the node)</option>
+					<option value="after">After (all 3 in a row below the node)</option>
+					<option value="wave">Wave (stacked vertically)</option>
+					<option value="wave2">Wave2 (diagonal pattern)</option>
+				</select>
+			</label>
+			<label>
+				Zone Start:
+				<input type="text" class="w-sm" bind:value={dropZoneStart} placeholder="33% or 50px" />
+			</label>
+			<label>
+				Max Width (px):
+				<input type="number" class="w-xs" bind:value={dropZoneMaxWidth} min="50" max="300" />
+			</label>
+		{/if}
+		<label>
+			<input type="checkbox" bind:checked={isCopyAllowed} />
+			Allow Ctrl+drag to copy
+		</label>
+		<label>
+			<input type="checkbox" bind:checked={showDropZoneWhenEmpty} />
+			Show drop zone when target empty
+		</label>
+		<label title="Ctrl/Cmd+C/X/V, Delete, Esc + Ctrl+Insert / Shift+Insert / Shift+Delete">
+			<input type="checkbox" bind:checked={handleKeyboardShortcuts} />
+			Built-in keyboard shortcuts
+		</label>
+		<label>
+			Selection mode:
+			<select bind:value={selectionMode}>
+				<option value="single">single (one highlight; one node per drag)</option>
+				<option value="multiple">multiple (Ctrl/Shift+click; drag the whole highlight set)</option>
+			</select>
+		</label>
+	</div>
+
+	<div class="trees-side-by-side">
+		<div>
+			<h3>Source Tree (Reorganizable)</h3>
+			<div class="tree-container tree-container-tall">
+				<Tree
+					bind:this={sourceTreeRef}
+					treeId="source-tree"
+					clickBehavior="select"
+					nodes={sourceData}
+					idMember="id"
+					pathMember="path"
+					displayValueMember="name"
+					orderMember="sortOrder"
+					getIsDraggableCallback={({ node }) => node.data?.isDraggable !== false}
+					getIsDropAllowedCallback={({ node }) => node.data?.isFolder === true}
+					sortCallback={sortByOrder}
+					isSorted={true}
+					expandLevel={3}
+					dragDropMode="both"
+					{selectionMode}
+					selectedNodeClass="stv__node-content--selected-bold"
+					bind:selectedPaths={sourceSelectedPaths}
+					shouldHandleKeyboardShortcuts={handleKeyboardShortcuts}
+					nodeInputTransformationCallback={transformPasted}
+					beforePasteCallback={selfPasteRedirect}
+					onNodeCopy={(c) => addLog('Copy', `${c.paths.length} from source-tree`)}
+					onNodeCut={(c) => addLog('Cut', `${c.paths.length} from source-tree`)}
+					onNodePaste={(r) =>
+						addLog(
+							'Paste',
+							`${r.count} into source-tree${r.skipped ? ` (skipped ${r.skipped})` : ''}`,
+							'success'
+						)}
+					onNodeDelete={(c) =>
+						addLog('Delete', `${c.paths.length} node(s) from source-tree`, 'danger')}
+					onNodeDragStart={handleSourceDragStart}
+					onNodeDrop={handleSourceDrop}
+					draggedNodeClass="dd-source-dragging"
+					{isCopyAllowed}
+					{dropZoneMode}
+					{dropZoneLayout}
+					{dropZoneStart}
+					{dropZoneMaxWidth}
+					{...getTreeProps()}
+				>
+					{#snippet nodeTemplate(node: any)}
+						<span
+							>{node.data?.icon} {node.data?.name} <small class="muted">(#{node.data?.sortOrder})</small
+							></span
+						>
+					{/snippet}
+				</Tree>
+			</div>
 		</div>
 
-		<div class="tree-container tree-container-tall">
-			<Tree
-				bind:this={restrictedTreeRef}
-				treeId="restricted-tree"
-				clickBehavior="select"
-				nodes={restrictedData}
-				idMember="id"
-				pathMember="path"
-				displayValueMember="name"
-				orderMember="sortOrder"
-				getIsDraggableCallback={({ node }) => node.data?.isDraggable !== false}
-				getIsDropAllowedCallback={() => true}
-				allowedDropPositionsMember="allowedDropPositions"
-				sortCallback={sortByOrder}
-				isSorted={true}
-				expandLevel={3}
-				dragDropMode="self"
-				{selectionMode}
-				selectedNodeClass="stv__node-content--selected-bold"
-				bind:selectedPaths={restrictedSelectedPaths}
-				onNodeDrop={handleRestrictedDrop}
-				{dropZoneMode}
-				{dropZoneLayout}
-				{...getTreeProps()}
-			>
-				{#snippet nodeTemplate(node: any)}
-					<span>{node.data?.icon} {node.data?.name}</span>
+		<div>
+			<h3>Target Tree {targetData.length === 0 ? '(Empty - Drop Here!)' : ''}</h3>
+			<div class="tree-container tree-container-tall">
+				<Tree
+					bind:this={targetTreeRef}
+					treeId="target-tree"
+					clickBehavior="select"
+					nodes={targetData}
+					idMember="id"
+					pathMember="path"
+					displayValueMember="name"
+					orderMember="sortOrder"
+					getIsDraggableCallback={({ node }) => node.data?.isDraggable !== false}
+					getIsDropAllowedCallback={({ node }) => node.data?.isFolder === true}
+					sortCallback={sortByOrder}
+					expandLevel={3}
+					dragDropMode="both"
+					{selectionMode}
+					selectedNodeClass="stv__node-content--selected-bold"
+					bind:selectedPaths={targetSelectedPaths}
+					shouldHandleKeyboardShortcuts={handleKeyboardShortcuts}
+					nodeInputTransformationCallback={transformPasted}
+					beforePasteCallback={selfPasteRedirect}
+					onNodeCopy={(c) => addLog('Copy', `${c.paths.length} from target-tree`)}
+					onNodeCut={(c) => addLog('Cut', `${c.paths.length} from target-tree`)}
+					onNodePaste={(r) =>
+						addLog(
+							'Paste',
+							`${r.count} into target-tree${r.skipped ? ` (skipped ${r.skipped})` : ''}`,
+							'success'
+						)}
+					onNodeDelete={(c) =>
+						addLog('Delete', `${c.paths.length} node(s) from target-tree`, 'danger')}
+					onNodeDrop={handleTargetDrop}
+					isEmptyDropPlaceholderShown={showDropZoneWhenEmpty}
+					{isCopyAllowed}
+					{dropZoneMode}
+					{dropZoneLayout}
+					{dropZoneStart}
+					{dropZoneMaxWidth}
+					{...getTreeProps()}
+				>
+					{#snippet nodeTemplate(node: any)}
+						<span
+							>{node.data?.icon} {node.data?.name} <small class="muted">(#{node.data?.sortOrder})</small
+							></span
+						>
+					{/snippet}
+					{#snippet dropPlaceholder()}
+						<div class="dd-drop-hint">
+							<p class="dd-drop-hint__icon">📥</p>
+							<p>Drop items here to add them</p>
+							<small class="muted">…or copy in the left tree, hover here, and press Ctrl/Cmd+V</small>
+						</div>
+					{/snippet}
+				</Tree>
+			</div>
+		</div>
+	</div>
+
+	{#if sourceSelectedPaths.size > 0}
+		<div class="output">
+			<p class="output-label">
+				Source highlight ({sourceSelectedPaths.size}) — dragging any of these moves the whole
+				set
+			</p>
+			<pre>{[...sourceSelectedPaths].join(', ')}</pre>
+		</div>
+	{/if}
+
+	{#if targetSelectedPaths.size > 0}
+		<div class="output">
+			<p class="output-label">
+				Target highlight ({targetSelectedPaths.size}) — dragging any of these moves the whole
+				set within the target tree
+			</p>
+			<pre>{[...targetSelectedPaths].join(', ')}</pre>
+		</div>
+	{/if}
+
+	<div class="output">
+		<p class="output-label">Activity log</p>
+		<LogPanel entries={activityLog} empty="Drag, drop, copy or paste to see events…" />
+	</div>
+</div>
+
+<!-- Restricted Drop Positions Demo -->
+<div class="card">
+	<h2>DD02 · Restricted Drop Positions</h2>
+	<p class="description">
+		Control which drop positions are valid per node using <code>allowedDropPositions</code>. Try
+		dragging items to different targets. With <code>selectionMode="multiple"</code>, Ctrl/Shift+click
+		several items first and drag any one of them to move the whole set — per-node
+		<code>allowedDropPositions</code> are still enforced on the drop target.
+	</p>
+
+	<div class="note">
+		<p class="note-title">Node Types</p>
+		<ul>
+			<li>
+				<strong>🗑️ Trash</strong> - Only accepts <code>child</code> drops (drop INTO, not before/after)
+			</li>
+			<li><strong>📁 Projects</strong> - All positions allowed (default behavior)</li>
+			<li>
+				<strong>📄 Files</strong> - Only <code>before</code> and <code>after</code> (can't drop INTO
+				a file)
+			</li>
+		</ul>
+	</div>
+
+	<div class="tree-container tree-container-tall">
+		<Tree
+			bind:this={restrictedTreeRef}
+			treeId="restricted-tree"
+			clickBehavior="select"
+			nodes={restrictedData}
+			idMember="id"
+			pathMember="path"
+			displayValueMember="name"
+			orderMember="sortOrder"
+			getIsDraggableCallback={({ node }) => node.data?.isDraggable !== false}
+			getIsDropAllowedCallback={() => true}
+			allowedDropPositionsMember="allowedDropPositions"
+			sortCallback={sortByOrder}
+			isSorted={true}
+			expandLevel={3}
+			dragDropMode="self"
+			{selectionMode}
+			selectedNodeClass="stv__node-content--selected-bold"
+			bind:selectedPaths={restrictedSelectedPaths}
+			onNodeDrop={handleRestrictedDrop}
+			{dropZoneMode}
+			{dropZoneLayout}
+			{...getTreeProps()}
+		>
+			{#snippet nodeTemplate(node: any)}
+				<span
+					>{node.data?.icon} {node.data?.name}
 					{#if node.data?.allowedDropPositions}
-						<small style="color: #888; margin-left: 0.5rem; font-size: 0.7em;">
-							({node.data.allowedDropPositions.join('/')})
-						</small>
-					{/if}
-				{/snippet}
-			</Tree>
+						<small class="muted">({node.data.allowedDropPositions.join('/')})</small>
+					{/if}</span
+				>
+			{/snippet}
+		</Tree>
+	</div>
+
+	{#if restrictedSelectedPaths.size > 0}
+		<div class="output">
+			<p class="output-label">
+				Highlight ({restrictedSelectedPaths.size}) — drag any of these to move the whole set
+				(per-node <code>allowedDropPositions</code> still apply)
+			</p>
+			<pre>{[...restrictedSelectedPaths].join(', ')}</pre>
 		</div>
+	{/if}
 
-		{#if restrictedSelectedPaths.size > 0}
-			<div class="output">
-				<p class="output-label">
-					Highlight ({restrictedSelectedPaths.size}) — drag any of these to move the whole set
-					(per-node <code>allowedDropPositions</code> still apply)
-				</p>
-				<pre>{[...restrictedSelectedPaths].join(', ')}</pre>
-			</div>
-		{/if}
+	<div class="output">
+		<p class="output-label">Activity log</p>
+		<LogPanel entries={restrictedLog} empty="Drag a node to see where it lands…" />
+	</div>
 
-		{#if restrictedLog.length > 0}
-			<div class="output">
-				<p class="output-label">Activity Log:</p>
-				<pre>{restrictedLog.join('\n')}</pre>
-			</div>
-		{/if}
-
-		<div class="code-block">
-			<pre>{`// Define allowed drop positions per node
+	<div class="code-block">
+		<pre>{`// Define allowed drop positions per node
 const data = [
   // Trash: only accept drops as children
   { id: 1, name: '🗑️ Trash', allowedDropPositions: ['child'] },
@@ -1134,112 +1135,112 @@ const data = [
   allowedDropPositionsMember="allowedDropPositions"
   ...
 />`}</pre>
+	</div>
+</div>
+
+<!-- Drag-Set Guard (beforeDragStartCallback) -->
+<div class="card" id="drag-set-guard">
+	<h2>DD03 · Drag-Set Guard (<code>beforeDragStartCallback</code>)</h2>
+	<p class="description">
+		Two hooks working together, each for the job it's actually good at.
+		<code>getIsDraggableCallback</code> is <strong>per-node</strong>: it flat-out blocks grabbing a
+		🔒 locked file, so a locked file <strong>can never move — alone or in a selection</strong>.
+		<code>beforeDragStartCallback</code> is <strong>set-level</strong>, fires ONCE at drag start,
+		and does what per-node can't: it sees the whole combination, so it can prune a locked file
+		<em>nested inside</em> a dragged folder, add a linked companion you didn't select, or veto the
+		entire drag. Try these from the <strong>Files</strong> tree into
+		<strong>Destination</strong> and watch the log:
+	</p>
+	<div class="note">
+		<ul>
+			<li>
+				<strong>Locked never moves</strong> (per-node) — try to grab 🔒 <code>license.key</code>:
+				you can't, and Ctrl+selecting it alongside other files still leaves it behind.
+			</li>
+			<li>
+				<strong>Prunes nested</strong> (set-level) — drag 📁 <code>Documents</code>: its 🔒
+				<code>secret.key</code> rides <em>inside</em> the folder where per-node can't reach it, so
+				<code>beforeDragStartCallback</code> drops it from the manifest and it's left behind.
+			</li>
+			<li>
+				<strong>Augments</strong> (set-level) — drag <code>invoice.pdf</code>: its linked 🔗
+				<code>invoice.sig</code> rides along, even if you didn't select it.
+			</li>
+			<li>
+				<strong>Vetoes</strong> (set-level) — drag ⛔ <code>system.lock</code> (alone or in a
+				selection): the whole drag is cancelled (<code>onNodeDragStart</code> never fires).
+			</li>
+		</ul>
+	</div>
+
+	<div class="controls">
+		<button class="secondary" onclick={resetGuard}>Reset</button>
+	</div>
+
+	<div class="trees-side-by-side">
+		<div>
+			<h3>Files (drag from here)</h3>
+			<div class="tree-container">
+				<Tree
+					bind:this={guardSourceRef}
+					treeId="guard-source"
+					clickBehavior="select"
+					nodes={guardSourceData}
+					idMember="id"
+					pathMember="path"
+					displayValueMember="name"
+					orderMember="sortOrder"
+					sortCallback={sortByOrder}
+					isSorted={true}
+					expandLevel={3}
+					dragDropMode="both"
+					selectionMode="multiple"
+					selectedNodeClass="stv__node-content--selected-bold"
+					bind:selectedPaths={guardHighlighted}
+					getIsDraggableCallback={({ node }) => (node.data as GuardItem)?.locked !== true}
+					getIsDropAllowedCallback={() => true}
+					beforeDragStartCallback={beforeGuardDragStart}
+					{...getTreeProps()}
+				>
+					{#snippet nodeTemplate(node: any)}
+						<span>{node.data?.icon} {node.data?.name}</span>
+					{/snippet}
+				</Tree>
+			</div>
+		</div>
+		<div>
+			<h3>Destination (drop here)</h3>
+			<div class="tree-container">
+				<Tree
+					bind:this={guardDestRef}
+					treeId="guard-dest"
+					clickBehavior="select"
+					nodes={guardDestData}
+					idMember="id"
+					pathMember="path"
+					displayValueMember="name"
+					orderMember="sortOrder"
+					sortCallback={sortByOrder}
+					isSorted={true}
+					expandLevel={3}
+					dragDropMode="both"
+					getIsDraggableCallback={({ node }) => (node.data as GuardItem)?.locked !== true}
+					getIsDropAllowedCallback={() => true}
+					beforeDropCallback={guardForceCopy}
+					nodeInputTransformationCallback={guardMintId}
+					onNodeDrop={onGuardDrop}
+					{...getTreeProps()}
+				>
+					{#snippet nodeTemplate(node: any)}
+						<span>{node.data?.icon} {node.data?.name}</span>
+					{/snippet}
+				</Tree>
+			</div>
 		</div>
 	</div>
 
-	<!-- Drag-Set Guard (beforeDragStartCallback) -->
-	<div class="card" id="drag-set-guard">
-		<h2>DD03 · Drag-Set Guard (<code>beforeDragStartCallback</code>)</h2>
-		<p class="description">
-			Two hooks working together, each for the job it's actually good at.
-			<code>getIsDraggableCallback</code> is <strong>per-node</strong>: it flat-out blocks grabbing a
-			🔒 locked file, so a locked file <strong>can never move — alone or in a selection</strong>.
-			<code>beforeDragStartCallback</code> is <strong>set-level</strong>, fires ONCE at drag start,
-			and does what per-node can't: it sees the whole combination, so it can prune a locked file
-			<em>nested inside</em> a dragged folder, add a linked companion you didn't select, or veto the
-			entire drag. Try these from the <strong>Files</strong> tree into
-			<strong>Destination</strong> and watch the log:
-		</p>
-		<div class="note">
-			<ul>
-				<li>
-					<strong>Locked never moves</strong> (per-node) — try to grab 🔒 <code>license.key</code>:
-					you can't, and Ctrl+selecting it alongside other files still leaves it behind.
-				</li>
-				<li>
-					<strong>Prunes nested</strong> (set-level) — drag 📁 <code>Documents</code>: its 🔒
-					<code>secret.key</code> rides <em>inside</em> the folder where per-node can't reach it, so
-					<code>beforeDragStartCallback</code> drops it from the manifest and it's left behind.
-				</li>
-				<li>
-					<strong>Augments</strong> (set-level) — drag <code>invoice.pdf</code>: its linked 🔗
-					<code>invoice.sig</code> rides along, even if you didn't select it.
-				</li>
-				<li>
-					<strong>Vetoes</strong> (set-level) — drag ⛔ <code>system.lock</code> (alone or in a
-					selection): the whole drag is cancelled (<code>onNodeDragStart</code> never fires).
-				</li>
-			</ul>
-		</div>
-
-		<div class="controls">
-			<button class="btn btn-secondary" onclick={resetGuard}>Reset</button>
-		</div>
-
-		<div class="trees-side-by-side">
-			<div>
-				<h3>Files (drag from here)</h3>
-				<div class="tree-container">
-					<Tree
-						bind:this={guardSourceRef}
-						treeId="guard-source"
-						clickBehavior="select"
-						nodes={guardSourceData}
-						idMember="id"
-						pathMember="path"
-						displayValueMember="name"
-						orderMember="sortOrder"
-						sortCallback={sortByOrder}
-						isSorted={true}
-						expandLevel={3}
-						dragDropMode="both"
-						selectionMode="multiple"
-						selectedNodeClass="stv__node-content--selected-bold"
-						bind:selectedPaths={guardHighlighted}
-						getIsDraggableCallback={({ node }) => (node.data as GuardItem)?.locked !== true}
-						getIsDropAllowedCallback={() => true}
-						beforeDragStartCallback={beforeGuardDragStart}
-						{...getTreeProps()}
-					>
-						{#snippet nodeTemplate(node: any)}
-							<span>{node.data?.icon} {node.data?.name}</span>
-						{/snippet}
-					</Tree>
-				</div>
-			</div>
-			<div>
-				<h3>Destination (drop here)</h3>
-				<div class="tree-container">
-					<Tree
-						bind:this={guardDestRef}
-						treeId="guard-dest"
-						clickBehavior="select"
-						nodes={guardDestData}
-						idMember="id"
-						pathMember="path"
-						displayValueMember="name"
-						orderMember="sortOrder"
-						sortCallback={sortByOrder}
-						isSorted={true}
-						expandLevel={3}
-						dragDropMode="both"
-						getIsDraggableCallback={({ node }) => (node.data as GuardItem)?.locked !== true}
-						getIsDropAllowedCallback={() => true}
-						beforeDropCallback={guardForceCopy}
-						nodeInputTransformationCallback={guardMintId}
-						onNodeDrop={onGuardDrop}
-						{...getTreeProps()}
-					>
-						{#snippet nodeTemplate(node: any)}
-							<span>{node.data?.icon} {node.data?.name}</span>
-						{/snippet}
-					</Tree>
-				</div>
-			</div>
-		</div>
-
-		<div class="code-block">
-			<pre>{`// per-node: a locked file can't be grabbed at all — it never moves
+	<div class="code-block">
+		<pre>{`// per-node: a locked file can't be grabbed at all — it never moves
 getIsDraggableCallback={({ node }) => !node.data?.locked}
 
 // set-level: sees the whole combination, reshapes or vetoes the drag
@@ -1251,188 +1252,180 @@ beforeDragStartCallback={(ctx) => {
     .map((r) => r.node?.data?.companion).filter(Boolean);              // AUGMENT companions
   return [...kept, ...linked];  // AUTHORITATIVE new set, in landing order
 }}`}</pre>
-		</div>
-
-		{#if guardLog.length > 0}
-			<div class="output">
-				<p class="output-label">Activity Log:</p>
-				<pre>{guardLog.join('\n')}</pre>
-			</div>
-		{/if}
 	</div>
 
-	<!-- Leave-behind on drag (same-tree, moveNodes holes) -->
-	<div class="card" id="leave-behind">
-		<h2>DD04 · Leave a locked child behind (same-tree drag)</h2>
-		<p class="description">
-			Drag <strong>Documents</strong> onto <strong>Archive</strong>. Its
-			<code>beforeDragStartCallback</code> receives the <strong>complete</strong>
-			<code>ctx.dragged</code> set (folder + every descendant) and drops 🔒
-			<code>secret.key</code> from it. The library's <code>moveNodes</code> treats that omission as
-			a <em>hole</em>: it moves the folder with <code>report.doc</code> + <code>notes.txt</code>
-			and re-homes the lock to the folder's old parent, so it <strong>stays where it was</strong>.
-			Same tree, so the move is fully auto-handled — no <code>onNodeDrop</code> copying.
-		</p>
+	<div class="output">
+		<p class="output-label">Activity log</p>
+		<LogPanel entries={guardLog} empty="Drag from Files into Destination…" />
+	</div>
+</div>
 
-		<div class="controls">
-			<button class="btn btn-secondary" onclick={resetLeaveBehind}>Reset</button>
-		</div>
+<!-- Leave-behind on drag (same-tree, moveNodes holes) -->
+<div class="card" id="leave-behind">
+	<h2>DD04 · Leave a locked child behind (same-tree drag)</h2>
+	<p class="description">
+		Drag <strong>Documents</strong> onto <strong>Archive</strong>. Its
+		<code>beforeDragStartCallback</code> receives the <strong>complete</strong>
+		<code>ctx.dragged</code> set (folder + every descendant) and drops 🔒
+		<code>secret.key</code> from it. The library's <code>moveNodes</code> treats that omission as
+		a <em>hole</em>: it moves the folder with <code>report.doc</code> + <code>notes.txt</code>
+		and re-homes the lock to the folder's old parent, so it <strong>stays where it was</strong>.
+		Same tree, so the move is fully auto-handled — no <code>onNodeDrop</code> copying.
+	</p>
 
-		<div class="tree-container">
-			<Tree
-				treeId="leave-behind"
-				clickBehavior="select"
-				nodes={leaveBehindData}
-				idMember="id"
-				pathMember="path"
-				displayValueMember="name"
-				orderMember="sortOrder"
-				sortCallback={sortByOrder}
-				isSorted={true}
-				expandLevel={3}
-				dragDropMode="self"
-				selectionMode="multiple"
-				selectedNodeClass="stv__node-content--selected-bold"
-				bind:selectedPaths={leaveBehindHighlighted}
-				getIsDraggableCallback={() => true}
-				getIsDropAllowedCallback={() => true}
-				beforeDragStartCallback={beforeLeaveBehindDragStart}
-				onNodeDrop={onLeaveBehindDrop}
-				{...getTreeProps()}
-			>
-				{#snippet nodeTemplate(node: any)}
-					<span>{node.data?.icon} {node.data?.name}</span>
-				{/snippet}
-			</Tree>
-		</div>
+	<div class="controls">
+		<button class="secondary" onclick={resetLeaveBehind}>Reset</button>
+	</div>
 
-		<div class="code-block">
-			<pre>{`beforeDragStartCallback={(ctx) => {
+	<div class="tree-container">
+		<Tree
+			treeId="leave-behind"
+			clickBehavior="select"
+			nodes={leaveBehindData}
+			idMember="id"
+			pathMember="path"
+			displayValueMember="name"
+			orderMember="sortOrder"
+			sortCallback={sortByOrder}
+			isSorted={true}
+			expandLevel={3}
+			dragDropMode="self"
+			selectionMode="multiple"
+			selectedNodeClass="stv__node-content--selected-bold"
+			bind:selectedPaths={leaveBehindHighlighted}
+			getIsDraggableCallback={() => true}
+			getIsDropAllowedCallback={() => true}
+			beforeDragStartCallback={beforeLeaveBehindDragStart}
+			onNodeDrop={onLeaveBehindDrop}
+			{...getTreeProps()}
+		>
+			{#snippet nodeTemplate(node: any)}
+				<span>{node.data?.icon} {node.data?.name}</span>
+			{/snippet}
+		</Tree>
+	</div>
+
+	<div class="code-block">
+		<pre>{`beforeDragStartCallback={(ctx) => {
   // ctx.dragged is the COMPLETE flattened set (folder + every descendant).
   // Drop the locked node → the omission is a hole moveNodes leaves behind.
   return ctx.dragged.filter((r) => !r.node?.data?.locked).map((r) => r.path);
 }}
 // Same tree → the drop is auto-handled: the folder moves, the lock stays put.`}</pre>
-		</div>
-
-		{#if leaveBehindLog.length > 0}
-			<div class="output">
-				<p class="output-label">Activity Log:</p>
-				<pre>{leaveBehindLog.join('\n')}</pre>
-			</div>
-		{/if}
 	</div>
 
-	<!-- Sorting Zone (whole-tree drop zone + DropGroup routing) -->
-	<div class="card">
-		<h2>DD05 · Sorting Zone (<code>isTreeDropZoneEnabled</code> + <code>DropGroup[]</code>)</h2>
-		<p class="description">
-			The <strong>Pantry</strong> category nodes reject direct drops (<code
-				>getIsDropAllowedCallback</code
-			>
-			returns <code>false</code>). Instead the
-			<strong>whole pantry is one drop zone</strong> (<code>isTreeDropZoneEnabled</code>) — a
-			drop anywhere lands with <code>target=null</code>. Ctrl/Shift+click a mixed basket of produce
-			on the left and drop it <em>anywhere</em> on the pantry: each item auto-files under 🍎&nbsp;Fruits
-			or 🥕&nbsp;Vegetables.
-		</p>
-		<div class="note">
-			<ul>
-				<li>
-					<strong>Cross-tree (basket → pantry):</strong> the consumer routes arrivals in
-					<code>onNodeDrop</code> — the library can't auto-move nodes that live in another tree.
-				</li>
-				<li>
-					<strong>Same-tree re-sort:</strong> drag a produce item already <em>in</em> the pantry
-					back onto the zone — <code>beforeDropCallback</code> returns a <code>DropGroup[]</code> and
-					the library auto-executes it, fanning the one drop out to the right categories.
-				</li>
-			</ul>
-		</div>
+	<div class="output">
+		<p class="output-label">Activity log</p>
+		<LogPanel entries={leaveBehindLog} empty="Drag Documents onto Archive…" />
+	</div>
+</div>
 
-		<div class="controls">
-			<button class="btn btn-secondary" onclick={resetProduce}>Reset</button>
-		</div>
+<!-- Sorting Zone (whole-tree drop zone + DropGroup routing) -->
+<div class="card">
+	<h2>DD05 · Sorting Zone (<code>isTreeDropZoneEnabled</code> + <code>DropGroup[]</code>)</h2>
+	<p class="description">
+		The <strong>Pantry</strong> category nodes reject direct drops (<code
+			>getIsDropAllowedCallback</code
+		>
+		returns <code>false</code>). Instead the
+		<strong>whole pantry is one drop zone</strong> (<code>isTreeDropZoneEnabled</code>) — a
+		drop anywhere lands with <code>target=null</code>. Ctrl/Shift+click a mixed basket of produce
+		on the left and drop it <em>anywhere</em> on the pantry: each item auto-files under 🍎&nbsp;Fruits
+		or 🥕&nbsp;Vegetables.
+	</p>
+	<div class="note">
+		<ul>
+			<li>
+				<strong>Cross-tree (basket → pantry):</strong> the consumer routes arrivals in
+				<code>onNodeDrop</code> — the library can't auto-move nodes that live in another tree.
+			</li>
+			<li>
+				<strong>Same-tree re-sort:</strong> drag a produce item already <em>in</em> the pantry
+				back onto the zone — <code>beforeDropCallback</code> returns a <code>DropGroup[]</code> and
+				the library auto-executes it, fanning the one drop out to the right categories.
+			</li>
+		</ul>
+	</div>
 
-		<div class="trees-side-by-side">
-			<div>
-				<h3>Basket (drag from here)</h3>
-				<div class="tree-container">
-					<Tree
-						bind:this={basketRef}
-						treeId="produce-basket"
-						clickBehavior="select"
-						nodes={basketData}
-						idMember="id"
-						pathMember="path"
-						displayValueMember="name"
-						orderMember="sortOrder"
-						sortCallback={sortByOrder}
-						isSorted={true}
-						expandLevel={3}
-						dragDropMode="both"
-						selectionMode="multiple"
-						selectedNodeClass="stv__node-content--selected-bold"
-						bind:selectedPaths={basketHighlighted}
-						getIsDraggableCallback={() => true}
-						getIsDropAllowedCallback={() => true}
-						{...getTreeProps()}
-					>
-						{#snippet nodeTemplate(node: any)}
-							<span>{node.data?.icon} {node.data?.name}</span>
-						{/snippet}
-					</Tree>
-				</div>
-			</div>
-			<div>
-				<h3>Pantry (drop zone — nodes reject direct drops)</h3>
-				<div class="tree-container">
-					<Tree
-						bind:this={pantryRef}
-						treeId="produce-pantry"
-						clickBehavior="select"
-						nodes={pantryData}
-						idMember="id"
-						pathMember="path"
-						displayValueMember="name"
-						orderMember="sortOrder"
-						sortCallback={sortByOrder}
-						isSorted={true}
-						expandLevel={3}
-						dragDropMode="both"
-						selectionMode="multiple"
-						selectedNodeClass="stv__node-content--selected-bold"
-						bind:selectedPaths={pantryHighlighted}
-						getIsDraggableCallback={({ node }: { node: LTreeNode<ProduceItem> }) =>
-							node.data?.kind !== 'category'}
-						getIsDropAllowedCallback={() => false}
-						isTreeDropZoneEnabled={true}
-						beforeDropCallback={beforePantryDrop}
-						onNodeDrop={onProduceDrop}
-						{...getTreeProps()}
-					>
-						{#snippet nodeTemplate(node: any)}
-							<span>{node.data?.icon} {node.data?.name}</span>
-							{#if node.data?.kind === 'category'}
-								<small style="color: #999; margin-left: 0.5rem; font-size: 0.75em;"
-									>(category)</small
-								>
-							{/if}
-						{/snippet}
-					</Tree>
-				</div>
+	<div class="controls">
+		<button class="secondary" onclick={resetProduce}>Reset</button>
+	</div>
+
+	<div class="trees-side-by-side">
+		<div>
+			<h3>Basket (drag from here)</h3>
+			<div class="tree-container">
+				<Tree
+					bind:this={basketRef}
+					treeId="produce-basket"
+					clickBehavior="select"
+					nodes={basketData}
+					idMember="id"
+					pathMember="path"
+					displayValueMember="name"
+					orderMember="sortOrder"
+					sortCallback={sortByOrder}
+					isSorted={true}
+					expandLevel={3}
+					dragDropMode="both"
+					selectionMode="multiple"
+					selectedNodeClass="stv__node-content--selected-bold"
+					bind:selectedPaths={basketHighlighted}
+					getIsDraggableCallback={() => true}
+					getIsDropAllowedCallback={() => true}
+					{...getTreeProps()}
+				>
+					{#snippet nodeTemplate(node: any)}
+						<span>{node.data?.icon} {node.data?.name}</span>
+					{/snippet}
+				</Tree>
 			</div>
 		</div>
-
-		{#if produceLog.length > 0}
-			<div class="output">
-				<p class="output-label">Activity Log:</p>
-				<pre>{produceLog.join('\n')}</pre>
+		<div>
+			<h3>Pantry (drop zone — nodes reject direct drops)</h3>
+			<div class="tree-container">
+				<Tree
+					bind:this={pantryRef}
+					treeId="produce-pantry"
+					clickBehavior="select"
+					nodes={pantryData}
+					idMember="id"
+					pathMember="path"
+					displayValueMember="name"
+					orderMember="sortOrder"
+					sortCallback={sortByOrder}
+					isSorted={true}
+					expandLevel={3}
+					dragDropMode="both"
+					selectionMode="multiple"
+					selectedNodeClass="stv__node-content--selected-bold"
+					bind:selectedPaths={pantryHighlighted}
+					getIsDraggableCallback={({ node }: { node: LTreeNode<ProduceItem> }) =>
+						node.data?.kind !== 'category'}
+					getIsDropAllowedCallback={() => false}
+					isTreeDropZoneEnabled={true}
+					beforeDropCallback={beforePantryDrop}
+					onNodeDrop={onProduceDrop}
+					{...getTreeProps()}
+				>
+					{#snippet nodeTemplate(node: any)}
+						<span
+							>{node.data?.icon} {node.data?.name}
+							{#if node.data?.kind === 'category'}<small class="muted">(category)</small>{/if}</span
+						>
+					{/snippet}
+				</Tree>
 			</div>
-		{/if}
+		</div>
+	</div>
 
-		<div class="code-block">
-			<pre>{`<Tree
+	<div class="output">
+		<p class="output-label">Activity log</p>
+		<LogPanel entries={produceLog} empty="Drop produce on the pantry…" />
+	</div>
+
+	<div class="code-block">
+		<pre>{`<Tree
   isTreeDropZoneEnabled={true}        // whole tree = one drop target
   getIsDropAllowedCallback={() => false} // nodes reject direct drops
   beforeDropCallback={(ctx) => {
@@ -1448,64 +1441,59 @@ beforeDragStartCallback={(ctx) => {
     for (const ref of dragged) routeIntoCategory(ref);
   }}
 />`}</pre>
-		</div>
+	</div>
+</div>
+
+<!-- Touch Drag Instructions -->
+<div class="card">
+	<h2>DD06 · Touch Drag (Mobile)</h2>
+	<p class="description">
+		On touch devices, long-press (300ms) on a node to start dragging. A ghost element will follow
+		your finger.
+	</p>
+
+	<div class="tree-container tree-container-sm touch-demo-tree">
+		<Tree
+			nodes={touchData}
+			clickBehavior="select"
+			idMember="id"
+			pathMember="path"
+			orderMember="sortOrder"
+			displayValueMember="name"
+			getIsDraggableCallback={({ node }) => node.data?.isDraggable !== false}
+			getIsDropAllowedCallback={() => true}
+			sortCallback={sortByOrder}
+			isSorted={true}
+			expandLevel={3}
+			dragDropMode="self"
+			onNodeDragStart={handleTouchDragStart}
+			onNodeDrop={handleTouchDrop}
+			{...getTreeProps()}
+		>
+			{#snippet nodeTemplate(node: any)}
+				<span>{node.data?.icon} {node.data?.name}</span>
+			{/snippet}
+		</Tree>
 	</div>
 
-	<!-- Touch Drag Instructions -->
-	<div class="card">
-		<h2>DD06 · Touch Drag (Mobile)</h2>
-		<p class="description">
-			On touch devices, long-press (300ms) on a node to start dragging. A ghost element will follow
-			your finger.
-		</p>
+	<div class="output">
+		<p class="output-label">Touch event log</p>
+		<LogPanel entries={touchLog} empty="Touch events will appear here..." />
+	</div>
 
-		<div class="tree-container touch-demo-tree" style="max-height: 260px;">
-			<Tree
-				nodes={touchData}
-				clickBehavior="select"
-				idMember="id"
-				pathMember="path"
-				orderMember="sortOrder"
-				displayValueMember="name"
-				getIsDraggableCallback={({ node }) => node.data?.isDraggable !== false}
-				getIsDropAllowedCallback={() => true}
-				sortCallback={sortByOrder}
-				isSorted={true}
-				expandLevel={3}
-				dragDropMode="self"
-				onNodeDragStart={handleTouchDragStart}
-				onNodeDrop={handleTouchDrop}
-				{...getTreeProps()}
-			>
-				{#snippet nodeTemplate(node: any)}
-					<span>{node.data?.icon} {node.data?.name}</span>
-				{/snippet}
-			</Tree>
-		</div>
+	<div class="note">
+		<p class="note-title">How Touch Drag Works</p>
+		<ul>
+			<li><strong>Long-press (300ms)</strong> on a node to start dragging</li>
+			<li>A <strong>ghost element</strong> appears and follows your finger</li>
+			<li>Move your finger to the <strong>drop target</strong></li>
+			<li>Lift your finger to <strong>drop</strong> the node</li>
+			<li>Slight movement cancels drag initiation to allow scrolling</li>
+		</ul>
+	</div>
 
-		<div class="activity-log" style="margin-top: 0.75rem; min-height: 3rem;">
-			{#if touchLog.length === 0}
-				<div class="log-entry" style="color: #999;">Touch events will appear here...</div>
-			{:else}
-				{#each touchLog as entry}
-					<div class="log-entry">{entry}</div>
-				{/each}
-			{/if}
-		</div>
-
-		<div class="note">
-			<p class="note-title">How Touch Drag Works</p>
-			<ul>
-				<li><strong>Long-press (300ms)</strong> on a node to start dragging</li>
-				<li>A <strong>ghost element</strong> appears and follows your finger</li>
-				<li>Move your finger to the <strong>drop target</strong></li>
-				<li>Lift your finger to <strong>drop</strong> the node</li>
-				<li>Slight movement cancels drag initiation to allow scrolling</li>
-			</ul>
-		</div>
-
-		<div class="code-block">
-			<pre>{`<!-- Touch events are handled automatically -->
+	<div class="code-block">
+		<pre>{`<!-- Touch events are handled automatically -->
 <Tree
   nodes={data}
   idMember="id"
@@ -1521,20 +1509,20 @@ beforeDragStartCallback={(ctx) => {
     console.log('On:', target?.node?.data?.name || 'empty tree');
   }}
 />`}</pre>
-		</div>
 	</div>
+</div>
 
-	<!-- Drop Placeholder -->
-	<div class="card">
-		<h2>DD07 · Drop Placeholder Customization</h2>
-		<p class="description">
-			When dragging to an empty tree, a customizable placeholder appears. Use the <code
-				>dropPlaceholder</code
-			> snippet to customize it.
-		</p>
+<!-- Drop Placeholder -->
+<div class="card">
+	<h2>DD07 · Drop Placeholder Customization</h2>
+	<p class="description">
+		When dragging to an empty tree, a customizable placeholder appears. Use the <code
+			>dropPlaceholder</code
+		> snippet to customize it.
+	</p>
 
-		<div class="code-block">
-			<pre>{`<Tree nodes={emptyData} ...>
+	<div class="code-block">
+		<pre>{`<Tree nodes={emptyData} ...>
   {#snippet dropPlaceholder()}
     <div style="text-align: center; color: #667eea;">
       <p style="font-size: 2rem;">📥</p>
@@ -1542,17 +1530,17 @@ beforeDragStartCallback={(ctx) => {
     </div>
   {/snippet}
 </Tree>`}</pre>
-		</div>
+	</div>
 
-		<div class="note">
-			<p class="note-title">onNodeDrop Signature</p>
-			<p>
-				onNodeDrop receives one context object. <code>source</code>/<code>target</code> are node
-				pointers ({`{ node, parent, siblings }`}); <code>position</code> is <code>'before'</code>,
-				<code>'after'</code>, or <code>'child'</code>; <code>operation</code> is <code>'move'</code>
-				or <code>'copy'</code> (Ctrl+drag):
-			</p>
-			<pre style="margin-top: 0.5rem;">{`onNodeDrop={({ source, target, position, operation }) => {
+	<div class="note">
+		<p class="note-title">onNodeDrop Signature</p>
+		<p>
+			onNodeDrop receives one context object. <code>source</code>/<code>target</code> are node
+			pointers ({`{ node, parent, siblings }`}); <code>position</code> is <code>'before'</code>,
+			<code>'after'</code>, or <code>'child'</code>; <code>operation</code> is <code>'move'</code>
+			or <code>'copy'</code> (Ctrl+drag):
+		</p>
+		<pre>{`onNodeDrop={({ source, target, position, operation }) => {
   if (target === null) {
     // Dropped on empty tree placeholder or root drop zone
     // Add source.node as a root node
@@ -1563,45 +1551,45 @@ beforeDragStartCallback={(ctx) => {
   }
   // operation: 'move' (default) or 'copy' (Ctrl+drag with isCopyAllowed)
 }}`}</pre>
-		</div>
 	</div>
+</div>
 
-	<!-- Drag Drop Mode -->
-	<div class="card">
-		<h2>DD08 · Drag Drop Mode</h2>
-		<p class="description">
-			Control where drag and drop is allowed with the <code>dragDropMode</code> prop.
-		</p>
+<!-- Drag Drop Mode -->
+<div class="card">
+	<h2>DD08 · Drag Drop Mode</h2>
+	<p class="description">
+		Control where drag and drop is allowed with the <code>dragDropMode</code> prop.
+	</p>
 
-		<table>
-			<thead>
-				<tr>
-					<th>Mode</th>
-					<th>Description</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr>
-					<td><code>'none'</code></td>
-					<td>Drag and drop is disabled (default)</td>
-				</tr>
-				<tr>
-					<td><code>'self'</code></td>
-					<td>Only allow drag and drop within the same tree</td>
-				</tr>
-				<tr>
-					<td><code>'cross'</code></td>
-					<td>Only allow drag and drop between different trees</td>
-				</tr>
-				<tr>
-					<td><code>'both'</code></td>
-					<td>Allow both self and cross-tree drag and drop</td>
-				</tr>
-			</tbody>
-		</table>
+	<table class="reference-table">
+		<thead>
+			<tr>
+				<th>Mode</th>
+				<th>Description</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>'none'</code></td>
+				<td>Drag and drop is disabled (default)</td>
+			</tr>
+			<tr>
+				<td><code>'self'</code></td>
+				<td>Only allow drag and drop within the same tree</td>
+			</tr>
+			<tr>
+				<td><code>'cross'</code></td>
+				<td>Only allow drag and drop between different trees</td>
+			</tr>
+			<tr>
+				<td><code>'both'</code></td>
+				<td>Allow both self and cross-tree drag and drop</td>
+			</tr>
+		</tbody>
+	</table>
 
-		<div class="code-block">
-			<pre>{`<!-- Only allow drops from other trees -->
+	<div class="code-block">
+		<pre>{`<!-- Only allow drops from other trees -->
 <Tree
   nodes={targetData}
   dragDropMode="cross"
@@ -1609,92 +1597,92 @@ beforeDragStartCallback={(ctx) => {
     // Only triggered when dropping from a different tree
   }}
 />`}</pre>
-		</div>
 	</div>
+</div>
 
-	<!-- Drag Visual Feedback -->
-	<div class="card">
-		<h2>DD09 · Drag Visual Feedback</h2>
-		<p class="description">CSS classes are applied during drag operations for visual feedback.</p>
+<!-- Drag Visual Feedback -->
+<div class="card">
+	<h2>DD09 · Drag Visual Feedback</h2>
+	<p class="description">CSS classes are applied during drag operations for visual feedback.</p>
 
-		<table>
-			<thead>
-				<tr>
-					<th>Class</th>
-					<th>Applied When</th>
-					<th>Description</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr>
-					<td><code>stv__node-content--dragover-highlight</code></td>
-					<td>Dragging over a node</td>
-					<td>Highlights the drop target with a background color</td>
-				</tr>
-				<tr>
-					<td><code>stv__node-content--dragover-glow</code></td>
-					<td>Dragging over a node</td>
-					<td>Alternative glow effect for drop target</td>
-				</tr>
-				<tr>
-					<td><code>stv__node-content--dragged</code></td>
-					<td>The dragged source row (dimmed, left in place)</td>
-					<td>
-						Default: <code>--stv-dragged-opacity</code> + left-anchored
-						<code>--stv-dragged-scale</code>. Replace entirely via the
-						<code>draggedNodeClass</code> prop (see DD01).
-					</td>
-				</tr>
-				<tr>
-					<td><code>stv__drop-placeholder</code></td>
-					<td>Dragging over empty tree</td>
-					<td>Styles the drop placeholder area</td>
-				</tr>
-				<tr>
-					<td><code>stv__drop-zones</code></td>
-					<td>Drag in progress over a node</td>
-					<td>Container for floating drop zone buttons (before/child/after)</td>
-				</tr>
-				<tr>
-					<td><code>stv__drop-zone--before</code></td>
-					<td>Position indicator active</td>
-					<td>Shows drop will insert before the node</td>
-				</tr>
-				<tr>
-					<td><code>stv__drop-zone--child</code></td>
-					<td>Position indicator active</td>
-					<td>Shows drop will insert as child of the node</td>
-				</tr>
-				<tr>
-					<td><code>stv__drop-zone--after</code></td>
-					<td>Position indicator active</td>
-					<td>Shows drop will insert after the node</td>
-				</tr>
-				<tr>
-					<td><code>stv__node-content--glow-before</code></td>
-					<td>Glow mode: drop position is "before"</td>
-					<td>Top border glow with arrow indicator</td>
-				</tr>
-				<tr>
-					<td><code>stv__node-content--glow-after</code></td>
-					<td>Glow mode: drop position is "after"</td>
-					<td>Bottom border glow with arrow indicator</td>
-				</tr>
-				<tr>
-					<td><code>stv__node-content--glow-child</code></td>
-					<td>Glow mode: drop position is "child"</td>
-					<td>Right border glow with background tint</td>
-				</tr>
-				<tr>
-					<td><code>stv__touch-ghost</code></td>
-					<td>Touch drag in progress</td>
-					<td>Styles the ghost element following the finger</td>
-				</tr>
-			</tbody>
-		</table>
+	<table class="reference-table">
+		<thead>
+			<tr>
+				<th>Class</th>
+				<th>Applied When</th>
+				<th>Description</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>stv__node-content--dragover-highlight</code></td>
+				<td>Dragging over a node</td>
+				<td>Highlights the drop target with a background color</td>
+			</tr>
+			<tr>
+				<td><code>stv__node-content--dragover-glow</code></td>
+				<td>Dragging over a node</td>
+				<td>Alternative glow effect for drop target</td>
+			</tr>
+			<tr>
+				<td><code>stv__node-content--dragged</code></td>
+				<td>The dragged source row (dimmed, left in place)</td>
+				<td>
+					Default: <code>--stv-dragged-opacity</code> + left-anchored
+					<code>--stv-dragged-scale</code>. Replace entirely via the
+					<code>draggedNodeClass</code> prop (see DD01).
+				</td>
+			</tr>
+			<tr>
+				<td><code>stv__drop-placeholder</code></td>
+				<td>Dragging over empty tree</td>
+				<td>Styles the drop placeholder area</td>
+			</tr>
+			<tr>
+				<td><code>stv__drop-zones</code></td>
+				<td>Drag in progress over a node</td>
+				<td>Container for floating drop zone buttons (before/child/after)</td>
+			</tr>
+			<tr>
+				<td><code>stv__drop-zone--before</code></td>
+				<td>Position indicator active</td>
+				<td>Shows drop will insert before the node</td>
+			</tr>
+			<tr>
+				<td><code>stv__drop-zone--child</code></td>
+				<td>Position indicator active</td>
+				<td>Shows drop will insert as child of the node</td>
+			</tr>
+			<tr>
+				<td><code>stv__drop-zone--after</code></td>
+				<td>Position indicator active</td>
+				<td>Shows drop will insert after the node</td>
+			</tr>
+			<tr>
+				<td><code>stv__node-content--glow-before</code></td>
+				<td>Glow mode: drop position is "before"</td>
+				<td>Top border glow with arrow indicator</td>
+			</tr>
+			<tr>
+				<td><code>stv__node-content--glow-after</code></td>
+				<td>Glow mode: drop position is "after"</td>
+				<td>Bottom border glow with arrow indicator</td>
+			</tr>
+			<tr>
+				<td><code>stv__node-content--glow-child</code></td>
+				<td>Glow mode: drop position is "child"</td>
+				<td>Right border glow with background tint</td>
+			</tr>
+			<tr>
+				<td><code>stv__touch-ghost</code></td>
+				<td>Touch drag in progress</td>
+				<td>Styles the ghost element following the finger</td>
+			</tr>
+		</tbody>
+	</table>
 
-		<div class="code-block">
-			<pre>{`/* Customize drag-over highlight */
+	<div class="code-block">
+		<pre>{`/* Customize drag-over highlight */
 :global(.stv__node-content--dragover-highlight) {
   background-color: rgba(102, 126, 234, 0.2) !important;
   border-radius: 4px;
@@ -1707,25 +1695,41 @@ beforeDragStartCallback={(ctx) => {
   padding: 8px 12px;
   border-radius: 4px;
 }`}</pre>
-		</div>
 	</div>
-
-	<footer>
-		<p><a href="/">&larr; Back to Examples</a></p>
-	</footer>
 </div>
+
 
 <style>
 	/* DD01 demo for draggedNodeClass: a custom look for the dimmed source row left in
 	   place during a drag. Replaces the built-in .stv__node-content--dragged entirely. */
 	:global(.dd-source-dragging) {
 		opacity: 0.6;
-		outline: 1px dashed #667eea;
+		outline: 1px dashed var(--kmwc-accent-color);
 		outline-offset: 2px;
 		border-radius: 4px;
-		background-color: rgba(102, 126, 234, 0.08);
+		background-color: var(--kmwc-accent-light-bg);
 		/* left-anchored so the shrink never shifts the label (same rule the default uses) */
 		transform-origin: left center;
 		transform: scale(0.97);
+	}
+
+	/* DD01 target tree's custom dropPlaceholder snippet content. */
+	.dd-drop-hint {
+		text-align: center;
+		color: var(--kmwc-accent-color);
+	}
+
+	.dd-drop-hint p {
+		margin: 0;
+		color: inherit;
+	}
+
+	.dd-drop-hint__icon {
+		font-size: 2rem;
+	}
+
+	/* A note ending in a paragraph shouldn't keep the card's paragraph gap. */
+	.note > :last-child {
+		margin-bottom: 0;
 	}
 </style>

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Regenerates src/routes/examples/theme-comparison/<theme>.css from the compiled
+// Regenerates src/routes/(showcase)/examples/theme-comparison/<theme>.css from the compiled
 // pure-admin themes (../pure-admin-themes/<theme>/dist/<theme>.css).
 //
 // Takes the --base-* declarations a theme emits at :root plus its top-level
@@ -18,7 +18,7 @@ import path from 'node:path';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const themesDir = process.env.PURE_ADMIN_THEMES_DIR || path.resolve(root, '../pure-admin-themes');
 const contractFile = path.resolve(root, '../base-css-variables/base-variables.css');
-const outDir = path.join(root, 'src/routes/examples/theme-comparison');
+const outDir = path.join(root, 'src/routes/(showcase)/examples/theme-comparison');
 
 // theme → mode the showcase renders it in
 const THEMES = {

@@ -1,10 +1,9 @@
-<script>
-	// Import the treeview styles from source during development
+<script lang="ts">
+	// Treeview styles from source during development. Page chrome is per section:
+	// (showcase)/+layout.svelte = devkit examples kit; test/ + dev/ = legacy shared CSS.
 	import '$lib/styles/main.css';
+
+	let { children } = $props();
 </script>
 
-<svelte:head>
-	<link rel="stylesheet" href="/examples-shared.css" />
-</svelte:head>
-
-<slot />
+{@render children()}

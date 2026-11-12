@@ -1,149 +1,46 @@
-<script>
-	import { onMount } from 'svelte';
-	import { VERSION } from '$lib/constants.generated.js';
-	import ChapterNav from './ChapterNav.svelte';
+<script lang="ts">
+	// The examples landing page — the devkit kit's index page (renderExamplesIndex() markup,
+	// kmwc-index__* classes) rendered in Svelte so it's prerendered. Cards come from the
+	// shared registry, which also feeds this page's cross-page chapter nav
+	// ((showcase)/+layout.svelte) and the spotlight index.
+	import {
+		getVersionLabel,
+		renderFooterLineHtml,
+		INDEX_PAGE_CLASSES as c,
+		type KmwcPageConfig
+	} from '@keenmate/web-components-devkit/examples';
+	import { EXAMPLE_PAGES } from './examples-registry.js';
 
-	const version = `v${VERSION}`;
-
-	const examples = [
-		{
-			href: '/examples/basic',
-			icon: '🌲',
-			title: 'Basic Usage',
-			description: 'The essentials — render a tree, control initial expansion, scroll to a node, and drive expand/collapse programmatically (array + exclusive-focus variants).'
-		},
-		{
-			href: '/examples/interaction',
-			icon: '🖱️',
-			title: 'Interaction',
-			description: 'Click behavior modes, multi-select with range selection, keyboard navigation, cascade checkboxes, and silent state restore.'
-		},
-		{
-			href: '/examples/drag-drop',
-			icon: '🎯',
-			title: 'Drag & Drop',
-			description: 'Desktop and mobile drag and drop with touch-friendly long-press activation.'
-		},
-		{
-			href: '/examples/context-menu',
-			icon: '📋',
-			title: 'Context Menu',
-			description: 'Right-click context menus with icons, disabled states, dividers, and dynamic items.'
-		},
-		{
-			href: '/examples/icons',
-			icon: '🎭',
-			title: 'Icons',
-			badge: 'new',
-			description: 'Per-node icons on every node (branch + leaf) — FontAwesome classes via iconMember, per-node color, emoji via getIconCallback, and inline SVG via the icon snippet.'
-		},
-		{
-			href: '/examples/tooltips',
-			icon: '💬',
-			title: 'Tooltips',
-			badge: 'new',
-			description: 'Hover/focus node tooltips — a plain-text getNodeTooltipCallback or a rich tooltip snippet, with placement / delay / follow-cursor / sizing knobs, themed via the shared --base-tooltip-* tokens.'
-		},
-		{
-			href: '/examples/search',
-			icon: '🔍',
-			title: 'Search & Filter',
-			description: 'Internal search index for fast searching with searchNodes() and filterNodes().'
-		},
-		{
-			href: '/examples/theming',
-			icon: '🎨',
-			title: 'Theming',
-			description: 'Customize appearance with CSS variables for selection, drag-over, and icons.'
-		},
-		{
-			href: '/examples/theme-comparison',
-			icon: '🎭',
-			title: 'Theme Comparison',
-			badge: 'new',
-			description: 'web-multiselect and svelte-treeview side by side under one shared --base-* theme (Cobalt2) — visual proof the KeenMate token contract renders both consistently.'
-		},
-		{
-			href: '/examples/responsive',
-			icon: '📐',
-			title: 'Responsive',
-			description: 'React to the tree\'s own container box (and the device) via a bindable containerSize + onContainerResize callback — adapt settings to the available space.'
-		},
-		{
-			href: '/examples/data',
-			icon: '📊',
-			title: 'Data Structures',
-			description: 'Path-based data structure, custom separators, insert-result validation, and bulk branch operations (addBranch / removeBranch).'
-		},
-		{
-			href: '/examples/tree-editor',
-			icon: '✏️',
-			title: 'Tree Editor',
-			description: 'Interactive add/move/remove + clipboard editing, plus real-world DB-integration workflows (full redraw, partial redraw, CRUD, build-one-by-one, batch save).'
-		},
-		{
-			href: '/examples/performance',
-			icon: '⚡',
-			title: 'Performance Test',
-			description: 'Compare flat vs virtual-scroll rendering with configurable node counts.'
-		},
-		{
-			href: '/examples/custom-layout',
-			icon: '🧩',
-			title: 'Custom Layout',
-			description: 'Build custom UIs (breadcrumbs, badge clouds) on the headless TreeController via TreeProvider.'
-		},
-		{
-			href: '/dev/logging',
-			icon: '📝',
-			title: 'Logging',
-			badge: 'debug',
-			description: 'Test logging infrastructure with categorized loggers and configurable log levels.'
-		}
-	];
-
-	onMount(() => {
-		document.body.classList.add('landing-body');
-		return () => {
-			document.body.classList.remove('landing-body');
-		};
+	const pageConfig = __KMWC_PAGE_CONFIG__.pageConfig as unknown as KmwcPageConfig;
+	const footerHtml = renderFooterLineHtml(pageConfig, {
+		links: [{ label: 'npm', href: 'https://www.npmjs.com/package/@keenmate/svelte-treeview' }],
+		devkitClass: c.devkit
 	});
 </script>
 
 <svelte:head>
-	<title>Svelte Treeview Examples</title>
+	<title>{pageConfig.title} — Examples</title>
 </svelte:head>
 
-<div class="page-container">
-	<header class="header-card">
-		<h1>Svelte Treeview</h1>
-		<p class="subtitle">Hierarchical tree component for Svelte 5 with path-based data structure</p>
-		<span class="version-badge">{version}</span>
+<div class={c.page}>
+	<header class={c.header}>
+		<h1>{pageConfig.title}</h1>
+		<p class={c.tagline}>{pageConfig.tagline}</p>
+		<span class={c.version} data-kmwc-version>{getVersionLabel(pageConfig)}</span>
 	</header>
-
-	<div class="cards">
-		{#each examples as example}
-			<a href={example.href} class="card-link">
-				<div class="card-icon">{example.icon}</div>
-				<h2 class="card-title">
+	<div class={c.cards}>
+		{#each EXAMPLE_PAGES as example (example.href)}
+			<a href={example.href} class={c.card}>
+				<div class={c.icon}>{example.icon}</div>
+				<h2 class={c.cardTitle}>
 					{example.title}
 					{#if example.badge}
-						<span class="badge">{example.badge}</span>
+						<span class={c.badge}>{example.badge}</span>
 					{/if}
 				</h2>
-				<p class="card-description">{example.description}</p>
+				<p class={c.cardDescription}>{example.description}</p>
 			</a>
 		{/each}
 	</div>
-
-	<footer>
-		<p>
-			Created by <a href="https://github.com/keenmate" target="_blank">KeenMate</a> |
-			<a href="https://github.com/nicenicenice/svelte-treeview" target="_blank">GitHub</a> |
-			<a href="https://www.npmjs.com/package/@keenmate/svelte-treeview" target="_blank">npm</a>
-		</p>
-	</footer>
+	<footer class={c.footer}>{@html footerHtml}</footer>
 </div>
-
-<!-- Cross-page jump list, fed from the same registry as the cards above. -->
-<ChapterNav items={examples.map((e) => ({ label: e.title, href: e.href }))} />

@@ -547,370 +547,321 @@
 
 <svelte:head>
   <title>Performance Test - Svelte Treeview</title>
-  <link rel="stylesheet" href="/examples-shared.css" />
 </svelte:head>
 
-<div class="container">
-  <header>
-    <a href="/" class="back-link">&larr; Back to Examples</a>
-    <h1>Performance Test</h1>
-    <p class="subtitle">Compare flat vs virtual-scroll rendering with large datasets</p>
-  </header>
+<header>
+  <a href="/" class="back-link">&larr; Back to Examples</a>
+  <h1>Performance Test</h1>
+  <p class="subtitle">Compare flat vs virtual-scroll rendering with large datasets</p>
+</header>
 
-  <div class="card">
-    <h2>PF01 · Rendering Mode</h2>
-    <div class="mode-toggle">
-      <label class="toggle-option" class:active={renderMode === 'flat'}>
-        <input type="radio" bind:group={renderMode} value="flat" />
-        <span class="toggle-label">Flat</span>
-        <span class="toggle-desc">Centralized {'{#each}'} loop, per-node signals</span>
-      </label>
-      <label class="toggle-option" class:active={renderMode === 'virtual'}>
-        <input type="radio" bind:group={renderMode} value="virtual" />
-        <span class="toggle-label">Virtual Scroll</span>
-        <span class="toggle-desc">Flat + only renders visible nodes (~50 in DOM)</span>
-      </label>
-    </div>
-
-    <!-- Mode-specific options -->
-    {#if renderMode === 'virtual'}
-      <div class="mode-options">
-        <label>
-          Container Height:
-          <input type="text" bind:value={virtualScrollContainerHeight} style="width: 80px" />
-        </label>
-        <label title="Extra rows rendered above and below the viewport to prevent flicker during fast scrolling">
-          Overscan:
-          <input type="number" bind:value={virtualScrollOverscan} min="0" max="50" step="1" />
-        </label>
-      </div>
-    {/if}
-    {#if renderMode !== 'virtual'}
-      <div class="mode-options">
-        <label>
-          <input type="checkbox" bind:checked={isProgressiveRenderEnabled} />
-          Progressive Render
-        </label>
-        {#if isProgressiveRenderEnabled}
-          <label>
-            Initial Batch:
-            <input type="number" bind:value={initialBatchSize} min="5" max="200" step="5" />
-          </label>
-          <label>
-            Max Batch:
-            <input type="number" bind:value={maxBatchSize} min="100" max="2000" step="100" />
-          </label>
-        {/if}
-      </div>
-    {/if}
+<div class="card">
+  <h2>PF01 · Rendering Mode</h2>
+  <div class="check-list">
+    <label>
+      <input type="radio" bind:group={renderMode} value="flat" />
+      <span><strong>Flat</strong> <span class="muted">&mdash; centralized {'{#each}'} loop, per-node signals</span></span>
+    </label>
+    <label>
+      <input type="radio" bind:group={renderMode} value="virtual" />
+      <span><strong>Virtual Scroll</strong> <span class="muted">&mdash; flat + only renders visible nodes (~50 in DOM)</span></span>
+    </label>
   </div>
 
-  <div class="card">
-    <h2>PF02 · Configuration</h2>
+  <!-- Mode-specific options -->
+  {#if renderMode === 'virtual'}
     <div class="controls">
       <label>
-        Node Count:
-        <input type="number" bind:value={nodeCountTarget} min="100" max="50000" step="1000" />
+        Container Height:
+        <input type="text" bind:value={virtualScrollContainerHeight} class="w-sm" />
       </label>
-      <label>
-        Expand Level:
-        <input type="number" bind:value={expandLevel} min="0" max="10" />
+      <label title="Extra rows rendered above and below the viewport to prevent flicker during fast scrolling">
+        Overscan:
+        <input type="number" bind:value={virtualScrollOverscan} min="0" max="50" step="1" />
       </label>
-      <label>
-        <input type="checkbox" bind:checked={isSorted} />
-        Sort by name
-      </label>
-      <label>
-        <input type="checkbox" bind:checked={shouldUseInternalSearchIndex} />
-        Search Index
-      </label>
-      {#if shouldUseInternalSearchIndex}
-        <label>
-          Index Batch:
-          <input type="number" bind:value={indexerBatchSize} min="25" max="5000" step="25" />
-        </label>
-      {/if}
-    </div>
-    <div class="controls">
-      <button class="btn" onclick={generateTestData} disabled={isLoading}>
-        {isLoading ? 'Loading...' : `Generate ${nodeCountTarget.toLocaleString()} Nodes`}
-      </button>
-      <button class="btn" onclick={loadCountriesTestData} disabled={isLoading}>
-        {isLoading ? 'Loading...' : 'Load Countries + States (~5K nodes)'}
-      </button>
-      <button class="btn secondary" onclick={redraw} disabled={treeData.length === 0}>Redraw</button>
-      <button class="btn secondary" onclick={clearData} disabled={treeData.length === 0}>Clear</button>
-      <button class="btn secondary" onclick={resetConfig}>Reset Config</button>
-      <button class="btn" class:active={perfLoggingEnabled} onclick={togglePerfLogging}>
-        {perfLoggingEnabled ? 'Perf Logging ON' : 'Perf Logging OFF'}
-      </button>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>PF03 · Performance Metrics</h2>
-    <div class="metrics">
-      <div class="metric">
-        <span class="value">{metrics.nodeCount.toLocaleString()}</span>
-        <span class="label">Nodes</span>
-      </div>
-      <div class="metric">
-        <span class="value">{metrics.generateTime?.toFixed(2) ?? '-'} ms</span>
-        <span class="label">Generate</span>
-      </div>
-      <div class="metric">
-        <span class="value">{metrics.renderTime?.toFixed(2) ?? 'measuring...'} ms</span>
-        <span class="label">Render</span>
-      </div>
-      <div class="metric total">
-        <span class="value">
-          {metrics.renderTime
-            ? ((metrics.generateTime || 0) + metrics.renderTime).toFixed(2)
-            : '-'} ms
-        </span>
-        <span class="label">Total</span>
-      </div>
-      {#if lastExpandTime !== null}
-        <div class="metric expand-time">
-          <span class="value">{lastExpandTime.toFixed(2)} ms</span>
-          <span class="label">Expand/Collapse</span>
-        </div>
-      {/if}
-      {#if lastUpdateTime !== null}
-        <div class="metric expand-time">
-          <span class="value">{lastUpdateTime.toFixed(2)} ms</span>
-          <span class="label">Update Node</span>
-        </div>
-      {/if}
-      {#if lastSearchTime !== null}
-        <div class="metric search-time">
-          <span class="value">{lastSearchTime.toFixed(2)} ms</span>
-          <span class="label">Search/Filter</span>
-        </div>
-      {/if}
-      {#if isProgressiveRenderEnabled}
-        <div class="metric" class:rendering={isRendering}>
-          <span class="value">
-            {#if isRendering}
-              {renderStats.pending} pending
-            {:else}
-              Done
-            {/if}
-          </span>
-          <span class="label">Progressive</span>
-        </div>
-      {/if}
-    </div>
-
-    {#if insertResult?.failedNodes?.length > 0}
-      <p class="warning">
-        {insertResult.failedNodes.length} nodes failed to insert
-      </p>
-    {/if}
-  </div>
-
-  {#if treeData.length > 0}
-    <div class="card">
-      <h2>
-        PF04 · {dataSource === 'countries' ? 'Countries + States' : 'Synthetic Data'}
-        ({metrics.nodeCount.toLocaleString()} nodes) - {renderMode === 'virtual' ? 'Virtual Scroll' : 'Flat Mode'}
-      </h2>
-      <div class="tree-controls">
-        <button class="btn" onclick={timedExpandOneNode}>Expand One</button>
-        <button class="btn" onclick={timedCollapseOneNode}>Collapse One</button>
-        <span class="control-divider">|</span>
-        <button class="btn secondary" onclick={timedExpandAll}>Expand All</button>
-        <button class="btn secondary" onclick={timedCollapseAll}>Collapse All</button>
-      </div>
-      <div class="tree-controls">
-        <input type="text" bind:value={updateNodePath} placeholder="Node path (empty = random)" class="path-input" />
-        <button class="btn" onclick={timedUpdateNode}>Update Node (timed)</button>
-        {#if lastUpdateTime !== null}
-          <span class="update-time">{lastUpdateTime.toFixed(2)} ms</span>
-        {/if}
-      </div>
-      <div class="search-bar">
-        <button
-          class="search-mode-btn"
-          title={searchMode === 'filter' ? 'Filter mode — switch to Search' : 'Search mode — switch to Filter'}
-          aria-label="Toggle search mode"
-          onclick={toggleSearchMode}
-        >
-          {#if searchMode === 'filter'}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-          {:else}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          {/if}
-        </button>
-        <input
-          type="text"
-          bind:value={searchInputValue}
-          placeholder={searchMode === 'filter' ? 'Filter nodes...' : 'Search nodes... (Enter to find)'}
-          class="search-input"
-          oninput={onSearchInput}
-          onkeydown={onSearchKeydown}
-        />
-        {#if searchResults.length > 0}
-          <span class="search-counter">{currentSearchIdx + 1}/{searchResults.length}</span>
-          <button class="search-nav-btn" title="Previous (Shift+Enter)" aria-label="Previous result" onclick={searchPrev}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
-          </button>
-          <button class="search-nav-btn" title="Next (Enter)" aria-label="Next result" onclick={searchNext}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
-        {:else if searchInputValue && lastSearchTime !== null}
-          <span class="search-counter no-results">0 results</span>
-        {/if}
-        {#if searchInputValue}
-          <button class="search-nav-btn" title="Clear" aria-label="Clear search" onclick={clearSearch}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        {/if}
-        {#if lastSearchTime !== null}
-          <span class="update-time">{lastSearchTime.toFixed(2)} ms</span>
-        {/if}
-      </div>
-      <div class="tree-container" class:tree-container-tall={!isVirtualScrollEnabled}>
-        {#key treeKey}
-          <Tree
-            bind:this={treeRef}
-            nodes={treeData}
-            idMember="id"
-            pathMember="path"
-            parentPathMember="parentPath"
-            levelMember="level"
-            hasChildrenMember="hasChildren"
-            displayValueMember="name"
-            {sortCallback}
-            {isSorted}
-            {expandLevel}
-            {isProgressiveRenderEnabled}
-            {initialBatchSize}
-            {maxBatchSize}
-            {indexerBatchSize}
-            {shouldUseInternalSearchIndex}
-            searchValueMember="name"
-            bind:searchTerm
-            {isVirtualScrollEnabled}
-            {virtualScrollContainerHeight}
-            {virtualScrollOverscan}
-            bind:insertResult
-            bind:isRendering
-            onRenderStart={() => {
-              console.log('[Render] Started');
-              renderStats = { pending: 0, processed: 0 };
-            }}
-            onRenderProgress={(stats) => {
-              renderStats = stats;
-            }}
-            onRenderComplete={(stats) => {
-              console.log('[Render] Complete:', stats);
-              renderStats = stats;
-            }}
-          >
-            {#snippet nodeTemplate(node: any)}
-              <span class="node-label"><span class="node-path">[{node.path}]</span> {node.data?.name ?? node.path}</span>
-            {/snippet}
-          </Tree>
-        {/key}
-      </div>
     </div>
   {/if}
-
-  <div class="card">
-    <h2>PF05 · What to Test</h2>
-    <div class="description">
-      <ol>
-        <li><strong>Initial render:</strong> Generate data with different node counts and expand levels. Compare render times between modes.</li>
-        <li><strong>Expand/Collapse ONE node:</strong> The key test! Use "Expand One" and "Collapse One" buttons. This is the typical user interaction - expanding a single node.</li>
-        <li><strong>Expand/Collapse ALL:</strong> Bulk operations - these may be similar between modes since both need to render thousands of nodes.</li>
-        <li><strong>Perf Logging:</strong> Enable to see detailed timing in the console.</li>
-      </ol>
+  {#if renderMode !== 'virtual'}
+    <div class="controls">
+      <label>
+        <input type="checkbox" bind:checked={isProgressiveRenderEnabled} />
+        Progressive Render
+      </label>
+      {#if isProgressiveRenderEnabled}
+        <label>
+          Initial Batch:
+          <input type="number" bind:value={initialBatchSize} min="5" max="200" step="5" />
+        </label>
+        <label>
+          Max Batch:
+          <input type="number" bind:value={maxBatchSize} min="100" max="2000" step="100" />
+        </label>
+      {/if}
     </div>
-
-    <div class="note">
-      <div class="note-title">Expected Results</div>
-      <ul>
-        <li><strong>Expand One - Flat:</strong> Only adds the new children (~10 nodes)</li>
-        <li><strong>Expand One - Virtual:</strong> Re-windows the visible rows; DOM size stays ~constant</li>
-        <li>Expand All: flat mounts every visible row (use Progressive Render to spread it over frames); virtual stays windowed</li>
-      </ul>
-    </div>
-  </div>
-
-  <footer>
-    <p><a href="/">&larr; Back to Examples</a></p>
-  </footer>
+  {/if}
 </div>
 
+<div class="card">
+  <h2>PF02 · Configuration</h2>
+  <div class="controls">
+    <label>
+      Node Count:
+      <input type="number" bind:value={nodeCountTarget} min="100" max="50000" step="1000" />
+    </label>
+    <label>
+      Expand Level:
+      <input type="number" bind:value={expandLevel} min="0" max="10" />
+    </label>
+    <label>
+      <input type="checkbox" bind:checked={isSorted} />
+      Sort by name
+    </label>
+    <label>
+      <input type="checkbox" bind:checked={shouldUseInternalSearchIndex} />
+      Search Index
+    </label>
+    {#if shouldUseInternalSearchIndex}
+      <label>
+        Index Batch:
+        <input type="number" bind:value={indexerBatchSize} min="25" max="5000" step="25" />
+      </label>
+    {/if}
+  </div>
+  <div class="controls">
+    <button onclick={generateTestData} disabled={isLoading}>
+      {isLoading ? 'Loading...' : `Generate ${nodeCountTarget.toLocaleString()} Nodes`}
+    </button>
+    <button onclick={loadCountriesTestData} disabled={isLoading}>
+      {isLoading ? 'Loading...' : 'Load Countries + States (~5K nodes)'}
+    </button>
+    <button class="secondary" onclick={redraw} disabled={treeData.length === 0}>Redraw</button>
+    <button class="secondary" onclick={clearData} disabled={treeData.length === 0}>Clear</button>
+    <button class="secondary" onclick={resetConfig}>Reset Config</button>
+    <button class:perf-logging-on={perfLoggingEnabled} aria-pressed={perfLoggingEnabled} onclick={togglePerfLogging}>
+      {perfLoggingEnabled ? 'Perf Logging ON' : 'Perf Logging OFF'}
+    </button>
+  </div>
+</div>
+
+<div class="card">
+  <h2>PF03 · Performance Metrics</h2>
+  <div class="metrics">
+    <div class="metric">
+      <span class="value">{metrics.nodeCount.toLocaleString()}</span>
+      <span class="label">Nodes</span>
+    </div>
+    <div class="metric">
+      <span class="value">{metrics.generateTime?.toFixed(2) ?? '-'} ms</span>
+      <span class="label">Generate</span>
+    </div>
+    <div class="metric">
+      <span class="value">{metrics.renderTime?.toFixed(2) ?? 'measuring...'} ms</span>
+      <span class="label">Render</span>
+    </div>
+    <div class="metric total">
+      <span class="value">
+        {metrics.renderTime
+          ? ((metrics.generateTime || 0) + metrics.renderTime).toFixed(2)
+          : '-'} ms
+      </span>
+      <span class="label">Total</span>
+    </div>
+    {#if lastExpandTime !== null}
+      <div class="metric expand-time">
+        <span class="value">{lastExpandTime.toFixed(2)} ms</span>
+        <span class="label">Expand/Collapse</span>
+      </div>
+    {/if}
+    {#if lastUpdateTime !== null}
+      <div class="metric expand-time">
+        <span class="value">{lastUpdateTime.toFixed(2)} ms</span>
+        <span class="label">Update Node</span>
+      </div>
+    {/if}
+    {#if lastSearchTime !== null}
+      <div class="metric search-time">
+        <span class="value">{lastSearchTime.toFixed(2)} ms</span>
+        <span class="label">Search/Filter</span>
+      </div>
+    {/if}
+    {#if isProgressiveRenderEnabled}
+      <div class="metric" class:rendering={isRendering}>
+        <span class="value">
+          {#if isRendering}
+            {renderStats.pending} pending
+          {:else}
+            Done
+          {/if}
+        </span>
+        <span class="label">Progressive</span>
+      </div>
+    {/if}
+  </div>
+
+  {#if insertResult?.failedNodes?.length > 0}
+    <p class="note danger">
+      {insertResult.failedNodes.length} nodes failed to insert
+    </p>
+  {/if}
+</div>
+
+{#if treeData.length > 0}
+  <div class="card">
+    <h2>
+      PF04 · {dataSource === 'countries' ? 'Countries + States' : 'Synthetic Data'}
+      ({metrics.nodeCount.toLocaleString()} nodes) - {renderMode === 'virtual' ? 'Virtual Scroll' : 'Flat Mode'}
+    </h2>
+    <div class="controls">
+      <button onclick={timedExpandOneNode}>Expand One</button>
+      <button onclick={timedCollapseOneNode}>Collapse One</button>
+      <span class="muted">|</span>
+      <button class="secondary" onclick={timedExpandAll}>Expand All</button>
+      <button class="secondary" onclick={timedCollapseAll}>Collapse All</button>
+    </div>
+    <div class="controls">
+      <input type="text" bind:value={updateNodePath} placeholder="Node path (empty = random)" class="mono w-lg" />
+      <button onclick={timedUpdateNode}>Update Node (timed)</button>
+      {#if lastUpdateTime !== null}
+        <strong class="mono update-time">{lastUpdateTime.toFixed(2)} ms</strong>
+      {/if}
+    </div>
+    <div class="search-bar">
+      <button
+        class="search-mode-btn"
+        title={searchMode === 'filter' ? 'Filter mode — switch to Search' : 'Search mode — switch to Filter'}
+        aria-label="Toggle search mode"
+        onclick={toggleSearchMode}
+      >
+        {#if searchMode === 'filter'}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        {:else}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        {/if}
+      </button>
+      <input
+        type="text"
+        bind:value={searchInputValue}
+        placeholder={searchMode === 'filter' ? 'Filter nodes...' : 'Search nodes... (Enter to find)'}
+        class="search-input"
+        oninput={onSearchInput}
+        onkeydown={onSearchKeydown}
+      />
+      {#if searchResults.length > 0}
+        <span class="search-counter">{currentSearchIdx + 1}/{searchResults.length}</span>
+        <button class="search-nav-btn" title="Previous (Shift+Enter)" aria-label="Previous result" onclick={searchPrev}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+        </button>
+        <button class="search-nav-btn" title="Next (Enter)" aria-label="Next result" onclick={searchNext}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+      {:else if searchInputValue && lastSearchTime !== null}
+        <span class="search-counter no-results">0 results</span>
+      {/if}
+      {#if searchInputValue}
+        <button class="search-nav-btn" title="Clear" aria-label="Clear search" onclick={clearSearch}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      {/if}
+      {#if lastSearchTime !== null}
+        <strong class="mono update-time">{lastSearchTime.toFixed(2)} ms</strong>
+      {/if}
+    </div>
+    <div class="tree-container" class:tree-container-tall={!isVirtualScrollEnabled}>
+      {#key treeKey}
+        <Tree
+          bind:this={treeRef}
+          nodes={treeData}
+          idMember="id"
+          pathMember="path"
+          parentPathMember="parentPath"
+          levelMember="level"
+          hasChildrenMember="hasChildren"
+          displayValueMember="name"
+          {sortCallback}
+          {isSorted}
+          {expandLevel}
+          {isProgressiveRenderEnabled}
+          {initialBatchSize}
+          {maxBatchSize}
+          {indexerBatchSize}
+          {shouldUseInternalSearchIndex}
+          searchValueMember="name"
+          bind:searchTerm
+          {isVirtualScrollEnabled}
+          {virtualScrollContainerHeight}
+          {virtualScrollOverscan}
+          bind:insertResult
+          bind:isRendering
+          onRenderStart={() => {
+            console.log('[Render] Started');
+            renderStats = { pending: 0, processed: 0 };
+          }}
+          onRenderProgress={(stats) => {
+            renderStats = stats;
+          }}
+          onRenderComplete={(stats) => {
+            console.log('[Render] Complete:', stats);
+            renderStats = stats;
+          }}
+        >
+          {#snippet nodeTemplate(node: any)}
+            <span class="node-label"><span class="muted mono node-path">[{node.path}]</span> {node.data?.name ?? node.path}</span>
+          {/snippet}
+        </Tree>
+      {/key}
+    </div>
+  </div>
+{/if}
+
+<div class="card">
+  <h2>PF05 · What to Test</h2>
+  <div class="description">
+    <ol>
+      <li><strong>Initial render:</strong> Generate data with different node counts and expand levels. Compare render times between modes.</li>
+      <li><strong>Expand/Collapse ONE node:</strong> The key test! Use "Expand One" and "Collapse One" buttons. This is the typical user interaction - expanding a single node.</li>
+      <li><strong>Expand/Collapse ALL:</strong> Bulk operations - these may be similar between modes since both need to render thousands of nodes.</li>
+      <li><strong>Perf Logging:</strong> Enable to see detailed timing in the console.</li>
+    </ol>
+  </div>
+
+  <div class="note">
+    <div class="note-title">Expected Results</div>
+    <ul>
+      <li><strong>Expand One - Flat:</strong> Only adds the new children (~10 nodes)</li>
+      <li><strong>Expand One - Virtual:</strong> Re-windows the visible rows; DOM size stays ~constant</li>
+      <li>Expand All: flat mounts every visible row (use Progressive Render to spread it over frames); virtual stays windowed</li>
+    </ul>
+  </div>
+</div>
+
+
 <style>
-  .mode-toggle {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-
-  .toggle-option {
-    flex: 1;
-    padding: 1rem;
-    border: 2px solid #e2e8f0;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .toggle-option:hover {
-    border-color: #667eea;
-  }
-
-  .toggle-option.active {
-    border-color: #667eea;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-  }
-
-  .toggle-option input {
-    display: none;
-  }
-
-  .toggle-label {
-    display: block;
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #2d3748;
-    margin-bottom: 0.25rem;
-  }
-
-  .toggle-desc {
-    display: block;
-    font-size: 0.875rem;
-    color: #718096;
-  }
-
-  .mode-options {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-    align-items: center;
-    padding: 0.75rem 1rem;
-    margin-top: 0.75rem;
-    background: #f7fafc;
-    border-radius: 6px;
-    font-size: 0.875rem;
-  }
-
+  /* PF03 metric tiles (.metrics / .metric are showcase-local): tinted variants for the derived figures. */
   .metric.total {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+    background: var(--kmwc-accent-color);
+    border-color: var(--kmwc-accent-color);
+    color: var(--kmwc-text-color-on-accent);
   }
 
   .metric.expand-time {
-    background: #48bb78;
-    color: white;
+    background: color-mix(in srgb, var(--kmwc-success-color) 16%, transparent);
+    border-color: var(--kmwc-success-color);
+  }
+
+  .metric.search-time {
+    background: color-mix(in srgb, var(--kmwc-info-color) 16%, transparent);
+    border-color: var(--kmwc-info-color);
   }
 
   .metric.rendering {
-    background: #f6e05e;
+    background: color-mix(in srgb, var(--kmwc-warning-color) 20%, transparent);
+    border-color: var(--kmwc-warning-color);
     animation: pulse 1s infinite;
+  }
+
+  .metric.total .label {
+    color: inherit;
+    opacity: 0.85;
   }
 
   @keyframes pulse {
@@ -918,58 +869,16 @@
     50% { opacity: 0.7; }
   }
 
-  .metric .label {
-    display: block;
-    font-size: 0.8rem;
-    opacity: 0.8;
-    margin-top: 0.25rem;
-  }
-
-  .warning {
-    color: #c53030;
-    margin-top: 1rem;
-  }
-
-  .tree-controls {
-    margin-bottom: 1rem;
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-
-  .control-divider {
-    color: #cbd5e0;
-    margin: 0 0.25rem;
-  }
-
-  .btn.active {
-    background: #48bb78;
-  }
-
-  .path-input {
-    padding: 0.4rem 0.6rem;
-    border: 1px solid #cbd5e0;
-    border-radius: 4px;
-    font-size: 0.875rem;
-    width: 220px;
-    font-family: monospace;
-  }
-
-  .metric.search-time {
-    background: #667eea;
-    color: white;
-  }
-
   .update-time {
-    font-weight: 600;
-    color: #48bb78;
+    color: var(--kmwc-success-color);
+  }
+
+  button.perf-logging-on {
+    background: var(--kmwc-success-color);
   }
 
   .node-path {
-    color: #a0aec0;
     font-size: 0.8em;
-    font-family: monospace;
   }
 
   ol {

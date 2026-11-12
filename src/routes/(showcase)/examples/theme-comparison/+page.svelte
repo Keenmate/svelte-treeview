@@ -238,207 +238,213 @@
 	});
 </script>
 
-<div class="container">
-	<header class="example-header">
-		<a href="/" class="back-link">&larr; Back to Examples</a>
-		<h1>Theme Comparison</h1>
-		<p class="subtitle">
-			<code>&lt;web-multiselect&gt;</code> and <code>&lt;Tree&gt;</code> side by side, both resolving the
-			<strong>same</strong> KeenMate <code>--base-*</code> design tokens — visual proof that the shared
-			token contract renders both consistently.
+<header class="example-header">
+	<a href="/" class="back-link">&larr; Back to Examples</a>
+	<h1>Theme Comparison</h1>
+	<p class="subtitle">
+		<code>&lt;web-multiselect&gt;</code> and <code>&lt;Tree&gt;</code> side by side, both resolving the
+		<strong>same</strong> KeenMate <code>--base-*</code> design tokens — visual proof that the shared
+		token contract renders both consistently.
+	</p>
+</header>
+
+<div class="card">
+	<h2>TC01 · Shared <code>--base-*</code> contract</h2>
+	<p class="description">
+		Switch the theme to retint both components at once, or swap the icon pack to re-skin the
+		glyphs they share. Each theme is a full <code>--base-*</code> token set extracted verbatim from
+		a pure-admin theme. Nothing below is styled per-component — only the shared
+		<code>--base-*</code> layer changes, so accent, surfaces, text hierarchy, borders, hover and the
+		checkbox / chevron glyphs all track together.
+	</p>
+
+	<div class="controls">
+		<span class="controls-label">Theme:</span>
+		{#each themes as t (t.key)}
+			<button
+				class={theme === t.key ? '' : 'btn-secondary'}
+				onclick={() => (theme = t.key)}
+			>{t.label}</button>
+		{/each}
+	</div>
+
+	<div class="controls">
+		<span class="controls-label">Tree disclosure (<code>iconSet</code>):</span>
+		{#each treeIconSets as set (set.key)}
+			<button
+				class={treeIconSet === set.key ? '' : 'btn-secondary'}
+				onclick={() => (treeIconSet = set.key)}
+			>{set.label}</button>
+		{/each}
+		<span class="muted">→ <code>{treeIconSets.find((s) => s.key === treeIconSet)?.token}</code> · treeview only</span>
+	</div>
+
+	<div class="controls">
+		<span class="controls-label">Icon pack:</span>
+		{#each iconPacks as pack (pack.key)}
+			<button
+				class={iconPack === pack.key ? '' : 'btn-secondary'}
+				onclick={() => (iconPack = pack.key)}
+			>{pack.label}</button>
+		{/each}
+		{#if arrowNotThemeable}
+			<span class="muted">arrow glyphs are inline (not <code>--base-*</code>) — pack affects checkboxes only</span>
+		{/if}
+	</div>
+
+	<div class="controls">
+		<span class="controls-label">Icon size:</span>
+		{#each iconSizes as size (size.key)}
+			<button
+				class={iconSize === size.key ? '' : 'btn-secondary'}
+				onclick={() => (iconSize = size.key)}
+			>{size.label}</button>
+		{/each}
+		<span class="muted">→ <code>--base-icon-check-size</code> (checkbox glyph, tree + multiselect)</span>
+	</div>
+
+	<div class="controls">
+		<span class="controls-label">Checkbox size:</span>
+		<input
+			type="range"
+			min="0.5"
+			max="2.5"
+			step="0.05"
+			bind:value={checkboxScale}
+			aria-label="Checkbox box scale"
+		/>
+		<code class="scale-readout">{checkboxScale.toFixed(2)}×</code>
+		<button class="btn-secondary" onclick={() => (checkboxScale = 1)}>Reset</button>
+		<span class="muted">→ <code>--base-checkbox-scale</code> (box size via calc, no transform — both components)</span>
+	</div>
+
+	<div class="comparison grid {themeClass}" style="--grid-min: 300px; --grid-gap: 1.5rem" bind:this={comparisonEl}>
+		<section class="panel">
+			<header class="panel-head">
+				@keenmate/web-multiselect <span class="panel-badge">v2.2.0</span>
+			</header>
+			<div class="panel-body">
+				<web-multiselect bind:this={msEl} class="demo-ms"></web-multiselect>
+				{#if !msReady}<p class="panel-hint">Loading web-multiselect…</p>{/if}
+				<p class="panel-hint">Click the field to open the tree dropdown (checkboxes, search, hover).</p>
+			</div>
+		</section>
+
+		<section class="panel">
+			<header class="panel-head">
+				@keenmate/svelte-treeview <span class="panel-badge">rc</span>
+			</header>
+			<div class="panel-body">
+				<Tree
+					nodes={data}
+					idMember="id"
+					pathMember="path"
+					displayValueMember="name"
+					sortCallback={sortByPath}
+					isCheckboxesShown
+					checkboxMode="cascade"
+					bind:checkedPaths
+					iconSet={treeIconSet}
+					expandLevel={5}
+					getContextMenuItemsCallback={contextMenuItems}
+					isNodeTooltipsShown
+				>
+					{#snippet nodeTemplate(node: LTreeNode<Item>)}
+						<!-- Custom row: icon + label + folder count badge. Hover shows the
+						     themed tooltip below (isNodeTooltipsShown + the `tooltip` snippet),
+						     the direct analog of the multiselect's option tooltips. -->
+						<span class="demo-node">
+							<span class="demo-node__icon">{node.data?.icon}</span>
+							<span class="demo-node__label">{node.data?.name}</span>
+							{#if childCount(node) > 0}
+								<span class="demo-node__count">{childCount(node)}</span>
+							{/if}
+						</span>
+					{/snippet}
+					{#snippet tooltip(node: LTreeNode<Item>)}
+						<!-- Rich tooltip content. Portaled + Floating-UI positioned by the
+						     library; themed via the shared --base-tooltip-* tokens so it matches
+						     web-multiselect's option tooltip under every theme. -->
+						<div class="demo-tip">
+							<strong>{node.data?.icon} {node.data?.name}</strong>
+							<span class="demo-tip__desc">{node.data?.desc}</span>
+							<span class="demo-tip__path">path {node.data?.path}</span>
+						</div>
+					{/snippet}
+				</Tree>
+			</div>
+		</section>
+	</div>
+
+	<div class="note">
+		<p class="note-title">What to look for</p>
+		<p>
+			Both components read the same three shared glyph tokens —
+			<code>--base-icon-chevron</code> (disclosure / dropdown toggle),
+			<code>--base-icon-check</code> (checkbox tick) and
+			<code>--base-icon-indeterminate</code> (tri-state dash) — plus the same colour, surface,
+			text-hierarchy and border tokens. Open the multiselect dropdown to compare its options,
+			checkboxes and hover against the tree. Each theme's tokens are extracted verbatim from the
+			matching <code>@keenmate/pure-admin-theme-*</code> package (Cobalt2, Dracula, Corporate).
 		</p>
-	</header>
-
-	<div class="card">
-		<h2>TC01 · Shared <code>--base-*</code> contract</h2>
-		<p class="description">
-			Switch the theme to retint both components at once, or swap the icon pack to re-skin the
-			glyphs they share. Each theme is a full <code>--base-*</code> token set extracted verbatim from
-			a pure-admin theme. Nothing below is styled per-component — only the shared
-			<code>--base-*</code> layer changes, so accent, surfaces, text hierarchy, borders, hover and the
-			checkbox / chevron glyphs all track together.
+		<p>
+			The <strong>Tree disclosure</strong> switch is treeview-only: <code>chevron</code> /
+			<code>triangle</code> / <code>arrow</code> rotate one glyph, while
+			<code>plus-minus</code> is a true expand/collapse <em>swap</em> driven by
+			<code>--base-icon-expand</code> (＋) and <code>--base-icon-collapse</code> (－).
+			Collapse a node to see the swap. web-multiselect's tree is always fully expanded, so it
+			has no per-node disclosure counterpart.
 		</p>
-
-		<div class="controls">
-			<span class="controls-label">Theme:</span>
-			{#each themes as t (t.key)}
-				<button
-					class="btn {theme === t.key ? '' : 'btn-secondary'}"
-					onclick={() => (theme = t.key)}
-				>{t.label}</button>
-			{/each}
-		</div>
-
-		<div class="controls">
-			<span class="controls-label">Tree disclosure (<code>iconSet</code>):</span>
-			{#each treeIconSets as set (set.key)}
-				<button
-					class="btn {treeIconSet === set.key ? '' : 'btn-secondary'}"
-					onclick={() => (treeIconSet = set.key)}
-				>{set.label}</button>
-			{/each}
-			<span class="muted">→ <code>{treeIconSets.find((s) => s.key === treeIconSet)?.token}</code> · treeview only</span>
-		</div>
-
-		<div class="controls">
-			<span class="controls-label">Icon pack:</span>
-			{#each iconPacks as pack (pack.key)}
-				<button
-					class="btn {iconPack === pack.key ? '' : 'btn-secondary'}"
-					onclick={() => (iconPack = pack.key)}
-				>{pack.label}</button>
-			{/each}
-			{#if arrowNotThemeable}
-				<span class="muted">arrow glyphs are inline (not <code>--base-*</code>) — pack affects checkboxes only</span>
-			{/if}
-		</div>
-
-		<div class="controls">
-			<span class="controls-label">Icon size:</span>
-			{#each iconSizes as size (size.key)}
-				<button
-					class="btn {iconSize === size.key ? '' : 'btn-secondary'}"
-					onclick={() => (iconSize = size.key)}
-				>{size.label}</button>
-			{/each}
-			<span class="muted">→ <code>--base-icon-check-size</code> (checkbox glyph, tree + multiselect)</span>
-		</div>
-
-		<div class="controls">
-			<span class="controls-label">Checkbox size:</span>
-			<input
-				type="range"
-				min="0.5"
-				max="2.5"
-				step="0.05"
-				bind:value={checkboxScale}
-				aria-label="Checkbox box scale"
-			/>
-			<code class="scale-readout">{checkboxScale.toFixed(2)}×</code>
-			<button class="btn btn-secondary" onclick={() => (checkboxScale = 1)}>Reset</button>
-			<span class="muted">→ <code>--base-checkbox-scale</code> (box size via calc, no transform — both components)</span>
-		</div>
-
-		<div class="comparison {themeClass}" bind:this={comparisonEl}>
-			<section class="panel">
-				<header class="panel-head">
-					@keenmate/web-multiselect <span class="panel-badge">v2.2.0</span>
-				</header>
-				<div class="panel-body">
-					<web-multiselect bind:this={msEl} class="demo-ms"></web-multiselect>
-					{#if !msReady}<p class="panel-hint">Loading web-multiselect…</p>{/if}
-					<p class="panel-hint">Click the field to open the tree dropdown (checkboxes, search, hover).</p>
-				</div>
-			</section>
-
-			<section class="panel">
-				<header class="panel-head">
-					@keenmate/svelte-treeview <span class="panel-badge">rc</span>
-				</header>
-				<div class="panel-body">
-					<Tree
-						nodes={data}
-						idMember="id"
-						pathMember="path"
-						displayValueMember="name"
-						sortCallback={sortByPath}
-						isCheckboxesShown
-						checkboxMode="cascade"
-						bind:checkedPaths
-						iconSet={treeIconSet}
-						expandLevel={5}
-						getContextMenuItemsCallback={contextMenuItems}
-						isNodeTooltipsShown
-					>
-						{#snippet nodeTemplate(node: LTreeNode<Item>)}
-							<!-- Custom row: icon + label + folder count badge. Hover shows the
-							     themed tooltip below (isNodeTooltipsShown + the `tooltip` snippet),
-							     the direct analog of the multiselect's option tooltips. -->
-							<span class="demo-node">
-								<span class="demo-node__icon">{node.data?.icon}</span>
-								<span class="demo-node__label">{node.data?.name}</span>
-								{#if childCount(node) > 0}
-									<span class="demo-node__count">{childCount(node)}</span>
-								{/if}
-							</span>
-						{/snippet}
-						{#snippet tooltip(node: LTreeNode<Item>)}
-							<!-- Rich tooltip content. Portaled + Floating-UI positioned by the
-							     library; themed via the shared --base-tooltip-* tokens so it matches
-							     web-multiselect's option tooltip under every theme. -->
-							<div class="demo-tip">
-								<strong>{node.data?.icon} {node.data?.name}</strong>
-								<span class="demo-tip__desc">{node.data?.desc}</span>
-								<span class="demo-tip__path">path {node.data?.path}</span>
-							</div>
-						{/snippet}
-					</Tree>
-				</div>
-			</section>
-		</div>
-
-		<div class="note">
-			<p class="note-title">What to look for</p>
-			<p>
-				Both components read the same three shared glyph tokens —
-				<code>--base-icon-chevron</code> (disclosure / dropdown toggle),
-				<code>--base-icon-check</code> (checkbox tick) and
-				<code>--base-icon-indeterminate</code> (tri-state dash) — plus the same colour, surface,
-				text-hierarchy and border tokens. Open the multiselect dropdown to compare its options,
-				checkboxes and hover against the tree. Each theme's tokens are extracted verbatim from the
-				matching <code>@keenmate/pure-admin-theme-*</code> package (Cobalt2, Dracula, Corporate).
-			</p>
-			<p>
-				The <strong>Tree disclosure</strong> switch is treeview-only: <code>chevron</code> /
-				<code>triangle</code> / <code>arrow</code> rotate one glyph, while
-				<code>plus-minus</code> is a true expand/collapse <em>swap</em> driven by
-				<code>--base-icon-expand</code> (＋) and <code>--base-icon-collapse</code> (－).
-				Collapse a node to see the swap. web-multiselect's tree is always fully expanded, so it
-				has no per-node disclosure counterpart.
-			</p>
-			<p>
-				<strong>Right-click a row</strong> to open the context menu — it reads the same
-				<code>--base-*</code> layer through the <code>--stv-context-menu-*</code> tokens
-				(<code>--base-dropdown-bg</code> surface, accent hover, divider, danger text), so the menu
-				retints with every theme switch. The sample includes icons, shortcuts, a named divider, a
-				submenu and a <code>className: 'danger'</code> item.
-			</p>
-			<p>
-				<strong>Rich rows + tooltips:</strong> the tree uses a <code>nodeTemplate</code> snippet
-				(icon + label + a themed folder-count badge). <strong>Hover any row</strong> for the
-				tooltip — enabled with <code>isNodeTooltipsShown</code> and a <code>tooltip</code>
-				snippet (rich content: name, description, path). It's portaled and Floating-UI
-				positioned by the library, and themed through the shared <code>--base-tooltip-*</code>
-				tokens, so it renders identically to the multiselect's option tooltips under every theme.
-				For plain text, pass <code>getNodeTooltipCallback</code> instead of the snippet; for a
-				clipped-label reveal only, <code>nodeTitleOverflow="info"</code> still applies. The
-				multiselect mirrors the data via <code>iconMember</code> / <code>subtitleMember</code>
-				with option tooltips on.
-			</p>
-		</div>
+		<p>
+			<strong>Right-click a row</strong> to open the context menu — it reads the same
+			<code>--base-*</code> layer through the <code>--stv-context-menu-*</code> tokens
+			(<code>--base-dropdown-bg</code> surface, accent hover, divider, danger text), so the menu
+			retints with every theme switch. The sample includes icons, shortcuts, a named divider, a
+			submenu and a <code>className: 'danger'</code> item.
+		</p>
+		<p>
+			<strong>Rich rows + tooltips:</strong> the tree uses a <code>nodeTemplate</code> snippet
+			(icon + label + a themed folder-count badge). <strong>Hover any row</strong> for the
+			tooltip — enabled with <code>isNodeTooltipsShown</code> and a <code>tooltip</code>
+			snippet (rich content: name, description, path). It's portaled and Floating-UI
+			positioned by the library, and themed through the shared <code>--base-tooltip-*</code>
+			tokens, so it renders identically to the multiselect's option tooltips under every theme.
+			For plain text, pass <code>getNodeTooltipCallback</code> instead of the snippet; for a
+			clipped-label reveal only, <code>nodeTitleOverflow="info"</code> still applies. The
+			multiselect mirrors the data via <code>iconMember</code> / <code>subtitleMember</code>
+			with option tooltips on.
+		</p>
 	</div>
 </div>
 
 <style>
+	/* The comparison stage: a .grid (kit) whose backdrop and panels read the SELECTED theme's
+	   --base-* tokens (set on .theme-<key> by the generated cobalt2/dracula/corporate.css),
+	   falling back to the kit's page tokens when no theme is picked ("Component defaults"). */
 	.comparison {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 1.5rem;
 		margin: 1rem 0;
 		padding: 1.5rem;
-		border-radius: 8px;
+		border-radius: var(--kmwc-radius-md);
 		/* Each theme scope sets --base-page-bg; with no theme it's unset → transparent. */
 		background: var(--base-page-bg, transparent);
 		transition: background 0.2s ease;
 	}
 
+	/* The theme scopes declare color-scheme, but the page's theme switch writes html[data-theme],
+	   which the library reads as an ancestor signal for every tree — that would force the tree's
+	   light-dark() fallbacks to the PAGE scheme inside a dark theme. Let the tree follow its
+	   theme scope instead (unlayered, so it beats the library's layered signal rules). */
+	:global(.comparison .stv__container:not([data-theme])) {
+		color-scheme: inherit;
+	}
+
 	.panel {
 		display: flex;
 		flex-direction: column;
-		border: 1px solid var(--base-border-color, #e2e8f0);
-		border-radius: 8px;
+		border: 1px solid var(--base-border-color, var(--kmwc-border-color));
+		border-radius: var(--kmwc-radius-md);
 		overflow: hidden;
-		background: var(--base-main-bg, #ffffff);
+		background: var(--base-main-bg, var(--kmwc-main-bg));
 		min-height: 320px;
 	}
 
@@ -450,18 +456,20 @@
 		padding: 0.6rem 0.9rem;
 		font-weight: 600;
 		font-size: 0.85rem;
-		color: var(--base-text-color-1, #111827);
-		border-bottom: 1px solid var(--base-border-color, #e2e8f0);
-		background: var(--base-elevated-bg, #f8f9fa);
+		color: var(--base-text-color-1, var(--kmwc-text-color-1));
+		border-bottom: 1px solid var(--base-border-color, var(--kmwc-border-color));
+		background: var(--base-elevated-bg, var(--kmwc-elevated-bg));
+		overflow-wrap: anywhere;
 	}
 
 	.panel-badge {
+		flex: none;
 		font-weight: 500;
 		font-size: 0.7rem;
 		padding: 0.1rem 0.45rem;
 		border-radius: 999px;
-		color: var(--base-on-primary-text-color, #fff);
-		background: var(--base-primary-color, #3b82f6);
+		color: var(--base-on-primary-text-color, var(--kmwc-text-color-on-accent));
+		background: var(--base-primary-color, var(--kmwc-accent-color));
 	}
 
 	.panel-body {
@@ -472,7 +480,7 @@
 	.panel-hint {
 		margin: 0.75rem 0 0;
 		font-size: 0.78rem;
-		color: var(--base-text-color-3, #6b7280);
+		color: var(--base-text-color-3, var(--kmwc-text-color-3));
 	}
 
 	/* Give the multiselect a sensible demo width inside the panel. */
@@ -487,8 +495,9 @@
 		font-variant-numeric: tabular-nums;
 	}
 
-	/* Custom nodeTemplate row: icon + label + themed folder-count badge. The badge
-	   reads --base-primary-color(-light) so it retints with the selected theme. */
+	/* Custom nodeTemplate row: icon + label + folder-count badge. The badge reads the tree's
+	   own accent (--stv-accent-color, which resolves the theme's --base-primary-color) so it
+	   retints with the selected theme. */
 	.demo-node {
 		display: inline-flex;
 		align-items: center;
@@ -511,16 +520,16 @@
 		line-height: 1.4;
 		padding: 0 0.45rem;
 		border-radius: 999px;
-		color: var(--base-primary-color, #3b82f6);
+		color: var(--stv-accent-color);
 		background: var(
 			--base-primary-bg-subtle,
-			color-mix(in srgb, var(--base-primary-color, #3b82f6) 15%, transparent)
+			color-mix(in srgb, var(--stv-accent-color) 15%, transparent)
 		);
 	}
 
 	/* Tooltip snippet content. The library paints the portaled .stv__tooltip surface
 	   (bg/radius/shadow via --base-tooltip-*); this just lays out the inner lines.
-	   :global because the content is portaled to <body>, outside this component's scope. */
+	   :global because the content is portaled outside this component's scope. */
 	:global(.demo-tip) {
 		display: flex;
 		flex-direction: column;
@@ -533,11 +542,5 @@
 		font-size: 0.85em;
 		opacity: 0.6;
 		font-variant-numeric: tabular-nums;
-	}
-
-	@media (max-width: 760px) {
-		.comparison {
-			grid-template-columns: 1fr;
-		}
 	}
 </style>

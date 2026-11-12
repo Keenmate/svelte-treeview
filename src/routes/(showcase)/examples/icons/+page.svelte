@@ -48,138 +48,132 @@
 	/>
 </svelte:head>
 
-<div class="container">
-	<header class="example-header">
-		<a href="/" class="back-link">&larr; Back to Examples</a>
-		<h1>Icons</h1>
-		<p class="subtitle">
-			Per-node icons on <strong>every</strong> node (branch + leaf) — a dedicated
-			<code>.stv__node-icon</code> element driven by <code>iconMember</code> /
-			<code>getIconCallback</code>, with per-node color and a custom <code>icon</code> snippet.
-		</p>
-		<RenderModeSwitch />
-	</header>
+<header>
+	<a href="/" class="back-link">&larr; Back to Examples</a>
+	<h1>Icons</h1>
+	<p class="subtitle">
+		Per-node icons on <strong>every</strong> node (branch + leaf) — a dedicated
+		<code>.stv__node-icon</code> element driven by <code>iconMember</code> /
+		<code>getIconCallback</code>, with per-node color and a custom <code>icon</code> snippet.
+	</p>
+	<RenderModeSwitch />
+</header>
 
-	<!-- IC01 · FontAwesome via iconMember + color -->
-	<div class="card">
-		<h2>IC01 · FontAwesome classes + per-node color</h2>
-		<p class="description">
-			<code>iconMember</code> resolves a class string (e.g. <code>fa-solid fa-user-tie</code>),
-			rendered as <code>&lt;i class="stv__node-icon {'{value}'}"&gt;</code> — zero config for icon
-			fonts. <code>iconColorMember</code> colors each icon. Note the chevron stays on branches;
-			the icon is its own element beside it (the admin-tree look).
-		</p>
+<!-- IC01 · FontAwesome via iconMember + color -->
+<div class="card">
+	<h2>IC01 · FontAwesome classes + per-node color</h2>
+	<p class="description">
+		<code>iconMember</code> resolves a class string (e.g. <code>fa-solid fa-user-tie</code>),
+		rendered as <code>&lt;i class="stv__node-icon {'{value}'}"&gt;</code> — zero config for icon
+		fonts. <code>iconColorMember</code> colors each icon. Note the chevron stays on branches;
+		the icon is its own element beside it (the admin-tree look).
+	</p>
 
-		<label class="controls">
-			<input type="checkbox" bind:checked={align} /> <code>shouldAlignNodeIcons</code> (reserve the column)
-		</label>
+	<label class="toggle-label">
+		<input type="checkbox" bind:checked={align} /> <span><code>shouldAlignNodeIcons</code> (reserve the column)</span>
+	</label>
 
-		<div class="tree-container">
-			<Tree
-				nodes={data}
-				idMember="id"
-				pathMember="path"
-				displayValueMember="name"
-				sortCallback={sortByPath}
-				isSorted={true}
-				expandLevel={4}
-				iconMember="icon"
-				iconColorMember="color"
-				shouldAlignNodeIcons={align}
-				{...getTreeProps()}
-			/>
-		</div>
+	<div class="tree-container">
+		<Tree
+			nodes={data}
+			idMember="id"
+			pathMember="path"
+			displayValueMember="name"
+			sortCallback={sortByPath}
+			isSorted={true}
+			expandLevel={4}
+			iconMember="icon"
+			iconColorMember="color"
+			shouldAlignNodeIcons={align}
+			{...getTreeProps()}
+		/>
 	</div>
+</div>
 
-	<!-- IC02 · Emoji via getIconCallback -->
-	<div class="card">
-		<h2>IC02 · Emoji via <code>getIconCallback</code></h2>
-		<p class="description">
-			The default render puts the value's text in the element too — an emoji "just works". Use a
-			callback to derive the icon from the node instead of a data key.
-		</p>
-		<div class="tree-container">
-			<Tree
-				nodes={data}
-				idMember="id"
-				pathMember="path"
-				displayValueMember="name"
-				sortCallback={sortByPath}
-				isSorted={true}
-				expandLevel={4}
-				getIconCallback={({ node }) => node.data?.emoji ?? null}
-				{...getTreeProps()}
-			/>
-		</div>
+<!-- IC02 · Emoji via getIconCallback -->
+<div class="card">
+	<h2>IC02 · Emoji via <code>getIconCallback</code></h2>
+	<p class="description">
+		The default render puts the value's text in the element too — an emoji "just works". Use a
+		callback to derive the icon from the node instead of a data key.
+	</p>
+	<div class="tree-container">
+		<Tree
+			nodes={data}
+			idMember="id"
+			pathMember="path"
+			displayValueMember="name"
+			sortCallback={sortByPath}
+			isSorted={true}
+			expandLevel={4}
+			getIconCallback={({ node }) => node.data?.emoji ?? null}
+			{...getTreeProps()}
+		/>
 	</div>
+</div>
 
-	<!-- IC03 · Inline SVG via the icon snippet -->
-	<div class="card">
-		<h2>IC03 · Inline SVG via the <code>icon</code> snippet</h2>
-		<p class="description">
-			For full control (inline SVG, badges, anything) pass an <code>icon</code> snippet. It
-			receives the node and the resolved value; color still flows from
-			<code>iconColorMember</code> onto the wrapper (so <code>currentColor</code> tints the SVG).
-		</p>
-		<div class="tree-container">
-			<Tree
-				nodes={data}
-				idMember="id"
-				pathMember="path"
-				displayValueMember="name"
-				sortCallback={sortByPath}
-				isSorted={true}
-				expandLevel={4}
-				iconColorMember="color"
-				{...getTreeProps()}
-			>
-				{#snippet icon(node: LTreeNode<Item>)}
-					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						{#if node.data && Object.keys(node.children ?? {}).length > 0}
-							<path d="M3 7V5a2 2 0 0 1 2-2h2" /><path d="M17 3h2a2 2 0 0 1 2 2v2" /><path d="M21 17v2a2 2 0 0 1-2 2h-2" /><path d="M7 21H5a2 2 0 0 1-2-2v-2" /><circle cx="12" cy="12" r="3" />
-						{:else}
-							<circle cx="12" cy="8" r="4" /><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
-						{/if}
-					</svg>
-				{/snippet}
-			</Tree>
-		</div>
-	</div>
-
-	<!-- IC04 · Lucide SVGs via iconMember + icon snippet -->
-	<div class="card">
-		<h2>IC04 · Lucide SVGs (data-keyed) via the <code>icon</code> snippet</h2>
-		<p class="description">
-			A data member holds a Lucide icon <em>key</em> (<code>map-pin</code>, <code>shield</code>,
-			<code>user-star</code>, <code>coffee</code>, <code>user</code>); the <code>icon</code> snippet
-			receives that resolved value and renders the matching inline SVG with
-			<code>stroke="currentColor"</code>, so <code>iconColorMember</code> tints each glyph. Icons
-			sourced from the <a href="https://icons.pureadmin.io" target="_blank" rel="noopener"><code>pure-admin</code></a> Lucide set.
-		</p>
-		<div class="tree-container">
-			<Tree
-				nodes={data}
-				idMember="id"
-				pathMember="path"
-				displayValueMember="name"
-				sortCallback={sortByPath}
-				isSorted={true}
-				expandLevel={4}
-				getIconCallback={({ node }) => node.data?.lucide ?? null}
-				iconColorMember="color"
-				shouldAlignNodeIcons
-				{...getTreeProps()}
-			>
-				{#snippet icon(_node: LTreeNode<Item>, value: string | null | undefined)}
-					{#if value && LUCIDE[value]}
-						<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{@html LUCIDE[value]}</svg>
+<!-- IC03 · Inline SVG via the icon snippet -->
+<div class="card">
+	<h2>IC03 · Inline SVG via the <code>icon</code> snippet</h2>
+	<p class="description">
+		For full control (inline SVG, badges, anything) pass an <code>icon</code> snippet. It
+		receives the node and the resolved value; color still flows from
+		<code>iconColorMember</code> onto the wrapper (so <code>currentColor</code> tints the SVG).
+	</p>
+	<div class="tree-container">
+		<Tree
+			nodes={data}
+			idMember="id"
+			pathMember="path"
+			displayValueMember="name"
+			sortCallback={sortByPath}
+			isSorted={true}
+			expandLevel={4}
+			iconColorMember="color"
+			{...getTreeProps()}
+		>
+			{#snippet icon(node: LTreeNode<Item>)}
+				<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					{#if node.data && Object.keys(node.children ?? {}).length > 0}
+						<path d="M3 7V5a2 2 0 0 1 2-2h2" /><path d="M17 3h2a2 2 0 0 1 2 2v2" /><path d="M21 17v2a2 2 0 0 1-2 2h-2" /><path d="M7 21H5a2 2 0 0 1-2-2v-2" /><circle cx="12" cy="12" r="3" />
+					{:else}
+						<circle cx="12" cy="8" r="4" /><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
 					{/if}
-				{/snippet}
-			</Tree>
-		</div>
+				</svg>
+			{/snippet}
+		</Tree>
 	</div>
+</div>
 
-	<footer>
-		<p><a href="/">&larr; Back to Examples</a></p>
-	</footer>
+<!-- IC04 · Lucide SVGs via iconMember + icon snippet -->
+<div class="card">
+	<h2>IC04 · Lucide SVGs (data-keyed) via the <code>icon</code> snippet</h2>
+	<p class="description">
+		A data member holds a Lucide icon <em>key</em> (<code>map-pin</code>, <code>shield</code>,
+		<code>user-star</code>, <code>coffee</code>, <code>user</code>); the <code>icon</code> snippet
+		receives that resolved value and renders the matching inline SVG with
+		<code>stroke="currentColor"</code>, so <code>iconColorMember</code> tints each glyph. Icons
+		sourced from the <a href="https://icons.pureadmin.io" target="_blank" rel="noopener"><code>pure-admin</code></a> Lucide set.
+	</p>
+	<div class="tree-container">
+		<Tree
+			nodes={data}
+			idMember="id"
+			pathMember="path"
+			displayValueMember="name"
+			sortCallback={sortByPath}
+			isSorted={true}
+			expandLevel={4}
+			getIconCallback={({ node }) => node.data?.lucide ?? null}
+			iconColorMember="color"
+			shouldAlignNodeIcons
+			{...getTreeProps()}
+		>
+			{#snippet icon(_node: LTreeNode<Item>, value: string | null | undefined)}
+				{#if value && LUCIDE[value]}
+					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{@html LUCIDE[value]}</svg>
+				{/if}
+			{/snippet}
+		</Tree>
+	</div>
 </div>

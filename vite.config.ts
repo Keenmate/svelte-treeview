@@ -1,9 +1,11 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vitest/config';
 import pkg from './package.json' with { type: 'json' };
+import { kmwcSvelteKit } from './scripts/kmwc-sveltekit.js';
 
 export default defineConfig({
-	plugins: [sveltekit()],
+	// kmwcSvelteKit: devkit examples-kit page config + spotlight chapter index for the showcase.
+	plugins: [kmwcSvelteKit(), sveltekit()],
 	define: {
 		'__VERSION__': JSON.stringify(pkg.version),
 		'__PACKAGE_NAME__': JSON.stringify(pkg.name),

@@ -43,185 +43,179 @@
 	<title>Tooltips - Svelte Treeview</title>
 </svelte:head>
 
-<div class="container">
-	<header class="example-header">
-		<a href="/" class="back-link">&larr; Back to Examples</a>
-		<h1>Tooltips</h1>
-		<p class="subtitle">
-			Hover/focus node tooltips — a plain-text callback or a rich snippet, themed through the
-			shared <code>--base-tooltip-*</code> tokens (parity with web-multiselect's option tooltips).
-		</p>
-		<RenderModeSwitch />
-	</header>
+<header>
+	<a href="/" class="back-link">&larr; Back to Examples</a>
+	<h1>Tooltips</h1>
+	<p class="subtitle">
+		Hover/focus node tooltips — a plain-text callback or a rich snippet, themed through the
+		shared <code>--base-tooltip-*</code> tokens (parity with web-multiselect's option tooltips).
+	</p>
+	<RenderModeSwitch />
+</header>
 
-	<!-- TT01 · Plain-text tooltips -->
-	<div class="card">
-		<h2>TT01 · Plain-text tooltips</h2>
-		<p class="description">
-			Set <code>isNodeTooltipsShown</code> and a <code>getNodeTooltipCallback</code> that
-			returns a <strong>string</strong>. The tooltip is portaled out of the row, Floating-UI
-			positioned, and shows on hover <em>and</em> keyboard focus. A row whose callback returns an
-			empty string (here, <em>Lemon</em>) gets no tooltip.
-		</p>
+<!-- TT01 · Plain-text tooltips -->
+<div class="card">
+	<h2>TT01 · Plain-text tooltips</h2>
+	<p class="description">
+		Set <code>isNodeTooltipsShown</code> and a <code>getNodeTooltipCallback</code> that
+		returns a <strong>string</strong>. The tooltip is portaled out of the row, Floating-UI
+		positioned, and shows on hover <em>and</em> keyboard focus. A row whose callback returns an
+		empty string (here, <em>Lemon</em>) gets no tooltip.
+	</p>
 
-		<div class="controls">
-			<span class="muted">Placement:</span>
-			{#each placements as p (p)}
-				<button class="btn {placement === p ? '' : 'btn-secondary'}" onclick={() => (placement = p)}>{p}</button>
-			{/each}
-		</div>
-		<div class="controls">
-			<label><input type="checkbox" bind:checked={followCursor} /> follow cursor</label>
-			<span class="muted" style="margin-left:1rem">Show delay:</span>
-			<input type="range" min="0" max="1000" step="50" bind:value={delay} />
-			<code>{delay}ms</code>
-		</div>
-
-		<div class="tree-container">
-			<Tree
-				nodes={sampleData}
-				idMember="id"
-				pathMember="path"
-				displayValueMember="name"
-				sortCallback={sortByPath}
-				isSorted={true}
-				expandLevel={3}
-				isNodeTooltipsShown
-				getNodeTooltipCallback={({ node }) => node.data?.desc ?? null}
-				tooltipPlacement={placement}
-				shouldTooltipFollowCursor={followCursor}
-				tooltipDelay={{ show: delay, hide: 100 }}
-				{...getTreeProps()}
-			>
-				{#snippet nodeTemplate(node: LTreeNode<FileItem>)}
-					<span>{node.data?.icon} {node.data?.name}</span>
-				{/snippet}
-			</Tree>
-		</div>
-
-		<p class="hint">
-			<code>getNodeTooltipCallback(node) =&gt; string | null</code>. Knobs:
-			<code>tooltipPlacement</code> (<code>'top-start'</code>), <code>tooltipDelay</code>
-			(<code>{'{ show: 400, hide: 100 }'}</code>), <code>tooltipOffset</code> (<code>8</code>),
-			<code>shouldTooltipFollowCursor</code>.
-		</p>
+	<div class="controls">
+		<span class="muted">Placement:</span>
+		{#each placements as p (p)}
+			<button class:secondary={placement !== p} onclick={() => (placement = p)}>{p}</button>
+		{/each}
+	</div>
+	<div class="controls">
+		<label><input type="checkbox" bind:checked={followCursor} /> follow cursor</label>
+		<span class="muted">Show delay:</span>
+		<input type="range" min="0" max="1000" step="50" bind:value={delay} />
+		<code>{delay}ms</code>
 	</div>
 
-	<!-- TT02 · Rich snippet tooltips -->
-	<div class="card">
-		<h2>TT02 · Rich tooltips (the <code>tooltip</code> snippet)</h2>
-		<p class="description">
-			Pass a <code>tooltip</code> snippet for arbitrary Svelte content — it wins over the string
-			callback. The library renders it into a hidden host and adopts it into the portaled panel,
-			so it stays reactive. Here: icon + name, description, and the node path.
-		</p>
-
-		<div class="tree-container">
-			<Tree
-				nodes={sampleData}
-				idMember="id"
-				pathMember="path"
-				displayValueMember="name"
-				sortCallback={sortByPath}
-				isSorted={true}
-				expandLevel={3}
-				isNodeTooltipsShown
-				tooltipPlacement="right-start"
-				{...getTreeProps()}
-			>
-				{#snippet nodeTemplate(node: LTreeNode<FileItem>)}
-					<span>{node.data?.icon} {node.data?.name}</span>
-				{/snippet}
-				{#snippet tooltip(node: LTreeNode<FileItem>)}
-					<div class="tip">
-						<strong>{node.data?.icon} {node.data?.name}</strong>
-						<span class="tip__desc">{node.data?.desc || '—'}</span>
-						<span class="tip__path">path {node.data?.path}</span>
-					</div>
-				{/snippet}
-			</Tree>
-		</div>
+	<div class="tree-container">
+		<Tree
+			nodes={sampleData}
+			idMember="id"
+			pathMember="path"
+			displayValueMember="name"
+			sortCallback={sortByPath}
+			isSorted={true}
+			expandLevel={3}
+			isNodeTooltipsShown
+			getNodeTooltipCallback={({ node }) => node.data?.desc ?? null}
+			tooltipPlacement={placement}
+			shouldTooltipFollowCursor={followCursor}
+			tooltipDelay={{ show: delay, hide: 100 }}
+			{...getTreeProps()}
+		>
+			{#snippet nodeTemplate(node: LTreeNode<FileItem>)}
+				<span>{node.data?.icon} {node.data?.name}</span>
+			{/snippet}
+		</Tree>
 	</div>
 
-	<!-- TT03 · Sizing -->
-	<div class="card">
-		<h2>TT03 · Sizing</h2>
-		<p class="description">
-			By default the tooltip <strong>shrink-wraps its content</strong>, capped at
-			<code>--stv-tooltip-max-width</code> (320px). Switch the width model: a
-			<code>--stv-tooltip-min-width</code> floor (still grows to max-width), or a fixed
-			<code>--stv-tooltip-width</code> box (set <code>--stv-tooltip-max-width: none</code> so the
-			width wins). The vars are set on the tree wrapper here and inherit into the portaled tooltip.
-		</p>
+	<p class="form-text">
+		<code>getNodeTooltipCallback(node) =&gt; string | null</code>. Knobs:
+		<code>tooltipPlacement</code> (<code>'top-start'</code>), <code>tooltipDelay</code>
+		(<code>{'{ show: 400, hide: 100 }'}</code>), <code>tooltipOffset</code> (<code>8</code>),
+		<code>shouldTooltipFollowCursor</code>.
+	</p>
+</div>
 
-		<div class="controls">
-			<span class="muted">Width model:</span>
-			<button class="btn {sizeMode === 'auto' ? '' : 'btn-secondary'}" onclick={() => (sizeMode = 'auto')}>auto (shrink)</button>
-			<button class="btn {sizeMode === 'min' ? '' : 'btn-secondary'}" onclick={() => (sizeMode = 'min')}>min-width 24rem</button>
-			<button class="btn {sizeMode === 'fixed' ? '' : 'btn-secondary'}" onclick={() => (sizeMode = 'fixed')}>fixed 22rem</button>
-		</div>
+<!-- TT02 · Rich snippet tooltips -->
+<div class="card">
+	<h2>TT02 · Rich tooltips (the <code>tooltip</code> snippet)</h2>
+	<p class="description">
+		Pass a <code>tooltip</code> snippet for arbitrary Svelte content — it wins over the string
+		callback. The library renders it into a hidden host and adopts it into the portaled panel,
+		so it stays reactive. Here: icon + name, description, and the node path.
+	</p>
 
-		<div class="tree-container" style={sizeStyle}>
-			<Tree
-				nodes={sampleData}
-				idMember="id"
-				pathMember="path"
-				displayValueMember="name"
-				sortCallback={sortByPath}
-				isSorted={true}
-				expandLevel={3}
-				isNodeTooltipsShown
-				getNodeTooltipCallback={({ node }) => node.data?.desc || node.data?.name || null}
-				{...getTreeProps()}
-			>
-				{#snippet nodeTemplate(node: LTreeNode<FileItem>)}
-					<span>{node.data?.icon} {node.data?.name}</span>
-				{/snippet}
-			</Tree>
-		</div>
+	<div class="tree-container">
+		<Tree
+			nodes={sampleData}
+			idMember="id"
+			pathMember="path"
+			displayValueMember="name"
+			sortCallback={sortByPath}
+			isSorted={true}
+			expandLevel={3}
+			isNodeTooltipsShown
+			tooltipPlacement="right-start"
+			{...getTreeProps()}
+		>
+			{#snippet nodeTemplate(node: LTreeNode<FileItem>)}
+				<span>{node.data?.icon} {node.data?.name}</span>
+			{/snippet}
+			{#snippet tooltip(node: LTreeNode<FileItem>)}
+				<div class="tip">
+					<strong>{node.data?.icon} {node.data?.name}</strong>
+					<span class="tip__desc">{node.data?.desc || '—'}</span>
+					<span class="tip__path">path {node.data?.path}</span>
+				</div>
+			{/snippet}
+		</Tree>
+	</div>
+</div>
 
-		<div class="code-block">
-			<pre>{`/* fixed box — disable shrink */
+<!-- TT03 · Sizing -->
+<div class="card">
+	<h2>TT03 · Sizing</h2>
+	<p class="description">
+		By default the tooltip <strong>shrink-wraps its content</strong>, capped at
+		<code>--stv-tooltip-max-width</code> (320px). Switch the width model: a
+		<code>--stv-tooltip-min-width</code> floor (still grows to max-width), or a fixed
+		<code>--stv-tooltip-width</code> box (set <code>--stv-tooltip-max-width: none</code> so the
+		width wins). The vars are set on the tree wrapper here and inherit into the portaled tooltip.
+	</p>
+
+	<div class="controls">
+		<span class="muted">Width model:</span>
+		<button class:secondary={sizeMode !== 'auto'} onclick={() => (sizeMode = 'auto')}>auto (shrink)</button>
+		<button class:secondary={sizeMode !== 'min'} onclick={() => (sizeMode = 'min')}>min-width 24rem</button>
+		<button class:secondary={sizeMode !== 'fixed'} onclick={() => (sizeMode = 'fixed')}>fixed 22rem</button>
+	</div>
+
+	<div class="tree-container" style={sizeStyle}>
+		<Tree
+			nodes={sampleData}
+			idMember="id"
+			pathMember="path"
+			displayValueMember="name"
+			sortCallback={sortByPath}
+			isSorted={true}
+			expandLevel={3}
+			isNodeTooltipsShown
+			getNodeTooltipCallback={({ node }) => node.data?.desc || node.data?.name || null}
+			{...getTreeProps()}
+		>
+			{#snippet nodeTemplate(node: LTreeNode<FileItem>)}
+				<span>{node.data?.icon} {node.data?.name}</span>
+			{/snippet}
+		</Tree>
+	</div>
+
+	<div class="code-block">
+		<pre>{`/* fixed box — disable shrink */
 :global(.stv__tooltip) {
   --stv-tooltip-width: 22rem;
   --stv-tooltip-max-width: none;
 }
 /* or a floor that still grows up to max-width */
 :global(.stv__tooltip) { --stv-tooltip-min-width: 24rem; }`}</pre>
-		</div>
 	</div>
+</div>
 
-	<!-- TT04 · Variable reference -->
-	<div class="card">
-		<h2>TT04 · Tooltip CSS variables</h2>
-		<p class="description">
-			All chain to the shared <code>--base-tooltip-*</code> contract (so a KeenMate theme retints
-			the tooltip), each with a hardcoded fallback. Sizes are <code>calc(N × --stv-rem)</code>.
-		</p>
-		<table class="reference-table">
-			<thead><tr><th>Variable</th><th>Default</th><th>Effect</th></tr></thead>
-			<tbody>
-				<tr><td><code>--stv-tooltip-bg</code></td><td><code>--base-tooltip-bg</code> → inverse / light-dark</td><td>Background</td></tr>
-				<tr><td><code>--stv-tooltip-text-color</code></td><td><code>--base-tooltip-text-color</code> → light-dark</td><td>Text color</td></tr>
-				<tr><td><code>--stv-tooltip-padding</code></td><td><code>0.8×rem 1.2×rem</code> (8px 12px)</td><td>Inner spacing</td></tr>
-				<tr><td><code>--stv-tooltip-font-size</code></td><td><code>1.4×rem</code> (14px)</td><td>Text size</td></tr>
-				<tr><td><code>--stv-tooltip-width</code></td><td><code>auto</code></td><td>Fixed box when set (shrink off)</td></tr>
-				<tr><td><code>--stv-tooltip-min-width</code></td><td><code>0</code></td><td>Floor (still grows to max)</td></tr>
-				<tr><td><code>--stv-tooltip-max-width</code></td><td><code>32×rem</code> (320px)</td><td>Wrap point / cap</td></tr>
-				<tr><td><code>--stv-tooltip-border-radius</code></td><td><code>--base-border-radius-lg</code></td><td>Corner rounding</td></tr>
-				<tr><td><code>--stv-tooltip-box-shadow</code></td><td><code>0 2px 8px rgba(0,0,0,.15)</code></td><td>Drop shadow</td></tr>
-				<tr><td><code>--stv-tooltip-z-index</code></td><td><code>10000</code></td><td>Stacking order</td></tr>
-			</tbody>
-		</table>
-		<p class="hint">
-			Related but distinct: <code>nodeTitleOverflow="info"</code> is a <em>click</em> reveal that
-			appears only on clipped labels — not a hover tooltip.
-		</p>
-	</div>
-
-	<footer>
-		<p><a href="/">&larr; Back to Examples</a></p>
-	</footer>
+<!-- TT04 · Variable reference -->
+<div class="card">
+	<h2>TT04 · Tooltip CSS variables</h2>
+	<p class="description">
+		All chain to the shared <code>--base-tooltip-*</code> contract (so a KeenMate theme retints
+		the tooltip), each with a hardcoded fallback. Sizes are <code>calc(N × --stv-rem)</code>.
+	</p>
+	<table class="reference-table">
+		<thead><tr><th>Variable</th><th>Default</th><th>Effect</th></tr></thead>
+		<tbody>
+			<tr><td><code>--stv-tooltip-bg</code></td><td><code>--base-tooltip-bg</code> → inverse / light-dark</td><td>Background</td></tr>
+			<tr><td><code>--stv-tooltip-text-color</code></td><td><code>--base-tooltip-text-color</code> → light-dark</td><td>Text color</td></tr>
+			<tr><td><code>--stv-tooltip-padding</code></td><td><code>0.8×rem 1.2×rem</code> (8px 12px)</td><td>Inner spacing</td></tr>
+			<tr><td><code>--stv-tooltip-font-size</code></td><td><code>1.4×rem</code> (14px)</td><td>Text size</td></tr>
+			<tr><td><code>--stv-tooltip-width</code></td><td><code>auto</code></td><td>Fixed box when set (shrink off)</td></tr>
+			<tr><td><code>--stv-tooltip-min-width</code></td><td><code>0</code></td><td>Floor (still grows to max)</td></tr>
+			<tr><td><code>--stv-tooltip-max-width</code></td><td><code>32×rem</code> (320px)</td><td>Wrap point / cap</td></tr>
+			<tr><td><code>--stv-tooltip-border-radius</code></td><td><code>--base-border-radius-lg</code></td><td>Corner rounding</td></tr>
+			<tr><td><code>--stv-tooltip-box-shadow</code></td><td><code>0 2px 8px rgba(0,0,0,.15)</code></td><td>Drop shadow</td></tr>
+			<tr><td><code>--stv-tooltip-z-index</code></td><td><code>10000</code></td><td>Stacking order</td></tr>
+		</tbody>
+	</table>
+	<p class="form-text">
+		Related but distinct: <code>nodeTitleOverflow="info"</code> is a <em>click</em> reveal that
+		appears only on clipped labels — not a hover tooltip.
+	</p>
 </div>
 
 <style>

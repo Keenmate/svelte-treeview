@@ -1,4 +1,7 @@
 <script lang="ts">
+	// Flat / Progressive / Virtual switch shown in example page headers. Kit buttons:
+	// the active mode is a primary button, the others .btn-outline (readable on the
+	// header gradient); only the joined-segment shape is local.
 	import { getRenderMode, setRenderMode, type RenderMode } from './render-mode.svelte.js';
 
 	const modes: { value: RenderMode; label: string; title: string }[] = [
@@ -8,11 +11,13 @@
 	];
 </script>
 
-<div class="render-mode-switch">
+<div class="render-mode-switch" role="group" aria-label="Render mode">
 	{#each modes as mode}
+		{@const isActive = getRenderMode() === mode.value}
 		<button
-			class="rms-btn"
-			class:active={getRenderMode() === mode.value}
+			type="button"
+			class={isActive ? 'btn-primary' : 'btn-outline'}
+			aria-pressed={isActive}
 			title={mode.title}
 			onclick={() => setRenderMode(mode.value)}
 		>{mode.label}</button>
@@ -22,35 +27,24 @@
 <style>
 	.render-mode-switch {
 		display: inline-flex;
-		gap: 0;
-		border: 1px solid #cbd5e0;
-		border-radius: 6px;
-		overflow: hidden;
-		font-size: 0.8rem;
-		margin-top: 0.5rem;
+		margin-top: 1rem;
 	}
 
-	.rms-btn {
-		padding: 0.35rem 0.75rem;
-		border: none;
-		background: white;
-		color: #4a5568;
-		cursor: pointer;
-		font-weight: 500;
-		transition: all 0.15s;
-		border-right: 1px solid #cbd5e0;
+	.render-mode-switch button {
+		border-radius: 0;
 	}
 
-	.rms-btn:last-child {
-		border-right: none;
+	.render-mode-switch button:first-child {
+		border-start-start-radius: var(--kmwc-radius-sm);
+		border-end-start-radius: var(--kmwc-radius-sm);
 	}
 
-	.rms-btn:hover {
-		background: #f7fafc;
+	.render-mode-switch button:last-child {
+		border-start-end-radius: var(--kmwc-radius-sm);
+		border-end-end-radius: var(--kmwc-radius-sm);
 	}
 
-	.rms-btn.active {
-		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-		color: white;
+	.render-mode-switch button[aria-pressed='true'] {
+		border-color: var(--kmwc-text-color-on-accent);
 	}
 </style>

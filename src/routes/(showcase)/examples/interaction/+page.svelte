@@ -10,6 +10,7 @@
 	import type { NodeRef } from '$lib/index.js';
 	import RenderModeSwitch from '../RenderModeSwitch.svelte';
 	import { getTreeProps } from '../render-mode.svelte.js';
+	import LogPanel, { logLine, type LogEntry } from '../../LogPanel.svelte';
 
 	const STORAGE_KEY = 'svelte-treeview-interaction-settings';
 
@@ -183,10 +184,10 @@
 
 	// ── Keyboard navigation demo ─────────────────────────────────────
 	let navFocusedNode = $state<LTreeNode<Item> | null>(null);
-	let navLog = $state<string[]>([]);
+	let navLog = $state<LogEntry[]>([]);
 
 	function onNavNodeClick({ node, path }: NodeRef<Item>) {
-		navLog = [`Navigated to: ${node?.data?.name} (${path})`, ...navLog.slice(0, 9)];
+		navLog = [...navLog.slice(-49), logLine('Navigated', `${node?.data?.name} (${path})`)];
 	}
 
 	// ── Silent state restore demo ────────────────────────────────────
@@ -245,175 +246,173 @@
 	<title>Interaction - Svelte Treeview</title>
 </svelte:head>
 
-<div class="container">
-	<header class="example-header">
-		<a href="/" class="back-link">&larr; Back to Examples</a>
-		<h1>Interaction</h1>
-		<p class="subtitle">
-			Click behavior, checkboxes, multi-select, keyboard navigation, and silent state restore
+<header>
+	<a href="/" class="back-link">&larr; Back to Examples</a>
+	<h1>Interaction</h1>
+	<p class="subtitle">
+		Click behavior, checkboxes, multi-select, keyboard navigation, and silent state restore
+	</p>
+	<RenderModeSwitch />
+</header>
+
+<!-- Click Behavior & Multi-Select -->
+<div class="card">
+	<h2>IN01 · Click Behavior &amp; Multi-Select</h2>
+	<p class="description">
+		The <code>clickBehavior</code> prop controls what happens when you click a node;
+		<code>selectionMode</code> decides whether Ctrl/Shift+click can extend the set. With
+		<code>selectionMode="multiple"</code>, hold <kbd>Ctrl</kbd> (or <kbd>Cmd</kbd>) and click to toggle
+		individual nodes, hold <kbd>Shift</kbd> and click to select a range, and
+		<kbd>Shift+ArrowUp/Down</kbd> extends from the focused node. <code>rangeSelectionMode</code> controls
+		whether a range includes collapsed children. Pick a <strong>Highlighted Style</strong> below and
+		build up a set to see it on every row.
+	</p>
+
+	<div class="controls">
+		<label>
+			Click Behavior:
+			<select bind:value={clickBehavior}>
+				<option value="expand-and-focus">expand-and-focus (select + expand)</option>
+				<option value="select">select (dbl-click to expand)</option>
+				<option value="expand">expand (no selection)</option>
+			</select>
+		</label>
+		<label>
+			Selection Mode:
+			<select bind:value={selectionMode}>
+				<option value="single">single (Ctrl/Shift+click = plain click)</option>
+				<option value="multiple">multiple (Ctrl-toggle, Shift-range, Shift+Arrow)</option>
+			</select>
+		</label>
+		<label>
+			Highlighted Style:
+			<select bind:value={selectedNodeClass}>
+				{#each selectedNodeClassOptions as opt}
+					<option value={opt.value}>{opt.label}</option>
+				{/each}
+			</select>
+		</label>
+		<label>
+			Focused Style:
+			<select bind:value={focusedNodeClass}>
+				{#each focusedNodeClassOptions as opt}
+					<option value={opt.value}>{opt.label}</option>
+				{/each}
+			</select>
+		</label>
+		<label>
+			<input type="checkbox" bind:checked={isCheckboxesShown} />
+			Show Checkboxes
+		</label>
+		{#if isCheckboxesShown}
+			<label>
+				Checkbox Mode:
+				<select bind:value={checkboxMode}>
+					<option value="independent">independent (each checkbox standalone)</option>
+					<option value="cascade">cascade (parent toggles all children)</option>
+				</select>
+			</label>
+			<label>
+				<input type="checkbox" bind:checked={shouldClickToggleCheckbox} />
+				Click row toggles checkbox
+			</label>
+		{/if}
+		<label>
+			Range Selection Mode:
+			<select bind:value={rangeSelectionMode}>
+				<option value="visual">visual (only visible/expanded nodes)</option>
+				<option value="logical">logical (all nodes in tree order)</option>
+			</select>
+		</label>
+		<button
+			onclick={() => {
+				clickTreeRef?.clearSelection();
+				clickTreeRef?.selectNodes(['1.1.1', '1.1.3', '1.2.1']);
+			}}
+			>Highlight 1.1.1, 1.1.3, 1.2.1</button
+		>
+		<button
+			class="secondary"
+			onclick={() => {
+				clickTreeRef?.clearSelection();
+				clickTreeRef?.uncheckAll();
+				clickTreeRef?.clearFocus();
+			}}>Clear All</button
+		>
+	</div>
+
+	<div class="note">
+		<p class="note-title">How the styles stack</p>
+		<p>
+			<strong>Highlighted Style</strong> applies to every row in <code>selectedPaths</code>.
+			<strong>Focused Style</strong> is <em>additive</em> — it stacks on top of the highlight,
+			only on the single row in <code>focusedNode</code>. After a plain click the same row is both
+			highlighted and focused, so you'll see both styles on it. After a <kbd>Shift</kbd>+click
+			range, the anchor and intermediate rows are highlighted only, while the row you clicked last
+			is highlighted <em>and</em>
+			focused. After <kbd>Ctrl</kbd>+click (or Arrow over an unselectable row) the focused row can
+			have no highlight at all — that's when Focused Style alone shows.
 		</p>
-		<RenderModeSwitch />
-	</header>
-
-	<!-- Click Behavior & Multi-Select -->
-	<div class="card">
-		<h2>IN01 · Click Behavior &amp; Multi-Select</h2>
-		<p class="description">
-			The <code>clickBehavior</code> prop controls what happens when you click a node;
-			<code>selectionMode</code> decides whether Ctrl/Shift+click can extend the set. With
-			<code>selectionMode="multiple"</code>, hold <kbd>Ctrl</kbd> (or <kbd>Cmd</kbd>) and click to toggle
-			individual nodes, hold <kbd>Shift</kbd> and click to select a range, and
-			<kbd>Shift+ArrowUp/Down</kbd> extends from the focused node. <code>rangeSelectionMode</code> controls
-			whether a range includes collapsed children. Pick a <strong>Highlighted Style</strong> below and
-			build up a set to see it on every row.
+		<p>
+			<strong>Visual vs logical range</strong> — in <strong>visual</strong> mode, Shift+click selects
+			only the nodes you can see between the anchor and the clicked node. In <strong>logical</strong>
+			mode it selects all nodes in depth-first order, including children inside collapsed parents.
 		</p>
+	</div>
 
-		<div class="controls">
-			<label>
-				Click Behavior:
-				<select bind:value={clickBehavior}>
-					<option value="expand-and-focus">expand-and-focus (select + expand)</option>
-					<option value="select">select (dbl-click to expand)</option>
-					<option value="expand">expand (no selection)</option>
-				</select>
-			</label>
-			<label>
-				Selection Mode:
-				<select bind:value={selectionMode}>
-					<option value="single">single (Ctrl/Shift+click = plain click)</option>
-					<option value="multiple">multiple (Ctrl-toggle, Shift-range, Shift+Arrow)</option>
-				</select>
-			</label>
-			<label>
-				Highlighted Style:
-				<select bind:value={selectedNodeClass}>
-					{#each selectedNodeClassOptions as opt}
-						<option value={opt.value}>{opt.label}</option>
-					{/each}
-				</select>
-			</label>
-			<label>
-				Focused Style:
-				<select bind:value={focusedNodeClass}>
-					{#each focusedNodeClassOptions as opt}
-						<option value={opt.value}>{opt.label}</option>
-					{/each}
-				</select>
-			</label>
-			<label>
-				<input type="checkbox" bind:checked={isCheckboxesShown} />
-				Show Checkboxes
-			</label>
-			{#if isCheckboxesShown}
-				<label>
-					Checkbox Mode:
-					<select bind:value={checkboxMode}>
-						<option value="independent">independent (each checkbox standalone)</option>
-						<option value="cascade">cascade (parent toggles all children)</option>
-					</select>
-				</label>
-				<label>
-					<input type="checkbox" bind:checked={shouldClickToggleCheckbox} />
-					Click row toggles checkbox
-				</label>
-			{/if}
-			<label>
-				Range Selection Mode:
-				<select bind:value={rangeSelectionMode}>
-					<option value="visual">visual (only visible/expanded nodes)</option>
-					<option value="logical">logical (all nodes in tree order)</option>
-				</select>
-			</label>
-			<button
-				class="btn"
-				onclick={() => {
-					clickTreeRef?.clearSelection();
-					clickTreeRef?.selectNodes(['1.1.1', '1.1.3', '1.2.1']);
-				}}
-				>Highlight 1.1.1, 1.1.3, 1.2.1</button
+	<div class="grid-2">
+		<div class="tree-container tree-container-tall">
+			<Tree
+				bind:this={clickTreeRef}
+				nodes={sampleData}
+				idMember="id"
+				pathMember="path"
+				sortCallback={sortByName}
+				isSorted={true}
+				expandLevel={3}
+				{selectedNodeClass}
+				{focusedNodeClass}
+				{clickBehavior}
+				{selectionMode}
+				{rangeSelectionMode}
+				{isCheckboxesShown}
+				{checkboxMode}
+				{shouldClickToggleCheckbox}
+				bind:focusedNode={focusedNode1}
+				bind:selectedPaths={highlightedPaths1}
+				bind:checkedPaths={selectedPaths1}
+				onNodeClick={onClickDemoNodeClick}
+				{...getTreeProps()}
 			>
-			<button
-				class="btn btn-secondary"
-				onclick={() => {
-					clickTreeRef?.clearSelection();
-					clickTreeRef?.uncheckAll();
-					clickTreeRef?.clearFocus();
-				}}>Clear All</button
-			>
+				{#snippet nodeTemplate(node: any)}
+					<span>{node.data?.icon} <span class="demo-node-name">{node.data?.name}</span></span>
+				{/snippet}
+			</Tree>
 		</div>
-
-		<div class="note">
-			<p class="note-title">How the styles stack</p>
-			<p>
-				<strong>Highlighted Style</strong> applies to every row in <code>selectedPaths</code>.
-				<strong>Focused Style</strong> is <em>additive</em> — it stacks on top of the highlight,
-				only on the single row in <code>focusedNode</code>. After a plain click the same row is both
-				highlighted and focused, so you'll see both styles on it. After a <kbd>Shift</kbd>+click
-				range, the anchor and intermediate rows are highlighted only, while the row you clicked last
-				is highlighted <em>and</em>
-				focused. After <kbd>Ctrl</kbd>+click (or Arrow over an unselectable row) the focused row can
-				have no highlight at all — that's when Focused Style alone shows.
-			</p>
-			<p>
-				<strong>Visual vs logical range</strong> — in <strong>visual</strong> mode, Shift+click selects
-				only the nodes you can see between the anchor and the clicked node. In <strong>logical</strong>
-				mode it selects all nodes in depth-first order, including children inside collapsed parents.
-			</p>
-		</div>
-
-		<div class="grid-2">
-			<div class="tree-container tree-container-tall">
-				<Tree
-					bind:this={clickTreeRef}
-					nodes={sampleData}
-					idMember="id"
-					pathMember="path"
-					sortCallback={sortByName}
-					isSorted={true}
-					expandLevel={3}
-					{selectedNodeClass}
-					{focusedNodeClass}
-					{clickBehavior}
-					{selectionMode}
-					{rangeSelectionMode}
-					{isCheckboxesShown}
-					{checkboxMode}
-					{shouldClickToggleCheckbox}
-					bind:focusedNode={focusedNode1}
-					bind:selectedPaths={highlightedPaths1}
-					bind:checkedPaths={selectedPaths1}
-					onNodeClick={onClickDemoNodeClick}
-					{...getTreeProps()}
-				>
-					{#snippet nodeTemplate(node: any)}
-						<span>{node.data?.icon} <span class="demo-node-name">{node.data?.name}</span></span>
-					{/snippet}
-				</Tree>
+		<div>
+			<div class="output">
+				<p class="output-label">Focused Node</p>
+				<pre>{focusedNode1
+						? `${focusedNode1.data?.icon} ${focusedNode1.data?.name} (${focusedNode1.path})`
+						: '(none)'}</pre>
 			</div>
-			<div>
-				<div class="output">
-					<p class="output-label">Focused Node</p>
-					<pre>{focusedNode1
-							? `${focusedNode1.data?.icon} ${focusedNode1.data?.name} (${focusedNode1.path})`
-							: '(none)'}</pre>
-				</div>
-				<div class="output">
-					<p class="output-label">Highlighted ({highlightedPaths1.size})</p>
-					<pre>{highlightedPaths1.size > 0
-							? [...highlightedPaths1].join(', ')
-							: '(none — try Ctrl+click or Shift+click)'}</pre>
-				</div>
-				<div class="output">
-					<p class="output-label">Selected / Checked ({selectedPaths1.size})</p>
-					<pre>{selectedPaths1.size > 0
-							? [...selectedPaths1].join(', ')
-							: '(none — use checkboxes)'}</pre>
-				</div>
+			<div class="output">
+				<p class="output-label">Highlighted ({highlightedPaths1.size})</p>
+				<pre>{highlightedPaths1.size > 0
+						? [...highlightedPaths1].join(', ')
+						: '(none — try Ctrl+click or Shift+click)'}</pre>
+			</div>
+			<div class="output">
+				<p class="output-label">Selected / Checked ({selectedPaths1.size})</p>
+				<pre>{selectedPaths1.size > 0
+						? [...selectedPaths1].join(', ')
+						: '(none — use checkboxes)'}</pre>
 			</div>
 		</div>
+	</div>
 
-		<div class="code-block">
-			<pre>{`<Tree
+	<div class="code-block">
+		<pre>{`<Tree
   clickBehavior="${clickBehavior}"
   selectionMode="${selectionMode}"
   selectedNodeClass="${selectedNodeClass}"${focusedNodeClass ? `\n  focusedNodeClass="${focusedNodeClass}"` : ''}
@@ -434,23 +433,23 @@
   'independent' — each checkbox standalone (default)
   'cascade'     — parent toggles all descendants
 -->`}</pre>
-		</div>
+	</div>
 
-		<div class="note">
-			<p class="note-title">Adding your own highlight &amp; focus styles</p>
-			<p>
-				Both props take <em>any</em> class name. <strong>Glow</strong> (highlight) and
-				<strong>Ring</strong> (focus) above are two recent additions: Glow is a built-in class
-				shipped in <code>states.css</code>, while Ring is a page-scoped class this demo defines
-				itself. The component ships no default focus styling, so a focus class is always your own —
-				highlight classes can be either built-in or custom. Both work the same way: name a CSS
-				class, make sure the rule is in scope (built-in, global, or a <code>:global()</code> rule), and
-				pass it.
-			</p>
-		</div>
+	<div class="note">
+		<p class="note-title">Adding your own highlight &amp; focus styles</p>
+		<p>
+			Both props take <em>any</em> class name. <strong>Glow</strong> (highlight) and
+			<strong>Ring</strong> (focus) above are two recent additions: Glow is a built-in class
+			shipped in <code>states.css</code>, while Ring is a page-scoped class this demo defines
+			itself. The component ships no default focus styling, so a focus class is always your own —
+			highlight classes can be either built-in or custom. Both work the same way: name a CSS
+			class, make sure the rule is in scope (built-in, global, or a <code>:global()</code> rule), and
+			pass it.
+		</p>
+	</div>
 
-		<div class="code-block">
-			<pre>{`<!-- 1. Built-in highlight (just reference it) -->
+	<div class="code-block">
+		<pre>{`<!-- 1. Built-in highlight (just reference it) -->
 <Tree selectedNodeClass="stv__node-content--selected-glow" ... />
 
 /* stv__node-content--selected-glow (from states.css) */
@@ -473,41 +472,41 @@
 
 <!-- Highlight applies to every row in selectedPaths.
      Focus is additive — it stacks on top, only on the focusedNode row. -->`}</pre>
-		</div>
 	</div>
+</div>
 
-	<!-- Keyboard Navigation -->
-	<div class="card">
-		<h2>IN02 · Keyboard Navigation</h2>
-		<p class="description">
-			Click a node to focus the tree, then use arrow keys to navigate. The tree supports full
-			keyboard control out of the box.
-		</p>
+<!-- Keyboard Navigation -->
+<div class="card">
+	<h2>IN02 · Keyboard Navigation</h2>
+	<p class="description">
+		Click a node to focus the tree, then use arrow keys to navigate. The tree supports full
+		keyboard control out of the box.
+	</p>
 
-		<div class="grid-2">
-			<div class="tree-container tree-container-tall">
-				<Tree
-					nodes={sampleData}
-					idMember="id"
-					pathMember="path"
-					sortCallback={sortByName}
-					isSorted={true}
-					expandLevel={2}
-					{selectedNodeClass}
-					{focusedNodeClass}
-					bind:focusedNode={navFocusedNode}
-					onNodeClick={onNavNodeClick}
-					{...getTreeProps()}
-				>
-					{#snippet nodeTemplate(node: any)}
-						<span>{node.data?.icon} {node.data?.name}</span>
-					{/snippet}
-				</Tree>
-			</div>
-			<div>
-				<div class="output">
-					<p class="output-label">Keyboard Shortcuts</p>
-					<pre>&#8593; &#8595;    Navigate between siblings
+	<div class="grid-2">
+		<div class="tree-container tree-container-tall">
+			<Tree
+				nodes={sampleData}
+				idMember="id"
+				pathMember="path"
+				sortCallback={sortByName}
+				isSorted={true}
+				expandLevel={2}
+				{selectedNodeClass}
+				{focusedNodeClass}
+				bind:focusedNode={navFocusedNode}
+				onNodeClick={onNavNodeClick}
+				{...getTreeProps()}
+			>
+				{#snippet nodeTemplate(node: any)}
+					<span>{node.data?.icon} {node.data?.name}</span>
+				{/snippet}
+			</Tree>
+		</div>
+		<div>
+			<div class="output">
+				<p class="output-label">Keyboard Shortcuts</p>
+				<pre>&#8593; &#8595;    Navigate between siblings
 &#8594;      Expand node / go to first child
 &#8592;      Collapse node / go to parent
 Enter  Toggle expand/collapse
@@ -515,34 +514,32 @@ Space  Toggle expand/collapse
 Home   Go to first node
 End    Go to last visible node
 &#9003;   Collapse and go to parent</pre>
+			</div>
+			{#if navFocusedNode}
+				<div class="output">
+					<p class="output-label">Focused Node</p>
+					<pre>{navFocusedNode.data?.icon} {navFocusedNode.data
+							?.name} ({navFocusedNode.path})</pre>
 				</div>
-				{#if navFocusedNode}
-					<div class="output">
-						<p class="output-label">Focused Node</p>
-						<pre>{navFocusedNode.data?.icon} {navFocusedNode.data
-								?.name} ({navFocusedNode.path})</pre>
-					</div>
-				{/if}
-				{#if navLog.length > 0}
-					<div class="output">
-						<p class="output-label">Navigation Log</p>
-						<pre>{navLog.join('\n')}</pre>
-					</div>
-				{/if}
+			{/if}
+			<div class="output">
+				<p class="output-label">Navigation Log</p>
+				<LogPanel entries={navLog} empty="Click a node to log it" />
 			</div>
 		</div>
+	</div>
 
-		<div class="note">
-			<p class="note-title">Custom Navigation</p>
-			<p>
-				You can override individual navigation methods via the <code>navigationOverrides</code>
-				prop. This accepts a partial <code>TreeNavigationOverrides&lt;T&gt;</code> object — override
-				only the methods you need, the rest fall back to the default implementation.
-			</p>
-		</div>
+	<div class="note">
+		<p class="note-title">Custom Navigation</p>
+		<p>
+			You can override individual navigation methods via the <code>navigationOverrides</code>
+			prop. This accepts a partial <code>TreeNavigationOverrides&lt;T&gt;</code> object — override
+			only the methods you need, the rest fall back to the default implementation.
+		</p>
+	</div>
 
-		<div class="code-block">
-			<pre>{`<!-- Override specific navigation methods -->
+	<div class="code-block">
+		<pre>{`<!-- Override specific navigation methods -->
 <Tree
   navigationOverrides={{
     navInto: (node) => { /* custom expand behavior */ },
@@ -550,160 +547,160 @@ End    Go to last visible node
   }}
   ...
 />`}</pre>
+	</div>
+</div>
+
+<!-- Cascade Checkboxes & Value Policy -->
+<div class="card">
+	<h2>IN03 · Cascade Checkboxes &amp; Value Policy</h2>
+	<p class="description">
+		Two orthogonal knobs. <code>checkboxMode</code> controls how checking a branch
+		<em>behaves</em>; <code>cascadeCheckPolicy</code> controls which paths the selection
+		<em>emits</em> (what <code>bind:checkedPaths</code> and <code>onCheckedChange</code> report).
+		Flip them below on a single live tree and watch the emitted set change while the checkboxes stay
+		put.
+	</p>
+
+	<div class="controls">
+		<label>
+			checkboxMode:
+			<select bind:value={policyCheckboxMode}>
+				<option value="independent">independent (each node standalone)</option>
+				<option value="cascade">cascade (branch toggles its subtree)</option>
+			</select>
+		</label>
+		<label>
+			cascadeCheckPolicy:
+			<select bind:value={cascadeCheckPolicy} disabled={policyCheckboxMode !== 'cascade'}>
+				<option value="rolled-up">rolled-up (minimal cover)</option>
+				<option value="leaves">leaves (only checked leaves)</option>
+				<option value="all">all (every fully-checked node)</option>
+			</select>
+		</label>
+		<button class="secondary" onclick={() => (policyChecked = new Set())}>Clear</button>
+	</div>
+
+	<div class="note">
+		<p class="note-title">What each option does</p>
+		<p>
+			<code>checkboxMode="independent"</code> — each node toggles on its own; the policy is
+			ignored and <code>checkedPaths</code> is exactly the set of checked nodes.<br />
+			<code>checkboxMode="cascade"</code> — checking a branch checks its whole subtree; a partial
+			branch shows a tristate (dash). Then the policy projects the emitted set:<br />
+			&nbsp;&nbsp;• <strong>rolled-up</strong> — a fully-checked subtree collapses to its root; a
+			partial branch emits its individually-checked descendants.<br />
+			&nbsp;&nbsp;• <strong>leaves</strong> — only the checked leaf nodes.<br />
+			&nbsp;&nbsp;• <strong>all</strong> — every fully-checked node (branches + leaves).
+		</p>
+	</div>
+
+	<div class="grid-2">
+		<div class="tree-container tree-container-tall">
+			<Tree
+				nodes={sampleData}
+				idMember="id"
+				pathMember="path"
+				sortCallback={sortByName}
+				isSorted={true}
+				expandLevel={3}
+				isCheckboxesShown={true}
+				checkboxMode={policyCheckboxMode}
+				{cascadeCheckPolicy}
+				bind:checkedPaths={policyChecked}
+				{...getTreeProps()}
+			>
+				{#snippet nodeTemplate(node: any)}
+					<span>{node.data?.icon} {node.data?.name}</span>
+				{/snippet}
+			</Tree>
+		</div>
+		<div>
+			<div class="output">
+				<p class="output-label">Emitted checkedPaths ({policyChecked.size})</p>
+				<pre>{policyChecked.size > 0
+						? [...policyChecked].sort().join('\n')
+						: '(none — check some branches)'}</pre>
+			</div>
 		</div>
 	</div>
 
-	<!-- Cascade Checkboxes & Value Policy -->
-	<div class="card">
-		<h2>IN03 · Cascade Checkboxes &amp; Value Policy</h2>
-		<p class="description">
-			Two orthogonal knobs. <code>checkboxMode</code> controls how checking a branch
-			<em>behaves</em>; <code>cascadeCheckPolicy</code> controls which paths the selection
-			<em>emits</em> (what <code>bind:checkedPaths</code> and <code>onCheckedChange</code> report).
-			Flip them below on a single live tree and watch the emitted set change while the checkboxes stay
-			put.
-		</p>
-
-		<div class="controls">
-			<label>
-				checkboxMode:
-				<select bind:value={policyCheckboxMode}>
-					<option value="independent">independent (each node standalone)</option>
-					<option value="cascade">cascade (branch toggles its subtree)</option>
-				</select>
-			</label>
-			<label>
-				cascadeCheckPolicy:
-				<select bind:value={cascadeCheckPolicy} disabled={policyCheckboxMode !== 'cascade'}>
-					<option value="rolled-up">rolled-up (minimal cover)</option>
-					<option value="leaves">leaves (only checked leaves)</option>
-					<option value="all">all (every fully-checked node)</option>
-				</select>
-			</label>
-			<button class="btn btn-secondary" onclick={() => (policyChecked = new Set())}>Clear</button>
-		</div>
-
-		<div class="note">
-			<p class="note-title">What each option does</p>
-			<p>
-				<code>checkboxMode="independent"</code> — each node toggles on its own; the policy is
-				ignored and <code>checkedPaths</code> is exactly the set of checked nodes.<br />
-				<code>checkboxMode="cascade"</code> — checking a branch checks its whole subtree; a partial
-				branch shows a tristate (dash). Then the policy projects the emitted set:<br />
-				&nbsp;&nbsp;• <strong>rolled-up</strong> — a fully-checked subtree collapses to its root; a
-				partial branch emits its individually-checked descendants.<br />
-				&nbsp;&nbsp;• <strong>leaves</strong> — only the checked leaf nodes.<br />
-				&nbsp;&nbsp;• <strong>all</strong> — every fully-checked node (branches + leaves).
-			</p>
-		</div>
-
-		<div class="grid-2">
-			<div class="tree-container tree-container-tall">
-				<Tree
-					nodes={sampleData}
-					idMember="id"
-					pathMember="path"
-					sortCallback={sortByName}
-					isSorted={true}
-					expandLevel={3}
-					isCheckboxesShown={true}
-					checkboxMode={policyCheckboxMode}
-					{cascadeCheckPolicy}
-					bind:checkedPaths={policyChecked}
-					{...getTreeProps()}
-				>
-					{#snippet nodeTemplate(node: any)}
-						<span>{node.data?.icon} {node.data?.name}</span>
-					{/snippet}
-				</Tree>
-			</div>
-			<div>
-				<div class="output">
-					<p class="output-label">Emitted checkedPaths ({policyChecked.size})</p>
-					<pre>{policyChecked.size > 0
-							? [...policyChecked].sort().join('\n')
-							: '(none — check some branches)'}</pre>
-				</div>
-			</div>
-		</div>
-
-		<div class="code-block">
-			<pre>{`<Tree
+	<div class="code-block">
+		<pre>{`<Tree
   isCheckboxesShown={true}
   checkboxMode="${policyCheckboxMode}"${policyCheckboxMode === 'cascade' ? `\n  cascadeCheckPolicy="${cascadeCheckPolicy}"` : ''}
   bind:checkedPaths={selected}
   onCheckedChange={({ paths }) => { /* projected set */ }}
   ...
 />`}</pre>
-		</div>
+	</div>
+</div>
+
+<!-- Silent State Restore -->
+<div class="card">
+	<h2>IN04 · Silent State Restore</h2>
+	<p class="description">
+		Restore tree state from URL parameters <em>without</em> firing selection callbacks. You share a
+		link like <code>?nodePath=1.2.3</code>. The page loads form data from the URL, and the tree just
+		needs to scroll + visually highlight the matching node. Firing <code>onSelectionChange</code> in
+		that flow would re-trigger your form-loader and overwrite whatever the URL just supplied.
+	</p>
+
+	<p class="description">
+		Pass <code>{`{ isSilent: true }`}</code> to <code>selectNode()</code> /
+		<code>selectNodes()</code> / <code>clearSelection()</code> / <code>uncheckAll()</code>.
+		State (<code>selectedPaths</code>, <code>isSelected</code> CSS class, focused node) still
+		updates — only <code>onNodeClick</code> / <code>onSelectionChange</code> / <code>onCheckedChange</code>
+		are suppressed.
+	</p>
+
+	<div class="controls">
+		<label>
+			Path from URL:
+			<input type="text" bind:value={pathFromUrl} class="w-sm" />
+		</label>
+		<label>
+			<input type="checkbox" bind:checked={silentMode} />
+			isSilent: true
+		</label>
+		<button onclick={simulateUrlLoad}>Simulate URL load</button>
+		<button class="secondary" onclick={silentReset}>Reset</button>
 	</div>
 
-	<!-- Silent State Restore -->
-	<div class="card">
-		<h2>IN04 · Silent State Restore</h2>
-		<p class="description">
-			Restore tree state from URL parameters <em>without</em> firing selection callbacks. You share a
-			link like <code>?nodePath=1.2.3</code>. The page loads form data from the URL, and the tree just
-			needs to scroll + visually highlight the matching node. Firing <code>onSelectionChange</code> in
-			that flow would re-trigger your form-loader and overwrite whatever the URL just supplied.
-		</p>
+	<div class="tree-container tree-container-tall">
+		<Tree
+			bind:this={silentTreeRef}
+			nodes={sampleData}
+			idMember="id"
+			pathMember="path"
+			sortCallback={sortByName}
+			isSorted={true}
+			expandLevel={2}
+			selectedNodeClass="stv__node-content--selected-bold"
+			bind:selectedPaths={silentSelectedPaths}
+			onSelectionChange={handleSelectionChange}
+			{...getTreeProps()}
+		>
+			{#snippet nodeTemplate(node: LTreeNode<Item>)}
+				<span>{node.data?.icon} {node.data?.name}</span>
+			{/snippet}
+		</Tree>
+	</div>
 
-		<p class="description">
-			Pass <code>{`{ isSilent: true }`}</code> to <code>selectNode()</code> /
-			<code>selectNodes()</code> / <code>clearSelection()</code> / <code>uncheckAll()</code>.
-			State (<code>selectedPaths</code>, <code>isSelected</code> CSS class, focused node) still
-			updates — only <code>onNodeClick</code> / <code>onSelectionChange</code> / <code>onCheckedChange</code>
-			are suppressed.
-		</p>
+	<div class="output">
+		<p class="output-label">Form data (only changes when onSelectionChange fires)</p>
+		<pre>{formNotes}</pre>
+	</div>
 
-		<div class="controls">
-			<label>
-				Path from URL:
-				<input type="text" bind:value={pathFromUrl} style="width: 100px" />
-			</label>
-			<label>
-				<input type="checkbox" bind:checked={silentMode} />
-				isSilent: true
-			</label>
-			<button class="btn" onclick={simulateUrlLoad}>Simulate URL load</button>
-			<button class="btn btn-secondary" onclick={silentReset}>Reset</button>
-		</div>
-
-		<div class="tree-container tree-container-tall">
-			<Tree
-				bind:this={silentTreeRef}
-				nodes={sampleData}
-				idMember="id"
-				pathMember="path"
-				sortCallback={sortByName}
-				isSorted={true}
-				expandLevel={2}
-				selectedNodeClass="stv__node-content--selected-bold"
-				bind:selectedPaths={silentSelectedPaths}
-				onSelectionChange={handleSelectionChange}
-				{...getTreeProps()}
-			>
-				{#snippet nodeTemplate(node: LTreeNode<Item>)}
-					<span>{node.data?.icon} {node.data?.name}</span>
-				{/snippet}
-			</Tree>
-		</div>
-
-		<div class="output">
-			<p class="output-label">Form data (only changes when onSelectionChange fires)</p>
-			<pre>{formNotes}</pre>
-		</div>
-
-		<div class="output">
-			<p class="output-label">onSelectionChange fired</p>
-			<pre>{selectionChangeFires} time(s)
+	<div class="output">
+		<p class="output-label">onSelectionChange fired</p>
+		<pre>{selectionChangeFires} time(s)
 {silentMode
-	? '→ expected 0 in silent mode'
-	: '→ expected 1 in loud mode (form data was overwritten)'}</pre>
-		</div>
+? '→ expected 0 in silent mode'
+: '→ expected 1 in loud mode (form data was overwritten)'}</pre>
+	</div>
 
-		<div class="code-block">
-			<pre>{`// Restore tree state from URL params without firing onSelectionChange
+	<div class="code-block">
+		<pre>{`// Restore tree state from URL params without firing onSelectionChange
 function restoreFromUrl(nodePath: string) {
   // 1. Load form data based on the URL — preserve this value
   loadFormDataFromUrl(nodePath);
@@ -716,25 +713,20 @@ function restoreFromUrl(nodePath: string) {
   // 3. Scroll into view (scrollToPath never fires selection events).
   tree.scrollToPath(nodePath, { shouldExpandAncestors: true, shouldHighlight: true });
 }`}</pre>
-		</div>
-
-		<div class="note">
-			<p class="note-title">Also supported</p>
-			<p>
-				All four methods accept <code>{`{ isSilent: true }`}</code>:
-				<code>selectNode(path, mode, opts)</code>,
-				<code>selectNodes(paths, opts)</code>,
-				<code>clearSelection(paths?, opts)</code>,
-				<code>uncheckNodes(paths, opts?)</code> / <code>uncheckAll(opts?)</code>.
-				The bindable props (<code>selectedPaths</code>, <code>checkedPaths</code>, <code>focusedNode</code>)
-				still sync back to the parent — silent only skips the explicit callbacks.
-			</p>
-		</div>
 	</div>
 
-	<footer>
-		<p><a href="/">&larr; Back to Examples</a></p>
-	</footer>
+	<div class="note">
+		<p class="note-title">Also supported</p>
+		<p>
+			All four methods accept <code>{`{ isSilent: true }`}</code>:
+			<code>selectNode(path, mode, opts)</code>,
+			<code>selectNodes(paths, opts)</code>,
+			<code>clearSelection(paths?, opts)</code>,
+			<code>uncheckNodes(paths, opts?)</code> / <code>uncheckAll(opts?)</code>.
+			The bindable props (<code>selectedPaths</code>, <code>checkedPaths</code>, <code>focusedNode</code>)
+			still sync back to the parent — silent only skips the explicit callbacks.
+		</p>
+	</div>
 </div>
 
 <style>
@@ -748,18 +740,18 @@ function restoreFromUrl(nodePath: string) {
 	   descenders so it reads as a marker rather than a text link. */
 	:global(.demo-focused-underline .demo-node-name) {
 		text-decoration: underline;
-		text-decoration-color: var(--stv-accent-color, #0d6efd);
+		text-decoration-color: var(--stv-accent-color);
 		text-decoration-thickness: 2px;
 		text-underline-offset: 0.4em;
 		text-decoration-skip-ink: none;
 	}
 	:global(.demo-focused-bg) {
-		background-color: color-mix(in srgb, var(--stv-accent-color, #0d6efd) 12%, transparent);
+		background-color: color-mix(in srgb, var(--stv-accent-color) 12%, transparent);
 	}
 	/* Left accent bar, painted as a background-image layer so it sits over the
 	   highlight tint and survives box-shadow presets. */
 	:global(.demo-focused-bar) {
-		background-image: linear-gradient(var(--stv-accent-color, #0d6efd), var(--stv-accent-color, #0d6efd));
+		background-image: linear-gradient(var(--stv-accent-color), var(--stv-accent-color));
 		background-repeat: no-repeat;
 		background-size: 2px 100%;
 	}
