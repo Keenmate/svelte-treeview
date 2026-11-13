@@ -121,7 +121,7 @@
 		<!-- 4. Ancestor [data-theme="dark"] — should be DARK -->
 		<div class="card" data-scenario="ancestor-data-theme-dark">
 			<h2>4. Ancestor <code>[data-theme="dark"]</code></h2>
-			<p>Generic framework theme convention. Expected: <strong>GREEN</strong>.</p>
+			<p>Generic framework theme convention, picked up via <code>themeSource="closest"</code> (a wrapper signal isn't read by default — only the page's). Expected: <strong>GREEN</strong>.</p>
 			<div class="wrapper brand-debug" data-theme="dark">
 				<Tree
 					nodes={sampleData}
@@ -130,6 +130,7 @@
 					sortCallback={sortByName}
 					isSorted={true}
 					expandLevel={2}
+					themeSource="closest"
 				>
 					{#snippet nodeTemplate(node: LTreeNode<Item>)}
 						<span>{node.data?.name}</span>
@@ -150,6 +151,7 @@
 					sortCallback={sortByName}
 					isSorted={true}
 					expandLevel={2}
+					themeSource="closest"
 				>
 					{#snippet nodeTemplate(node: LTreeNode<Item>)}
 						<span>{node.data?.name}</span>
@@ -170,6 +172,7 @@
 					sortCallback={sortByName}
 					isSorted={true}
 					expandLevel={2}
+					themeSource="closest"
 				>
 					{#snippet nodeTemplate(node: LTreeNode<Item>)}
 						<span>{node.data?.name}</span>

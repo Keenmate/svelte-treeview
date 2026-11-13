@@ -76,18 +76,24 @@ test.describe('Theming — Debug brand theme across all dark-mode signals', () =
 
 	test('4. Ancestor [data-theme="dark"] → tree surface is GREEN (dark)', async ({ page }) => {
 		const tree = ltreeContainer(scenarioCard(page, 'ancestor-data-theme-dark'));
+		// themeSource="closest" → the wrapper's signal is mirrored as data-context-theme
+		await expect(tree).toHaveAttribute('data-context-theme', 'dark');
 		expect(await backgroundColor(tree)).toBe(DARK.bg);
 		expect(await color(tree)).toBe(DARK.text);
 	});
 
 	test('5. Ancestor [data-bs-theme="dark"] → tree surface is GREEN (dark)', async ({ page }) => {
 		const tree = ltreeContainer(scenarioCard(page, 'ancestor-data-bs-theme-dark'));
+		// themeSource="closest" → the wrapper's signal is mirrored as data-context-theme
+		await expect(tree).toHaveAttribute('data-context-theme', 'dark');
 		expect(await backgroundColor(tree)).toBe(DARK.bg);
 		expect(await color(tree)).toBe(DARK.text);
 	});
 
 	test('6. Ancestor .dark (Tailwind) → tree surface is GREEN (dark)', async ({ page }) => {
 		const tree = ltreeContainer(scenarioCard(page, 'ancestor-dark-class'));
+		// themeSource="closest" → the wrapper's signal is mirrored as data-context-theme
+		await expect(tree).toHaveAttribute('data-context-theme', 'dark');
 		expect(await backgroundColor(tree)).toBe(DARK.bg);
 		expect(await color(tree)).toBe(DARK.text);
 	});

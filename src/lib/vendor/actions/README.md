@@ -13,7 +13,7 @@ transferred from [`@keenmate/web-components-core`](../../../../web-components-co
 svelte-treeview does not depend on web-components-core, so the files are copied with the minimum
 adaptation (each file's header names it):
 
-- `coreLog(source, 'UI', …)` → the tree's `uiLogger` (`LTREE:UI`).
+- `coreLog(source, 'UI', …)` → the tree's `uiLogger` (`STV:UI`).
 - `types.ts` declares `ComponentContext` locally as `{ controller }` (core's also has `element`;
   the Svelte tree has no host element).
 

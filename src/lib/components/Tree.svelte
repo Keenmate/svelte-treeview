@@ -69,6 +69,7 @@
 	import { classifyDevice, getEnvironment } from '../vendor/environment/environment.js';
 	import type { ElementSize } from '../vendor/environment/element-size.js';
 	import type { DeviceClass } from '../vendor/environment/environment.js';
+	import { observeThemeContext, type ColorScheme, type ThemeSource } from '../vendor/core/environment/theme.js';
 
 	// NodeCallbacks and NodeConfig are now defined in ../core/TreeController.svelte.ts
 	// and re-exported from index.ts for public consumption.
@@ -383,9 +384,18 @@
 		// VISUALS
 		/** Per-instance theme override. Forwarded to the root `.stv__container`
 		 *  as `data-theme="dark"|"light"`, which the stylesheet uses to flip the
-		 *  tree's colors independently of the surrounding page. Leave undefined to
-		 *  inherit from the page (OS preference, framework classes, etc.). */
+		 *  tree's colors independently of the surrounding page. Wins over every
+		 *  detected signal. Leave undefined to follow the theme context (see `themeSource`). */
 		theme?: 'dark' | 'light' | null | undefined;
+		/** Where the tree reads its dark/light signal from (core theme context, SPEC §12.10 —
+		 *  the same switch every KeenMate web component has as `theme-source`). Unset = the
+		 *  page: `data-theme` / `data-bs-theme` / `.dark` / `.light` on `<html>`, then `<body>`.
+		 *  `'closest'` = the nearest ancestor carrying such a signal (re-resolved when one
+		 *  changes); a CSS selector = the nearest matching ancestor, else the first match; or an
+		 *  `Element`. The result is mirrored onto `.stv__container` as `data-context-theme`.
+		 *  No signal anywhere → the inherited `color-scheme` applies. `setThemeMode()` forces it
+		 *  for every component on the page. */
+		themeSource?: ThemeSource;
 		bodyClass?: string | null | undefined;
 		selectedNodeClass?: string | null | undefined;
 		focusedNodeClass?: string | null | undefined;
@@ -615,6 +625,7 @@
 
 		// VISUALS
 		theme,
+		themeSource,
 		bodyClass,
 		iconSet = 'chevron',
 		leafIconClass = 'stv__toggle-icon--leaf',
@@ -840,6 +851,21 @@
 		if (treeContainerRef) {
 			controller.containerElement = treeContainerRef;
 		}
+	});
+
+	// ── Theme context (core SPEC §12.10, vendored) ─────────────────────────
+	// The page's (or `themeSource`'s) dark/light signal, detected once per watched
+	// element and shared with every KeenMate component on the page, mirrored onto
+	// .stv__container as data-context-theme (dark-mode.css flips color-scheme on it).
+	// Re-subscribes when themeSource changes; the listener fires immediately.
+	let contextTheme = $state<ColorScheme | null>(null);
+	$effect(() => {
+		const el = treeContainerRef;
+		const source = themeSource;
+		if (!el) return;
+		return observeThemeContext(el, source, (scheme) => {
+			contextTheme = scheme;
+		});
 	});
 
 	// ── Responsive container-box signal (signal only; see core/responsive.svelte.ts) ──
@@ -2163,6 +2189,7 @@
 	class:stv__tree-drop-zone--active={isTreeDropZoneEnabled && controller.isDropPlaceholderActive}
 	tabindex="0"
 	data-theme={theme}
+	data-context-theme={contextTheme}
 	data-node-title-overflow={nodeTitleOverflow}
 	data-icon-set={iconSet}
 	data-toggle-icon-mode={toggleIconMode}

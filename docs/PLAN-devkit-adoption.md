@@ -138,7 +138,8 @@ Explorer layout). Theming: the scheme / ancestor-signal demos are scoped to a wr
 Verified: svelte-check 0/0, Playwright 395/395, all 15 pages × light/dark × 1440/390/320 → no overflow, no console errors; build OK.
 
 Findings to act on:
-- **Library (dark-mode.css):** `[data-theme="light"] .stv__container` comes after the dark rule, so ANY light ancestor beats a
+- **FIXED 2026-11-13** (core theme context vendored, `themeSource` prop, ancestor selectors removed; workarounds in theming +
+  theme-comparison replaced by `themeSource="closest"`). Was — **Library (dark-mode.css):** `[data-theme="light"] .stv__container` comes after the dark rule, so ANY light ancestor beats a
   NEARER dark one (no nearest-ancestor-wins). The kit's `html[data-theme]` now triggers it on every page; theming +
   theme-comparison work around it with `.stv__container:not([data-theme]) { color-scheme: inherit }` inside their scopes.
   Fix in the library (e.g. `@scope`, or don't treat `html[data-theme]` as forcing).

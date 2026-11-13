@@ -18,55 +18,20 @@
  *   setPerfThreshold(10); // Only log operations taking >10ms
  */
 
-import log from './vendor/loglevel/index.js';
-import prefix from './vendor/loglevel/prefix.js';
-import type { Logger } from './vendor/loglevel/index.js';
+// The `STV:PERF` logger comes from the core logging bundle (vendored
+// @keenmate/web-components-core, SPEC §12.1) — same colour-coded `%c` prefix as the
+// STV:* category loggers, no vendored `loglevel` + prefix plugin. The rich perf API
+// below (threshold, items/sec, metadata, per-tree summaries) is kept; core's minimal
+// `createPerfLogger` doesn't cover it, so only the logger creation is swapped
+// (same as web-treeview's perf-logger.ts).
+import { createLoggers, type Logger } from './vendor/core/logging/create-loggers.js';
 
-// Performance logger instance
-export const perfLogger: Logger = log.getLogger('LTREE:PERF');
+// Own bundle so its level is independent of the STV:* category loggers in logger.ts.
+// Off by default: core's default level is `warn` and timings log at `info`.
+export const perfLogger: Logger = createLoggers('STV', ['PERF'] as const).loggers.PERF;
 
 // Threshold for logging (0 = log everything)
 let perfThreshold = 0;
-
-// Color for performance logs
-const PERF_COLOR = '#a855f7'; // Purple
-
-// Apply prefix styling
-const prefixOptions = {
-    format(level: string, name: string | undefined, timestamp: string) {
-        return `%c[${timestamp}]%c %c[PERF]%c`;
-    },
-    timestampFormatter(date: Date) {
-        return date.toTimeString().split(' ')[0] + '.' + date.getMilliseconds().toString().padStart(3, '0');
-    }
-};
-
-// Create color-aware method factory
-function createPerfMethodFactory(originalFactory: any) {
-    return function(methodName: string, logLevel: number, loggerName: string) {
-        const rawMethod = originalFactory(methodName, logLevel, loggerName);
-
-        return function(...args: any[]) {
-            if (args.length > 0 && typeof args[0] === 'string' && args[0].includes('%c')) {
-                const numMarkers = (args[0].match(/%c/g) || []).length;
-                const colorStyles: string[] = [];
-                for (let i = 0; i < numMarkers; i++) {
-                    colorStyles.push(i % 2 === 0 ? `color: ${PERF_COLOR}; font-weight: bold;` : 'color: inherit;');
-                }
-                rawMethod(args[0], ...colorStyles, ...args.slice(1));
-            } else {
-                rawMethod(...args);
-            }
-        };
-    };
-}
-
-// Initialize the performance logger
-const originalFactory = perfLogger.methodFactory;
-perfLogger.methodFactory = createPerfMethodFactory(originalFactory);
-prefix.reg(log);
-prefix.apply(perfLogger, prefixOptions);
-perfLogger.setLevel('silent'); // Disabled by default
 
 /**
  * Active timers storage
@@ -199,14 +164,14 @@ function formatNumber(num: number): string {
  * Enable performance logging
  */
 export function enablePerfLogging(): void {
-    perfLogger.setLevel('info');
+    perfLogger.setLevel('info', false);
 }
 
 /**
  * Disable performance logging
  */
 export function disablePerfLogging(): void {
-    perfLogger.setLevel('silent');
+    perfLogger.setLevel('silent', false);
 }
 
 /**

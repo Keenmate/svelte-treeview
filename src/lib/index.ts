@@ -34,8 +34,30 @@ export type { TreeLabels } from "./core/labels.js"
 export type { LoaderRenderContext, RenderLoaderCallback } from "./core/loader.js"
 export type { NodeCallbacks, NodeConfig, SelectionModifiers } from "./core/TreeController.svelte"
 
-// Export logging utilities
-export { enableLogging, disableLogging, setLogLevel, setCategoryLevel, LOGGING_CATEGORIES } from "./logger.js"
+// Logging — a thin shim over the core logging module (vendored @keenmate/web-components-core,
+// SPEC §12.1; namespace STV). Page-wide switch: window.components.logging.
+export {
+    enableLogging,
+    disableLogging,
+    resetLogging,
+    setLogLevel,
+    setCategoryLevel,
+    LOGGING_CATEGORIES,
+    initLogger,
+    dataLogger,
+    renderLogger,
+    indexLogger,
+    dragLogger,
+    uiLogger
+} from "./logger.js"
+export type { Logger, LogLevelDesc } from "./logger.js"
+
+// Theme context (vendored core SPEC §12.10) — the page / themeSource dark-light signal
+// shared with every KeenMate component on the page. setThemeMode('dark'|'light'|'auto')
+// forces it for ALL of them (web-* components included); Tree's `themeSource` prop picks
+// where one tree reads it from.
+export { setThemeMode, getThemeMode, getThemeContext, observeThemeContext } from "./vendor/core/environment/theme.js"
+export type { ColorScheme, ThemeMode, ThemeSource, ThemeListener } from "./vendor/core/environment/theme.js"
 
 // Export performance logging utilities
 export {

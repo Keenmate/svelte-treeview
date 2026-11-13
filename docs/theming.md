@@ -130,36 +130,45 @@ or the tree's defaults won't apply.
 
 ## Dark mode
 
-The tree supports four canonical signals:
+Same model as every KeenMate web component (core theme context, SPEC §12.10 — vendored in
+`src/lib/vendor/core/environment/theme.ts`). Highest first:
 
-1. **OS preference** (`prefers-color-scheme: dark`) — resolved automatically via `light-dark()` in `variables.css` when the consumer's `<html>` declares `color-scheme: light dark`.
-2. **Page-level `color-scheme: dark`** — same resolution path.
-3. **Framework theme classes** — `[data-theme="dark"]`, `[data-bs-theme="dark"]`, `.dark` on an ancestor flip the tree to dark mode.
-4. **Per-instance `theme` prop on `<Tree>`** — `'dark' | 'light' | null | undefined`. Forwarded to `.stv__container` as `data-theme`, beating ambient signals.
+1. **Per-instance `theme` prop** — `'dark' | 'light'`, forwarded to `.stv__container` as `data-theme`. Beats everything.
+2. **Theme context** — detected in JS once per page and mirrored onto `.stv__container` as `data-context-theme`:
+   - `setThemeMode('dark' | 'light')` forces every KeenMate component on the page (`'auto'` resumes detection);
+   - else the tree's **`themeSource`**: `'closest'` (the nearest ancestor carrying a signal, re-resolved when one changes),
+     a CSS selector (nearest matching ancestor, else first match), or an `Element`;
+   - else the **page**: `data-theme` / `data-bs-theme` / `.dark` / `.light` on `<html>`, then `<body>`.
+3. **No signal** — the inherited `color-scheme` applies (page `color-scheme: dark`, or the OS preference when the page
+   declares `html { color-scheme: light dark }`), resolved through `light-dark()` in `variables.css`.
 
-Symmetric `light` selectors (`[data-theme="light"]`, `[data-bs-theme="light"]`, `.light`, per-instance `theme="light"`) let a single tree force light on an otherwise-dark page.
+A theme signal on a wrapper `<div>` is **not** read by default — only the page's. Opt in per tree:
 
 ```svelte
 <!-- One dark tree on an otherwise-light page -->
 <Tree theme="dark" nodes={data} idMember="path" pathMember="path" />
+
+<!-- Follow the nearest section that carries a signal -->
+<section data-bs-theme="dark">
+  <Tree themeSource="closest" nodes={data} idMember="path" pathMember="path" />
+</section>
 ```
 
-Resolution precedence (highest specificity wins):
+`setThemeMode`, `getThemeMode`, `getThemeContext`, `observeThemeContext` and the `ThemeSource` / `ColorScheme` / `ThemeMode`
+types are exported. The detection state lives on `globalThis` (a `Symbol.for` key), so it's shared with the web-* components
+on the same page.
 
-```
-per-instance .stv__container[data-theme]
-  → framework ancestor class
-    → page color-scheme via light-dark() in variables.css
-      → OS preference via @media
-```
-
-The implementation uses **Strategy B**: every visible color in `variables.css` uses `light-dark(<light>, <dark>)` for its fallback. `dark-mode.css` flips `color-scheme: dark` (or `light`) on the conditional selectors and lets `light-dark()` resolve the dark branch. Consumer `--base-*` overrides survive (a Strategy-A literal like `#1a1a1a` would silently replace a consumer's themed value).
+The implementation uses **Strategy B**: every visible color in `variables.css` uses `light-dark(<light>, <dark>)` for its
+fallback, and `dark-mode.css` only flips `color-scheme` on `.stv__container[data-context-theme]` / `[data-theme]`. Consumer
+`--base-*` overrides survive (a Strategy-A literal like `#1a1a1a` would silently replace a consumer's themed value). There are
+no ancestor selectors (`[data-theme="dark"] .stv__container`): at equal specificity the later rule won regardless of which
+ancestor was nearer, so a light page signal beat a dark section around the tree.
 
 ## CSS classes (BEM)
 
 The tree emits BEM-style classes (`stv__<element>` / `stv__<element>--<modifier>`):
 
-- `.stv__container` — tree root; carries `--stv-*` declarations and `data-theme`
+- `.stv__container` — tree root; carries `--stv-*` declarations, `data-theme` (per-instance) and `data-context-theme` (detected)
 - `.stv__tree` — main tree container
 - `.stv__node` — individual node container
 - `.stv__node-content` — node content area

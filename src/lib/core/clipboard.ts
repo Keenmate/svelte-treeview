@@ -49,6 +49,12 @@ export function getClipboardTree(id: string): ClipboardSourceTree | undefined {
 	return _trees.get(id);
 }
 
+/** Every live tree controller (registered on construction, removed on destroy) —
+ *  `window.components['svelte-treeview'].getInstances()` reads this. */
+export function getRegisteredTrees(): ClipboardSourceTree[] {
+	return [..._trees.values()];
+}
+
 // ─── Cross-tree drag set ──────────────────────────────────────────────────
 // Published by the SOURCE tree on drag start so a CROSS-TREE drop/dragover can see
 // what's moving (the target controller only gets ONE reconstituted node from

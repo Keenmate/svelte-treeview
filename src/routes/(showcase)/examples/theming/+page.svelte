@@ -1,5 +1,7 @@
 <script lang="ts">
 	import Tree from '$lib/components/Tree.svelte';
+	import { onMount } from 'svelte';
+	import { observeThemeContext, type ColorScheme } from '$lib/index.js';
 	import type { LTreeNode } from '$lib/ltree/types.js';
 	import RenderModeSwitch from '../RenderModeSwitch.svelte';
 	import { getTreeProps } from '../render-mode.svelte.js';
@@ -84,6 +86,11 @@
 		instanceTheme === 'dark' ? 'dark' : instanceTheme === 'light' ? 'light' : undefined
 	);
 
+	// The PAGE theme signal (the header's light / dark / auto switch writes html[data-theme]),
+	// read through the same core theme context the tree uses — for the "winning signal" line.
+	let pageSignal = $state<ColorScheme | null>(null);
+	onMount(() => observeThemeContext(document.documentElement, undefined, (scheme) => (pageSignal = scheme)));
+
 	const winningSignal = $derived.by(() => {
 		if (instanceTheme !== 'none') return `Per-instance: <Tree theme="${instanceTheme}" />`;
 		if (ancestorSignal !== 'none') {
@@ -92,6 +99,7 @@
 			if (ancestorSignal === 'data-theme-light') return 'Ancestor attr: [data-theme="light"]';
 			if (ancestorSignal === 'data-bs-theme-dark') return 'Ancestor attr: [data-bs-theme="dark"] (Bootstrap)';
 		}
+		if (pageSignal) return `Page theme signal: &lt;html data-theme="${pageSignal}"&gt; (the header switch — set it to ◐ auto to see the color-scheme layer)`;
 		if (pageScheme === 'dark') return 'Page color-scheme: dark (light-dark() resolves to dark branch)';
 		if (pageScheme === 'light') return 'Page color-scheme: light';
 		if (pageScheme === 'light dark') return 'Page color-scheme: light dark (follows OS preference via light-dark())';
@@ -126,16 +134,19 @@
 	<h2>TH01 · Dark Mode Playground</h2>
 	<p class="description">
 		Toggle each signal independently and watch the demo tree react. The
-		"winning signal" line shows which input the CSS is actually responding to
-		based on the precedence order from <code>color-scheme.md</code>.
-		OS <code>prefers-color-scheme</code> can't be controlled from JavaScript —
+		"winning signal" line shows which input wins, highest first: the per-instance
+		<code>theme</code> prop → the theme context (the nearest ancestor signal, read here via
+		<code>themeSource="closest"</code>, else the page's own <code>&lt;html data-theme&gt;</code> —
+		the header switch) → the inherited <code>color-scheme</code> → the OS preference. It's the
+		same KeenMate core detection every web-* component uses (<code>setThemeMode()</code> forces
+		it page-wide). OS <code>prefers-color-scheme</code> can't be controlled from JavaScript —
 		flip your OS or browser dev-tools setting to test that path. The demo lives in its own
-		scope, so these controls never touch the page's light / dark switch in the header.
+		scope, so these controls never touch the header switch.
 	</p>
 
 	<div class="playground-controls card-grid" style="--grid-min: 260px; --grid-gap: 1rem">
 		<fieldset class="check-list">
-			<legend>1. Page <code>color-scheme</code> (on the demo scope, standing in for <code>&lt;html&gt;</code>)</legend>
+			<legend>1. Page <code>color-scheme</code> (on the demo scope, standing in for <code>&lt;html&gt;</code>) — only with no theme signal: header switch on ◐ auto</legend>
 			<label><input type="radio" bind:group={pageScheme} value="normal" /> none</label>
 			<label><input type="radio" bind:group={pageScheme} value="light dark" /> <code>light dark</code> (OS-aware)</label>
 			<label><input type="radio" bind:group={pageScheme} value="dark" /> <code>dark</code> (force)</label>
@@ -143,7 +154,7 @@
 		</fieldset>
 
 		<fieldset class="check-list">
-			<legend>2. Ancestor theme class / attribute (wraps the demo tree)</legend>
+			<legend>2. Ancestor theme class / attribute (wraps the demo tree; read via <code>themeSource="closest"</code>)</legend>
 			<label><input type="radio" bind:group={ancestorSignal} value="none" /> none</label>
 			<label><input type="radio" bind:group={ancestorSignal} value="data-theme-dark" /> <code>[data-theme="dark"]</code></label>
 			<label><input type="radio" bind:group={ancestorSignal} value="data-bs-theme-dark" /> <code>[data-bs-theme="dark"]</code></label>
@@ -190,6 +201,7 @@
 					sortCallback={sortByName}
 					isSorted={true}
 					expandLevel={3}
+					themeSource="closest"
 					theme={treeTheme}
 					selectionMode="multiple"
 					bind:selectedPaths={playgroundHighlight}
@@ -935,10 +947,12 @@ wrapper.className = 'brand-${dynamicBrand}';
 	/* =========================================================================
 	   DARK MODE PLAYGROUND (TH01) + DYNAMIC SWITCHING (TH10)
 	   =========================================================================
-	   Pure CSS theme detection, no JS matchMedia. Every surface is a light-dark()
-	   pair, so a demo signal only has to set color-scheme on the right element:
-	     per-instance theme (:has(.stv__container[data-theme])) > wrapper signal attr/class
-	       > the scope's color-scheme (radio 1; else inherited from the page). */
+	   The tree's scheme comes from the core theme context (data-context-theme, written by
+	   Tree from the page / themeSource="closest" signal) or its own `theme`. Every surface is
+	   a light-dark() pair, so the WRAPPER only has to follow the same scheme:
+	     per-instance theme (:has(.stv__container[data-theme])) > the tree's detected context
+	       (:has([data-context-theme])) > wrapper signal attr/class > the scope's color-scheme
+	       (radio 1; else inherited from the page). */
 
 	/* Default surfaces = the kit's page / main tokens, resolved in the wrapper's scheme. */
 	.playground-wrapper {
@@ -966,14 +980,13 @@ wrapper.className = 'brand-${dynamicBrand}';
 		color-scheme: light;
 	}
 
-	/* The page's own theme switch writes html[data-theme], which the library reads as an
-	   ancestor signal for EVERY tree on the page — and a page-level [data-theme='light']
-	   out-orders a nearer [data-theme='dark'] on the demo wrapper. Inside the TH01 scope that
-	   page-level signal is dropped: a tree without its own `theme` takes the wrapper's
-	   color-scheme, which the scope radio + the wrapper signals above resolve. (Unlayered, so
-	   it beats the library's layered signal rules; per-instance [data-theme] is untouched.) */
-	:global(.th-scheme-scope .stv__container:not([data-theme])) {
-		color-scheme: inherit;
+	/* The wrapper follows the tree's detected theme context too (data-context-theme — the page
+	   signal, or the wrapper's own via themeSource="closest"), so brand surfaces match the tree. */
+	:global(.playground-wrapper:has(.stv__container[data-context-theme='dark']:not([data-theme]))) {
+		color-scheme: dark;
+	}
+	:global(.playground-wrapper:has(.stv__container[data-context-theme='light']:not([data-theme]))) {
+		color-scheme: light;
 	}
 
 	/* The library never paints a background on .stv__container — the demo frame does. The

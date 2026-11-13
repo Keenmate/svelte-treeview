@@ -1,40 +1,36 @@
 /* =============================================================================
    DARK MODE / LIGHT MODE SUPPORT — Strategy B (color-scheme flipping)
    =============================================================================
-   Belt-and-suspenders coverage of the canonical signals matrix:
-     - OS preference: handled by light-dark() in variables.css when the
-       consumer declares `html { color-scheme: light dark }`.
-     - Page-level `color-scheme: dark`: handled by light-dark() inheritance.
-     - Framework theme class on an ancestor: signal selectors below.
-     - Per-instance `data-theme` on .stv__container: signal selectors below.
+   Every visible color in variables.css uses light-dark(<light>, <dark>) for its
+   fallback, so a signal only flips color-scheme and light-dark() resolves the
+   branch. Consumer --base-* themed values flow through untouched.
 
-   Strategy B: every visible color in variables.css uses
-   light-dark(<light>, <dark>) for its fallback. We flip color-scheme on the
-   conditional selectors and let light-dark() resolve the dark branch.
-   Consumer's --base-* themed values flow through untouched (Strategy A's
-   hardcoded dark literals silently replaced them).
+   Resolution precedence (highest first) — same model as web-treeview /
+   web-multiselect (KeenMate core theme context, SPEC §12.10):
+     1. per-instance `theme` prop → .stv__container[data-theme]   (declared last)
+     2. theme context → .stv__container[data-context-theme], written by Tree.svelte
+        from the vendored core detector: setThemeMode() force, else the
+        `themeSource` element ('closest' / selector / Element), else the page
+        (`data-theme` / `data-bs-theme` / `.dark` / `.light` on <html>, then <body>)
+     3. no signal → the inherited color-scheme (no rule here). A page that wants to
+        follow the OS declares `html { color-scheme: light dark }` once.
 
-   Resolution precedence (highest specificity wins):
-     per-instance .stv__container[data-theme]
-       → framework ancestor class
-         → page color-scheme via light-dark() in variables.css
-           → OS preference via @media
+   No ancestor selectors (`[data-theme="dark"] .stv__container`), on purpose: with
+   equal specificity the later rule won regardless of which ancestor was NEARER,
+   so a light page signal beat a dark section around the tree. Detection in JS
+   (themeSource="closest") makes the nearest signal win.
    ============================================================================= */
 
-/* SIGNAL — Framework theme classes (Bootstrap 5.3+, Tailwind, generic) */
-[data-theme="dark"] .stv__container,
-[data-bs-theme="dark"] .stv__container,
-.dark .stv__container {
+/* SIGNAL — Theme context (page / themeSource / setThemeMode) */
+.stv__container[data-context-theme="dark"] {
 	color-scheme: dark;
 }
 
-[data-theme="light"] .stv__container,
-[data-bs-theme="light"] .stv__container,
-.light .stv__container {
+.stv__container[data-context-theme="light"] {
 	color-scheme: light;
 }
 
-/* SIGNAL — Per-instance override via the `theme` prop on <Tree> */
+/* SIGNAL — Per-instance override via the `theme` prop on <Tree>. Declared last, so it wins. */
 .stv__container[data-theme="dark"] {
 	color-scheme: dark;
 }

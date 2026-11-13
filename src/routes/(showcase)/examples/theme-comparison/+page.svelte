@@ -67,6 +67,9 @@
 	];
 	let theme = $state<ThemeKey>('cobalt2');
 	const themeClass = $derived(theme === 'default' ? '' : `theme-${theme}`);
+	// The theme scope's scheme as a theme SIGNAL on the .comparison wrapper, read by the tree via
+	// themeSource="closest" (core theme context) — so a dark theme stays dark on a light page.
+	const themeScheme = $derived(theme === 'default' ? undefined : theme === 'corporate' ? 'light' : 'dark');
 
 	const enc = (svg: string) => `url('data:image/svg+xml,${encodeURIComponent(svg)}')`;
 	const lucide = (paths: string) =>
@@ -318,7 +321,7 @@
 		<span class="muted">→ <code>--base-checkbox-scale</code> (box size via calc, no transform — both components)</span>
 	</div>
 
-	<div class="comparison grid {themeClass}" style="--grid-min: 300px; --grid-gap: 1.5rem" bind:this={comparisonEl}>
+	<div class="comparison grid {themeClass}" data-theme={themeScheme} style="--grid-min: 300px; --grid-gap: 1.5rem" bind:this={comparisonEl}>
 		<section class="panel">
 			<header class="panel-head">
 				@keenmate/web-multiselect <span class="panel-badge">v2.2.0</span>
@@ -341,6 +344,7 @@
 					pathMember="path"
 					displayValueMember="name"
 					sortCallback={sortByPath}
+					themeSource="closest"
 					isCheckboxesShown
 					checkboxMode="cascade"
 					bind:checkedPaths
@@ -430,13 +434,6 @@
 		transition: background 0.2s ease;
 	}
 
-	/* The theme scopes declare color-scheme, but the page's theme switch writes html[data-theme],
-	   which the library reads as an ancestor signal for every tree — that would force the tree's
-	   light-dark() fallbacks to the PAGE scheme inside a dark theme. Let the tree follow its
-	   theme scope instead (unlayered, so it beats the library's layered signal rules). */
-	:global(.comparison .stv__container:not([data-theme])) {
-		color-scheme: inherit;
-	}
 
 	.panel {
 		display: flex;

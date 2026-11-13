@@ -1,179 +1,86 @@
 /**
- * Logging configuration using loglevel with categorized loggers
+ * Categorized loggers for @keenmate/svelte-treeview — a thin shim over the core
+ * logging module (vendored from @keenmate/web-components-core into
+ * `vendor/core/logging`, SPEC §12.1). Core owns the engine (its own `loglevel`
+ * port) and the colour-coded `%c[STV:CAT]` prefix (built in a `methodFactory`,
+ * ordering-safe), so the old vendored `loglevel` + `loglevel-plugin-prefix` are gone.
+ * Mirrors web-treeview's logger.ts; namespace `STV` (the component's prefix, like
+ * web-daterangepicker's `DRP`) so it never shares levels with web-treeview's `TREEVIEW`.
  *
- * Categories:
- * - LTREE:INIT: Tree initialization and configuration
- * - LTREE:DATA: Data insertion, tree manipulation, node operations
- * - LTREE:RENDER: Rendering, progressive rendering, coordinator
- * - LTREE:INDEX: Search indexing operations
- * - LTREE:DRAG: Drag and drop operations
+ * Categories (`STV:*`):
+ * - INIT   — tree initialization and configuration
+ * - DATA   — data insertion, tree manipulation, node operations
+ * - RENDER — progressive / virtual rendering
+ * - INDEX  — search indexing operations
+ * - DRAG   — drag and drop
+ * - UI     — user interactions (click, expand/collapse, selection, menus)
  *
- * Usage:
- * - By default, all logging is disabled (silent mode) for production
- * - Enable logging in browser console:
- *   ```javascript
- *   import { enableLogging, setLogLevel, setCategoryLevel } from '@keenmate/svelte-treeview';
+ * Levels coalesce, closest first: a category's own level → the tree's type level
+ * (these functions / `window.components['svelte-treeview'].logging`) → the page level
+ * (`window.components.logging`, shared with every KeenMate component) → `warn`.
  *
- *   // Enable all logging at debug level
- *   enableLogging();
- *
- *   // Or set a specific log level for all categories
- *   setLogLevel('info');  // 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent'
- *
- *   // Or enable/disable specific categories
- *   disableLogging();  // First disable all
- *   setCategoryLevel('LTREE:RENDER', 'debug');  // Enable only render logs
- *   setCategoryLevel('LTREE:INDEX', 'info');  // Enable only index logs at info level
- *   ```
+ * ```js
+ * import { enableLogging, setLogLevel, setCategoryLevel } from '@keenmate/svelte-treeview';
+ * enableLogging();                           // all categories → debug
+ * setLogLevel('info');                       // all categories → info
+ * setCategoryLevel('STV:INDEX', 'debug');    // one category (bare 'INDEX' works too)
+ * resetLogging();                            // back to the page level (else warn)
+ * ```
  */
+import { createLoggers, type Logger, type LogLevelDesc } from './vendor/core/logging/create-loggers.js';
 
-// Import vendored libraries via ES module wrappers
-import log from './vendor/loglevel/index.js';
-import prefix from './vendor/loglevel/prefix.js';
-import type { Logger } from './vendor/loglevel/index.js';
+export type { Logger, LogLevelDesc };
 
-// Define color scheme
-const COLORS: Record<string, string> = {
-    trace: '#9ca3af',  // Gray
-    debug: '#0ea5e9',  // Blue
-    info: '#10b981',   // Green
-    warn: '#f59e0b',   // Orange
-    error: '#ef4444'   // Red
-};
-
-// Logger categories documentation:
-// - LTREE:INIT: Tree initialization and configuration
-// - LTREE:DATA: Data insertion, tree manipulation, node operations
-// - LTREE:RENDER: Rendering, progressive rendering, coordinator
-// - LTREE:INDEX: Search indexing operations
-// - LTREE:DRAG: Drag and drop operations
-// - LTREE:UI: User interactions (click, expand/collapse, selection)
-
-// Register prefix plugin with the root logger
-prefix.reg(log);
-
-// Set default log level to silent (production mode)
-log.setLevel('silent');
-
-// Prefix format options that include %c markers
-const prefixOptions = {
-    format(level: string, name: string | undefined, timestamp: string) {
-        return `%c[${timestamp}]%c %c[${level.toUpperCase()}]%c %c[${name}]%c`;
-    },
-    timestampFormatter(date: Date) {
-        return date.toTimeString().split(' ')[0] + '.' + date.getMilliseconds().toString().padStart(3, '0');
-    }
-};
+const CATEGORIES = ['INIT', 'DATA', 'RENDER', 'INDEX', 'DRAG', 'UI'] as const;
+type Category = (typeof CATEGORIES)[number];
 
 /**
- * Create a color-aware method factory that intercepts %c codes and adds CSS styles
+ * The single logger bundle for this component. Exported so global-api.ts can expose
+ * its controls on `window.components['svelte-treeview'].logging`.
  */
-function createColorMethodFactory(originalFactory: any) {
-    return function(methodName: string, logLevel: number, loggerName: string) {
-        const rawMethod = originalFactory(methodName, logLevel, loggerName);
+export const logging = createLoggers('STV', CATEGORIES);
 
-        return function(...args: any[]) {
-            // If first arg contains %c color codes, inject the color styles
-            if (args.length > 0 && typeof args[0] === 'string' && args[0].includes('%c')) {
-                const color = COLORS[methodName] || '#666';
-                // Count how many %c markers we have (should be 6 for our format)
-                const numMarkers = (args[0].match(/%c/g) || []).length;
-                const colorStyles: string[] = [];
-                for (let i = 0; i < numMarkers; i++) {
-                    // Alternate between color and reset
-                    colorStyles.push(i % 2 === 0 ? `color: ${color}; font-weight: bold;` : 'color: inherit;');
-                }
-                rawMethod(args[0], ...colorStyles, ...args.slice(1));
-            } else {
-                rawMethod(...args);
-            }
-        };
-    };
+// The category loggers, by their historical names.
+export const initLogger: Logger = logging.loggers.INIT;
+export const dataLogger: Logger = logging.loggers.DATA;
+export const renderLogger: Logger = logging.loggers.RENDER;
+export const indexLogger: Logger = logging.loggers.INDEX;
+export const dragLogger: Logger = logging.loggers.DRAG;
+export const uiLogger: Logger = logging.loggers.UI;
+
+/** Full (namespaced) category names, as they print. */
+export const LOGGING_CATEGORIES = CATEGORIES.map((c) => `STV:${c}`);
+
+/** Enable all logging (default `debug`). */
+export function enableLogging(level?: LogLevelDesc): void {
+	logging.enableLogging(level);
 }
 
-// Create category-specific loggers
-export const initLogger: Logger = log.getLogger('LTREE:INIT');
-export const dataLogger: Logger = log.getLogger('LTREE:DATA');
-export const renderLogger: Logger = log.getLogger('LTREE:RENDER');
-export const indexLogger: Logger = log.getLogger('LTREE:INDEX');
-export const dragLogger: Logger = log.getLogger('LTREE:DRAG');
-export const uiLogger: Logger = log.getLogger('LTREE:UI');
+/** Disable all logging (silent — wins over the page-wide level). */
+export function disableLogging(): void {
+	logging.disableLogging();
+}
 
-// Apply prefix and color styling to all category loggers
-const allLoggers: Logger[] = [
-    initLogger,
-    dataLogger,
-    renderLogger,
-    indexLogger,
-    dragLogger,
-    uiLogger
-];
+/** Clear the tree's own levels: it follows the page-wide level again, else `warn`. */
+export function resetLogging(): void {
+	logging.resetLogging();
+}
 
-allLoggers.forEach(logger => {
-    // First wrap the methodFactory with color injection
-    // This needs to happen BEFORE prefix.apply so the prefix plugin's
-    // output (which contains %c codes) goes through our color handler
-    const originalFactory = logger.methodFactory;
-    logger.methodFactory = createColorMethodFactory(originalFactory);
-
-    // Now apply prefix - it will wrap our color-aware methodFactory
-    prefix.apply(logger, prefixOptions);
-
-    // Set level to rebuild methods
-    logger.setLevel('silent');
-});
-
-// Export the default logger
-export default log;
+/** Set the same level on every category. */
+export function setLogLevel(level: LogLevelDesc): void {
+	logging.setLogLevel(level);
+}
 
 /**
- * List of all logging categories
+ * Set the level of one category — the full name (`STV:INDEX`) or the bare suffix
+ * (`INDEX`). `null` clears it (back to the type / page level).
  */
-export const LOGGING_CATEGORIES = [
-    'LTREE:INIT',
-    'LTREE:DATA',
-    'LTREE:RENDER',
-    'LTREE:INDEX',
-    'LTREE:DRAG',
-    'LTREE:UI'
-];
+export function setCategoryLevel(category: string, level: LogLevelDesc | null = 'debug'): void {
+	const bare = (category.includes(':') ? category.split(':').pop()! : category) as Category;
+	logging.setCategoryLevel(bare, level);
+}
 
-/**
- * Enable logging for all loggers
- */
-export const setLogLevel = (level: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent') => {
-    log.setLevel(level);
-    allLoggers.forEach(logger => logger.setLevel(level));
-};
+// No forced level here: core gives every bundle its default (`warn`), a persisted
+// `km-log:STV:*` level wins, and `window.components.logging` is the page-wide switch.
 
-/**
- * Enable all logging (set to debug level)
- */
-export const enableLogging = () => {
-    setLogLevel('debug');
-};
-
-/**
- * Disable all logging (set to silent level)
- */
-export const disableLogging = () => {
-    setLogLevel('silent');
-};
-
-/**
- * Set log level for a specific category
- */
-export const setCategoryLevel = (
-    category: 'LTREE:INIT' | 'LTREE:DATA' | 'LTREE:RENDER' | 'LTREE:INDEX' | 'LTREE:DRAG' | 'LTREE:UI',
-    level: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent' = 'debug'
-) => {
-    const loggerMap: Record<string, Logger> = {
-        'LTREE:INIT': initLogger,
-        'LTREE:DATA': dataLogger,
-        'LTREE:RENDER': renderLogger,
-        'LTREE:INDEX': indexLogger,
-        'LTREE:DRAG': dragLogger,
-        'LTREE:UI': uiLogger
-    };
-    loggerMap[category]?.setLevel(level);
-};
+export default initLogger;

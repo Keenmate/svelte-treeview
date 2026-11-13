@@ -426,10 +426,17 @@ treeElement.update({ searchTerm: 'new search' });
 There is no in-tree debug panel. Turn on the category loggers instead:
 
 ```typescript
-import { enableLogging, setCategoryLevel } from '@keenmate/svelte-treeview';
+import { enableLogging, setCategoryLevel, resetLogging } from '@keenmate/svelte-treeview';
 
-enableLogging();                            // everything
-setCategoryLevel('LTREE:DATA', 'debug');    // or just one category
+enableLogging();                          // the tree's categories → debug
+setCategoryLevel('STV:DATA', 'debug');    // or just one category (bare 'DATA' works too)
+resetLogging();                           // back to the page-wide level, else warn
 ```
 
-Categories cover data mapping/sorting, filtering and search, tree structure changes, indexer progress and drag-and-drop.
+Categories (`STV:INIT` / `DATA` / `RENDER` / `INDEX` / `DRAG` / `UI`, plus `STV:PERF` for
+`enablePerfLogging()` timings) run on the KeenMate core logger, vendored in
+`src/lib/vendor/core` — the same engine and colour-coded `%c[NS:CAT]` prefix as every web-*
+component. Levels coalesce, closest first: category → the tree (these functions, or
+`window.components['svelte-treeview'].logging`) → the page (`window.components.logging`, one switch
+for every KeenMate component on the page) → `warn`. A level set with a logger's own
+`setLevel(level)` is persisted in `localStorage` (`km-log:STV:<CAT>`).

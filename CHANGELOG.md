@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > 5.0.0 was never published to npm (the previous `[5.0.0] - 2026-10-13 [PUBLISHED]` heading was wrong — npm `rc` is 5.0.0-rc15, `latest` 4.8.0). Its entries are folded into rc16 below.
 
+### Changed — core logger + theme context (web-components-core 1.0.0-rc22, 2026-11-13)
+
+- **Logging on the KeenMate core logger** (vendored in `src/lib/vendor/core/logging`), replacing `loglevel` +
+  `loglevel-plugin-prefix`. Namespace `LTREE` → **`STV`** (`STV:INIT` / `DATA` / `RENDER` / `INDEX` / `DRAG` / `UI`,
+  `STV:PERF`). Default level `silent` → core's `warn`. Levels coalesce: category → tree (`enableLogging()` & co. or
+  `window.components['svelte-treeview'].logging`) → page (`window.components.logging`, shared with every web-* component)
+  → `warn`. New `resetLogging()`; the category loggers + `Logger` / `LogLevelDesc` types are exported.
+  `window.components['svelte-treeview']` now has core's entry shape (`version()`, `config`, `logging`, `getInstances()`);
+  its old `perf` block is gone — use `enablePerfLogging()` / `setPerfThreshold()`.
+- **Dark mode = core theme context** (vendored `vendor/core/environment/theme.ts`, SPEC §12.10). New `themeSource` prop
+  (`'closest'` | selector | Element); the detected scheme is mirrored onto `.stv__container` as `data-context-theme`.
+  The ancestor selectors (`[data-theme="dark"] .stv__container` etc.) are gone: a wrapper signal is read only with
+  `themeSource="closest"`, by default only `<html>` / `<body>` count. **Fixed**: a light page signal beat a nearer dark
+  section (later rule won at equal specificity). New exports `setThemeMode` / `getThemeMode` / `getThemeContext` /
+  `observeThemeContext` — shared with the web-* components on the page.
+
 ### Changed — single render mode, search & indexing (2026-11-12)
 
 - **Recursive rendering removed.** Flat is the only renderer (plain, `isProgressiveRenderEnabled`, or `isVirtualScrollEnabled`). Removed: the `isFlatRenderingEnabled` prop, `RenderCoordinator`, Node's nested child rendering, the `.stv__children` wrapper + `--stv-children-margin-top`, the `.stv__loading-more` row. `onRenderStart` / `onRenderProgress` / `onRenderComplete` and bindable `isRendering` now fire around the flat progressive pass (`processed` counts rows).

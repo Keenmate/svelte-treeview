@@ -4,6 +4,8 @@ PACKAGE: @keenmate/svelte-treeview v5.0.0-rc16 | Svelte 5 hierarchical tree comp
 
 PARITY: Any public API change must update docs/parity.md and be mirrored in the sibling library (@keenmate/web-treeview, C:\Git\KM\web-treeview) — or be recorded there as intentional.
 
+LOGGING: KeenMate core logger vendored in src/lib/vendor/core/logging (README there; 1:1 from web-components-core rc22). src/lib/logger.ts = `createLoggers('STV', [INIT,DATA,RENDER,INDEX,DRAG,UI])` shim (mirrors web-treeview's logger.ts; namespace STV, not TREEVIEW, so it never shares levels with web-treeview); perf-logger.ts = own `STV:PERF` bundle; global-api.ts publishes window.components['svelte-treeview'] in core registerComponent shape (version/config/logging/getInstances = live TreeControllers). Default level warn; page switch window.components.logging.
+
 CORE_FILES:
 - src/lib/components/Tree.svelte - main component
 - src/lib/components/Node.svelte - node renderer  
@@ -153,7 +155,7 @@ STYLING:
 - Tier 3 (features): node.css, toggle-icons.css, checkbox.css, drag-drop.css, drop-zones.css, context-menu.css, loading.css
 - No underscore prefix on file names (legacy SASS convention removed)
 - lightningcss-cli resolves @import at build time
-- Dark mode: light-dark() in color fallbacks + dark-mode.css with @media (prefers-color-scheme: dark), framework classes ([data-theme], [data-bs-theme], .dark), and per-instance `<Tree theme="dark"|"light"/>` prop (forwarded as data-theme on .stv__container)
+- Dark mode = KeenMate core theme context (vendored src/lib/vendor/core/environment/theme.ts, SPEC §12.10, same model as web-treeview): light-dark() fallbacks; dark-mode.css flips color-scheme ONLY on `.stv__container[data-context-theme]` (written by Tree.svelte from observeThemeContext: setThemeMode force → `themeSource` ('closest' | selector | Element) → page `<html>`/`<body>` data-theme / data-bs-theme / .dark / .light) and then per-instance `theme` prop (`[data-theme]`, declared last, wins). NO ancestor selectors (they let a light page beat a nearer dark section); a wrapper signal needs `themeSource="closest"`. Exports setThemeMode/getThemeMode/getThemeContext/observeThemeContext (state on globalThis → shared with web-* components). Guarded by e2e/theme-context.spec.ts + /test/theme-context.
 - CSS variables for theming
 - Classes (stv__ BEM, rc11 rename — NO ltree-* classes remain): highlight states .stv__node-content--selected-bold, --highlight-border, --highlight-brackets, --highlight-fill, --highlight-glow, --scroll-highlight
 - Drag-over classes: .stv__node-content--dragover-highlight, --dragover-glow (plus --glow-before/-after/-child for snap zones)

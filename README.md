@@ -294,15 +294,18 @@ For trees with 10,000+ nodes, enable virtual scroll to keep DOM size constant:
 
 Virtual scroll auto-measures row height from the first rendered node. Override with `virtualScrollItemHeight={32}` if needed. Requires flat rendering mode (the default).
 
-### Performance Logging
+### Logging & Performance Logging
 
-Built-in performance measurement for debugging:
+Categorized `STV:*` loggers on the shared KeenMate core logger (default level `warn`):
 ```typescript
-import { enablePerfLogging } from '@keenmate/svelte-treeview';
-enablePerfLogging();
+import { enableLogging, setCategoryLevel, enablePerfLogging } from '@keenmate/svelte-treeview';
+enableLogging();                          // the tree's categories → debug
+setCategoryLevel('STV:INDEX', 'debug');   // one category
+enablePerfLogging();                      // STV:PERF timings
 
-// Or from browser console:
-window.components['svelte-treeview'].perf.enable()
+// Or from the browser console — same shape as every KeenMate web component:
+window.components['svelte-treeview'].logging.enableLogging()
+window.components.logging.enableLogging('debug')   // page-wide: every component
 ```
 
 **Important**: See the [$state.raw() tip](#quick-start) above - using `$state()` instead of `$state.raw()` for tree data can cause 5,000x slowdown!
