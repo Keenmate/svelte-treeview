@@ -53,7 +53,7 @@
     "@eslint/compat": "^1.2.5",
     "@eslint/js": "^9.18.0",
     "@keenmate/base-css-variables": "^2.0.0-rc06",
-    "@keenmate/web-components-devkit": "^1.0.0-rc13",
+    "@keenmate/web-components-devkit": "^1.0.0-rc14",
     "@playwright/test": "^1.59.1",
     "@sveltejs/adapter-auto": "^6.0.0",
     "@sveltejs/adapter-static": "^3.0.0",

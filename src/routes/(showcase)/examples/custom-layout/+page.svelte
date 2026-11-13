@@ -940,7 +940,7 @@
 		via a snippet parameter. The controller holds all tree state (expand/collapse, search,
 		drag-drop) while you render however you like.
 	</p>
-	<div class="code-block">
+	<div class="code-block" data-language="svelte">
 <pre>{`<TreeProvider nodes={myData} idMember="id" pathMember="path" ...>
   {#snippet children(controller)}
     <!-- controller.tree.tree        → root nodes -->

@@ -3,6 +3,32 @@
 Status (2026-11-13): D1–D5 DONE (shell + every example page on the kit). Open: D6 page-check spec, D7 canvas, §5 upstream. Decisions: keep the
 purple accent; local shims first, upstream later; landing = kit index markup rendered in Svelte.
 
+## Handoff (2026-11-13, before compaction)
+Last commit pushed: 2538b1d (core logger + theme). UNCOMMITTED on feature/core-render-split (user hasn't asked to commit):
+- SF04 (/examples/search): new divisions 1.4 Marketing (5 deep), 1.5 Operations (4), 1.6 HR (3) + description/comment;
+  Clear button; Legend (`h3.subsection` + `table.reference-table`, per-mode rows, live tree-depth threshold).
+- devkit rc14 adopted (2026-11-13): first-column nowrap now upstream (local `.scope-legend` rule dropped); layout calls
+  `attachStackedTables` (phone card stacking) + `attachDemoCopyButtons`; build-time Shiki highlighting of all 52
+  `.code-block[data-language]` blocks via the shim's pre-transform (see "Done — rc14" below).
+- Double-scrollbar fix: `(showcase)/examples-local.css` `.tree-container:has(.stv__virtual-scroll) { max-height:none;
+  overflow:visible }`; `.tree-container-vs` REMOVED (user: one solution only); SF04 `.scope-tree:has(.stv__virtual-scroll)
+  { height:auto }`. Web follow-up noted in docs/PLAN-search-filter-render.md.
+- Library quirk found (not changed): virtual-scroll height auto-detect reads `.stv__container`, which is sized by the
+  400px fallback scroller → always 400px (TreeController ~line 1697).
+- tree-depth explained to user: x = how far above the tree's max depth a match may sit; on the ragged SF04 chart
+  "Team" (level 3–5) qualifies for any x ≥ 1, so it looks like `descendants`.
+
+## Done — rc14 (2026-11-13)
+- `^1.0.0-rc14`. Code highlighting: `scripts/kmwc-sveltekit.ts` `kmwc-sveltekit:code-highlight` (enforce `pre`, before
+  vite-plugin-svelte) rewrites every `<pre>{`…`}</pre>` inside `<div class="code-block" data-language="ts|svelte|css|…">`
+  into Shiki HTML (the devkit's own `loadCodeHighlighter`, kit theme → `--kmwc-code-*` vars). Live `${expr}` holes go
+  through Shiki as sentinel identifiers and come back as Svelte `{expr}`, so reactive blocks stay reactive AND coloured;
+  `${"<"}` constants are inlined. A block may hold several `<pre>`s (`{#if}` tabs). Unknown language / non-literal
+  `<pre>` = build error. Rule for new blocks: `<div class="code-block" data-language="…"><pre>{`…`}</pre></div>`.
+- `attachDemoCopyButtons()` (Copy on every tagged block) + `attachStackedTables()` (`.reference-table` → cards < 768px,
+  `data-label` from `<thead>`) in `(showcase)/+layout.svelte` afterNavigate, in kit.js order. Tables added later
+  (inside `{#if}`) would miss labels — none today.
+
 ## Done — D1–D4 (shell)
 - `@keenmate/web-components-devkit@^1.0.0-rc13` devDep; `package.json#kmwc` (title, tagline, prefix `stv`, purple accent).
 - `src/routes/(showcase)/` route group holds `/` + `/examples/*` (URLs unchanged). `/test` + `/dev` got their own
@@ -143,7 +169,7 @@ Findings to act on:
   NEARER dark one (no nearest-ancestor-wins). The kit's `html[data-theme]` now triggers it on every page; theming +
   theme-comparison work around it with `.stv__container:not([data-theme]) { color-scheme: inherit }` inside their scopes.
   Fix in the library (e.g. `@scope`, or don't treat `html[data-theme]` as forcing).
-- **Kit (upstream candidates):** `.card p` outranks `.note-title` colour; `.note > :last-child { margin-bottom: 0 }`; copy-link
+- **Kit (upstream candidates):** ~~reference-table first-column nowrap~~ (shipped in rc14); `.card p` outranks `.note-title` colour; `.note > :last-child { margin-bottom: 0 }`; copy-link
   button wraps under a long `h2` on phones; a "skin reset" for `<button>`s inside custom-UI demos (kit min-height/fill leak —
   custom-layout resets it twice); maybe `.demo-canvas` (dot grid), numbered steps, busy overlay, clickable result list, tinted `.metric`.
 - **Library gotcha for demos:** `--stv-*` overrides must target `.stv__container` (declared there) — setting them on an ancestor
@@ -190,6 +216,8 @@ Two Svelte repos (treeview + canvas) would carry the same shim, which by the dev
 - spotlight: absolute/path hrefs;
 - `kmwc doctor` / `check-pages`: a `kmwc.examples.framework: 'sveltekit'` mode — skip the vite-preset check, take the page
   list from config (`kmwc.examples.pages` or a URL list) instead of root `*.html`.
+- export `loadCodeHighlighter` from `@keenmate/web-components-devkit/vite` (not in the package exports — the shim imports
+  `src/vite/code-highlighter.js` by file path), or ship the Svelte `.code-block` pre-transform itself;
 - optionally a `@keenmate/web-components-devkit/svelte` with `<ExamplesShell>` — only if canvas adoption proves the shape.
 
 ## 6. Open questions

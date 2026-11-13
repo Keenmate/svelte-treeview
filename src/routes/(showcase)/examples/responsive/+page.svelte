@@ -119,14 +119,14 @@ isNarrow = {isNarrow}   →   {isNarrow ? 'compact rows (title only)' : 'comfort
 	</div>
 	<p class="form-text">↔ The box has a native resize handle (bottom-right) — drag it to cross 460px.</p>
 
-	<div class="code-block"><pre>{`<` + `script lang="ts">
+	<div class="code-block" data-language="svelte"><pre>{`${'<'}script lang="ts">
   import { Tree } from '@keenmate/svelte-treeview';
   import type { ElementSize } from '@keenmate/svelte-treeview';
 
   let box = $state<ElementSize>();
   // A plain reactive derivation over the tree's OWN container box:
   const isNarrow = $derived(!!box && box.width < 460);
-<` + `/script>
+${'<'}/script>
 
 <div class:compact={isNarrow}>
   <Tree nodes={iscoData} idMember="value" pathMember="path" {sortCallback}
@@ -187,7 +187,7 @@ isNarrow = {isNarrow}   →   {isNarrow ? 'compact rows (title only)' : 'comfort
 		</Tree>
 	</div>
 
-	<div class="code-block"><pre>{`import type { ElementSize, DeviceClass } from '@keenmate/svelte-treeview';
+	<div class="code-block" data-language="ts"><pre>{`import type { ElementSize, DeviceClass } from '@keenmate/svelte-treeview';
 
 let expandLevel = $state(2);
 
@@ -243,7 +243,7 @@ function onContainerResize({ size, deviceClass }: { size: ElementSize; deviceCla
 		In <code>info</code> mode, expand a group and click the ⓘ on a long occupation title.
 	</p>
 
-	<div class="code-block"><pre>{`<Tree nodes={iscoData} idMember="value" pathMember="path" {sortCallback}
+	<div class="code-block" data-language="svelte"><pre>{`<Tree nodes={iscoData} idMember="value" pathMember="path" {sortCallback}
       displayValueMember="label"
       nodeTitleOverflow="info" />   <!-- 'wrap' | 'ellipsis' | 'info' -->`}</pre></div>
 </div>
@@ -259,7 +259,7 @@ function onContainerResize({ size, deviceClass }: { size: ElementSize; deviceCla
 		for the whole page).
 	</p>
 
-	<div class="code-block"><pre>{`import {
+	<div class="code-block" data-language="ts"><pre>{`import {
   observeViewport,     // continuous window size (throttled ~30ms)
   observeEnvironment,  // discrete flips only: breakpoint / orientation / pointer / hover
   observeElementSize,  // one element's border-box (shared ResizeObserver)

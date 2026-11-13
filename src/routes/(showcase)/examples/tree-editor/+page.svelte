@@ -1370,7 +1370,7 @@
 	<h2>TE03 · Code Example</h2>
 	<p class="description">Example of handling tree editing operations.</p>
 
-	<div class="code-block">
+	<div class="code-block" data-language="svelte">
 		<pre>{`<script lang="ts">
   import { Tree } from '@keenmate/svelte-treeview';
   import type { LTreeNode, DropPosition, DropOperation } from '@keenmate/svelte-treeview';
@@ -1454,7 +1454,7 @@
 		Enable multi-select with <code>selectionMode="multiple"</code>.
 	</p>
 
-	<div class="code-block">
+	<div class="code-block" data-language="ts">
 		<pre>{`import { uniqueName } from '@keenmate/svelte-treeview';
 import type { TreeController, NodeTransformContext } from '@keenmate/svelte-treeview';
 
@@ -1783,7 +1783,7 @@ function handleKeydown({ event, controller }) {
 <!-- Code Example -->
 <div class="card">
 	<h3>Code Example — Scenario {activeTab}</h3>
-	<div class="code-block">
+	<div class="code-block" data-language="ts">
 		{#if activeTab === 'A'}
 			<pre>{`// Scenario A: Full Redraw with State Preservation
 async function handleDrop({ source, target, position }) {

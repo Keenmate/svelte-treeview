@@ -1,7 +1,8 @@
 /* Component-only example rules for the showcase (unlayered → always beat the devkit's
    @layer kmwc). Colours from --kmwc-* tokens only, so light / dark / auto follow the kit's
-   theme switch. The tree-container + search-bar blocks are web-treeview's examples-local.css
-   verbatim (same demos, same look); the rest is svelte-treeview's own vocabulary that has no
+   theme switch. The tree-container + search-bar blocks come from web-treeview's
+   examples-local.css (same demos, same look), except that a virtual-scroll frame is detected
+   with :has() instead of web's opt-in .tree-container-vs class; the rest is svelte-treeview's own vocabulary that has no
    kit equivalent yet. Page-specific rules stay in each page's own <style>.
    If a SECOND component needs a block below, it belongs in the devkit instead. */
 
@@ -32,8 +33,7 @@
 	max-height: 700px;
 }
 
-/* Performance page: flat mode scrolls inside a tall frame; virtual scroll sizes and scrolls
-   itself, so .tree-container-vs must not cap or clip it. */
+/* Performance page: flat mode scrolls inside a tall frame. */
 .tree-container-tall {
 	min-height: 400px;
 	max-height: 500px;
@@ -41,7 +41,10 @@
 	overflow-y: auto;
 }
 
-.tree-container-vs {
+/* Virtual scroll: the tree is its OWN scroller (sized by virtualScrollContainerHeight, else its
+   parent, else 400px) — a frame that also scrolls shows two scrollbars. Automatic here (the
+   render-mode switch can flip any demo to virtual). */
+.tree-container:has(.stv__virtual-scroll) {
 	max-height: none;
 	overflow: visible;
 }

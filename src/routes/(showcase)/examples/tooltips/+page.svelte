@@ -179,7 +179,7 @@
 		</Tree>
 	</div>
 
-	<div class="code-block">
+	<div class="code-block" data-language="css">
 		<pre>{`/* fixed box — disable shrink */
 :global(.stv__tooltip) {
   --stv-tooltip-width: 22rem;

@@ -13,6 +13,8 @@
 	import {
 		attachChapterLinks,
 		attachCopyLinks,
+		attachDemoCopyButtons,
+		attachStackedTables,
 		mountChapterNav,
 		mountSpotlight,
 		mountThemeSwitch,
@@ -74,6 +76,11 @@
 		attachChapterLinks();
 		mounted.push(mountSpotlight());
 		renderVersionBadges();
+		// Copy button on every .code-block[data-language] (highlighted at build time by
+		// scripts/kmwc-sveltekit.ts).
+		attachDemoCopyButtons();
+		// data-label + ARIA roles so a .reference-table stacks into cards on a phone.
+		attachStackedTables();
 		mounted.push(mountThemeSwitch());
 	});
 

@@ -54,6 +54,12 @@ Working branch: `feature/core-render-split`. NOTHING COMMITTED yet, in either re
   indexerBatchSize row, wrong ~2 s indexing claim, event-table order). svelte parity.md is now synced FROM web's
   newer copy; web's copy still says `createMenuDivider` is "same" — svelte exports `menuDivider` (row added in
   svelte's copy as "to mirror"); copy that row back to web.
+- **Examples: drop `.tree-container-vs`** (2026-11-13). svelte's examples-local.css replaced it with an automatic
+  `.tree-container:has(.stv__virtual-scroll) { max-height: none; overflow: visible }` (a frame around a tree that
+  scrolls itself must not scroll too — SF04 showed double scrollbars). Do the same in web's examples-local.css +
+  examples-performance.html (check `:has()` can see web's virtual scroller — not if it's inside a shadow root).
+  Related library quirk (both?): svelte's virtual-scroll height auto-detect reads `.stv__container`'s height,
+  which is sized BY the 400px fallback scroller, so it always detects 400px.
 - **Mixed uncommitted work in web**: search/index port sits on top of the earlier (also uncommitted)
   checkbox-filter port — commit in sensible chunks.
 

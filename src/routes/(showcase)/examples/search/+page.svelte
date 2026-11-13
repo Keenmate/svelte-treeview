@@ -302,7 +302,8 @@
 	}
 
 	// ── SF04 · Filter Scope (experimental) ──────────────────────────────
-	// A deep, RAGGED org chart: Sales is 6 levels deep, IT / Finance only 3.
+	// A deep, RAGGED org chart: Sales is 6 levels deep, Marketing 5, IT / Finance / Operations
+	// 4, HR only 3.
 	type OrgItem = { id: number; path: string; name: string };
 	const orgData: OrgItem[] = [
 		['1', 'Acme Corp'],
@@ -337,7 +338,26 @@
 		['1.3.1', 'Accounting Team'],
 		['1.3.1.1', 'Karel Horak'],
 		['1.3.2', 'Payroll Team'],
-		['1.3.2.1', 'Lucie Kralova']
+		['1.3.2.1', 'Lucie Kralova'],
+		['1.4', 'Marketing Division'],
+		['1.4.1', 'Marketing EMEA'],
+		['1.4.1.1', 'Team Brand'],
+		['1.4.1.1.1', 'Sofia Rossi'],
+		['1.4.1.1.2', 'Marco Bianchi'],
+		['1.4.1.2', 'Team Digital'],
+		['1.4.1.2.1', 'Elena Conti'],
+		['1.4.2', 'Marketing APAC'],
+		['1.4.2.1', 'Team Events'],
+		['1.4.2.1.1', 'Yuki Tanaka'],
+		['1.5', 'Operations Division'],
+		['1.5.1', 'Logistics Team'],
+		['1.5.1.1', 'Martin Kovac'],
+		['1.5.1.2', 'Zuzana Horvathova'],
+		['1.5.2', 'Facilities Team'],
+		['1.5.2.1', 'Pavel Benes'],
+		['1.6', 'HR'],
+		['1.6.1', 'Klara Novotna'],
+		['1.6.2', 'David Pospisil']
 	].map(([path, name], i) => ({ id: 1000 + i, path, name }));
 
 	const scopeVariants: { scope: FilterScope; title: string; rule: string }[] = [
@@ -545,7 +565,7 @@
 		<p>The search index is built asynchronously after page load. If no results appear immediately, wait a moment.</p>
 	</div>
 
-	<div class="code-block">
+	<div class="code-block" data-language="svelte">
 		<pre>{`${"<"}script>
   let searchInputValue = $state('');
   let searchTerm = $state('');
@@ -648,15 +668,15 @@ ${"<"}/script>
 		</tbody>
 	</table>
 
-	<div class="code-block">
-		<pre>{`// Using searchValueMember (simple)
+	<div class="code-block" data-language="svelte">
+		<pre>{`<!-- Using searchValueMember (simple) -->
 <Tree
   shouldUseInternalSearchIndex={true}
   searchValueMember="name"
   ...
 />
 
-// Using getSearchValueCallback (custom - search multiple fields)
+<!-- Using getSearchValueCallback (custom - search multiple fields) -->
 <Tree
   shouldUseInternalSearchIndex={true}
   getSearchValueCallback={({ node }) => \`\${node.data?.name} \${node.data?.description}\`}
@@ -675,7 +695,7 @@ ${"<"}/script>
 		<pre>npm install flexsearch</pre>
 	</div>
 
-	<div class="code-block">
+	<div class="code-block" data-language="ts">
 		<pre>{`// FlexSearch provides advanced features:
 // - Fuzzy matching
 // - Phonetic search
@@ -694,7 +714,7 @@ ${"<"}/script>
 		Which <em>descendants</em> of a filter match stay visible. Ancestors always do.
 		Same term + same <code>x</code> (<code>filterDescendantDepth</code>) across five
 		<code>filterScope</code> values. The org chart is ragged: Sales is 6 levels deep,
-		IT and Finance only 3. <strong>Bold</strong> = an actual match; the rest is context.
+		Marketing 5, IT / Finance / Operations 4, HR only 3. <strong>Bold</strong> = an actual match; the rest is context.
 	</p>
 
 	<div class="controls">
@@ -705,6 +725,7 @@ ${"<"}/script>
 		{#each scopePresets as preset (preset)}
 			<button class="btn-outline" onclick={() => (scopeTerm = preset)}>{preset}</button>
 		{/each}
+		<button class="secondary" onclick={() => (scopeTerm = '')} disabled={!scopeTerm}>Clear</button>
 	</div>
 	<div class="controls">
 		<label for="sf04-depth">
@@ -748,7 +769,64 @@ ${"<"}/script>
 		{/each}
 	</div>
 
-	<div class="code-block">
+	<h3 class="subsection">Legend</h3>
+	<p>
+		Every mode shows the <strong>matches</strong> and all their <strong>ancestors</strong>; the mode
+		only decides which <em>descendants</em> of a match are added. Levels count from the top:
+		Acme Corp = 1, divisions = 2, … people in Sales = 6 (the tree's max depth).
+	</p>
+	<table class="reference-table">
+		<thead>
+			<tr>
+				<th>filterScope</th>
+				<th>Descendants added for a match</th>
+				<th>What <code>x</code> means</th>
+				<th>Good for</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>matches</code></td>
+				<td>None — just the match (default).</td>
+				<td>—</td>
+				<td>Finding a node; the smallest result.</td>
+			</tr>
+			<tr>
+				<td><code>descendants</code></td>
+				<td>Its whole subtree, always.</td>
+				<td>—</td>
+				<td>"Show me everything under Sales".</td>
+			</tr>
+			<tr>
+				<td><code>tree-depth</code></td>
+				<td>Its whole subtree, but only if the match sits at level ≥ (tree's max depth − <code>x</code>);
+					else none. Judged against the <em>deepest branch of the whole tree</em>.</td>
+				<td>How far up from the tree's bottom level a match may sit and still expand
+					(now: level ≥ {6 - scopeDepth}). Smaller <code>x</code> = only matches near the bottom.</td>
+				<td>Uniform-depth trees, where "near the bottom" means the same everywhere. On this ragged
+					chart a shallow branch (HR, IT) behaves differently from Sales.</td>
+			</tr>
+			<tr>
+				<td><code>subtree-height</code></td>
+				<td>Its whole subtree, but only if that subtree is ≤ <code>x</code> levels deep; else none.
+					Judged per match, from the match down.</td>
+				<td>The biggest subtree worth unfolding (0 = leaves only).</td>
+				<td>Ragged trees: expand small teams, keep a whole division folded.</td>
+			</tr>
+			<tr>
+				<td><code>levels-below</code></td>
+				<td>Exactly <code>x</code> levels under every match (deeper levels hidden).</td>
+				<td>How many levels to show beneath each match.</td>
+				<td>Previewing the next level or two, e.g. "Division" + x=1 = its teams.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p class="muted">
+		<code>shouldExpandFilterDescendants</code> (the checkbox above) only affects the rows a mode
+		<em>adds</em>: unchecked, they're in the tree but start collapsed — the cheap option on big trees.
+	</p>
+
+	<div class="code-block" data-language="svelte">
 		<pre>{`<Tree
   bind:searchTerm
   shouldUseInternalSearchIndex={true}
@@ -782,8 +860,13 @@ ${"<"}/script>
 		min-height: 2.4em;
 	}
 
+	/* Fixed frame so the five columns line up. In virtual mode the tree scrolls itself
+	   (examples-local.css drops the frame's own scroll), so the frame takes its height. */
 	.scope-tree {
 		height: 420px;
+	}
+	.scope-tree:has(:global(.stv__virtual-scroll)) {
+		height: auto;
 	}
 
 	.scope-match {

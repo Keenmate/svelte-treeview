@@ -262,7 +262,7 @@
 	<h2>CM03 · Callback API</h2>
 	<p class="description">Use <code>getContextMenuItemsCallback</code> to dynamically generate menu entries based on the node.</p>
 
-	<div class="code-block">
+	<div class="code-block" data-language="ts">
 		<pre>{`import { menuDivider } from '@keenmate/svelte-treeview';
 import type { TreeMenuContext, TreeMenuEntry } from '@keenmate/svelte-treeview';
 
@@ -288,12 +288,12 @@ function getContextMenu({ node }: TreeMenuContext<FileItem>): TreeMenuEntry<File
 	<h2>CM04 · Snippet + Component API</h2>
 	<p class="description">Use <code>ContextMenuItemC</code> and <code>ContextMenuDividerC</code> components inside the <code>contextMenu</code> snippet.</p>
 
-	<div class="code-block">
-		<pre>{'<'}script{'>'}
-  import {"{"} ContextMenuItemC, ContextMenuDividerC {"}"} from '@keenmate/svelte-treeview';
-{'<'}/script{'>'}
+	<div class="code-block" data-language="svelte">
+		<pre>{`${'<'}script>
+  import { ContextMenuItemC, ContextMenuDividerC } from '@keenmate/svelte-treeview';
+${'<'}/script>
 
-{`<Tree nodes={data} ...>
+<Tree nodes={data} ...>
   {#snippet contextMenu(node, close)}
     <ContextMenuItemC text="Copy" icon="📋" shortcut="C"
       onClick={() => { copy(node); close(); }} />
@@ -319,7 +319,7 @@ function getContextMenu({ node }: TreeMenuContext<FileItem>): TreeMenuEntry<File
 	<h2>CM05 · TreeMenuEntry Types</h2>
 	<p class="description">The unified type definition shared across svelte-treeview and canvas-tree.</p>
 
-	<div class="code-block">
+	<div class="code-block" data-language="ts">
 		<pre>{`// Divider (simple or named) — create with menuDivider(text?)
 interface MenuDivider { divider: true; text?: string; }
 
@@ -411,7 +411,7 @@ type TreeAction = 'copy' | 'cut' | 'paste' | 'delete' | 'expand' | 'collapse'
 	<h2>CM06 · Menu Position Offset</h2>
 	<p class="description">Adjust the context menu position relative to the cursor using <code>contextMenuXOffset</code> and <code>contextMenuYOffset</code>.</p>
 
-	<div class="code-block">
+	<div class="code-block" data-language="svelte">
 		<pre>{`<Tree
   getContextMenuItemsCallback={getContextMenu}
   contextMenuXOffset={8}   // Default: 8px right of cursor

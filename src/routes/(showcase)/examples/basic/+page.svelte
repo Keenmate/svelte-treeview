@@ -229,7 +229,7 @@
 			declaration. The sliders above write them inline on the container (inline wins); the readout
 			shows the resolved px and the derived <em>root gap</em> (the fixed part, independent of indent).
 		</p>
-		<div class="code-block">
+		<div class="code-block" data-language="css">
 			<pre>{`/* one instance — scope by a wrapper class */
 .my-tree .stv__container {
   --stv-indent-size: ${indent}px;
@@ -289,7 +289,7 @@
 		{/key}
 	</div>
 
-	<div class="code-block">
+	<div class="code-block" data-language="svelte">
 		<pre>{`<Tree
   nodes={sampleData}
   idMember="id"
@@ -363,7 +363,7 @@
 		</Tree>
 	</div>
 
-	<div class="code-block">
+	<div class="code-block" data-language="ts">
 		<pre>{`// Get tree reference
 let treeRef: Tree;
 
@@ -419,7 +419,7 @@ treeRef.collapseNodes('1');    // Collapse specific path`}</pre>
 		</Tree>
 	</div>
 
-	<div class="code-block">
+	<div class="code-block" data-language="ts">
 		<pre>{`// Open multiple spines in one pass
 tree.expandNodes(['1.1.1', '3.1.2']);
 
@@ -486,7 +486,7 @@ tree.collapseAll(['1', '3']);`}</pre>
 		</Tree>
 	</div>
 
-	<div class="code-block">
+	<div class="code-block" data-language="ts">
 		<pre>{`// "Focus" — open this path, close everything else. Single emit.
 tree.expandNodes('1.1.1', { isExclusive: true });
 
@@ -514,7 +514,7 @@ tree.expandAll('1', { isExclusive: true });`}</pre>
 <!-- Expand / Collapse API -->
 <div class="card">
 	<h2>BU07 · Expand / Collapse API</h2>
-	<div class="code-block">
+	<div class="code-block" data-language="ts">
 		<pre>{`interface ExpandOptions { isExclusive?: boolean; isSilent?: boolean }
 
 expandNodes(paths: string | string[], options?: ExpandOptions)   // one level, ancestors opened

@@ -411,7 +411,7 @@
 		</div>
 	</div>
 
-	<div class="code-block">
+	<div class="code-block" data-language="svelte">
 		<pre>{`<Tree
   clickBehavior="${clickBehavior}"
   selectionMode="${selectionMode}"
@@ -448,7 +448,7 @@
 		</p>
 	</div>
 
-	<div class="code-block">
+	<div class="code-block" data-language="svelte">
 		<pre>{`<!-- 1. Built-in highlight (just reference it) -->
 <Tree selectedNodeClass="stv__node-content--selected-glow" ... />
 
@@ -538,7 +538,7 @@ End    Go to last visible node
 		</p>
 	</div>
 
-	<div class="code-block">
+	<div class="code-block" data-language="svelte">
 		<pre>{`<!-- Override specific navigation methods -->
 <Tree
   navigationOverrides={{
@@ -624,7 +624,7 @@ End    Go to last visible node
 		</div>
 	</div>
 
-	<div class="code-block">
+	<div class="code-block" data-language="svelte">
 		<pre>{`<Tree
   isCheckboxesShown={true}
   checkboxMode="${policyCheckboxMode}"${policyCheckboxMode === 'cascade' ? `\n  cascadeCheckPolicy="${cascadeCheckPolicy}"` : ''}
@@ -699,7 +699,7 @@ End    Go to last visible node
 : '→ expected 1 in loud mode (form data was overwritten)'}</pre>
 	</div>
 
-	<div class="code-block">
+	<div class="code-block" data-language="ts">
 		<pre>{`// Restore tree state from URL params without firing onSelectionChange
 function restoreFromUrl(nodePath: string) {
   // 1. Load form data based on the URL — preserve this value

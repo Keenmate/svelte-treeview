@@ -347,7 +347,7 @@
 		</tbody>
 	</table>
 
-	<div class="code-block">
+	<div class="code-block" data-language="svelte">
 		<pre>{`<Tree ...>
   {#snippet nodeTemplate(node: any)}
     <span class:stv__node-content--selected-bold={node.isChecked}>
@@ -444,7 +444,7 @@
 		</div>
 	</div>
 
-	<div class="code-block">
+	<div class="code-block" data-language="svelte">
 		<pre>{`<Tree
   ...
   iconSet="${iconSet}"
@@ -545,7 +545,7 @@
 		</tbody>
 	</table>
 
-	<div class="code-block">
+	<div class="code-block" data-language="css">
 		<pre>{`/* Customize drag-over appearance */
 :global(.stv__node-content--dragover-highlight) {
   background-color: rgba(16, 185, 129, 0.15) !important;
@@ -563,7 +563,7 @@
 	<h2>TH07 · Complete Theme Example</h2>
 	<p class="description">Copy this CSS to create a custom theme.</p>
 
-	<div class="code-block">
+	<div class="code-block" data-language="css">
 		<pre>{`/* Custom Purple Theme — set primary once, tints follow via color-mix() */
 .my-custom-theme {
   --stv-accent-color: #667eea;
@@ -741,7 +741,7 @@
 		</tbody>
 	</table>
 
-	<div class="code-block">
+	<div class="code-block" data-language="css">
 		<pre>{`/* Override individual variables — tints follow automatically */
 .my-tree {
   --stv-accent-color: #667eea;   /* hover/dragover/multi-select tints
@@ -773,7 +773,7 @@
 		<code>--base-{`{token}`}</code> first, then to its hardcoded default.
 	</p>
 
-	<div class="code-block">
+	<div class="code-block" data-language="css">
 		<pre>{`/* One theme, every KM component.
    --base-font-size-* and --base-border-radius-* are UNITLESS multipliers
    that the component multiplies by its own --*-rem unit. */
@@ -901,7 +901,7 @@
 		>Dark</button>
 	</div>
 
-	<div class="code-block">
+	<div class="code-block" data-language="ts">
 		<pre>{`// Brand theme: a class on the wrapper that sets --base-* tokens
 wrapper.className = 'brand-${dynamicBrand}';
 

@@ -373,7 +373,7 @@
 	<div class="grid-2">
 		<div>
 			<h3>Data Structure</h3>
-			<div class="code-block">
+			<div class="code-block" data-language="ts">
 				<pre>{`// Your data items
 const data = [
   { id: 1, path: '1', name: 'Root' },
@@ -481,7 +481,7 @@ const data = [
 		</div>
 	</div>
 
-	<div class="code-block">
+	<div class="code-block" data-language="svelte">
 		<pre>{`<Tree
   nodes={data}
   idMember="id"
@@ -525,7 +525,7 @@ const data = [
 					{/snippet}
 				</Tree>
 			</div>
-			<div class="code-block">
+			<div class="code-block" data-language="svelte">
 				<pre>{`<Tree
   treePathSeparator="/"
   ...
@@ -552,7 +552,7 @@ const data = [
 					{/snippet}
 				</Tree>
 			</div>
-			<div class="code-block">
+			<div class="code-block" data-language="svelte">
 				<pre>{`<Tree
   treePathSeparator="::"
   ...
@@ -570,7 +570,7 @@ const data = [
 	<div class="grid-2">
 		<div>
 			<h3>Problematic Data</h3>
-			<div class="code-block">
+			<div class="code-block" data-language="ts">
 				<pre>{`const data = [
   { id: 1, path: '1', name: 'Valid Root' },
   { id: 2, path: '1.1', name: 'Valid Child' },
@@ -621,7 +621,7 @@ const data = [
 		</div>
 	{/if}
 
-	<div class="code-block">
+	<div class="code-block" data-language="svelte">
 		<pre>{`${"<"}script>
   let insertResult;
 ${"<"}/script>
@@ -682,7 +682,7 @@ ${"<"}/script>
 		</div>
 	</div>
 
-	<div class="code-block">
+	<div class="code-block" data-language="ts">
 		<pre>{`// addBranch(parentPath, nodes)  → { success, count }
 // removeBranch(path, childrenOnly?) → { success, count }
 // replaceBranch(path, nodes)        → swap a subtree's contents in place
@@ -804,8 +804,8 @@ treeRef.addBranch(targetPath, serverResult);`}</pre>
 		</tbody>
 	</table>
 
-	<div class="code-block">
-		<pre>{`// Minimal required props
+	<div class="code-block" data-language="svelte">
+		<pre>{`<!-- Minimal required props -->
 <Tree
   nodes={myData}
   idMember="id"
@@ -874,8 +874,8 @@ treeRef.addBranch(targetPath, serverResult);`}</pre>
 		</tbody>
 	</table>
 
-	<div class="code-block">
-		<pre>{`// Accessing node properties in nodeContent snippet
+	<div class="code-block" data-language="svelte">
+		<pre>{`<!-- Accessing node properties in the nodeTemplate snippet -->
 {#snippet nodeTemplate(node: any)}
   <span>
     {node.data?.name}

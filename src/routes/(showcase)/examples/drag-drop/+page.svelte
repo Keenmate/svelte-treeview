@@ -1117,7 +1117,7 @@
 		<LogPanel entries={restrictedLog} empty="Drag a node to see where it lands…" />
 	</div>
 
-	<div class="code-block">
+	<div class="code-block" data-language="ts">
 		<pre>{`// Define allowed drop positions per node
 const data = [
   // Trash: only accept drops as children
@@ -1239,7 +1239,7 @@ const data = [
 		</div>
 	</div>
 
-	<div class="code-block">
+	<div class="code-block" data-language="ts">
 		<pre>{`// per-node: a locked file can't be grabbed at all — it never moves
 getIsDraggableCallback={({ node }) => !node.data?.locked}
 
@@ -1305,7 +1305,7 @@ beforeDragStartCallback={(ctx) => {
 		</Tree>
 	</div>
 
-	<div class="code-block">
+	<div class="code-block" data-language="ts">
 		<pre>{`beforeDragStartCallback={(ctx) => {
   // ctx.dragged is the COMPLETE flattened set (folder + every descendant).
   // Drop the locked node → the omission is a hole moveNodes leaves behind.
@@ -1424,7 +1424,7 @@ beforeDragStartCallback={(ctx) => {
 		<LogPanel entries={produceLog} empty="Drop produce on the pantry…" />
 	</div>
 
-	<div class="code-block">
+	<div class="code-block" data-language="svelte">
 		<pre>{`<Tree
   isTreeDropZoneEnabled={true}        // whole tree = one drop target
   getIsDropAllowedCallback={() => false} // nodes reject direct drops
@@ -1492,7 +1492,7 @@ beforeDragStartCallback={(ctx) => {
 		</ul>
 	</div>
 
-	<div class="code-block">
+	<div class="code-block" data-language="svelte">
 		<pre>{`<!-- Touch events are handled automatically -->
 <Tree
   nodes={data}
@@ -1521,7 +1521,7 @@ beforeDragStartCallback={(ctx) => {
 		> snippet to customize it.
 	</p>
 
-	<div class="code-block">
+	<div class="code-block" data-language="svelte">
 		<pre>{`<Tree nodes={emptyData} ...>
   {#snippet dropPlaceholder()}
     <div style="text-align: center; color: #667eea;">
@@ -1588,7 +1588,7 @@ beforeDragStartCallback={(ctx) => {
 		</tbody>
 	</table>
 
-	<div class="code-block">
+	<div class="code-block" data-language="svelte">
 		<pre>{`<!-- Only allow drops from other trees -->
 <Tree
   nodes={targetData}
@@ -1681,7 +1681,7 @@ beforeDragStartCallback={(ctx) => {
 		</tbody>
 	</table>
 
-	<div class="code-block">
+	<div class="code-block" data-language="css">
 		<pre>{`/* Customize drag-over highlight */
 :global(.stv__node-content--dragover-highlight) {
   background-color: rgba(102, 126, 234, 0.2) !important;
