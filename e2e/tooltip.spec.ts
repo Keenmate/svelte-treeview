@@ -64,3 +64,25 @@ test.describe('node tooltip', () => {
 		await expect(page.locator('.stv__tooltip')).toHaveCount(0);
 	});
 });
+
+// The width vars size the CONTENT box (padding outside) — the KeenMate tooltip contract
+// shared with web-treeview / web-multiselect (shadow DOM, no page reset). /test pages load
+// Bootstrap's `* { box-sizing: border-box }`, so this guards the explicit content-box.
+test('width vars size the content box, even under a border-box page reset', async ({ page }) => {
+	await page.goto('/test/tooltip');
+	await page.waitForLoadState('networkidle');
+	await page.getByTestId('tree-callback').locator('.stv__container').evaluate((el) => {
+		el.style.setProperty('--stv-tooltip-width', '300px');
+		el.style.setProperty('--stv-tooltip-max-width', 'none');
+	});
+	await row(page, 'tree-callback', '1').hover();
+	const tip = page.locator('.stv__tooltip.stv__tooltip--visible');
+	await expect(tip).toBeVisible();
+	const box = await tip.evaluate((el) => {
+		const cs = getComputedStyle(el);
+		const padding = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+		return { boxSizing: cs.boxSizing, content: el.getBoundingClientRect().width - padding };
+	});
+	expect(box.boxSizing).toBe('content-box');
+	expect(Math.round(box.content)).toBe(300);
+});

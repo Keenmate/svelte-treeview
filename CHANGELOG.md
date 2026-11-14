@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > 5.0.0 was never published to npm (the previous `[5.0.0] - 2026-10-13 [PUBLISHED]` heading was wrong — npm `rc` is 5.0.0-rc15, `latest` 4.8.0). Its entries are folded into rc16 below.
 
+### Fixed — tooltip width matches web-treeview (2026-11-13)
+
+- `.stv__tooltip` is now `box-sizing: content-box` (pinned with `!important`), so `--stv-tooltip-width` / `-min-width` / `-max-width` size the content with the padding outside — the same box web-treeview and web-multiselect draw for the same values. Before, a page's `* { box-sizing: border-box }` reset (Bootstrap, the devkit kit) leaked into the light-DOM tooltip and made it 2 × padding narrower. Guarded by e2e/tooltip.spec.ts.
+
 ### Changed — core logger + theme context (web-components-core 1.0.0-rc22, 2026-11-13)
 
 - **Logging on the KeenMate core logger** (vendored in `src/lib/vendor/core/logging`), replacing `loglevel` +
