@@ -1,9 +1,9 @@
 # Plan — row animation on expand / collapse (svelte-treeview + web-treeview)
 
 Status: Step 0 (core helper) DONE in web-components-core (released in core rc24). **Phases 1 (enter) and
-2 (exit) DONE in both trees (2026-11-16, uncommitted)** — see "Phase 1 — as built" / "Phase 2 — as
+2 (exit) DONE in both trees (2026-11-16)** — see "Phase 1 — as built" / "Phase 2 — as
 built". **On by default, no on/off property** (core motion decision 2026-11-15, below). Phase 3 (demos)
-partly done (svelte IG02). The same file lives in both repos
+DONE (basic-page section in both, svelte IG02); open: a web-treeview integration page. The same file lives in both repos
 (`svelte-treeview/docs/PLAN-row-animation.md`, `web-treeview/docs/PLAN-row-animation.md`) — edit one,
 copy to the other. Parity rule applies: same API, same tokens, same visuals, mirrored in both.
 
@@ -295,7 +295,9 @@ Both trees, same shape (svelte `TreeController`, web `TreeEngine`):
 1. **Enter**, both libs: API + tokens + reveal + CSS + fixtures/specs + parity.md rows + docs
    (usage / theming / CHANGELOG / CLAUDE.md).
 2. **Exit** — DONE (2026-11-16), see "Phase 2 — as built".
-3. **Demos:** an "RA · Row animation" section (basic or interaction page, both showcases) showing the
+3. **Demos — DONE (2026-11-16)** except the web integration page: svelte `/examples/basic` BU08, web
+   `examples-basic.html` BU07 (· Row Animation: duration normal / slow / 0s, plain fade, limit, `motion`,
+   `await collapseAll()`). Planned as: an "RA · Row animation" section (basic or interaction page, both showcases) showing the
    duration token at `0s`, the distance at `0` (plain fade) and the limit; IG02 — DONE in svelte
    (2026-11-16: rows follow the motion selects, text says what the tree animates); web-treeview has no
    integration page yet.

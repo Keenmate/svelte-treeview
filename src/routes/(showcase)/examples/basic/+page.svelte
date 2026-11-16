@@ -5,6 +5,7 @@
 	import type { NodeRef } from '$lib/index.js';
 	import RenderModeSwitch from '../RenderModeSwitch.svelte';
 	import { getTreeProps } from '../render-mode.svelte.js';
+	import type { Motion } from '$lib/index.js';
 
 	type Item = { id: number; path: string; name: string; icon: string };
 
@@ -135,6 +136,47 @@
 
 	function handleNodeClick({ node, path }: NodeRef<Item>) {
 		clickedNode = `${node?.data?.name} (path: ${path})`;
+	}
+
+	// Row animation demo: the tokens are declared ON .stv__container, so (like the display
+	// sliders above) they are set inline on the container element itself.
+	type RowSpeed = 'normal' | 'slow' | 'off';
+	const ROW_SPEED: Record<RowSpeed, string> = {
+		normal: 'var(--stv-transition-normal)',
+		slow: 'var(--stv-transition-slow)',
+		off: '0s'
+	};
+	let rowSpeed = $state<RowSpeed>('slow');
+	let isPlainFade = $state(false);
+	let rowLimit = $state(50);
+	let rowMotion = $state<Motion>('auto');
+	let rowTreeWrap = $state<HTMLDivElement | null>(null);
+	let rowTreeRef: Tree<Item>;
+	let rowStatus = $state('');
+
+	function applyRowVars(retries = 10) {
+		const container = rowTreeWrap?.querySelector('.stv__container') as HTMLElement | null;
+		if (!container) {
+			if (retries > 0) requestAnimationFrame(() => applyRowVars(retries - 1));
+			return;
+		}
+		container.style.setProperty('--stv-row-animation-duration', ROW_SPEED[rowSpeed]);
+		if (isPlainFade) container.style.setProperty('--stv-row-animation-distance', '0');
+		else container.style.removeProperty('--stv-row-animation-distance');
+	}
+
+	$effect(() => {
+		rowSpeed; isPlainFade; // re-apply when a control changes
+		tick().then(() => applyRowVars());
+	});
+
+	// collapseAll() returns a Promise that settles once the rows animated out and the
+	// tree really collapsed (onNodeCollapse / onExpandedChange fire then).
+	async function collapseRowTree() {
+		const start = performance.now();
+		rowStatus = 'collapsing…';
+		await rowTreeRef?.collapseAll();
+		rowStatus = `collapsed — the Promise settled after ${Math.round(performance.now() - start)} ms`;
 	}
 
 	function scrollToPath() {
@@ -518,14 +560,115 @@ tree.expandAll('1', { isExclusive: true });`}</pre>
 		<pre>{`interface ExpandOptions { isExclusive?: boolean; isSilent?: boolean }
 
 expandNodes(paths: string | string[], options?: ExpandOptions)   // one level, ancestors opened
-collapseNodes(paths: string | string[], options?: ExpandOptions)
+collapseNodes(paths: string | string[], options?: ExpandOptions): Promise<void>
 toggleNodeExpanded(path: string, options?: ExpandOptions)
 
 expandAll(paths?: string | string[] | null, options?: ExpandOptions)   // null = whole tree,
-collapseAll(paths?: string | string[] | null, options?: ExpandOptions) // paths = those + descendants`}</pre>
+collapseAll(paths?: string | string[] | null, options?: ExpandOptions): Promise<void> // paths = those + descendants
+
+// collapseNodes / collapseAll return Promise<void>: it settles after the hidden rows
+// animated out and the collapse applied (BU08)`}</pre>
 	</div>
 	<p class="description">
-		<code>isSilent: true</code> suppresses events / callbacks only — the tree always re-renders
-		(svelte-treeview has no expand callbacks; the option exists for parity with web-treeview).
+		<code>isSilent: true</code> suppresses the callbacks (<code>onNodeExpand</code>,
+		<code>onNodeCollapse</code>, <code>onExpandedChange</code>) only — the tree always re-renders.
 	</p>
+</div>
+
+<!-- Row animation -->
+<div class="card">
+	<h2>BU08 · Row Animation</h2>
+	<p class="description">
+		Rows an expand reveals fade and slide in; rows a collapse hides shrink and fade out, then the
+		node really collapses. It is on by default and part of <code>motion</code>: the
+		<code>motion</code> prop, a <code>data-motion</code> section, the page-wide
+		<code>window.components.motion</code> or the OS reduced-motion setting turn it off
+		together with every other animation. There is no on/off prop — to turn off just the rows,
+		set <code>--stv-row-animation-duration: 0s</code>.
+	</p>
+
+	<div class="controls">
+		<label>Duration (<code>--stv-row-animation-duration</code>)
+			<select bind:value={rowSpeed}>
+				<option value="normal">--stv-transition-normal (default)</option>
+				<option value="slow">--stv-transition-slow</option>
+				<option value="off">0s (rows off)</option>
+			</select>
+		</label>
+		<label>
+			<input type="checkbox" bind:checked={isPlainFade} />
+			Plain fade (<code>--stv-row-animation-distance: 0</code>)
+		</label>
+		<label><code>rowAnimationLimit</code>
+			<select bind:value={rowLimit}>
+				<option value={50}>50 (default)</option>
+				<option value={5}>5</option>
+				<option value={0}>0 (none)</option>
+			</select>
+		</label>
+		<label><code>motion</code>
+			<select bind:value={rowMotion}>
+				{#each ['auto', 'smooth', 'snappy', 'none'] as level (level)}<option value={level}>{level}</option>{/each}
+			</select>
+		</label>
+	</div>
+	<div class="controls">
+		<button onclick={() => rowTreeRef?.expandAll()}>Expand All</button>
+		<button class="secondary" onclick={collapseRowTree}>await collapseAll()</button>
+		<button onclick={() => rowTreeRef?.expandNodes('1')}>Expand "Documents" (1)</button>
+		<button class="secondary" onclick={() => rowTreeRef?.collapseNodes('1')}>Collapse "Documents" (1)</button>
+	</div>
+
+	<div class="tree-container tree-container-tall" bind:this={rowTreeWrap}>
+		<Tree
+			bind:this={rowTreeRef}
+			nodes={sampleData}
+			idMember="id"
+			pathMember="path"
+			sortCallback={sortByPath}
+			isSorted={true}
+			expandLevel={1}
+			rowAnimationLimit={rowLimit}
+			motion={rowMotion}
+			{...getTreeProps()}
+		>
+			{#snippet nodeTemplate(node: LTreeNode<Item>)}
+				<span>{node.data?.icon} {node.data?.name}</span>
+			{/snippet}
+		</Tree>
+	</div>
+	{#if rowStatus}<p class="form-text">{rowStatus}</p>{/if}
+
+	<div class="code-block" data-language="css">
+		<pre>{`/* Rows only — everything else keeps animating */
+.my-tree .stv__container { --stv-row-animation-duration: 0s; }
+
+/* Slower rows, plain fade (no slide) */
+.my-tree .stv__container {
+  --stv-row-animation-duration: var(--stv-transition-slow);
+  --stv-row-animation-distance: 0;
+}`}</pre>
+	</div>
+	<div class="code-block" data-language="svelte">
+		<pre>{`<!-- motion="none" (or window.components.motion = 'none') = no animation at all -->
+<Tree {nodes} motion="none" ... />
+
+<!-- At most 5 rows animate per expand / collapse; the rest appear / go at once -->
+<Tree {nodes} rowAnimationLimit={5} ... />`}</pre>
+	</div>
+	<div class="code-block" data-language="ts">
+		<pre>{`// The collapse applies after the rows animated out — await it before reading state
+await tree.collapseAll();
+await tree.collapseNodes('1');`}</pre>
+	</div>
+
+	<div class="note">
+		<p class="note-title">Good to know</p>
+		<p>
+			Only expands and collapses animate — never the first render, a reload, a filter or a
+			re-render. Toggling a node again while its rows are animating out cancels the collapse
+			(it stays open). <code>rowAnimationLimit</code> is a performance cap: expanding a node
+			with thousands of children animates just the first rows.
+		</p>
+	</div>
 </div>
