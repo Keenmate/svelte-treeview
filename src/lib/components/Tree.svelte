@@ -66,10 +66,11 @@
 	import type { TreeMenuContext, TreeMenuEntry, TreeMenuItem, TreeActionEventDetail } from '../core/menu.js';
 	import { resolveMenuEntries } from '../vendor/actions/resolve.js';
 	import { containerSize as trackContainerSize, environmentState } from '../core/responsive.svelte.js';
-	import { classifyDevice, getEnvironment } from '../vendor/environment/environment.js';
-	import type { ElementSize } from '../vendor/environment/element-size.js';
-	import type { DeviceClass } from '../vendor/environment/environment.js';
+	import { classifyDevice, getEnvironment } from '../vendor/core/environment/environment.js';
+	import type { ElementSize } from '../vendor/core/environment/element-size.js';
+	import type { DeviceClass } from '../vendor/core/environment/environment.js';
 	import { observeThemeContext, type ColorScheme, type ThemeSource } from '../vendor/core/environment/theme.js';
+	import { adoptMotionStyles, isMotion, publishMotionHook, type Motion } from '../vendor/core/environment/motion.js';
 
 	// NodeCallbacks and NodeConfig are now defined in ../core/TreeController.svelte.ts
 	// and re-exported from index.ts for public consumption.
@@ -152,7 +153,7 @@
 		/** The empty-tree drop zone's content. */
 		dropPlaceholder?: Snippet;
 		/** Shown while `isLoading` (inside the `role="status"` overlay). Beats the page-wide
-		 *  `window.components.renderLoaderCallback`; neither: the default `.stv-loader`
+		 *  `window.components.renderLoadingCallback`; neither: the default `.stv__loader`
 		 *  (`--stv-loader-*` tokens → `--base-loader-*`). */
 		loadingPlaceholder?: Snippet;
 
@@ -204,6 +205,10 @@
 		initialBatchSize?: number;
 		maxBatchSize?: number;
 		isRendering?: boolean; // Bindable: true while progressive rendering is active
+		/** Rows an expand reveals animate in (part of `motion` — `motion="none"`, reduced motion or
+		 *  `--stv-row-animation-duration: 0s` make it instant). At most this many rows animate per
+		 *  expand; the rest appear at once. Default 50; 0 = none. */
+		rowAnimationLimit?: number;
 		onRenderStart?: (ctx: TreeCallbackContext<T>) => void;
 		onRenderProgress?: (stats: RenderStats & TreeCallbackContext<T>) => void;
 		onRenderComplete?: (stats: RenderStats & TreeCallbackContext<T>) => void;
@@ -310,7 +315,7 @@
 		// RESPONSIVE (signal only — the tree renders inline, it does not change its own
 		// behaviour; these surface the container-box signal so a consumer adapts settings
 		// to the space, AB10-style). Backed by the shared ResizeObserver in
-		// vendor/environment; see core/responsive.svelte.ts.
+		// vendor/core/environment; see core/responsive.svelte.ts.
 		/** Fire-and-forget: the tree's own border-box changed (immediate on mount, then on
 		 *  resize, throttled ~30ms). `deviceClass` is the capability+size class of the WINDOW
 		 *  (`classifyDevice`), handy alongside the box for AB10-style adaptation. */
@@ -369,7 +374,7 @@
 
 		// DATA PROVIDERS (get*Callback = returns data the system uses)
 		/** The context menu's entries for the node it opened on: action items (`{ id, text, icon,
-		 *  isDisabled, isDanger, isToggled, isVisible, children, onClick(detail) }`), `menuDivider()`s
+		 *  isDisabled, isDanger, isToggled, isVisible, children, onClick(detail) }`), `createMenuDivider()`s
 		 *  and built-in action names (`'copy'`, `'cut'`, `'paste'`, `'delete'`, `'expand'`,
 		 *  `'collapse'`, `'expand-subtree'`, `'collapse-subtree'`, `'expand-all'`,
 		 *  `'collapse-all'`, `'sort'`, `'sort-subtree'`, `'sort-all'`). `ctx = { node, path, parent,
@@ -396,6 +401,14 @@
 		 *  No signal anywhere → the inherited `color-scheme` applies. `setThemeMode()` forces it
 		 *  for every component on the page. */
 		themeSource?: ThemeSource;
+		/** Animation speed for this tree (core motion level, SPEC §12.16 — the same `motion`
+		 *  every KeenMate web component has): `'none' | 'snappy' | 'smooth'`, or `'auto'`
+		 *  (default) = follow the nearest `data-motion` section, then the page
+		 *  (`window.components.motion`), then the tree's own speeds. Written onto
+		 *  `.stv__container` as `data-motion`; a preset only sets the `--base-duration-*` /
+		 *  `--base-scroll-behavior` tokens the `--stv-transition-*` vars read. The OS
+		 *  `prefers-reduced-motion: reduce` always wins. */
+		motion?: Motion;
 		bodyClass?: string | null | undefined;
 		selectedNodeClass?: string | null | undefined;
 		focusedNodeClass?: string | null | undefined;
@@ -557,6 +570,7 @@
 		initialBatchSize = 20,
 		maxBatchSize = 500,
 		isRendering = $bindable(false),
+		rowAnimationLimit = 50,
 		onRenderStart,
 		onRenderProgress,
 		onRenderComplete,
@@ -626,6 +640,7 @@
 		// VISUALS
 		theme,
 		themeSource,
+		motion = 'auto',
 		bodyClass,
 		iconSet = 'chevron',
 		leafIconClass = 'stv__toggle-icon--leaf',
@@ -727,6 +742,7 @@
 		isProgressiveRenderEnabled,
 		initialBatchSize,
 		maxBatchSize,
+		rowAnimationLimit,
 		onRenderStart,
 		onRenderProgress,
 		onRenderComplete,
@@ -868,9 +884,22 @@
 		});
 	});
 
+	// ── Motion level (core SPEC §12.16, vendored) ──────────────────────────
+	// The presets are plain CSS on [data-motion] (adopted into the document once, shared
+	// with every KeenMate component); publishMotionHook installs window.components.motion,
+	// which core mirrors onto <html data-motion>. Our own level goes on .stv__container,
+	// so the closest level wins through inheritance. An invalid value reads as 'auto'.
+	const motionLevel = $derived<Motion>(isMotion(motion) ? motion : 'auto');
+	$effect(() => {
+		const el = treeContainerRef;
+		if (!el) return;
+		adoptMotionStyles(el);
+		publishMotionHook();
+	});
+
 	// ── Responsive container-box signal (signal only; see core/responsive.svelte.ts) ──
 	// Reactive border-box of the tree's own container, backed by the shared
-	// ResizeObserver in vendor/environment. The tree does NOT change its own render
+	// ResizeObserver in vendor/core/environment. The tree does NOT change its own render
 	// on this — it just surfaces the signal to consumers two ways: the `containerSize`
 	// bindable (declarative reads) and the `onContainerResize` callback (imperative).
 	const _box = trackContainerSize(() => treeContainerRef);
@@ -987,6 +1016,9 @@
 	});
 	$effect(() => {
 		controller.isProgressiveRenderEnabled = isProgressiveRenderEnabled ?? true;
+	});
+	$effect(() => {
+		controller.rowAnimationLimit = rowAnimationLimit ?? 50;
 	});
 	$effect(() => {
 		controller.initialBatchSize = initialBatchSize ?? 20;
@@ -1350,23 +1382,25 @@
 
 	// ── Export public methods (thin proxies) ────────────────────────────
 	export async function expandNodes(paths: string | string[], options?: ExpandOptions) {
-		controller.expandNodes(paths, options);
+		return controller.expandNodes(paths, options);
 	}
 
+	/** Settles after the collapse applied — after the rows animated out (motion). */
 	export async function collapseNodes(paths: string | string[], options?: ExpandOptions) {
-		controller.collapseNodes(paths, options);
+		return controller.collapseNodes(paths, options);
 	}
 
 	export async function toggleNodeExpanded(path: string, options?: ExpandOptions) {
-		controller.toggleNodeExpanded(path, options);
+		return controller.toggleNodeExpanded(path, options);
 	}
 
 	export function expandAll(paths?: string | string[] | null, options?: ExpandOptions) {
 		controller.expandAll(paths, options);
 	}
 
-	export function collapseAll(paths?: string | string[] | null, options?: ExpandOptions) {
-		controller.collapseAll(paths, options);
+	/** Settles after the collapse applied — after the rows animated out (motion). */
+	export function collapseAll(paths?: string | string[] | null, options?: ExpandOptions): Promise<void> {
+		return controller.collapseAll(paths, options);
 	}
 
 	export function filterNodes(term: string, searchOptions?: SearchOptions): void {
@@ -1724,6 +1758,7 @@
 				| 'filterDescendantDepth'
 				| 'shouldExpandFilterDescendants'
 				| 'searchResultLimit'
+				| 'rowAnimationLimit'
 				| 'shouldClickToggleCheckbox'
 				| 'beforeCheckboxToggleCallback'
 				| 'rangeSelectionMode'
@@ -1775,6 +1810,9 @@
 				| 'isTreeDropZoneEnabled'
 				| 'labels'
 				| 'bodyClass'
+				| 'theme'
+				| 'themeSource'
+				| 'motion'
 				| 'iconSet'
 				| 'leafIconClass'
 				| 'toggleIconMode'
@@ -1865,6 +1903,7 @@
 		if (updates.shouldExpandFilterDescendants !== undefined)
 			shouldExpandFilterDescendants = updates.shouldExpandFilterDescendants;
 		if (updates.searchResultLimit !== undefined) searchResultLimit = updates.searchResultLimit;
+		if (updates.rowAnimationLimit !== undefined) rowAnimationLimit = updates.rowAnimationLimit;
 		if (updates.shouldClickToggleCheckbox !== undefined)
 			shouldClickToggleCheckbox = updates.shouldClickToggleCheckbox;
 		if (updates.beforeCheckboxToggleCallback !== undefined)
@@ -1931,6 +1970,9 @@
 			isTreeDropZoneEnabled = updates.isTreeDropZoneEnabled;
 		if (updates.labels !== undefined) labels = updates.labels;
 		if (updates.bodyClass !== undefined) bodyClass = updates.bodyClass;
+		if (updates.theme !== undefined) theme = updates.theme;
+		if (updates.themeSource !== undefined) themeSource = updates.themeSource;
+		if (updates.motion !== undefined) motion = updates.motion;
 		if (updates.iconSet !== undefined) iconSet = updates.iconSet;
 		if (updates.leafIconClass !== undefined) leafIconClass = updates.leafIconClass;
 		if (updates.toggleIconMode !== undefined) toggleIconMode = updates.toggleIconMode;
@@ -2190,6 +2232,7 @@
 	tabindex="0"
 	data-theme={theme}
 	data-context-theme={contextTheme}
+	data-motion={motionLevel === 'auto' ? undefined : motionLevel}
 	data-node-title-overflow={nodeTitleOverflow}
 	data-icon-set={iconSet}
 	data-toggle-icon-mode={toggleIconMode}
@@ -2201,8 +2244,8 @@
 
 	{#if controller.isLoading}
 		{@const loadingText = controller.getLabel('loading')}
-		<!-- Precedence: loadingPlaceholder snippet > page-wide window.components.renderLoaderCallback
-		     (the suite's shared loader hook, read without core) > the default .stv-loader. -->
+		<!-- Precedence: loadingPlaceholder snippet > page-wide window.components.renderLoadingCallback
+		     (the suite's shared loader hook, read without core; optional) > the default .stv__loader. -->
 		{@const pageLoaderHook = loadingPlaceholder ? undefined : getPageLoaderCallback()}
 		{#if pageLoaderHook}
 			<div
@@ -2216,7 +2259,7 @@
 				{#if loadingPlaceholder}
 					{@render loadingPlaceholder()}
 				{:else}
-					<span class="stv-loader" aria-hidden="true"></span>
+					<span class="stv__loader" aria-hidden="true"></span>
 				{/if}
 			</div>
 		{/if}

@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// isLoading overlay = the suite's shared loader: default .stv-loader (--stv-loader-* →
-// --base-loader-*), the page-wide window.components.renderLoaderCallback, and the
+// isLoading overlay = the suite's shared loader: default .stv__loader (--stv-loader-* →
+// --base-loader-*), the page-wide window.components.renderLoadingCallback, and the
 // loadingPlaceholder snippet (wins). Fixture: /test/loader.
 
 const overlay = (page: Page, id: string) => page.locator(`#${id} .stv__loading-overlay`);
@@ -17,7 +17,7 @@ test.describe('loader', () => {
 		await page.evaluate(() => (window as any).setLoading(true));
 		await expect(overlay(page, 'plain')).toHaveAttribute('role', 'status');
 		await expect(overlay(page, 'plain')).toHaveAttribute('aria-label', 'Loading…');
-		const loader = overlay(page, 'plain').locator('.stv-loader');
+		const loader = overlay(page, 'plain').locator('.stv__loader');
 		await expect(loader).toBeVisible();
 		const css = await loader.evaluate((n) => {
 			const s = getComputedStyle(n);
@@ -34,7 +34,7 @@ test.describe('loader', () => {
 			const w = window as any;
 			w.hookLog = [];
 			w.components = w.components ?? {};
-			w.components.renderLoaderCallback = (ctx: any) => {
+			w.components.renderLoadingCallback = (ctx: any) => {
 				w.hookLog.push(`${ctx.component}:${ctx.context}:${ctx.label}:${ctx.element.classList.contains('stv__container')}`);
 				ctx.containerElement.insertAdjacentHTML('beforeend', '<i class="page-hook"></i>');
 				return () => w.hookLog.push('cleanup');
@@ -42,7 +42,7 @@ test.describe('loader', () => {
 			w.setLoading(true);
 		});
 		await expect(overlay(page, 'plain').locator('.page-hook')).toHaveCount(1);
-		await expect(overlay(page, 'plain').locator('.stv-loader')).toHaveCount(0);
+		await expect(overlay(page, 'plain').locator('.stv__loader')).toHaveCount(0);
 		await expect(overlay(page, 'plain')).toHaveAttribute('role', 'status');
 		await page.evaluate(() => (window as any).setLoading(false));
 		await expect(overlay(page, 'plain')).toHaveCount(0);
@@ -53,24 +53,39 @@ test.describe('loader', () => {
 
 		await page.evaluate(() => {
 			const w = window as any;
-			w.components.renderLoaderCallback = () => {
+			w.components.renderLoadingCallback = () => {
 				throw new Error('boom');
 			};
 			w.setLoading(true);
 		});
-		await expect(overlay(page, 'plain').locator('.stv-loader')).toHaveCount(1);
+		await expect(overlay(page, 'plain').locator('.stv__loader')).toHaveCount(1);
+	});
+
+	test('no window.components at all: the snippet and the default loader still work', async ({ page }) => {
+		// Apps that never touch the suite's page hooks must lose nothing.
+		const errors: string[] = [];
+		page.on('pageerror', (error) => errors.push(String(error)));
+		await page.evaluate(() => {
+			const w = window as any;
+			delete w.components;
+			w.setLoading(true);
+			w.setSnippetLoading(true);
+		});
+		await expect(overlay(page, 'plain').locator('.stv__loader')).toHaveCount(1);
+		await expect(overlay(page, 'snippet').locator('.my-snippet')).toHaveText('wait');
+		expect(errors).toEqual([]);
 	});
 
 	test('the loadingPlaceholder snippet beats the page hook', async ({ page }) => {
 		await page.evaluate(() => {
 			const w = window as any;
 			w.components = w.components ?? {};
-			w.components.renderLoaderCallback = ({ containerElement }: any) =>
+			w.components.renderLoadingCallback = ({ containerElement }: any) =>
 				containerElement.insertAdjacentHTML('beforeend', '<i class="page-hook"></i>');
 			w.setSnippetLoading(true);
 		});
 		await expect(overlay(page, 'snippet').locator('.my-snippet')).toHaveText('wait');
 		await expect(overlay(page, 'snippet').locator('.page-hook')).toHaveCount(0);
-		await expect(overlay(page, 'snippet').locator('.stv-loader')).toHaveCount(0);
+		await expect(overlay(page, 'snippet').locator('.stv__loader')).toHaveCount(0);
 	});
 });

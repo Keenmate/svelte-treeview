@@ -5,6 +5,7 @@
     "dev": "vite dev --port 17777",
     "build": "vite build && npm run prepack",
     "check:contract": "base-contract-check src/lib",
+    "check:core-sync": "node scripts/check-core-sync.mjs",
     "build:showcase": "vite build",
     "preview": "vite preview",
     "prepare": "svelte-kit sync || echo ''",

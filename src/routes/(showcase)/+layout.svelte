@@ -88,7 +88,7 @@
 		if (typeof document === 'undefined') return;
 		unmountKit();
 		document.body.classList.remove(INDEX_PAGE_CLASSES.body);
-		// Leaving the showcase (e.g. to /dev/logging): don't leak the page theme onto
+		// Leaving the showcase (e.g. to /dev or /test): don't leak the page theme onto
 		// pages that don't use the kit.
 		delete document.documentElement.dataset[THEME_ATTRIBUTE];
 	});

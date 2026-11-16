@@ -1,0 +1,135 @@
+{
+	"$comment": "What svelte-treeview takes from @keenmate/web-components-core. Checked by `npm run check:core-sync` (scripts/check-core-sync.mjs); the why + how is docs/CORE-SYNC.md. `baseline` = the core commit the local copy was last synced / reviewed against. identical = byte-for-byte (line endings / trailing whitespace aside) — any difference is drift. adapted = copied with documented local edits (see `note`) — flagged when core changed the file since `baseline`. mirror = hand-ported behaviour, no shared file — flagged when the listed core sources changed since `baseline`. After a re-sync or review, bump `baseline` to the core commit you compared against.",
+	"coreRepo": "../web-components-core",
+	"groups": [
+		{
+			"name": "logging",
+			"description": "Core logger (SPEC §12.1 / §12.3): createLoggers, page-wide window.components.logging, perf logger.",
+			"mode": "identical",
+			"baseline": "dd29c43",
+			"files": [
+				["src/logging/log-core.ts", "src/lib/vendor/core/logging/log-core.ts"],
+				["src/logging/create-loggers.ts", "src/lib/vendor/core/logging/create-loggers.ts"],
+				["src/logging/global-logging.ts", "src/lib/vendor/core/logging/global-logging.ts"],
+				["src/logging/logger-registry.ts", "src/lib/vendor/core/logging/logger-registry.ts"],
+				["src/logging/element-logger.ts", "src/lib/vendor/core/logging/element-logger.ts"],
+				["src/logging/perf-logger.ts", "src/lib/vendor/core/logging/perf-logger.ts"],
+				["src/logging/safe-call.ts", "src/lib/vendor/core/logging/safe-call.ts"]
+			]
+		},
+		{
+			"name": "environment",
+			"description": "Theme context (SPEC §12.10), viewport / device / breakpoints, element size, motion level (SPEC §12.16).",
+			"mode": "identical",
+			"baseline": "dd29c43",
+			"files": [
+				["src/environment/theme.ts", "src/lib/vendor/core/environment/theme.ts"],
+				["src/environment/environment.ts", "src/lib/vendor/core/environment/environment.ts"],
+				["src/environment/element-size.ts", "src/lib/vendor/core/environment/element-size.ts"],
+				["src/environment/motion.ts", "src/lib/vendor/core/environment/motion.ts"]
+			]
+		},
+		{
+			"name": "helpers",
+			"description": "dom / global helpers the vendored modules import; animate-out = row animation (docs/PLAN-row-animation.md).",
+			"mode": "identical",
+			"baseline": "bcb4db5",
+			"files": [
+				["src/global/shared-state.ts", "src/lib/vendor/core/global/shared-state.ts"],
+				["src/global/page-setting.ts", "src/lib/vendor/core/global/page-setting.ts"],
+				["src/dom/composed-tree.ts", "src/lib/vendor/core/dom/composed-tree.ts"],
+				["src/dom/once.ts", "src/lib/vendor/core/dom/once.ts"],
+				["src/dom/throttle.ts", "src/lib/vendor/core/dom/throttle.ts"],
+				["src/dom/frame-scheduler.ts", "src/lib/vendor/core/dom/frame-scheduler.ts"],
+				["src/dom/adopt-styles.ts", "src/lib/vendor/core/dom/adopt-styles.ts"],
+				["src/dom/animate-out.ts", "src/lib/vendor/core/dom/animate-out.ts"]
+			]
+		},
+		{
+			"name": "vendored tests",
+			"description": "Core's unit tests for the vendored modules.",
+			"mode": "adapted",
+			"note": "`// @vitest-environment jsdom` docblock (this repo's vitest default is node); theme.test.ts also drops the BlissElement cases. motion.test.ts is NOT vendored (needs BlissElement) — e2e/motion-level.spec.ts covers motion.",
+			"baseline": "bcb4db5",
+			"files": [
+				["src/logging/create-loggers.test.ts", "src/lib/vendor/core/logging/create-loggers.test.ts"],
+				["src/logging/cross-copy.test.ts", "src/lib/vendor/core/logging/cross-copy.test.ts"],
+				["src/logging/perf-logger.test.ts", "src/lib/vendor/core/logging/perf-logger.test.ts"],
+				["src/environment/theme.test.ts", "src/lib/vendor/core/environment/theme.test.ts"],
+				["src/environment/environment.test.ts", "src/lib/vendor/core/environment/environment.test.ts"],
+				["src/environment/element-size.test.ts", "src/lib/vendor/core/environment/element-size.test.ts"],
+				["src/dom/throttle.test.ts", "src/lib/vendor/core/dom/throttle.test.ts"],
+				["src/dom/adopt-styles.test.ts", "src/lib/vendor/core/dom/adopt-styles.test.ts"],
+				["src/dom/animate-out.test.ts", "src/lib/vendor/core/dom/animate-out.test.ts"]
+			]
+		},
+		{
+			"name": "actions",
+			"description": "Clickable-item model + activation runner behind the context menu (src/lib/core/menu.ts).",
+			"mode": "adapted",
+			"note": "coreLog(source,'UI',…) → the tree's uiLogger; ComponentContext = { controller } (no host element); resolve.test.ts: console spies → uiLogger, jsdom docblock. See src/lib/vendor/actions/README.md. Re-synced 2026-11-14.",
+			"baseline": "dd29c43",
+			"files": [
+				["src/actions/types.ts", "src/lib/vendor/actions/types.ts"],
+				["src/actions/resolve.ts", "src/lib/vendor/actions/resolve.ts"],
+				["src/element/before-callback.ts", "src/lib/vendor/actions/before-callback.ts"],
+				["src/actions/resolve.test.ts", "src/lib/vendor/actions/resolve.test.ts"]
+			]
+		},
+		{
+			"name": "tooltip action",
+			"description": "use:tooltip mirrors core createTooltip (portal, autoUpdate, followCursor, theme inherit) on @floating-ui/dom.",
+			"mode": "mirror",
+			"note": "baseline estimated from the local file's last change (2026-10-13).",
+			"baseline": "74d6609",
+			"files": [
+				["src/positioning/tooltip.ts", "src/lib/actions/tooltip.ts"]
+			]
+		},
+		{
+			"name": "info popover",
+			"description": "nodeTitleOverflow='info' full-label popover mirrors core createPopover (+ shouldCloseOnScroll).",
+			"mode": "mirror",
+			"note": "baseline = just before core's 2026-11-07 scroll-close change, which parity.md lists as 'to mirror' (svelte closes on any page scroll).",
+			"baseline": "ca759bd",
+			"files": [
+				["src/positioning/popover.ts", "src/lib/components/Node.svelte"],
+				["src/positioning/scroll-close.ts", "src/lib/components/Node.svelte"]
+			]
+		},
+		{
+			"name": "loader hook",
+			"description": "core/loader.ts reads the page-wide loader hook core's renderLoader() publishes (SPEC §12.14).",
+			"mode": "mirror",
+			"note": "Reviewed 2026-11-14: reads renderLoadingCallback (+ the pre-rc19 renderLoaderCallback), default .stv__loader. The loadingPlaceholder snippet stays first and never needs window.components.",
+			"baseline": "dd29c43",
+			"files": [
+				["src/dom/render-loader.ts", "src/lib/core/loader.ts"]
+			]
+		},
+		{
+			"name": "global API",
+			"description": "global-api.ts publishes window.components['svelte-treeview'] in core registerComponent()'s shape (SPEC §12.3).",
+			"mode": "mirror",
+			"note": "baseline = the core commit current when the logger port landed (2026-11-13).",
+			"baseline": "6c4c2e2",
+			"files": [
+				["src/global/register-component.ts", "src/lib/global-api.ts"],
+				["src/global/instances.ts", "src/lib/global-api.ts"]
+			]
+		},
+		{
+			"name": "context menu",
+			"description": "Svelte context menu vs core menu/ (open-menu, sheet / drawer phone presentations, styles).",
+			"mode": "mirror",
+			"note": "baseline estimated from src/lib/core/menu.ts's last change (2026-10-29). Core's phone sheet / drawer presentations (rc22+) are not in svelte yet — see parity.md.",
+			"baseline": "e6a0771",
+			"files": [
+				["src/menu/open-menu.ts", "src/lib/core/menu.ts"],
+				["src/menu/types.ts", "src/lib/core/menu.ts"],
+				["src/menu/inputs.ts", "src/lib/core/menu.ts"],
+				["src/menu/styles.ts", "src/lib/core/menu.ts"]
+			]
+		}
+	]
+}

@@ -20,12 +20,16 @@ class MockResizeObserver {
   disconnect(): void {
     this.observed.clear();
   }
-  /** Test hook: deliver a resize for the given elements (size read via getBoundingClientRect). */
+  /** Test hook: deliver a resize for the given elements (no borderBoxSize → the offset size is read). */
   emit(...els: Element[]): void {
     this.cb(
       els.map((target) => ({ target }) as unknown as ResizeObserverEntry),
       this as unknown as ResizeObserver,
     );
+  }
+  /** Test hook: deliver one entry carrying a logical `borderBoxSize`, like a real observer. */
+  emitBox(target: Element, inlineSize: number, blockSize: number): void {
+    this.cb([{ target, borderBoxSize: [{ inlineSize, blockSize }] } as unknown as ResizeObserverEntry], this as unknown as ResizeObserver);
   }
 }
 
@@ -34,9 +38,12 @@ function observer(): MockResizeObserver {
   return MockResizeObserver.instances[MockResizeObserver.instances.length - 1]!;
 }
 
+/** The element's layout size (offsetWidth / offsetHeight — what core reads without an entry). */
 function setSize(el: Element, width: number, height = 100): void {
-  el.getBoundingClientRect = () =>
-    ({ width, height, x: 0, y: 0, top: 0, left: 0, right: width, bottom: height, toJSON() {} }) as DOMRect;
+  Object.defineProperties(el, {
+    offsetWidth: { value: width, configurable: true },
+    offsetHeight: { value: height, configurable: true },
+  });
 }
 
 function sized(width: number, height = 100): HTMLElement {
@@ -69,7 +76,7 @@ describe('observeElementSize', () => {
   it('can opt out of the immediate fire', () => {
     const el = sized(800);
     const cb = vi.fn();
-    const unsub = observeElementSize(el, cb, { immediate: false });
+    const unsub = observeElementSize(el, cb, { shouldFireImmediately: false });
     expect(cb).not.toHaveBeenCalled();
     unsub();
   });
@@ -77,7 +84,7 @@ describe('observeElementSize', () => {
   it('fires on a box change (leading edge)', () => {
     const el = sized(800);
     const seen: number[] = [];
-    const unsub = observeElementSize(el, (size) => seen.push(size.width), { immediate: false });
+    const unsub = observeElementSize(el, (size) => seen.push(size.width), { shouldFireImmediately: false });
     setSize(el, 420);
     observer().emit(el);
     expect(seen).toEqual([420]);
@@ -88,7 +95,7 @@ describe('observeElementSize', () => {
     vi.useFakeTimers();
     const el = sized(800);
     const seen: number[] = [];
-    const unsub = observeElementSize(el, (size) => seen.push(size.width), { immediate: false });
+    const unsub = observeElementSize(el, (size) => seen.push(size.width), { shouldFireImmediately: false });
     setSize(el, 600);
     observer().emit(el); // leading — fires now
     setSize(el, 500);
@@ -114,7 +121,7 @@ describe('observeElementSize', () => {
   it('throttleMs: 0 disables throttling (every change fires)', () => {
     const el = sized(800);
     const seen: number[] = [];
-    const unsub = observeElementSize(el, (size) => seen.push(size.width), { immediate: false, throttleMs: 0 });
+    const unsub = observeElementSize(el, (size) => seen.push(size.width), { shouldFireImmediately: false, throttleMs: 0 });
     setSize(el, 600);
     observer().emit(el);
     setSize(el, 500);
@@ -128,7 +135,7 @@ describe('observeElementSize', () => {
     const b = sized(300);
     const seenA: number[] = [];
     const seenB: number[] = [];
-    const ua = observeElementSize(a, (s) => seenA.push(s.width), { immediate: false });
+    const ua = observeElementSize(a, (s) => seenA.push(s.width), { shouldFireImmediately: false });
     const ub = observeElementSize(b, (s) => seenB.push(s.width)); // immediate → baseline 300
     expect(seenB).toEqual([300]);
     expect(MockResizeObserver.instances).toHaveLength(1); // one shared observer
@@ -143,8 +150,8 @@ describe('observeElementSize', () => {
   it('unobserves on unsubscribe and disconnects when the last target leaves', () => {
     const a = sized(800);
     const b = sized(300);
-    const ua = observeElementSize(a, () => {}, { immediate: false });
-    const ub = observeElementSize(b, () => {}, { immediate: false });
+    const ua = observeElementSize(a, () => {}, { shouldFireImmediately: false });
+    const ub = observeElementSize(b, () => {}, { shouldFireImmediately: false });
     const ro = observer();
     ua();
     expect(ro.observed.has(a)).toBe(false);
@@ -156,7 +163,7 @@ describe('observeElementSize', () => {
   it('stops firing after unsubscribe', () => {
     const el = sized(800);
     const cb = vi.fn();
-    const unsub = observeElementSize(el, cb, { immediate: false });
+    const unsub = observeElementSize(el, cb, { shouldFireImmediately: false });
     unsub();
     setSize(el, 420);
     // The shared observer was disconnected; a stray emit reaches nobody.
@@ -173,5 +180,39 @@ describe('SSR / no ResizeObserver', () => {
     const unsub = observeElementSize(el, (size) => seen.push(size));
     expect(seen).toEqual([{ width: 0, height: 0 }]);
     expect(() => unsub()).not.toThrow();
+  });
+});
+
+// Review V-15: the layout size, not the transformed visual box.
+describe('observeElementSize — layout size', () => {
+  it('reads the untransformed size: a scaled element reports its real width', () => {
+    const el = sized(200, 40);
+    el.getBoundingClientRect = () => ({ width: 190, height: 38 }) as DOMRect; // transform: scale(.95)
+    const seen: ElementSize[] = [];
+    const unsub = observeElementSize(el, (size) => seen.push(size), { throttleMs: 0 });
+    observer().emitBox(el, 250, 50);
+    expect(seen).toEqual([{ width: 200, height: 40 }, { width: 250, height: 50 }]);
+    unsub();
+  });
+
+  it('maps the logical borderBoxSize back to width / height in a vertical writing mode', () => {
+    const el = sized(40, 200);
+    el.style.writingMode = 'vertical-rl';
+    document.body.appendChild(el);
+    const seen: ElementSize[] = [];
+    const unsub = observeElementSize(el, (size) => seen.push(size), { throttleMs: 0, shouldFireImmediately: false });
+    observer().emitBox(el, 300, 60); // inline axis is vertical here
+    expect(seen).toEqual([{ width: 60, height: 300 }]);
+    unsub();
+    el.remove();
+  });
+
+  it('an SVG element (no offset size) falls back to its bounding box', () => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.getBoundingClientRect = () => ({ width: 64, height: 32 }) as DOMRect;
+    const seen: ElementSize[] = [];
+    const unsub = observeElementSize(svg, (size) => seen.push(size));
+    expect(seen).toEqual([{ width: 64, height: 32 }]);
+    unsub();
   });
 });

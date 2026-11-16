@@ -1,14 +1,17 @@
 # vendor/actions
 
-The shared clickable-item model (`ActionItem` / `MenuItem` / `menuDivider()`) and the
+The shared clickable-item model (`ActionItem` / `MenuItem` / `createMenuDivider()`) and the
 activation runner (`runAction`: `beforeActionCallback` → item `onClick` → built-in → `onAction`),
-transferred from [`@keenmate/web-components-core`](../../../../web-components-core) **v1.0.0-rc14**:
+transferred from [`@keenmate/web-components-core`](../../../../web-components-core) — last re-synced
+2026-11-14 at core 1.0.0-rc23 **dd29c43** (first copied at e472439). Tracked in
+`scripts/core-sync.json`; `npm run check:core-sync` reports when core changes these files.
 
 | file | source |
 |---|---|
 | `types.ts` | `src/actions/types.ts` |
 | `resolve.ts` | `src/actions/resolve.ts` |
 | `before-callback.ts` | `src/element/before-callback.ts` |
+| `resolve.test.ts` | `src/actions/resolve.test.ts` (+ jsdom docblock; console spies → `uiLogger`) |
 
 svelte-treeview does not depend on web-components-core, so the files are copied with the minimum
 adaptation (each file's header names it):

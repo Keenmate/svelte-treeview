@@ -143,6 +143,8 @@
     { "name": "stv-ease-out", "category": "animation", "usage": "Ease-out (reads --base-ease-out) — entering feedback" },
     { "name": "stv-ease-in", "category": "animation", "usage": "Ease-in (reads --base-ease-in)" },
     { "name": "stv-node-transition", "category": "animation", "usage": "Row transition (default none = instant hover)" },
+    { "name": "stv-row-animation-duration", "category": "animation", "usage": "Row animation (isRowAnimationEnabled): one duration for the enter / exit keyframes (default var(--stv-transition-normal))" },
+    { "name": "stv-row-animation-distance", "category": "animation", "usage": "Row animation: the slide offset revealed rows enter from (0 = a plain fade)" },
     { "name": "stv-toggle-icon-transition", "category": "animation", "usage": "Expand / collapse turn of the glyph" },
 
     { "name": "stv-node-bg-hover", "category": "tree", "usage": "Row hover background (default --*-hover-bg)" },

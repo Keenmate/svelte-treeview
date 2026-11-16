@@ -52,8 +52,8 @@ Working branch: `feature/core-render-split`. NOTHING COMMITTED yet, in either re
   marks it "pending removal"; remove to match svelte.
 - **web docs (uncommitted, reviewed 2026-11-12)**: parity.md/usage.md fixed (stale recursive lines, duplicate
   indexerBatchSize row, wrong ~2 s indexing claim, event-table order). svelte parity.md is now synced FROM web's
-  newer copy; web's copy still says `createMenuDivider` is "same" — svelte exports `menuDivider` (row added in
-  svelte's copy as "to mirror"); copy that row back to web.
+  newer copy. (Resolved 2026-11-14: svelte now exports `createMenuDivider` too — parity.md row says "same";
+  copy that row back to web's parity.md.)
 - **Examples: drop `.tree-container-vs`** (2026-11-13). svelte's examples-local.css replaced it with an automatic
   `.tree-container:has(.stv__virtual-scroll) { max-height: none; overflow: visible }` (a frame around a tree that
   scrolls itself must not scroll too — SF04 showed double scrollbars). Do the same in web's examples-local.css +

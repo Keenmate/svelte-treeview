@@ -8,7 +8,7 @@
 	// .stv__container width via a wrapper, then asserts BOTH exposure surfaces update:
 	//   - bind:containerSize  (declarative $state → $derived isNarrow)
 	//   - onContainerResize   (imperative callback, with the window deviceClass)
-	// Backed by the shared ResizeObserver in vendor/environment (throttled ~30ms).
+	// Backed by the shared ResizeObserver in vendor/core/environment (throttled ~30ms).
 
 	type Item = { id: number; path: string; name: string };
 	const data: Item[] = [

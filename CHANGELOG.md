@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > 5.0.0 was never published to npm (the previous `[5.0.0] - 2026-10-13 [PUBLISHED]` heading was wrong — npm `rc` is 5.0.0-rc15, `latest` 4.8.0). Its entries are folded into rc16 below.
 
+### Added — row animation on expand / collapse, on by default (2026-11-16)
+
+- Rows an expand reveals (toggle, keyboard, `expandNodes`, `expandAll`, accordion, a lazy load's children) now animate in: they fade in while sliding down from `--stv-row-animation-distance` (`0` = a plain fade). **On by default, no on/off prop** — core's rule (SPEC §12.16, rc24): `motion` is the one switch, so `motion="none"` (the tree, a `data-motion` section, or page-wide `window.components.motion`) and OS reduced motion make it instant, and `--stv-row-animation-duration: 0s` turns off just the rows (anywhere the cascade reaches, e.g. `:root`). `rowAnimationLimit` (default `50`, `0` = none) caps how many rows animate per expand; the rest appear at once. Never on first render, a focus / select click (rows re-key on `_rev` — the reveal set gates it, not mounting), a data reload or a filter. Timed by `--stv-row-animation-duration` → `--stv-transition-normal`. Same technique as core's menu sheet (`.stv__node--opening` + `@keyframes stv-row-in`, `--stv-ease-out`); the reveal is cleared after the duration read back with core's `readAnimationMs()` (vendored `src/lib/vendor/core/dom/animate-out.ts`, core rc24, listed in `scripts/core-sync.json`). Same in web-treeview. Collapse animates too: the rows a collapse hides shrink in place and fade (`.stv__node--closing` + `inert`, core `animateOut()` with `--km-exit-height`, `@keyframes stv-row-out`, `--stv-ease-in`), the rows below slide up with them, then the node really collapses — `onNodeCollapse` / `onExpandedChange` fire then. `collapseNodes()` / `collapseAll()` return a Promise that settles after it. Toggling the node again mid-animation cancels it (it stays open); an expand that involves a collapsing node (`collapseAll(); expandNodes(x)`) applies the pending collapse at once, so call order still holds. Built-in menu `collapse` / `collapse-subtree` / `collapse-all` fire their action event after the collapse applied.
+- `collapseNodes()` / `collapseAll()` return a Promise that settles after the collapse applied (`collapseAll` used to return nothing); the `<Tree>` wrappers of `expandNodes` / `collapseNodes` / `toggleNodeExpanded` now hand back the controller's Promise (they returned before it settled). Code that reads `expandedPaths` or the visible rows right after a collapse should `await` it.
+- Showcase: `/examples/integration` IG02 — the tree's rows follow the Page / Section / Tree motion selects (smooth 0.25s, snappy 0.08s, none instant); the text says what `motion` animates on the tree.
+- Vendored core `dom/animate-out.ts` re-synced to core rc24 (`className` may be a function); core-sync `helpers` / `vendored tests` baseline bcb4db5.
+
+### Changed — core actions re-synced, loader hook renamed (web-components-core 1.0.0-rc23, 2026-11-14)
+
+- Menu dividers are `createMenuDivider(text?)` — core's name, the same as web-treeview (was `menuDivider`, new in this unreleased rc).
+- Vendored core actions re-synced: a disabled item never runs (even from a stale button or a shortcut); a pending item blocks only its own tree, keyed by `id`; `null` / `undefined` entries are skipped, so `cond && item` works in a menu list; a labelled divider at the top of a menu is kept as a group heading; a throwing `onAction` no longer turns a finished action into a rejection; `beforeActionCallback` returning a value other than `false` warns (it can only cancel). Built-in toggle items render as `menuitemcheckbox` from core's resolved `isToggle`.
+- The page-wide loader hook is read as `window.components.renderLoadingCallback` (core's name since rc19; the old `renderLoaderCallback` is still read). The default loader element is `.stv__loader` (was `.stv-loader`) — core's `<prefix>__loader`, the same as web-treeview's `.wtv__loader`. The hook stays optional: the `loadingPlaceholder` snippet always wins and never goes through `window.components`, and an app that sets nothing gets the default loader.
+
+### Changed — core environment re-synced + `motion` prop (web-components-core 1.0.0-rc23, 2026-11-14)
+
+- Viewport / device / element-size detection re-synced from core rc23 (was an rc09-era copy) into `src/lib/vendor/core/environment/`. The breakpoint table is now page-wide (shared on `globalThis`, `km-breakpoints-change`), so a `configureBreakpoints()` made for the page's web-* components reaches the tree too. Core's renames come along: the observe option `immediate` is `shouldFireImmediately`; exported types `ObserveOptions` → `ObserveEnvironmentOptions`, `PointerType` → `PointerAccuracy`.
+- New `motion` prop (`'auto' | 'none' | 'snappy' | 'smooth'`, core SPEC §12.16 — the `motion` every KeenMate web component has): written as `data-motion` on `.stv__container`; the closest level wins (prop → a `data-motion` section → the page's `window.components.motion` → the tree's own speeds), `prefers-reduced-motion` always wins. Exports `getPageMotion`, `observePageMotion`, `MOTION_VALUES`, type `Motion`. `update()` now also takes `theme`, `themeSource` and `motion`.
+- Showcase: `/examples/integration` (a tree and a real `<web-multiselect>` under one page-wide switch each — theme mode, motion, breakpoints, loader hook, logging) and `/examples/logging` (the `window.components` registry entry, section for section web-treeview's page; replaces `/dev/logging`).
+- `npm run check:core-sync` + `scripts/core-sync.json`: the list of everything taken from web-components-core and the commit it was synced against (docs/CORE-SYNC.md).
+
 ### Fixed — tooltip width matches web-treeview (2026-11-13)
 
 - `.stv__tooltip` is now `box-sizing: content-box` (pinned with `!important`), so `--stv-tooltip-width` / `-min-width` / `-max-width` size the content with the padding outside — the same box web-treeview and web-multiselect draw for the same values. Before, a page's `* { box-sizing: border-box }` reset (Bootstrap, the devkit kit) leaked into the light-DOM tooltip and made it 2 × padding narrower. Guarded by e2e/tooltip.spec.ts.
@@ -81,7 +101,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **The `isLoading` overlay and the per-node lazy-load toggle draw the suite's shared loader**
   (base-css-variables "Loader" contract, = web-treeview / web-components-core `renderLoader`): a
-  single-colour mask shape (`.stv-loader`) instead of the bordered ring. **Removed** tokens
+  single-colour mask shape (`.stv__loader`) instead of the bordered ring. **Removed** tokens
   `--stv-spinner-duration`, `--stv-spinner-size`, `--stv-spinner-track`, `--stv-spinner-color`,
   `--stv-expand-spinner-size` / `-width` / `-track` / `-color` and the `.stv__loading-spinner`
   class / `stv-spin` keyframes. **New** tokens `--stv-loader-icon` / `-rotate` / `-duration` /
@@ -89,10 +109,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `--stv-loader-inline-size` (size × 0.75, the toggle) and `--stv-loader-color` (= accent); keyframes
   `stv-loader-spin`. Under reduced motion the loader slows (contract: 1.5s), never stops.
 - **Precedence of the overlay content:** `loadingPlaceholder` snippet > the page-wide
-  `window.components.renderLoaderCallback` (the hook web components use; read without depending on
+  `window.components.renderLoadingCallback` (the hook web components use; read without depending on
   web-components-core — ctx `{ component: 'svelte-treeview', context: 'overlay', containerElement,
   element, label }`, a returned cleanup runs when loading ends, a throwing hook falls back to the
-  default) > the default `.stv-loader`. The overlay keeps `role="status"` + `aria-label` = label
+  default) > the default `.stv__loader`. The overlay keeps `role="status"` + `aria-label` = label
   `loading`. New type exports `LoaderRenderContext`, `RenderLoaderCallback`.
 - Requires `@keenmate/base-css-variables` ^2.0.0-rc06 (defines `--base-loader-*`).
 
@@ -242,7 +262,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `src/lib/vendor/actions` from web-components-core v1.0.0-rc14)** — `getContextMenuItemsCallback(ctx)`
   gets `TreeMenuContext { node, path, parent, siblings, controller }` and returns entries: core
   action items (`{ id, text, icon, isDisabled, isDanger, isToggled, isVisible, children, onClick(detail),
-  get*Callback(ctx), … }`), `menuDivider(text?)` (exported) and **built-in action names** `copy cut
+  get*Callback(ctx), … }`), `createMenuDivider(text?)` (exported) and **built-in action names** `copy cut
   paste delete expand collapse expand-subtree collapse-subtree expand-all collapse-all sort sort-subtree
   sort-all` (texts from `labels`; act on the selection when the clicked node is in it, else on the
   clicked node). **New `beforeActionCallback`** (`false` cancels) and **`onAction`** — order
@@ -516,7 +536,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **BREAKING: the old context-menu ctx / types** — `ContextMenuContext` (`{ node, selectedNodes,
   checkedNodes, closeMenu }`), `ContextMenuItem`, `ContextMenuDivider`, `ContextMenuEntry` (types) →
-  `TreeMenuContext` / `TreeMenuItem` / `MenuDivider` (`menuDivider()`) / `TreeMenuEntry`. Item
+  `TreeMenuContext` / `TreeMenuItem` / `MenuDivider` (`createMenuDivider()`) / `TreeMenuEntry`. Item
   `onClick` receives the action detail (menu ctx + `{ action, id, item, source, … }`). Read the
   selection via `ctx.controller.getSelectedNodes()`, close via `ctx.controller.closeContextMenu()`.
 - **BREAKING: `DEFAULT_TREE_LABELS` → `DEFAULT_LABELS`** (same name as web-treeview).

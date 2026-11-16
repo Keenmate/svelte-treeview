@@ -14,10 +14,19 @@ describe('getPageLoaderCallback (page-wide hook, read without core)', () => {
 		expect(getPageLoaderCallback()).toBeUndefined();
 	});
 
-	it('reads window.components.renderLoaderCallback (plain property or core accessor)', () => {
+	it('reads window.components.renderLoadingCallback (plain property or core accessor)', () => {
 		const cb = () => {};
-		g.components = { renderLoaderCallback: cb };
+		g.components = { renderLoadingCallback: cb };
 		expect(getPageLoaderCallback()).toBe(cb);
+	});
+
+	it('still reads the pre-rc19 name renderLoaderCallback, but the current name wins', () => {
+		const legacy = () => {};
+		const current = () => {};
+		g.components = { renderLoaderCallback: legacy };
+		expect(getPageLoaderCallback()).toBe(legacy);
+		g.components = { renderLoaderCallback: legacy, renderLoadingCallback: current };
+		expect(getPageLoaderCallback()).toBe(current);
 	});
 
 	it("falls back to core's shared Symbol state; a non-function reads as unset", () => {

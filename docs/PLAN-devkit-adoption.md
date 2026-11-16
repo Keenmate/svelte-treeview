@@ -104,7 +104,8 @@ doctor/check-pages — until the devkit learns about SvelteKit (§5).
 - Move showcase routes into a route group `src/routes/(showcase)/` (`/` + `/examples/*`; URLs unchanged) whose layout
   imports the kit CSS + local CSS. `/test/*` and `/dev/*` keep a bare layout — e2e fixtures must not inherit kit styling of
   native inputs (geometry assertions). `/dev/logging` is linked from the landing page → either move it under examples or
-  give it the showcase layout too.
+  give it the showcase layout too. DONE 2026-11-14: replaced by `/examples/logging` (LG01–LG06, = web's page) and
+  `/examples/integration` (IG01–IG05); `/dev/logging` deleted.
 
 ### D2 — head bootstrap + page config
 - `app.html`: inline the kit's theme bootstrap (output of `renderThemeBootstrapScript()` — same localStorage key
@@ -208,6 +209,8 @@ Goal: example pages use the devkit kit's vocabulary; per-page `<style>` keeps ON
 ### D7 — follow-ups
 - Same treatment for `../svelte-treeview-canvas` examples (it would reuse D2–D4 verbatim → strong argument for D-upstream).
 - CLAUDE.md EXAMPLES section rewrite once done.
+- web-treeview: an `examples-integration.html` twin of svelte's `/examples/integration` (IG01–IG05, a
+  `<web-treeview>` next to a `<web-multiselect>`) — the parity rule for demos; deferred with the other web work.
 
 ## 5. Devkit changes worth proposing upstream (instead of local workarounds)
 Two Svelte repos (treeview + canvas) would carry the same shim, which by the devkit's own rule belongs in the devkit:

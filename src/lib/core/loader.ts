@@ -1,15 +1,21 @@
 /**
- * The page-wide loader hook of the KeenMate suite — `window.components.renderLoaderCallback`
+ * The page-wide loader hook of the KeenMate suite — `window.components.renderLoadingCallback`
  * (web-components-core `renderLoader()`, SPEC §12.14) — read WITHOUT depending on core.
+ * Mirrored from core `src/dom/render-loader.ts` (tracked in scripts/core-sync.json).
+ *
+ * OPTIONAL: an app that never touches `window.components` loses nothing — the tree's own
+ * `loadingPlaceholder` snippet always wins and is never routed through this hook, and with
+ * neither the default loader is drawn.
  *
  * Core publishes the hook as an accessor on `window.components` whose value lives on
  * `globalThis[Symbol.for('@keenmate/web-components-core:loader')]` (shared by every bundled
  * core copy). A page with no core component may have assigned it as a plain property.
- * Reading `window.components.renderLoaderCallback` covers both; the Symbol state is the
- * fallback when `window.components` was replaced after core published.
+ * Reading `window.components.renderLoadingCallback` covers both; the Symbol state is the
+ * fallback when `window.components` was replaced after core published. The pre-rc19 core
+ * name `renderLoaderCallback` is still read last, so a page written for it keeps working.
  *
  * The tree's precedence: `loadingPlaceholder` snippet > this page hook > the default
- * `.stv-loader` (drawn from the `--stv-loader-*` tokens).
+ * `.stv__loader` (core's `<prefix>__loader`, drawn from the `--stv-loader-*` tokens).
  */
 import { uiLogger } from '../logger.js';
 
@@ -32,15 +38,20 @@ export type RenderLoaderCallback = (ctx: LoaderRenderContext) => void | (() => v
 
 const STATE_KEY = Symbol.for('@keenmate/web-components-core:loader');
 
-/** The page-wide `window.components.renderLoaderCallback`, or `undefined`. */
+/** The page-wide `window.components.renderLoadingCallback`, or `undefined`. */
 export function getPageLoaderCallback(): RenderLoaderCallback | undefined {
 	if (typeof globalThis === 'undefined') return undefined;
 	const g = globalThis as unknown as {
-		components?: { renderLoaderCallback?: unknown };
+		components?: { renderLoadingCallback?: unknown; renderLoaderCallback?: unknown };
 		[STATE_KEY]?: { callback?: unknown };
 	};
-	const cb = g.components?.renderLoaderCallback ?? g[STATE_KEY]?.callback;
-	return typeof cb === 'function' ? (cb as RenderLoaderCallback) : undefined;
+	const candidates = [
+		g.components?.renderLoadingCallback,
+		g[STATE_KEY]?.callback,
+		g.components?.renderLoaderCallback // pre-rc19 core name
+	];
+	const cb = candidates.find((candidate) => typeof candidate === 'function');
+	return cb as RenderLoaderCallback | undefined;
 }
 
 export interface PageLoaderParams {
@@ -50,7 +61,7 @@ export interface PageLoaderParams {
 
 /**
  * Svelte action: let the page hook fill `node` (the overlay, already `role="status"`).
- * A throwing hook is logged and the default `.stv-loader` is drawn instead — a loading
+ * A throwing hook is logged and the default `.stv__loader` is drawn instead — a loading
  * state is never blank. On destroy: the hook's cleanup runs and the nodes it added go.
  */
 export function pageLoader(node: HTMLElement, params: PageLoaderParams) {
@@ -69,10 +80,10 @@ export function pageLoader(node: HTMLElement, params: PageLoaderParams) {
 		});
 		if (typeof result === 'function') cleanup = result;
 	} catch (error) {
-		uiLogger.error('window.components.renderLoaderCallback threw — drawing the default loader', error);
+		uiLogger.error('window.components.renderLoadingCallback threw — drawing the default loader', error);
 		discard();
 		const span = node.ownerDocument.createElement('span');
-		span.className = 'stv-loader';
+		span.className = 'stv__loader';
 		span.setAttribute('aria-hidden', 'true');
 		node.appendChild(span);
 	}

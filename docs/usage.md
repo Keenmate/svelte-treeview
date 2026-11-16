@@ -88,6 +88,7 @@ Without both requirements, no search indexing will occur.
 | `isProgressiveRenderEnabled` | `boolean` | `true` | Progressively render nodes in batches |
 | `initialBatchSize` | `number` | `20` | First batch size for progressive rendering |
 | `maxBatchSize` | `number` | `500` | Maximum batch size cap |
+| `rowAnimationLimit` | `number` | `50` | Rows an expand reveals animate in (fade + slide, `--stv-row-animation-duration` / `-distance`); at most this many per expand, the rest appear at once; `0` = none. No on/off prop: `motion="none"` / reduced motion stop it, `--stv-row-animation-duration: 0s` stops just the rows |
 | `isVirtualScrollEnabled` | `boolean` | `false` | Enable virtual scrolling (renders visible + overscan rows) |
 | `virtualScrollItemHeight` | `number` | auto | Explicit row height in px (auto-measured from first row if not set) |
 | `virtualScrollOverscan` | `number` | `5` | Extra rows rendered above/below viewport |
@@ -149,7 +150,7 @@ Same model as `@keenmate/web-treeview` (core `/actions`, vendored). No menu by d
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `getContextMenuItemsCallback` | `(ctx: TreeMenuContext<T>) => TreeMenuEntry<T>[]` | `undefined` | The menu for the node it opened on. `ctx = { node, path, parent, siblings, controller }`. Entries: action items (`{ id, text, icon, tooltip, shortcut, cssClass, isVisible, isDisabled, isDanger, isToggled, get*Callback(ctx), children / getChildrenCallback, onClick(detail), shouldCloseOnClick }`), `menuDivider(text?)`, and **built-in action names** (`'copy' 'cut' 'paste' 'delete' 'expand' 'collapse' 'expand-subtree' 'collapse-subtree' 'expand-all' 'collapse-all' 'sort' 'sort-subtree' 'sort-all'`, or `{ action: 'copy', …overrides }`). Built-ins take their text from `labels`, act on the **selection when the clicked node is in it, else on the clicked node** (`paste` pastes into the clicked node; `delete` = `runDeleteCommand`, `isDanger`; `paste` disabled with an empty clipboard; expand / collapse / sort disabled when nothing applies). |
+| `getContextMenuItemsCallback` | `(ctx: TreeMenuContext<T>) => TreeMenuEntry<T>[]` | `undefined` | The menu for the node it opened on. `ctx = { node, path, parent, siblings, controller }`. Entries: action items (`{ id, text, icon, tooltip, shortcut, cssClass, isVisible, isDisabled, isDanger, isToggled, get*Callback(ctx), children / getChildrenCallback, onClick(detail), shouldCloseOnClick }`), `createMenuDivider(text?)`, and **built-in action names** (`'copy' 'cut' 'paste' 'delete' 'expand' 'collapse' 'expand-subtree' 'collapse-subtree' 'expand-all' 'collapse-all' 'sort' 'sort-subtree' 'sort-all'`, or `{ action: 'copy', …overrides }`). Built-ins take their text from `labels`, act on the **selection when the clicked node is in it, else on the clicked node** (`paste` pastes into the clicked node; `delete` = `runDeleteCommand`, `isDanger`; `paste` disabled with an empty clipboard; expand / collapse / sort disabled when nothing applies). |
 | `beforeActionCallback` | `(detail: TreeActionEventDetail<T>) => boolean \| void \| Promise<…>` | `undefined` | Runs before an item activates; `false` cancels (no `onClick`, built-in or `onAction`). |
 | `onAction` | `(detail: TreeActionEventDetail<T>) => void` | `undefined` | An item ran — after its `onClick` and the built-in. `detail` = the menu ctx + `{ action ('custom' for consumer items), id, item, source: 'context-menu', sourceEvent, triggerElement, dataset }`. |
 
@@ -229,7 +230,7 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `treeFooter` | | Tree footer content |
 | `noData` | | Content shown when tree has no data (falls back to `labels.noData` "No data", or `labels.noResults` "No results found" when the search filter matched nothing) |
 | `dropPlaceholder` | | Content shown in empty drop target tree |
-| `loadingPlaceholder` | | Content shown while `isLoading` is true (in the `role="status"` overlay). Beats the page-wide `window.components.renderLoaderCallback`; neither → the default shared loader (`--stv-loader-*`, see [theming](theming.md#loader)) |
+| `loadingPlaceholder` | | Content shown while `isLoading` is true (in the `role="status"` overlay). Beats the page-wide `window.components.renderLoadingCallback` (optional — apps that never set it lose nothing); neither → the default shared loader (`--stv-loader-*`, see [theming](theming.md#loader)) |
 | `contextMenu` | `(node, closeMenu)` | Context menu template (an alternative to `getContextMenuItemsCallback`; use `ContextMenuItemC` / `ContextMenuDividerC`) |
 
 ## Public methods
@@ -237,10 +238,10 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | Method | Parameters | Description |
 |--------|------------|-------------|
 | `expandNodes` | `paths: string \| string[], opts?: ExpandOptions` | Expand the nodes one level (ancestors opened) |
-| `collapseNodes` | `paths: string \| string[], opts?: ExpandOptions` | Collapse the nodes (one level) |
+| `collapseNodes` | `paths: string \| string[], opts?: ExpandOptions` | Collapse the nodes (one level). The rows they hide animate out first (motion); the Promise settles once the collapse applied — `onNodeCollapse` / `onExpandedChange` fire then. An expand during the animation: the same node → cancelled (stays open); a related one → the collapse applies at once, so `collapseAll(); expandNodes(x)` ends as without motion |
 | `toggleNodeExpanded` | `path: string, opts?: ExpandOptions` | Expand a collapsed node / collapse an expanded one (the toggle UI path: accordion + `beforeExpandCallback`; leaves / non-collapsible / pending nodes are ignored). The expand methods return a Promise that settles after an async `beforeExpandCallback` |
 | `expandAll` | `paths?: string \| string[] \| null, opts?: ExpandOptions` | Whole tree (`null`/omitted), or the given nodes + all descendants |
-| `collapseAll` | `paths?: string \| string[] \| null, opts?: ExpandOptions` | Whole tree (`null`/omitted), or the given nodes + all descendants |
+| `collapseAll` | `paths?: string \| string[] \| null, opts?: ExpandOptions` | Whole tree (`null`/omitted), or the given nodes + all descendants. Returns a Promise; animates like `collapseNodes` |
 | `filterNodes` | `searchTerm: string, searchOptions?: SearchOptions` | Filter the tree display using internal search index with optional FlexSearch options |
 | `searchNodes` | `searchTerm: string \| null \| undefined, searchOptions?: SearchOptions` | Search nodes using internal search index and return matching nodes with optional FlexSearch options |
 | `scrollToPath` | `path: string, options?: ScrollToPathOptions` | Scroll to and highlight a specific node |

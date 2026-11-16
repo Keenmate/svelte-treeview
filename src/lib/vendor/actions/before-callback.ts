@@ -1,4 +1,4 @@
-// Vendored from @keenmate/web-components-core v1.0.0-rc14 — src/element/before-callback.ts.
+// Vendored from @keenmate/web-components-core dd29c43 — src/element/before-callback.ts (tracked in scripts/core-sync.json).
 // Adapted (see README.md): `coreLog(source, 'UI', 'ELEMENT')` → the tree's `uiLogger`. Keep in sync by re-copying; don't diverge.
 import { uiLogger } from '../../logger.js';
 
@@ -68,7 +68,11 @@ export function runBeforeCallbackSync<Ctx, V = unknown>(
   try {
     const result = fn(ctx);
     if (result && typeof (result as PromiseLike<unknown>).then === 'function') {
-      uiLogger.warn(`${name} must be synchronous; a returned Promise is ignored (continuing)`);
+      uiLogger.warn(
+        `${name} must be synchronous here; a returned Promise is ignored (continuing) — resolving to false cannot cancel`,
+      );
+      // Nobody awaits it: report a rejection instead of leaving it unhandled.
+      Promise.resolve(result).then(undefined, (error: unknown) => report(name, error, logSource));
       return CONTINUE;
     }
     return interpret<V>(result);

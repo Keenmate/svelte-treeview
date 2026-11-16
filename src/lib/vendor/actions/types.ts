@@ -1,4 +1,4 @@
-// Vendored from @keenmate/web-components-core v1.0.0-rc14 — src/actions/types.ts.
+// Vendored from @keenmate/web-components-core dd29c43 — src/actions/types.ts (tracked in scripts/core-sync.json).
 // Adapted (see README.md): `ComponentContext` is declared locally (svelte has no host element). Keep in sync by re-copying; don't diverge.
 /** The context every ctx carries (core: `controller` + `element`; svelte-treeview: `controller`). */
 export interface ComponentContext<C = unknown> {
@@ -24,7 +24,7 @@ export type ActionSource =
 
 /**
  * One clickable item — an action button, a toolbar button, a menu item (SPEC
- * §12.11). Every dynamic field is a static value plus a separate
+ * §12.12). Every dynamic field is a static value plus a separate
  * `get*Callback(ctx)`; the callback wins when both are set. `Ctx` is the
  * surface context the component builds when it renders or opens the surface
  * (the row a context menu opened on, the picker's selection, …); `A` is the
@@ -84,7 +84,7 @@ export interface MenuItem<Ctx = ComponentContext, A extends string = string> ext
   shouldCloseOnClick?: boolean;
 }
 
-/** A separator, optionally labelled (a group heading). Create with `menuDivider()`. */
+/** A separator, optionally labelled (a group heading). Create with `createMenuDivider()`. */
 export interface MenuDivider {
   divider: true;
   text?: string;
@@ -132,4 +132,10 @@ export interface ResolvedActionItem<A extends string = string> {
   isDisabled: boolean;
   isDanger: boolean;
   isToggled: boolean;
+  /**
+   * The item HAS a toggle state (it defines `isToggled`, `getIsToggledCallback`, or its
+   * built-in default does) — render it as a checkbox-like item (`menuitemcheckbox`,
+   * `aria-pressed`), even while `isToggled` is `false`.
+   */
+  isToggle: boolean;
 }

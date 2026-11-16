@@ -28,8 +28,14 @@
  * subscribing directly.
  */
 
-/** The primary pointing device: `coarse` = touch/stylus, `fine` = mouse/trackpad. */
-export type PointerType = 'coarse' | 'fine' | 'none';
+import { createFrameScheduler } from '../dom/frame-scheduler.js';
+import { once } from '../dom/once.js';
+import { createThrottle } from '../dom/throttle.js';
+import { callSafely, notifyEach } from '../logging/safe-call.js';
+import { sharedState } from '../global/shared-state.js';
+
+/** The accuracy of the primary pointing device (the CSS `pointer` media feature): `coarse` = touch/stylus, `fine` = mouse/trackpad. */
+export type PointerAccuracy = 'coarse' | 'fine' | 'none';
 
 /** Screen orientation, from `(orientation: portrait)`. */
 export type Orientation = 'portrait' | 'landscape';
@@ -50,7 +56,7 @@ export type BreakpointMap = Record<string, number>;
 /** An immutable read of the current device/viewport/orientation state. */
 export interface EnvironmentSnapshot {
   /** Primary pointer capability: `(pointer: coarse)` → `coarse`, else `fine`; `none` when neither matches. */
-  readonly pointer: PointerType;
+  readonly pointer: PointerAccuracy;
   /** Any pointer is coarse — touch is available at all, even if a mouse is primary (`(any-pointer: coarse)`). */
   readonly hasCoarsePointer: boolean;
   /** The primary pointer can hover (`(hover: hover)`) — false on touch-first devices. */
@@ -67,6 +73,12 @@ export interface EnvironmentSnapshot {
   readonly viewportWidth: number;
   /** `window.innerHeight` at the last sample. */
   readonly viewportHeight: number;
+  /**
+   * The shorter side of the device screen (`min(screen.width, screen.height)`), in CSS px —
+   * unlike the viewport it doesn't shrink when a soft keyboard opens. `undefined` when the
+   * browser reports no screen size (SSR, jsdom).
+   */
+  readonly screenShortSide?: number;
   /** The resolved breakpoint name for {@link viewportWidth} (see {@link configureBreakpoints}). */
   readonly breakpoint: string;
   /**
@@ -83,10 +95,10 @@ export interface EnvironmentSnapshot {
 /** A subscriber notified with each new snapshot (fired immediately on subscribe unless opted out). */
 export type EnvironmentListener = (snapshot: EnvironmentSnapshot) => void;
 
-/** Options for {@link observeEnvironment}. */
-export interface ObserveOptions {
+/** Options for {@link observeEnvironment} and {@link observeViewport}. */
+export interface ObserveEnvironmentOptions {
   /** Fire the listener synchronously with the current snapshot on subscribe. Default `true`. */
-  immediate?: boolean;
+  shouldFireImmediately?: boolean;
 }
 
 /** The static snapshot returned during SSR / when no media-query support exists. */
@@ -119,15 +131,39 @@ export const BREAKPOINT_TOKENS = {
   tablet: '--base-breakpoint-tablet',
 } as const;
 
-/** Breakpoints as `[name, maxWidth]` sorted ascending by width; last entry is the catch-all. */
-let breakpoints: Array<[string, number]> = sortBreakpoints(DEFAULT_BREAKPOINTS);
+/**
+ * Page-wide breakpoint table. It lives on `globalThis` (not in this module) because every
+ * component bundles its own copy of core: `configureBreakpoints()` through one copy must
+ * move every component's buckets.
+ */
+interface BreakpointState {
+  /** Breakpoints as `[name, maxWidth]` sorted ascending by width; last entry is the catch-all. */
+  breakpoints: Array<[string, number]>;
+  /**
+   * The lines are settled: the base tokens were found, the page finished loading without them
+   * (defaults kept), or {@link configureBreakpoints} set them explicitly — which always wins.
+   */
+  isSettled: boolean;
+}
+
+const BREAKPOINT_STATE_KEY = '@keenmate/web-components-core:breakpoints';
+
+function breakpointState(): BreakpointState {
+  return sharedState(BREAKPOINT_STATE_KEY, () => ({ breakpoints: sortBreakpoints(DEFAULT_BREAKPOINTS), isSettled: false }));
+}
 
 /**
- * The breakpoint lines are settled: the base tokens were read (first browser
- * snapshot) or {@link configureBreakpoints} set them explicitly — which always
- * wins over the tokens.
+ * `document` event fired by {@link configureBreakpoints}, so the other copies of core
+ * (each caching its own snapshot) recompute. `detail.source` is the sending copy.
  */
-let breakpointsSettled = false;
+export const BREAKPOINTS_CHANGE_EVENT = 'km-breakpoints-change';
+
+/** This copy of core's identity, so it ignores its own {@link BREAKPOINTS_CHANGE_EVENT}. */
+const COPY_ID = {};
+
+function onBreakpointsChange(e: Event): void {
+  if ((e as CustomEvent<{ source?: unknown }>).detail?.source !== COPY_ID) recompute();
+}
 
 /** Parse a token value like `768px` / `768` → 768; anything else (absent, `48em`, junk) → `undefined`. */
 function parsePx(raw: string | undefined | null): number | undefined {
@@ -138,30 +174,67 @@ function parsePx(raw: string | undefined | null): number | undefined {
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
+/** This copy is waiting for the window `load` event to take its final token read. */
+let isWaitingForLoad = false;
+
 /**
- * Read `--base-breakpoint-mobile` / `--base-breakpoint-tablet` from the root
- * element's computed style (browser only), once, on the first snapshot. Absent or
- * unparsable tokens keep the {@link DEFAULT_BREAKPOINTS}; an explicit
+ * Read `--base-breakpoint-mobile` / `--base-breakpoint-tablet` from the root element's
+ * computed style (browser only). Found → applied and settled. Not found while the page is
+ * still loading → kept on the defaults and read again on the next snapshot, and one final
+ * time on the window `load` event, then settled whatever it finds (review V-13: a stylesheet
+ * injected by JS or still downloading used to lock in the defaults for good). Not found
+ * after load → defaults, settled. Bounded: nothing is read after the page has loaded.
+ * Absent or unparsable tokens keep the {@link DEFAULT_BREAKPOINTS}; an explicit
  * {@link configureBreakpoints} call is never overridden.
  */
 function readBreakpointTokens(): void {
-  if (breakpointsSettled) return;
+  const state = breakpointState();
+  if (state.isSettled) return;
   if (typeof document === 'undefined' || !document.documentElement || typeof getComputedStyle !== 'function') return;
-  breakpointsSettled = true;
+  if (applyBreakpointTokens(state)) return;
+  if (document.readyState === 'complete' || typeof window === 'undefined' || typeof window.addEventListener !== 'function') {
+    state.isSettled = true;
+    return;
+  }
+  if (isWaitingForLoad) return;
+  isWaitingForLoad = true;
+  window.addEventListener(
+    'load',
+    () => {
+      isWaitingForLoad = false;
+      const s = breakpointState();
+      if (s.isSettled) return;
+      const found = applyBreakpointTokens(s);
+      s.isSettled = true;
+      if (!found) return;
+      // The lines moved after snapshots were taken: re-resolve here and in every other copy.
+      if (subscriberCount() > 0) recompute();
+      if (typeof CustomEvent === 'function') {
+        document.dispatchEvent(new CustomEvent(BREAKPOINTS_CHANGE_EVENT, { detail: { source: COPY_ID } }));
+      }
+    },
+    { once: true },
+  );
+}
+
+/** Read the tokens once; when either is set, apply it and settle. Returns whether one was found. */
+function applyBreakpointTokens(state: BreakpointState): boolean {
   let style: CSSStyleDeclaration;
   try {
     style = getComputedStyle(document.documentElement);
   } catch {
-    return;
+    return false;
   }
   const mobile = parsePx(style.getPropertyValue(BREAKPOINT_TOKENS.mobile));
   const tablet = parsePx(style.getPropertyValue(BREAKPOINT_TOKENS.tablet));
-  if (mobile === undefined && tablet === undefined) return;
-  breakpoints = sortBreakpoints({
+  if (mobile === undefined && tablet === undefined) return false;
+  state.breakpoints = sortBreakpoints({
     ...DEFAULT_BREAKPOINTS,
     ...(mobile !== undefined ? { mobile } : {}),
     ...(tablet !== undefined ? { tablet } : {}),
   });
+  state.isSettled = true;
+  return true;
 }
 
 /** Discrete-change subscribers: notified only when a *category* field flips (see {@link environmentEqual}). */
@@ -172,20 +245,16 @@ const viewportSubscribers = new Set<EnvironmentListener>();
 let current: EnvironmentSnapshot | null = null;
 /** The live `MediaQueryList`s, held so we can detach on the last unsubscribe. */
 let mqls: MediaQueryList[] = [];
-let rafScheduled = false;
 
 /** Throttle window (ms) for the continuous viewport channel — one notify per window, leading + trailing. */
 const VIEWPORT_THROTTLE_MS = 30;
-/** Pending trailing-edge timer for the viewport channel; `undefined` when none is scheduled. */
-let viewportTimer: ReturnType<typeof setTimeout> | undefined;
-/** Timestamp of the last viewport notify, for the leading-edge gate. */
-let lastViewportNotify = 0;
 
 function sortBreakpoints(map: BreakpointMap): Array<[string, number]> {
   return Object.entries(map).sort((a, b) => a[1] - b[1]);
 }
 
 function resolveBreakpoint(width: number): string {
+  const { breakpoints } = breakpointState();
   for (const [name, max] of breakpoints) {
     if (width <= max) return name;
   }
@@ -249,6 +318,13 @@ function matches(query: string): boolean {
 }
 
 /** Sample the environment right now (pure read; does not attach listeners). */
+/** `min(screen.width, screen.height)`, or `undefined` when the browser reports no screen size. */
+function readScreenShortSide(): number | undefined {
+  if (typeof screen === 'undefined') return undefined;
+  const side = Math.min(screen.width, screen.height);
+  return Number.isFinite(side) && side > 0 ? side : undefined;
+}
+
 function computeSnapshot(): EnvironmentSnapshot {
   if (!canMatchMedia()) return { ...SSR_DEFAULT };
   readBreakpointTokens();
@@ -257,9 +333,10 @@ function computeSnapshot(): EnvironmentSnapshot {
   const coarsePrimary = matches('(pointer: coarse)');
   const finePrimary = matches('(pointer: fine)');
   const canHover = matches('(hover: hover)');
-  const pointer: PointerType = coarsePrimary ? 'coarse' : finePrimary ? 'fine' : 'none';
+  const pointer: PointerAccuracy = coarsePrimary ? 'coarse' : finePrimary ? 'fine' : 'none';
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
+  const screenShortSide = readScreenShortSide();
   const os = getOS();
 
   return {
@@ -270,6 +347,7 @@ function computeSnapshot(): EnvironmentSnapshot {
     orientation: matches('(orientation: portrait)') ? 'portrait' : 'landscape',
     viewportWidth,
     viewportHeight,
+    ...(screenShortSide !== undefined ? { screenShortSide } : {}),
     breakpoint: resolveBreakpoint(viewportWidth),
     os,
     isApple: os === 'ios' || os === 'macos',
@@ -316,55 +394,44 @@ function recompute(): void {
   const prev = current;
   current = next;
   if (!prev || !environmentEqual(prev, next)) {
-    for (const listener of [...subscribers]) listener(next);
+    notifyAll(subscribers, next);
   }
   if (viewportSubscribers.size > 0 && (!prev || !viewportEqual(prev, next))) {
-    scheduleViewportNotify();
+    viewportThrottle.schedule();
   }
 }
+
+/**
+ * Call every listener of one channel. A throwing listener is logged and skipped,
+ * so it can't keep the rest of the page (other components' responsive rules)
+ * from hearing the change.
+ */
+function notifyAll(channel: Set<EnvironmentListener>, snapshot: EnvironmentSnapshot): void {
+  // A listener that calls configureBreakpoints() runs a nested recompute, which notifies the
+  // newer snapshot itself: stop here so no one is handed the stale one after it (review V-19 #1).
+  notifyEach(channel, snapshot, LISTENER_LOG, () => current !== snapshot);
+}
+
+const LISTENER_LOG = { message: 'environment listener threw' } as const;
 
 /** Fire the current snapshot at every continuous-viewport subscriber. */
 function fireViewport(): void {
   const snap = current;
   if (!snap) return;
-  for (const listener of [...viewportSubscribers]) listener(snap);
+  notifyAll(viewportSubscribers, snap);
 }
 
 /**
- * Throttle the viewport channel to one notify per {@link VIEWPORT_THROTTLE_MS}
- * (leading + trailing): fire straight away if the window has elapsed, otherwise
- * schedule a single trailing notify carrying the latest (settled) size.
+ * The viewport channel's throttle — one notify per {@link VIEWPORT_THROTTLE_MS},
+ * leading + trailing; the trailing notify carries the latest (settled) size.
  */
-function scheduleViewportNotify(): void {
-  if (viewportTimer !== undefined) return; // trailing edge already pending
-  const elapsed = Date.now() - lastViewportNotify;
-  if (elapsed >= VIEWPORT_THROTTLE_MS) {
-    lastViewportNotify = Date.now();
-    fireViewport();
-  } else {
-    viewportTimer = setTimeout(() => {
-      viewportTimer = undefined;
-      lastViewportNotify = Date.now();
-      fireViewport();
-    }, VIEWPORT_THROTTLE_MS - elapsed);
-  }
-}
+const viewportThrottle = createThrottle(fireViewport, VIEWPORT_THROTTLE_MS);
 
 const onMediaChange = (): void => recompute();
 
-const onResize = (): void => {
-  // Coalesce resize bursts to one recompute per frame where rAF exists.
-  if (typeof requestAnimationFrame === 'function') {
-    if (rafScheduled) return;
-    rafScheduled = true;
-    requestAnimationFrame(() => {
-      rafScheduled = false;
-      recompute();
-    });
-  } else {
-    recompute();
-  }
-};
+// Coalesce resize bursts to one recompute per frame where rAF exists.
+const resizeFrame = createFrameScheduler(() => recompute());
+const onResize = (): void => resizeFrame.schedule();
 
 function addMqlListener(mql: MediaQueryList): void {
   if (typeof mql.addEventListener === 'function') mql.addEventListener('change', onMediaChange);
@@ -375,6 +442,9 @@ function removeMqlListener(mql: MediaQueryList): void {
   if (typeof mql.removeEventListener === 'function') mql.removeEventListener('change', onMediaChange);
   else if (typeof mql.removeListener === 'function') mql.removeListener(onMediaChange);
 }
+
+/** start() attached the window / document listeners (stop() removes only those). */
+let isListening = false;
 
 /** Attach the shared media-query + resize listeners on the first subscriber. */
 function start(): void {
@@ -391,6 +461,8 @@ function start(): void {
   ];
   for (const mql of mqls) addMqlListener(mql);
   if (typeof window.addEventListener === 'function') window.addEventListener('resize', onResize);
+  if (typeof document !== 'undefined') document.addEventListener(BREAKPOINTS_CHANGE_EVENT, onBreakpointsChange);
+  isListening = true;
   current = computeSnapshot();
 }
 
@@ -398,15 +470,14 @@ function start(): void {
 function stop(): void {
   for (const mql of mqls) removeMqlListener(mql);
   mqls = [];
-  if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
+  // Only what start() attached (no matchMedia → it attached nothing).
+  if (isListening && typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
     window.removeEventListener('resize', onResize);
   }
-  rafScheduled = false;
-  if (viewportTimer !== undefined) {
-    clearTimeout(viewportTimer);
-    viewportTimer = undefined;
-  }
-  lastViewportNotify = 0;
+  if (isListening && typeof document !== 'undefined') document.removeEventListener(BREAKPOINTS_CHANGE_EVENT, onBreakpointsChange);
+  isListening = false;
+  resizeFrame.cancel(); // a queued frame would re-cache a snapshot nobody observes
+  viewportThrottle.cancel();
   current = null;
 }
 
@@ -427,31 +498,22 @@ export function getEnvironment(): EnvironmentSnapshot {
 
 /**
  * Subscribe to environment changes. The listener fires immediately with the
- * current snapshot (unless `immediate: false`), then again whenever the pointer,
- * hover, orientation, viewport size, or resolved breakpoint changes. Returns an
+ * current snapshot (unless `shouldFireImmediately: false`), then again whenever the pointer,
+ * hover, orientation, or resolved breakpoint changes (a viewport-size change alone doesn't
+ * notify — use {@link observeViewport} for that). A listener that throws (also on the
+ * immediate call) is logged; the subscription stands. Returns an
  * unsubscribe function; the shared `matchMedia`/resize listeners are attached on
  * the first subscriber and torn down when the last one leaves. No-op-safe during
  * SSR (fires once with the desktop default, returns a no-op unsubscribe).
  */
-export function observeEnvironment(listener: EnvironmentListener, opts: ObserveOptions = {}): () => void {
-  const first = subscriberCount() === 0;
-  subscribers.add(listener);
-  if (first) start();
-  if (opts.immediate !== false) listener(getEnvironment());
-
-  let live = true;
-  return () => {
-    if (!live) return;
-    live = false;
-    subscribers.delete(listener);
-    if (subscriberCount() === 0) stop();
-  };
+export function observeEnvironment(listener: EnvironmentListener, opts: ObserveEnvironmentOptions = {}): () => void {
+  return subscribe(subscribers, listener, opts);
 }
 
 /**
  * Subscribe to *continuous* viewport-size changes — the noisy companion to
  * {@link observeEnvironment}. The listener fires immediately with the current
- * snapshot (unless `immediate: false`), then again whenever `viewportWidth`/
+ * snapshot (unless `shouldFireImmediately: false`), then again whenever `viewportWidth`/
  * `viewportHeight` change, **throttled to one notify per {@link VIEWPORT_THROTTLE_MS}
  * (≈30 ms), leading + trailing** — so a drag-resize yields a steady ~33 Hz
  * stream plus a final settled read, not the per-frame flood raw `resize` would.
@@ -461,19 +523,23 @@ export function observeEnvironment(listener: EnvironmentListener, opts: ObserveO
  * lazily-started, ref-counted `matchMedia`/`resize` listeners; returns an
  * unsubscribe. No-op-safe during SSR.
  */
-export function observeViewport(listener: EnvironmentListener, opts: ObserveOptions = {}): () => void {
-  const first = subscriberCount() === 0;
-  viewportSubscribers.add(listener);
-  if (first) start();
-  if (opts.immediate !== false) listener(getEnvironment());
+export function observeViewport(listener: EnvironmentListener, opts: ObserveEnvironmentOptions = {}): () => void {
+  return subscribe(viewportSubscribers, listener, opts);
+}
 
-  let live = true;
-  return () => {
-    if (!live) return;
-    live = false;
-    viewportSubscribers.delete(listener);
+/** Join one channel; the shared listeners start with the first subscriber of either and stop with the last. */
+function subscribe(channel: Set<EnvironmentListener>, listener: EnvironmentListener, opts: ObserveEnvironmentOptions): () => void {
+  const first = subscriberCount() === 0;
+  channel.add(listener);
+  if (first) start();
+  const unsubscribe = once(() => {
+    channel.delete(listener);
     if (subscriberCount() === 0) stop();
-  };
+  });
+  // A throwing first call is logged like any later one; the subscription stands and
+  // the caller still gets its unsubscribe (a rethrow here would leak the listener).
+  if (opts.shouldFireImmediately !== false) callSafely(() => listener(getEnvironment()), LISTENER_LOG);
+  return unsubscribe;
 }
 
 /**
@@ -484,12 +550,17 @@ export function observeViewport(listener: EnvironmentListener, opts: ObserveOpti
  * `{ mobile: 768, tablet: 1024, desktop: Infinity }`, with the `mobile` / `tablet`
  * lines taken from the `--base-breakpoint-mobile` / `--base-breakpoint-tablet`
  * tokens when the page defines them. An explicit call here always wins over the
- * tokens.
+ * tokens. Page-wide across every copy of core: the table is shared on `globalThis` and
+ * the other copies hear {@link BREAKPOINTS_CHANGE_EVENT}.
  */
 export function configureBreakpoints(map: BreakpointMap): void {
-  breakpointsSettled = true;
-  breakpoints = sortBreakpoints(map);
-  if (subscribers.size > 0) recompute();
+  const state = breakpointState();
+  state.isSettled = true;
+  state.breakpoints = sortBreakpoints(map);
+  if (subscriberCount() > 0) recompute();
+  if (typeof document !== 'undefined' && typeof CustomEvent === 'function') {
+    document.dispatchEvent(new CustomEvent(BREAKPOINTS_CHANGE_EVENT, { detail: { source: COPY_ID } }));
+  }
 }
 
 // ── device classification (capability, not width) ──────────────────────────
@@ -526,24 +597,38 @@ export const TABLET_MIN_SHORT_SIDE = 600;
  * first — a non-`isTouchPrimary` device is always `desktop`, at any window width,
  * so a shrunk desktop window keeps its `desktop` class (and a floating dropdown,
  * not a fullscreen sheet). Only touch-primary devices consult the size line: the
- * shorter viewport side below {@link TABLET_MIN_SHORT_SIDE} ⇒ `mobile`, else
- * `tablet` (orientation-robust — a landscape phone still reads as `mobile`).
+ * short side below {@link TABLET_MIN_SHORT_SIDE} ⇒ `mobile`, else `tablet`
+ * (orientation-robust — a landscape phone still reads as `mobile`). The short side is
+ * `min(viewportWidth, screenShortSide)`: a soft keyboard that shrinks the viewport HEIGHT
+ * can't turn a landscape tablet into a phone mid-typing (review V-05), while a narrow
+ * window (iPad Slide Over) still reads as `mobile`. Without a screen size it falls back to
+ * the shorter viewport side.
  *
  * This is the shared *classification*; how each class maps to a presentation is a
  * component decision (see `resolvePresentation`).
  */
 export function classifyDevice(env: EnvironmentSnapshot): DeviceClass {
   if (!env.isTouchPrimary) return 'desktop';
-  const shortSide = Math.min(env.viewportWidth, env.viewportHeight);
+  const shortSide =
+    env.screenShortSide !== undefined
+      ? Math.min(env.viewportWidth, env.screenShortSide)
+      : Math.min(env.viewportWidth, env.viewportHeight);
   return shortSide < TABLET_MIN_SHORT_SIDE ? 'mobile' : 'tablet';
+}
+
+/** Test-only: the number of live subscribers on the continuous viewport channel. */
+export function __viewportSubscriberCount(): number {
+  return viewportSubscribers.size;
 }
 
 /** Test-only: detach listeners and reset breakpoints + cache to defaults. */
 export function __resetEnvironment(): void {
+  isWaitingForLoad = false;
   subscribers.clear();
   viewportSubscribers.clear();
   stop();
-  breakpoints = sortBreakpoints(DEFAULT_BREAKPOINTS);
-  breakpointsSettled = false;
+  const state = breakpointState();
+  state.breakpoints = sortBreakpoints(DEFAULT_BREAKPOINTS);
+  state.isSettled = false;
   osCache = undefined;
 }

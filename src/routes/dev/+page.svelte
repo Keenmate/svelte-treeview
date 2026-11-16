@@ -178,7 +178,6 @@
 	<div class="mb-4">
 		<span class="me-2">Other dev pages:</span>
 		<a href="/dev/context-menu" class="btn btn-sm btn-outline-secondary me-1">Context Menu</a>
-		<a href="/dev/logging" class="btn btn-sm btn-outline-secondary me-1">Logging</a>
 	</div>
 
 	<div class="row mt-4">

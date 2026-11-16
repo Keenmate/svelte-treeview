@@ -102,7 +102,8 @@
 		{@const item = entry.item}
 		{@const r = entry.resolved}
 		{@const hasChildren = entry.hasChildren}
-		{@const isToggle = item.isToggled !== undefined || typeof item.getIsToggledCallback === 'function'}
+		<!-- core's resolver decides (isToggled / getIsToggledCallback / a built-in toggle default) -->
+		{@const isToggle = r.isToggle}
 		<!-- svelte-ignore a11y_no_noninteractive_tabindex (role is menuitem | menuitemcheckbox) -->
 		<div
 			bind:this={itemEls[i]}

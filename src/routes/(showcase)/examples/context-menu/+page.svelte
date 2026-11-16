@@ -56,7 +56,7 @@
 		snippetLog = [];
 	}
 
-	// Context menu callback: items, menuDivider()s and built-in action names (TreeMenuEntry)
+	// Context menu callback: items, createMenuDivider()s and built-in action names (TreeMenuEntry)
 	function getContextMenu({ node, controller }: TreeMenuContext<FileItem>): TreeMenuEntry<FileItem>[] {
 		const close = () => controller.closeContextMenu();
 		const isFolder = node.data?.type === 'folder';
@@ -263,7 +263,7 @@
 	<p class="description">Use <code>getContextMenuItemsCallback</code> to dynamically generate menu entries based on the node.</p>
 
 	<div class="code-block" data-language="ts">
-		<pre>{`import { menuDivider } from '@keenmate/svelte-treeview';
+		<pre>{`import { createMenuDivider } from '@keenmate/svelte-treeview';
 import type { TreeMenuContext, TreeMenuEntry } from '@keenmate/svelte-treeview';
 
 // ctx = { node, path, parent, siblings, controller }; the menu closes after an item runs.
@@ -275,7 +275,7 @@ function getContextMenu({ node }: TreeMenuContext<FileItem>): TreeMenuEntry<File
         { id: 'xml', text: 'XML', shortcut: 'X', onClick: () => exportAs(node, 'xml') },
     ]},
     'copy', 'cut', 'paste',            // built-in names: texts from labels
-    menuDivider('Danger zone'),
+    createMenuDivider('Danger zone'),
     { action: 'delete', isDisabled: node.data.readonly },
   ];
 }
@@ -320,7 +320,7 @@ ${'<'}/script>
 	<p class="description">The unified type definition shared across svelte-treeview and canvas-tree.</p>
 
 	<div class="code-block" data-language="ts">
-		<pre>{`// Divider (simple or named) — create with menuDivider(text?)
+		<pre>{`// Divider (simple or named) — create with createMenuDivider(text?)
 interface MenuDivider { divider: true; text?: string; }
 
 // Menu item — core MenuItem (same model as @keenmate/web-treeview)

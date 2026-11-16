@@ -2,7 +2,27 @@
    @keyframes — all animation declarations live here.
    ============================================================================= */
 
-/* The shared loader (.stv-loader in loading.css, the per-node loader in toggle-icons.css). */
+/* Row animation: a revealed row enters (.stv__node--opening, node.css). */
+@keyframes stv-row-in {
+	from {
+		opacity: 0;
+		transform: translateY(var(--stv-row-animation-distance));
+	}
+}
+
+/* Row animation: a hidden row leaves (.stv__node--closing, node.css; core animateOut). */
+@keyframes stv-row-out {
+	from {
+		height: var(--km-exit-height);
+	}
+	to {
+		height: 0;
+		opacity: 0;
+		transform: translateY(var(--stv-row-animation-distance));
+	}
+}
+
+/* The shared loader (.stv__loader in loading.css, the per-node loader in toggle-icons.css). */
 @keyframes stv-loader-spin {
 	to {
 		transform: rotate(var(--stv-loader-rotate));

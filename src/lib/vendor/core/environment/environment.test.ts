@@ -185,12 +185,58 @@ describe('breakpoints', () => {
       expect(getEnvironment().breakpoint).toBe('tablet'); // unitless 1200 accepted
     });
 
-    it('reads the tokens once — a later change is not picked up', () => {
+    it('after the page has loaded: absent tokens settle on the defaults, a later change is not picked up', () => {
       installMatchMedia({ ...DESKTOP });
       setWidth(700);
       expect(getEnvironment().breakpoint).toBe('mobile');
       root().setProperty('--base-breakpoint-mobile', '600px');
       expect(getEnvironment().breakpoint).toBe('mobile');
+    });
+
+    // Review V-13: CSS applied late during page load (Vite dev injects it from JS) used to lock in the defaults.
+    describe('while the page is still loading', () => {
+      let readyState: ReturnType<typeof vi.spyOn>;
+      beforeEach(() => {
+        readyState = vi.spyOn(document, 'readyState', 'get').mockReturnValue('loading');
+      });
+      afterEach(() => readyState.mockRestore());
+
+      it('keeps re-reading until the tokens are found', () => {
+        installMatchMedia({ ...DESKTOP });
+        setWidth(700);
+        expect(getEnvironment().breakpoint).toBe('mobile'); // no tokens yet → defaults
+        root().setProperty('--base-breakpoint-mobile', '600px');
+        expect(getEnvironment().breakpoint).toBe('tablet'); // found → applied and settled
+        root().setProperty('--base-breakpoint-mobile', '650px');
+        setWidth(620);
+        expect(getEnvironment().breakpoint).toBe('tablet'); // settled: 600 stays
+      });
+
+      it('takes a final read on load, notifies subscribers when the bucket moved, then stops', () => {
+        installMatchMedia({ ...DESKTOP });
+        setWidth(700);
+        const seen: string[] = [];
+        const unsub = observeEnvironment((env) => seen.push(env.breakpoint));
+        root().setProperty('--base-breakpoint-mobile', '600px'); // arrives, but nothing re-reads yet
+        readyState.mockReturnValue('complete');
+        window.dispatchEvent(new Event('load'));
+        expect(seen).toEqual(['mobile', 'tablet']);
+        root().setProperty('--base-breakpoint-mobile', '800px');
+        setWidth(701);
+        window.dispatchEvent(new Event('resize'));
+        expect(getEnvironment().breakpoint).toBe('tablet'); // locked after load
+        unsub();
+      });
+
+      it('no tokens by load → the defaults, settled', () => {
+        installMatchMedia({ ...DESKTOP });
+        setWidth(700);
+        getEnvironment();
+        readyState.mockReturnValue('complete');
+        window.dispatchEvent(new Event('load'));
+        root().setProperty('--base-breakpoint-mobile', '600px');
+        expect(getEnvironment().breakpoint).toBe('mobile');
+      });
     });
 
     it('configureBreakpoints() wins over the tokens', () => {
@@ -219,7 +265,7 @@ describe('observeEnvironment', () => {
   it('can opt out of the immediate fire', () => {
     installMatchMedia({ ...DESKTOP });
     const seen: unknown[] = [];
-    const unsub = observeEnvironment((env) => seen.push(env), { immediate: false });
+    const unsub = observeEnvironment((env) => seen.push(env), { shouldFireImmediately: false });
     expect(seen).toHaveLength(0);
     unsub();
   });
@@ -232,6 +278,24 @@ describe('observeEnvironment', () => {
     media.fire('(hover: hover)'); // recompute, but no field changed
     expect(cb).not.toHaveBeenCalled();
     unsub();
+  });
+
+  it('a throwing listener is logged and the others still hear the change', () => {
+    const media = installMatchMedia({ ...PHONE });
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const seen: string[] = [];
+    const unsubBad = observeEnvironment(() => {
+      throw new Error('boom');
+    }, { shouldFireImmediately: false });
+    const unsubGood = observeEnvironment((env) => seen.push(env.orientation), { shouldFireImmediately: false });
+
+    media.set({ '(orientation: portrait)': false });
+    expect(() => media.fire('(orientation: portrait)')).not.toThrow();
+    expect(seen).toEqual(['landscape']);
+    expect(error.mock.calls.flat().join(' ')).toContain('environment listener threw');
+    unsubBad();
+    unsubGood();
+    error.mockRestore();
   });
 
   it('detaches media listeners when the last subscriber leaves', () => {
@@ -256,6 +320,56 @@ describe('observeEnvironment', () => {
     configureBreakpoints({ mobile: 900, desktop: Infinity });
     expect(seen).toEqual(['tablet', 'mobile']);
     unsub();
+  });
+
+  it('configureBreakpoints() through another copy of core moves this copy too', async () => {
+    installMatchMedia({ ...DESKTOP });
+    setWidth(800);
+    const seen: string[] = [];
+    const unsub = observeEnvironment((env) => seen.push(env.breakpoint));
+    vi.resetModules();
+    const other = await import('./environment.js'); // a second module instance = another bundle
+    expect(other.configureBreakpoints).not.toBe(configureBreakpoints);
+    other.configureBreakpoints({ mobile: 900, desktop: Infinity });
+    expect(seen).toEqual(['tablet', 'mobile']); // heard km-breakpoints-change
+    expect(getEnvironment().breakpoint).toBe('mobile');
+    unsub();
+  });
+
+  it('a copy that subscribes later uses the page-wide table', async () => {
+    installMatchMedia({ ...DESKTOP });
+    setWidth(800);
+    configureBreakpoints({ mobile: 900, desktop: Infinity });
+    vi.resetModules();
+    const other = await import('./environment.js');
+    expect(other.getEnvironment().breakpoint).toBe('mobile');
+  });
+
+  it('re-resolves the cached breakpoint when only viewport subscribers are live', () => {
+    installMatchMedia({ ...DESKTOP });
+    setWidth(800);
+    const unsub = observeViewport(() => {});
+    expect(getEnvironment().breakpoint).toBe('tablet');
+    configureBreakpoints({ mobile: 900, desktop: Infinity });
+    expect(getEnvironment().breakpoint).toBe('mobile');
+    unsub();
+  });
+
+  it('drops a resize frame queued before the last unsubscribe', () => {
+    installMatchMedia({ ...DESKTOP });
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => frames.push(cb));
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => {
+      frames[id - 1] = () => {};
+    });
+    const unsub = observeEnvironment(() => {});
+    setWidth(500);
+    window.dispatchEvent(new Event('resize')); // queues a recompute frame
+    unsub(); // last subscriber — listeners and cache released
+    frames.forEach((cb) => cb(0));
+    setWidth(1200);
+    // A stale frame would have re-cached the 500px snapshot nobody observes.
+    expect(getEnvironment().viewportWidth).toBe(1200);
   });
 });
 
@@ -288,10 +402,26 @@ describe('observeViewport (continuous, throttled)', () => {
     unsub();
   });
 
+  it('a throwing viewport listener is logged and the others still fire', () => {
+    installMatchMedia({ ...DESKTOP });
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const seen: number[] = [];
+    const unsubBad = observeViewport(() => {
+      throw new Error('boom');
+    }, { shouldFireImmediately: false });
+    const unsubGood = observeViewport((env) => seen.push(env.viewportWidth), { shouldFireImmediately: false });
+    expect(() => fireResize(1100)).not.toThrow();
+    expect(seen).toEqual([1100]);
+    expect(error.mock.calls.flat().join(' ')).toContain('environment listener threw');
+    unsubBad();
+    unsubGood();
+    error.mockRestore();
+  });
+
   it('throttles a resize burst to one leading + one trailing notify', () => {
     installMatchMedia({ ...DESKTOP });
     const seen: number[] = [];
-    const unsub = observeViewport((env) => seen.push(env.viewportWidth), { immediate: false });
+    const unsub = observeViewport((env) => seen.push(env.viewportWidth), { shouldFireImmediately: false });
     fireResize(1100); // leading — fires now
     fireResize(1050); // within 30ms — schedules a trailing notify
     fireResize(1000); // within 30ms — coalesced into that same trailing
@@ -305,8 +435,8 @@ describe('observeViewport (continuous, throttled)', () => {
     installMatchMedia({ ...DESKTOP });
     const envSeen = vi.fn();
     const vpSeen = vi.fn();
-    const dropEnv = observeEnvironment(envSeen, { immediate: false });
-    const dropVp = observeViewport(vpSeen, { immediate: false });
+    const dropEnv = observeEnvironment(envSeen, { shouldFireImmediately: false });
+    const dropVp = observeViewport(vpSeen, { shouldFireImmediately: false });
     fireResize(1100); // width changed, breakpoint still 'desktop'
     expect(envSeen).not.toHaveBeenCalled();
     expect(vpSeen).toHaveBeenCalledTimes(1);
@@ -317,7 +447,7 @@ describe('observeViewport (continuous, throttled)', () => {
   it('still wakes environmentChanged when a width change crosses a breakpoint', () => {
     installMatchMedia({ ...DESKTOP });
     const seen: string[] = [];
-    const unsub = observeEnvironment((env) => seen.push(env.breakpoint), { immediate: false });
+    const unsub = observeEnvironment((env) => seen.push(env.breakpoint), { shouldFireImmediately: false });
     fireResize(500); // desktop → mobile bucket
     expect(seen).toEqual(['mobile']);
     unsub();
@@ -328,7 +458,7 @@ describe('observeViewport (continuous, throttled)', () => {
     Object.defineProperty(window, 'innerHeight', { configurable: true, value: 844 });
     setWidth(390);
     const seen: string[] = [];
-    const unsub = observeEnvironment((env) => seen.push(`${env.breakpoint}/${classifyDevice(env)}`), { immediate: false });
+    const unsub = observeEnvironment((env) => seen.push(`${env.breakpoint}/${classifyDevice(env)}`), { shouldFireImmediately: false });
     fireResize(720); // still the `mobile` width bucket, but the short side is now ≥ 600
     expect(seen).toEqual(['mobile/tablet']);
     unsub();
@@ -338,8 +468,8 @@ describe('observeViewport (continuous, throttled)', () => {
   it('keeps the shared resize listener alive while either channel has a subscriber', () => {
     installMatchMedia({ ...DESKTOP });
     const vpSeen = vi.fn();
-    const dropEnv = observeEnvironment(() => {}, { immediate: false });
-    const dropVp = observeViewport(vpSeen, { immediate: false });
+    const dropEnv = observeEnvironment(() => {}, { shouldFireImmediately: false });
+    const dropVp = observeViewport(vpSeen, { shouldFireImmediately: false });
     dropEnv(); // discrete channel gone; viewport channel still live
     fireResize(1100);
     expect(vpSeen).toHaveBeenCalledTimes(1); // resize still observed
@@ -460,5 +590,27 @@ describe('classifyDevice', () => {
     const at = snap({ isTouchPrimary: true, viewportWidth: 900, viewportHeight: TABLET_MIN_SHORT_SIDE });
     expect(classifyDevice(under)).toBe('mobile');
     expect(classifyDevice(at)).toBe('tablet');
+  });
+  // Review V-05: a soft keyboard that shrinks the viewport height must not flip a tablet to mobile.
+  it('with a screen size, the short side is min(viewport width, screen short side)', () => {
+    const tablet = { isTouchPrimary: true, screenShortSide: 800 };
+    expect(classifyDevice(snap({ ...tablet, viewportWidth: 1280, viewportHeight: 800 }))).toBe('tablet');
+    expect(classifyDevice(snap({ ...tablet, viewportWidth: 1280, viewportHeight: 420 }))).toBe('tablet'); // keyboard open
+    expect(classifyDevice(snap({ ...tablet, viewportWidth: 320, viewportHeight: 1024 }))).toBe('mobile'); // Slide Over
+    const phone = { isTouchPrimary: true, screenShortSide: 390 };
+    expect(classifyDevice(snap({ ...phone, viewportWidth: 844, viewportHeight: 390 }))).toBe('mobile'); // landscape
+    expect(classifyDevice(snap({ ...phone, viewportWidth: 390, viewportHeight: 400 }))).toBe('mobile'); // keyboard open
+  });
+});
+
+describe('screenShortSide in the snapshot', () => {
+  it('is read from screen and left out when the browser reports none', () => {
+    installMatchMedia({ ...DESKTOP });
+    const width = vi.spyOn(screen, 'width', 'get').mockReturnValue(1280);
+    const height = vi.spyOn(screen, 'height', 'get').mockReturnValue(800);
+    expect(getEnvironment().screenShortSide).toBe(800);
+    width.mockReturnValue(0);
+    height.mockReturnValue(0);
+    expect('screenShortSide' in getEnvironment()).toBe(false);
   });
 });

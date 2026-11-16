@@ -100,11 +100,17 @@ export const EXAMPLE_PAGES: ExamplePage[] = [
 		description: 'Build custom UIs (breadcrumbs, badge clouds) on the headless TreeController via TreeProvider.'
 	},
 	{
-		href: '/dev/logging',
+		href: '/examples/integration',
+		icon: '🔗',
+		title: 'Suite Integration',
+		badge: 'new',
+		description: "One page-wide switch, every KeenMate component: theme mode, motion, breakpoints, the loader hook and logging — a svelte tree and a <web-multiselect> sharing web-components-core's state."
+	},
+	{
+		href: '/examples/logging',
 		icon: '📝',
-		title: 'Logging',
-		badge: 'debug',
-		description: 'Test logging infrastructure with categorized loggers and configurable log levels.'
+		title: 'Logging & Debugging',
+		description: 'The window.components registry entry, its category logging controls, live instances and performance timings — the same as every KeenMate web component.'
 	}
 ];
 

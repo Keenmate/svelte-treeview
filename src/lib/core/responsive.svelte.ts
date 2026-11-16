@@ -1,6 +1,6 @@
 /**
  * Svelte 5 (runes) bridge over the framework-agnostic device/viewport/container
- * primitives in `../vendor/environment`. Those primitives are imperative — a
+ * primitives in `../vendor/core/environment`. Those primitives are imperative — a
  * `subscribe(cb) → unsubscribe` shape — because they're transferred 1:1 from
  * `@keenmate/web-components-core` (a vanilla web-component lib). This module is
  * the ONLY place that knows about runes; it turns each subscription into live
@@ -13,14 +13,14 @@
  * changed target simply re-subscribes. Every helper here MUST be called during
  * component initialisation (that's the `$effect` rule).
  */
-import { observeElementSize, type ElementSize } from '../vendor/environment/element-size.js';
+import { observeElementSize, type ElementSize } from '../vendor/core/environment/element-size.js';
 import {
 	observeEnvironment,
 	getEnvironment,
 	classifyDevice,
 	type EnvironmentSnapshot,
 	type DeviceClass
-} from '../vendor/environment/environment.js';
+} from '../vendor/core/environment/environment.js';
 
 /** A live, reactive container-box size. `.width`/`.height` are getters over `$state`. */
 export interface ReactiveSize {

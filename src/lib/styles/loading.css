@@ -18,7 +18,7 @@
 
 /* The shared loader (base-css-variables drawing contract, = core renderLoader's default
    element) — the default when no `loadingPlaceholder` snippet / page hook draws it. */
-.stv-loader {
+.stv__loader {
 	display: inline-block;
 	inline-size: var(--stv-loader-size);
 	block-size: var(--stv-loader-size);
@@ -27,7 +27,7 @@
 	animation: stv-loader-spin var(--stv-loader-duration) linear infinite;
 }
 
-.stv__loading-overlay > .stv-loader {
+.stv__loading-overlay > .stv__loader {
 	inline-size: var(--stv-loader-overlay-size);
 	block-size: var(--stv-loader-overlay-size);
 }

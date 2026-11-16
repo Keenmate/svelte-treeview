@@ -25,7 +25,7 @@ export type { TreeNavigation, TreeNavigationOverrides } from "./core/navigation.
 export type { RenderStats } from "./ltree/types.js"
 export { DEFAULT_LABELS, resolveLabel } from "./core/labels.js"
 // Context-menu model (same as @keenmate/web-treeview; core /actions vendored)
-export { menuDivider, isMenuDivider } from "./core/menu.js"
+export { createMenuDivider, isMenuDivider } from "./core/menu.js"
 // Custom menu renderers: resolve a level's entries / a submenu the same way the built-in menu does
 export { resolveMenuEntries, getMenuChildren } from "./vendor/actions/resolve.js"
 export type { ResolvedMenuEntry } from "./vendor/actions/resolve.js"
@@ -72,7 +72,7 @@ export {
 } from "./perf-logger.js"
 
 // Responsive / device / container-size signal (transferred 1:1 from
-// @keenmate/web-components-core; see src/lib/vendor/environment/README.md). The
+// @keenmate/web-components-core; see src/lib/vendor/core/environment/README.md). The
 // tree renders inline and does not change its own behaviour on these — they're
 // exposed so a consumer can adapt settings to the space (AB10-style). The
 // runes-friendly `containerSize`/`environmentState` bridges are for use inside a
@@ -86,19 +86,21 @@ export {
     classifyDevice,
     configureBreakpoints,
     TABLET_MIN_SHORT_SIDE
-} from "./vendor/environment/environment.js"
+} from "./vendor/core/environment/environment.js"
 export type {
     EnvironmentSnapshot,
     EnvironmentListener,
-    ObserveOptions,
-    PointerType,
+    ObserveEnvironmentOptions,
+    PointerAccuracy,
     Orientation,
     OS,
     BreakpointMap,
     DeviceClass
-} from "./vendor/environment/environment.js"
-export { observeElementSize } from "./vendor/environment/element-size.js"
-export type { ElementSize, ElementSizeListener, ObserveElementSizeOptions } from "./vendor/environment/element-size.js"
+} from "./vendor/core/environment/environment.js"
+export { observeElementSize } from "./vendor/core/environment/element-size.js"
+export type { ElementSize, ElementSizeListener, ObserveElementSizeOptions } from "./vendor/core/environment/element-size.js"
+export { MOTION_VALUES, getPageMotion, observePageMotion } from "./vendor/core/environment/motion.js"
+export type { Motion } from "./vendor/core/environment/motion.js"
 
 // Export global API type and ensure registration runs
 export type { GlobalTreeviewAPI } from "./global-api.js"

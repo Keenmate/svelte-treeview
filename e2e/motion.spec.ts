@@ -3,7 +3,8 @@ import { test, expect, type Page } from '@playwright/test';
 /**
  * Motion is CSS only: the --stv-transition-* speeds chain to the contract's
  * --base-duration-*, prefers-reduced-motion sets them to 0s, and 0s turns motion
- * off (no prop). Disabled dimming chains to --base-disabled-opacity.
+ * off. Disabled dimming chains to --base-disabled-opacity. The `motion` prop / page
+ * level (core presets on [data-motion]) is covered by motion-level.spec.ts.
  *
  * Fixture: src/routes/test/contract-parity/+page.svelte
  */

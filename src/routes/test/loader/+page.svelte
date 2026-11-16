@@ -2,8 +2,8 @@
 	import Tree from '$lib/components/Tree.svelte';
 	import { onMount } from 'svelte';
 
-	// Fixture for e2e/loader.spec.ts: the isLoading overlay — default .stv-loader,
-	// the page-wide window.components.renderLoaderCallback, the loadingPlaceholder snippet.
+	// Fixture for e2e/loader.spec.ts: the isLoading overlay — default .stv__loader,
+	// the page-wide window.components.renderLoadingCallback, the loadingPlaceholder snippet.
 	const data = [
 		{ id: 'a', path: '1', name: 'Documents' },
 		{ id: 'b', path: '2', name: 'Pictures' }

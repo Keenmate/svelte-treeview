@@ -272,7 +272,7 @@ The tree supports two context-menu styles: **callback-based** (imperative, share
 ```svelte
 <script lang="ts">
   import { Tree } from '@keenmate/svelte-treeview';
-  import { menuDivider } from '@keenmate/svelte-treeview';
+  import { createMenuDivider } from '@keenmate/svelte-treeview';
   import type { TreeMenuContext, TreeMenuEntry } from '@keenmate/svelte-treeview';
 
   const data = [
@@ -293,7 +293,7 @@ The tree supports two context-menu styles: **callback-based** (imperative, share
           { id: 'xml', text: 'XML', shortcut: 'X', onClick: () => exportAs(node, 'xml') },
       ]},
       'copy', 'paste',
-      menuDivider('Danger zone'),
+      createMenuDivider('Danger zone'),
       { action: 'delete', isDisabled: !node.data?.canDelete },
     ];
   }

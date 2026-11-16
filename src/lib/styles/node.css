@@ -9,6 +9,21 @@
 	overflow: visible;
 }
 
+/* Row animation: a row the last expand revealed (part of `motion`). Same technique
+   as core's menu sheet — @keyframes on a modifier, motion-token duration, ease-out in. */
+.stv__node--opening {
+	animation: stv-row-in var(--stv-row-animation-duration) var(--stv-ease-out);
+}
+
+/* Collapse: the rows a collapse hides shrink in place (core animateOut writes
+   --km-exit-height), the rows below slide up with them, then the node collapses. */
+.stv__node--closing {
+	pointer-events: none;
+	overflow: hidden;
+	min-height: 0;
+	animation: stv-row-out var(--stv-row-animation-duration) var(--stv-ease-in) forwards;
+}
+
 .stv__node-row {
 	display: flex;
 	align-items: center;

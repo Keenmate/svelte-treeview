@@ -56,6 +56,7 @@ import type { TreeNavigation } from './navigation.js';
 import type { TreeMenuContext, TreeMenuEntry, TreeMenuItem, TreeAction, TreeActionEventDetail } from './menu.js';
 import type { MenuItem, ResolvedActionItem } from '../vendor/actions/types.js';
 import { runAction } from '../vendor/actions/resolve.js';
+import { animateOut, readAnimationMs, type AnimateOutHandle } from '../vendor/core/dom/animate-out.js';
 
 // Re-register global API (safe to import multiple times)
 import '../global-api.js';
@@ -431,6 +432,12 @@ export interface NodeConfig {
 	// dragged visual dims the whole set in BOTH recursive and flat rendering (recursive
 	// nodes can't inherit a single top-level flag, else nested files never dim).
 	draggedPaths: Set<string>;
+	/** Rows the last expand revealed (capped at rowAnimationLimit) — they render
+	 *  `stv__node--opening`. Reassigned wholesale like draggedPaths. */
+	revealedPaths: Set<string>;
+	/** Rows a collapse is animating out (core animateOut) — they render
+	 *  `stv__node--closing` + `inert`, so a _rev re-key mid-collapse keeps the state. */
+	closingPaths: Set<string>;
 	/** Nodes whose async `beforeExpandCallback` is in flight (the loading state). */
 	expandPendingPaths: Set<string>;
 	// Data-driven per-row class hooks. Applied to .stv__node (getNodeClassCallback) and
@@ -554,6 +561,8 @@ export interface TreeControllerProps<T> {
 	isProgressiveRenderEnabled?: boolean;
 	initialBatchSize?: number;
 	maxBatchSize?: number;
+	// Row animation (opt-in; docs/PLAN-row-animation.md)
+	rowAnimationLimit?: number;
 	onRenderStart?: (ctx: TreeCallbackContext<T>) => void;
 	onRenderProgress?: (stats: RenderStats & TreeCallbackContext<T>) => void;
 	onRenderComplete?: (stats: RenderStats & TreeCallbackContext<T>) => void;
@@ -697,7 +706,7 @@ export interface TreeControllerProps<T> {
 	nodeInputTransformationCallback?: NodeTransformCallback<T>;
 
 	// DATA PROVIDERS (get*Callback = returns data the system uses)
-	/** The context menu's entries for the node it opened on: action items, `menuDivider()`s and
+	/** The context menu's entries for the node it opened on: action items, `createMenuDivider()`s and
 	 *  built-in action names (`'copy'`, `'expand-subtree'`, …). No menu when unset (or empty). */
 	getContextMenuItemsCallback?: (ctx: TreeMenuContext<T>) => TreeMenuEntry<T>[];
 	/** Runs before a menu item activates (`false` cancels — no `onClick`, built-in or `onAction`;
@@ -744,6 +753,13 @@ export interface TreeControllerProps<T> {
 
 // ─── TreeController ───────────────────────────────────────────────────────
 
+/** A collapse animating out: core's handle, the real collapse to run, the nodes it closes. */
+interface ClosingEntry {
+	handle: AnimateOutHandle;
+	apply: () => void;
+	targets: string[];
+}
+
 export class TreeController<T> {
 	// ── LTree instance ──────────────────────────────────────────────────
 	tree!: Ltree<T>;
@@ -768,6 +784,8 @@ export class TreeController<T> {
 		dragOverNodeClass: undefined,
 		draggedNodeClass: undefined,
 		draggedPaths: new Set(),
+		revealedPaths: new Set(),
+		closingPaths: new Set(),
 		expandPendingPaths: new Set(),
 		dropZoneMode: 'glow',
 		dropZoneLayout: 'around',
@@ -903,6 +921,21 @@ export class TreeController<T> {
 	isProgressiveRenderEnabled = $state(true);
 	initialBatchSize = $state(20);
 	maxBatchSize = $state(500);
+	// ROW ANIMATION (docs/PLAN-row-animation.md): rows an expand reveals get
+	// stv__node--opening (CSS @keyframes, timed by the motion tokens) — at most
+	// rowAnimationLimit of them. No on/off property: core `motion` is the one switch
+	// (SPEC §12.16 / C-NC-15); --stv-row-animation-duration: 0s turns off just rows.
+	// The reveal set gates it: rows re-key on _rev, so "animate on mount" alone would
+	// replay on every focus / select click.
+	rowAnimationLimit = $state(50);
+	revealedPaths = $state.raw<Set<string>>(new Set());
+	// Collapse half: the rows a collapse hides animate out first (core animateOut, the
+	// closing class + inert + --km-exit-height), THEN the node really collapses. The handle
+	// is kept per collapsing node: a re-expand cancels it, a second collapse awaits it.
+	closingPaths = $state.raw<Set<string>>(new Set());
+	#closingHandles = new Map<string, ClosingEntry>();
+	#revealGeneration = 0;
+	#revealDepth = 0;
 	bodyClass = $state<string | null | undefined>(undefined);
 
 	// DRAG AND DROP
@@ -1297,6 +1330,7 @@ export class TreeController<T> {
 		this.isProgressiveRenderEnabled = props.isProgressiveRenderEnabled ?? true;
 		this.initialBatchSize = props.initialBatchSize ?? 20;
 		this.maxBatchSize = props.maxBatchSize ?? 500;
+		this.rowAnimationLimit = props.rowAnimationLimit ?? 50;
 		this.bodyClass = props.bodyClass;
 
 		this.dragDropMode = props.dragDropMode ?? 'none';
@@ -1489,6 +1523,8 @@ export class TreeController<T> {
 			dragOverNodeClass: this.dragOverNodeClass,
 			draggedNodeClass: this.draggedNodeClass,
 			draggedPaths: this.draggedPaths,
+			revealedPaths: this.revealedPaths,
+			closingPaths: this.closingPaths,
 			expandPendingPaths: this.expandPendingPaths,
 			dropZoneMode: this.dropZoneMode,
 			dropZoneLayout: this.dropZoneLayout,
@@ -1547,6 +1583,8 @@ export class TreeController<T> {
 				dragOverNodeClass: this.dragOverNodeClass,
 			draggedNodeClass: this.draggedNodeClass,
 			draggedPaths: this.draggedPaths,
+			revealedPaths: this.revealedPaths,
+			closingPaths: this.closingPaths,
 			expandPendingPaths: this.expandPendingPaths,
 				dropZoneMode: this.dropZoneMode,
 				dropZoneLayout: this.dropZoneLayout,
@@ -1805,6 +1843,7 @@ export class TreeController<T> {
 	 */
 	async expandNodes(paths: string | string[], options?: ExpandOptions): Promise<void> {
 		const list = Array.isArray(paths) ? paths : [paths];
+		this._settleClosing(list);
 		if (!this.beforeExpandHandler) {
 			this._expandWithEvents(list, options);
 			return;
@@ -1832,10 +1871,20 @@ export class TreeController<T> {
 		const wereExpanded = list
 			.map((p) => this.tree?.getNodeByPath(p))
 			.filter((n): n is LTreeNode<T> => !!n && !!n.isExpanded && !!n.hasChildren);
-		this.tree.collapseNodes(paths, options);
-		if (!options?.isSilent)
-			for (const n of wereExpanded) if (!n.isExpanded) this._emitExpandEvent('collapse', n);
-		this._syncExpanded(options?.isSilent);
+		// Already animating out (a second collapse) → wait for that one.
+		const running = wereExpanded.filter((n) => this.#closingHandles.has(n.path));
+		const fresh = wereExpanded.filter((n) => !this.#closingHandles.has(n.path));
+		const waits: Promise<unknown>[] = running.map((n) => this.#closingHandles.get(n.path)!.handle.finished);
+		if (fresh.length || !running.length)
+			waits.push(
+				this._animateCollapse(fresh.map((n) => n.path), () => {
+					this.tree.collapseNodes(fresh.length ? fresh.map((n) => n.path) : list, options);
+					if (!options?.isSilent)
+						for (const n of fresh) if (!n.isExpanded) this._emitExpandEvent('collapse', n);
+					this._syncExpanded(options?.isSilent);
+				})
+			);
+		await Promise.all(waits);
 	}
 
 	/**
@@ -1849,6 +1898,11 @@ export class TreeController<T> {
 		if (!node || !node.hasChildren) return;
 		if (!this.tree.getNodeIsCollapsible(node)) return;
 		if (this.expandPendingPaths.has(path)) return;
+		// Toggled again while its rows animate out = re-expand: cancel, it stays open.
+		if (this._settleClosing([path])) {
+			uiLogger.debug(`Node re-expanded mid-collapse (animation cancelled): ${path}`);
+			return;
+		}
 		if (node.isExpanded) {
 			await this.collapseNodes(path, options);
 			return;
@@ -1862,15 +1916,112 @@ export class TreeController<T> {
 	/** Expand the whole tree (`null` / omitted), or the given nodes + all their descendants.
 	 *  No `beforeExpandCallback`, no `onNodeExpand` — only `onExpandedChange`. */
 	expandAll(paths?: string | string[] | null, options?: ExpandOptions) {
-		this.tree?.expandAll(paths, options);
+		this._settleClosing(paths == null ? null : Array.isArray(paths) ? paths : [paths]);
+		this._withReveal(() => this.tree?.expandAll(paths, options));
 		this._syncExpanded(options?.isSilent);
 	}
 
 	/** Collapse the whole tree (`null` / omitted), or the given nodes + all their descendants.
-	 *  No `onNodeCollapse` — only `onExpandedChange`. */
-	collapseAll(paths?: string | string[] | null, options?: ExpandOptions) {
-		this.tree?.collapseAll(paths, options);
-		this._syncExpanded(options?.isSilent);
+	 *  No `onNodeCollapse` — only `onExpandedChange`. The rows animate out first (motion);
+	 *  the Promise settles once the tree is collapsed. */
+	collapseAll(paths?: string | string[] | null, options?: ExpandOptions): Promise<void> {
+		const apply = () => {
+			this.tree?.collapseAll(paths, options);
+			this._syncExpanded(options?.isSilent);
+		};
+		if (!this.tree) return Promise.resolve();
+		// The nodes whose rows disappear: every expanded root (whole tree) or the given ones.
+		const targets = (paths == null
+			? this.tree.visibleFlatNodes.filter((n) => !n.parentPath)
+			: (Array.isArray(paths) ? paths : [paths]).map((p) => this.tree.getNodeByPath(p))
+		)
+			.filter((n): n is LTreeNode<T> => !!n && !!n.isExpanded && !!n.hasChildren)
+			.map((n) => n.path);
+		return this._animateCollapse(targets, apply);
+	}
+
+	/**
+	 * Row animation, collapse half: animate out the visible rows under `targets` (the first
+	 * `rowAnimationLimit`; the rest go with the collapse), then `apply()` the real collapse —
+	 * core `animateOut` (closing class + inert + --km-exit-height, waits for the CSS
+	 * animation; 0s → at once). Nothing to animate → `apply()` now.
+	 */
+	private _animateCollapse(targets: string[], apply: () => void): Promise<void> {
+		const container = this.containerElement;
+		if (!targets.length || !container || !this._isRowAnimationOn()) {
+			apply();
+			return Promise.resolve();
+		}
+		const sep = this.treePathSeparator || '.';
+		const targetSet = new Set(targets);
+		const isUnderTarget = (path: string): boolean => {
+			for (let i = path.lastIndexOf(sep); i > 0; i = path.lastIndexOf(sep, i - 1))
+				if (targetSet.has(path.slice(0, i))) return true;
+			return false;
+		};
+		const limit = Math.max(0, this.rowAnimationLimit ?? 50);
+		const hiding: string[] = [];
+		for (const n of this.tree.visibleFlatNodes) {
+			if (hiding.length >= limit) break;
+			if (isUnderTarget(n.path)) hiding.push(n.path);
+		}
+		const rowByPath = new Map<string, Element>();
+		for (const el of container.querySelectorAll('.stv__node[data-tree-path]'))
+			rowByPath.set(el.getAttribute('data-tree-path')!, el);
+		const rows = hiding.map((p) => rowByPath.get(p)).filter((el): el is Element => !!el);
+		if (!rows.length) {
+			apply();
+			return Promise.resolve();
+		}
+		const animated = new Set(hiding.filter((p) => rowByPath.has(p)));
+		const cleanup = () => {
+			for (const t of targets) if (this.#closingHandles.get(t)?.handle === handle) this.#closingHandles.delete(t);
+			const next = new Set(this.closingPaths);
+			for (const p of animated) next.delete(p);
+			this.closingPaths = next;
+		};
+		this.closingPaths = new Set([...this.closingPaths, ...animated]);
+		uiLogger.debug('Row animation: closing', { targets, rows: rows.length });
+		const handle: AnimateOutHandle = animateOut(rows, {
+			className: 'stv__node--closing',
+			shouldSetInert: true,
+			shouldSetHeightVar: true,
+			// Collapse first, then drop the closing state — same flush, so a row never
+			// snaps back to full height before it unmounts.
+			onDone: () => {
+				apply();
+				cleanup();
+			}
+		});
+		const entry = { handle, apply, targets };
+		for (const t of targets) this.#closingHandles.set(t, entry);
+		return handle.finished.then((isDone) => {
+			if (!isDone) cleanup();
+		});
+	}
+
+	/**
+	 * Before an expand: settle the pending collapses that involve `paths` (the same node, an
+	 * ancestor or a descendant; `null` = all). A pending collapse of exactly ONE of these nodes
+	 * is cancelled — a re-expand mid-animation, it simply stays open. Any other one (e.g. a
+	 * collapseAll in flight) is applied NOW, so calls keep their order: `collapseAll();
+	 * expandNodes(x)` ends exactly as it does without motion. Returns whether one was cancelled.
+	 */
+	private _settleClosing(paths: readonly string[] | null): boolean {
+		const sep = this.treePathSeparator || '.';
+		const isRelated = (t: string) =>
+			paths == null || paths.some((p) => p === t || p.startsWith(t + sep) || t.startsWith(p + sep));
+		const entries = new Set(this.#closingHandles.values());
+		let isCancelled = false;
+		for (const entry of entries) {
+			if (!entry.targets.some(isRelated)) continue;
+			const isReExpand = paths != null && entry.targets.length === 1 && paths.includes(entry.targets[0]);
+			entry.handle.cancel(); // class + inert off; core's onDone never runs
+			for (const t of entry.targets) if (this.#closingHandles.get(t) === entry) this.#closingHandles.delete(t);
+			if (isReExpand) isCancelled = true;
+			else entry.apply();
+		}
+		return isCancelled;
 	}
 
 	/** The visible nodes in display order (expanded + search filter applied) — a snapshot. */
@@ -1919,10 +2070,65 @@ export class TreeController<T> {
 				if (!n.isExpanded && n.hasChildren) changing.set(prefix, n);
 			}
 		}
-		this.tree.expandNodes(paths, options);
+		this._withReveal(() => this.tree.expandNodes(paths, options));
 		if (!options?.isSilent)
 			for (const n of changing.values()) if (n.isExpanded) this._emitExpandEvent('expand', n);
 		this._syncExpanded(options?.isSilent);
+	}
+
+	/**
+	 * Row animation: run an expand and record the rows it made visible (the first
+	 * `rowAnimationLimit` in visible order) as the reveal. Nested calls (the accordion
+	 * toggle → _expandWithEvents) record once, around the outermost. Nothing to animate
+	 * (duration 0s — motion "none", reduced motion, the token — or a limit of 0) → just
+	 * `apply()`, so a motion-off tree never builds the before-set.
+	 */
+	private _withReveal(apply: () => void): void {
+		if (this.#revealDepth > 0 || !this.tree || !this._isRowAnimationOn()) {
+			apply();
+			return;
+		}
+		const before = new Set<string>();
+		for (const n of this.tree.visibleFlatNodes) before.add(n.path);
+		this.#revealDepth++;
+		try {
+			apply();
+		} finally {
+			this.#revealDepth--;
+		}
+		const limit = Math.max(0, this.rowAnimationLimit ?? 50);
+		const revealed = new Set<string>();
+		if (limit > 0)
+			for (const n of this.tree.visibleFlatNodes) {
+				if (before.has(n.path)) continue;
+				revealed.add(n.path);
+				if (revealed.size >= limit) break;
+			}
+		if (revealed.size === 0) return;
+		this.revealedPaths = revealed;
+		const generation = ++this.#revealGeneration;
+		// Clear the reveal once the rows played (a row re-mounted later — re-key, scroll
+		// back — must not replay). The duration is read back from CSS (core
+		// readAnimationMs): 0 under motion="none" / reduced motion → cleared at once.
+		void tick().then(() => {
+			if (generation !== this.#revealGeneration) return;
+			const row = this.containerElement?.querySelector('.stv__node--opening');
+			const ms = row ? readAnimationMs(row) : 0;
+			uiLogger.debug('Row animation: reveal', { rows: revealed.size, ms });
+			setTimeout(() => {
+				if (generation === this.#revealGeneration) this.revealedPaths = new Set();
+			}, ms + 50);
+		});
+	}
+
+	/** Rows animate: a limit above 0 and a resolved `--stv-row-animation-duration` above 0s. */
+	private _isRowAnimationOn(): boolean {
+		if ((this.rowAnimationLimit ?? 50) <= 0) return false;
+		const el = this.containerElement;
+		if (!el || typeof getComputedStyle !== 'function') return false;
+		const raw = getComputedStyle(el).getPropertyValue('--stv-row-animation-duration').trim();
+		const value = parseFloat(raw);
+		return Number.isFinite(value) && value > 0;
 	}
 
 	/** The expand half of a UI toggle, after the gate: accordion side-effect + expand + events. */
@@ -1934,18 +2140,20 @@ export class TreeController<T> {
 			return;
 		}
 		const collapsedSiblings: LTreeNode<T>[] = [];
-		if (this.shouldExpandAsAccordion) {
-			for (const sibling of this.tree.getSiblings(path)) {
-				if (sibling.path !== path && sibling.isExpanded && this.tree.getNodeIsCollapsible(sibling)) {
-					sibling.isExpanded = false;
-					sibling._rev = (sibling._rev || 0) + 1;
-					collapsedSiblings.push(sibling);
+		this._withReveal(() => {
+			if (this.shouldExpandAsAccordion) {
+				for (const sibling of this.tree.getSiblings(path)) {
+					if (sibling.path !== path && sibling.isExpanded && this.tree.getNodeIsCollapsible(sibling)) {
+						sibling.isExpanded = false;
+						sibling._rev = (sibling._rev || 0) + 1;
+						collapsedSiblings.push(sibling);
+					}
 				}
 			}
-		}
-		node.isExpanded = true;
-		node._rev = (node._rev || 0) + 1;
-		this.tree.refresh();
+			node.isExpanded = true;
+			node._rev = (node._rev || 0) + 1;
+			this.tree.refresh();
+		});
 		if (!options?.isSilent) {
 			for (const s of collapsedSiblings) this._emitExpandEvent('collapse', s);
 			this._emitExpandEvent('expand', node);
@@ -3520,7 +3728,7 @@ export class TreeController<T> {
 			switch (action) {
 				case 'paste': this.pasteNodes(''); break;
 				case 'expand-all': this.expandAll(null); break;
-				case 'collapse-all': this.collapseAll(null); break;
+				case 'collapse-all': await this.collapseAll(null); break;
 				case 'sort-all': this.sortAll(null); break;
 				case 'copy': case 'cut': case 'delete': case 'expand': case 'collapse':
 				case 'expand-subtree': case 'collapse-subtree': case 'sort': case 'sort-subtree':
@@ -3538,9 +3746,9 @@ export class TreeController<T> {
 			case 'expand': await this.expandNodes(paths); break;
 			case 'collapse': await this.collapseNodes(paths); break;
 			case 'expand-subtree': this.expandAll(paths); break;
-			case 'collapse-subtree': this.collapseAll(paths); break;
+			case 'collapse-subtree': await this.collapseAll(paths); break;
 			case 'expand-all': this.expandAll(null); break;
-			case 'collapse-all': this.collapseAll(null); break;
+			case 'collapse-all': await this.collapseAll(null); break;
 			case 'sort': this.sortNodes(paths); break;
 			case 'sort-subtree': this.sortAll(paths); break;
 			case 'sort-all': this.sortAll(null); break;
@@ -4078,6 +4286,8 @@ export class TreeController<T> {
 			this.shouldExpandFilterDescendants = updates.shouldExpandFilterDescendants ?? true;
 		if (updates.searchResultLimit !== undefined)
 			this.searchResultLimit = updates.searchResultLimit ?? undefined;
+		if (updates.rowAnimationLimit !== undefined)
+			this.rowAnimationLimit = updates.rowAnimationLimit ?? 50;
 		if (updates.rangeSelectionMode !== undefined)
 			this.rangeSelectionMode = updates.rangeSelectionMode ?? 'visual';
 		if (updates.isLoading !== undefined) this.isLoading = updates.isLoading ?? false;

@@ -1,9 +1,9 @@
 <script lang="ts">
 	// Context-menu model fixture (web-treeview parity): built-in action names + labels,
-	// custom items, menuDivider(), beforeActionCallback / item onClick / onAction order,
+	// custom items, createMenuDivider(), beforeActionCallback / item onClick / onAction order,
 	// built-in targets (the selection when the clicked node is in it).
 	// Targeted by e2e/menu-actions.spec.ts.
-	import { Tree, menuDivider } from '$lib/index.js';
+	import { Tree, createMenuDivider } from '$lib/index.js';
 	import type { TreeMenuContext, TreeMenuEntry, TreeActionEventDetail } from '$lib/index.js';
 
 	type Item = { id: number; path: string; name: string };
@@ -29,14 +29,14 @@
 			'copy',
 			'paste',
 			'delete',
-			menuDivider('View'),
+			createMenuDivider('View'),
 			'expand',
 			'collapse',
 			'expand-subtree',
 			'collapse-subtree',
 			'expand-all',
 			'collapse-all',
-			menuDivider(),
+			createMenuDivider(),
 			'sort',
 			{ action: 'sort-all', text: 'Sort everything' },
 			{ id: 'hidden', text: 'Hidden', isVisible: false },

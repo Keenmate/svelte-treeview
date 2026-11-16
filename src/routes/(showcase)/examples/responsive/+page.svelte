@@ -286,7 +286,7 @@ stop(); stopBox();`}</pre></div>
 		<p>
 			These primitives are transferred 1:1 from <code>@keenmate/web-components-core</code>
 			(the same device/viewport engine our web components use) and vendored under
-			<code>src/lib/vendor/environment</code>. Detection is <strong>feature detection</strong>
+			<code>src/lib/vendor/core/environment</code>. Detection is <strong>feature detection</strong>
 			(media queries), not UA sniffing, so it reacts to orientation flips, a resize, or plugging
 			in a mouse. The runes bridge (<code>containerSize</code>/<code>environmentState</code>)
 			turns each imperative <code>subscribe → unsubscribe</code> into reactive

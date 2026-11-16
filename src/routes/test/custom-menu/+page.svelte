@@ -8,7 +8,7 @@
 		TreeProvider,
 		resolveMenuEntries,
 		getMenuChildren,
-		menuDivider,
+		createMenuDivider,
 		type TreeController,
 		type TreeMenuContext,
 		type TreeMenuEntry,
@@ -37,7 +37,7 @@
 		return [
 			'paste',
 			'delete',
-			menuDivider(),
+			createMenuDivider(),
 			'expand',
 			{ id: 'custom', text: 'Custom', onClick: (d) => { log = [...log, `click:${d.id}:${d.path}`]; } },
 			{ id: 'more', text: 'More', getChildrenCallback: async (c) => [{ id: 'child', text: `Child of ${c.path}` }] }

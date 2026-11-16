@@ -2,7 +2,7 @@
  * Context-menu model — the same as `@keenmate/web-treeview` (core `/actions`, vendored in
  * `../vendor/actions`). `getContextMenuItemsCallback(ctx)` returns entries: action items
  * (`{ id, text, icon, isDisabled, isDanger, isToggled, isVisible, children, onClick }`),
- * dividers (`menuDivider(text?)`) and built-in action names (`'copy'`, `{ action: 'copy', … }`).
+ * dividers (`createMenuDivider(text?)`) and built-in action names (`'copy'`, `{ action: 'copy', … }`).
  * Activation order: `beforeActionCallback` → item `onClick` → built-in → `onAction`.
  */
 import type { LTreeNode } from '../ltree/ltree-node.svelte.js';
@@ -19,7 +19,7 @@ export type {
 	MenuItem,
 	ResolvedActionItem
 } from '../vendor/actions/types.js';
-export { menuDivider, isMenuDivider } from '../vendor/actions/resolve.js';
+export { createMenuDivider, isMenuDivider } from '../vendor/actions/resolve.js';
 
 /**
  * The surface ctx of the context menu: the node it opened on, with its live parent and
@@ -54,7 +54,7 @@ export type TreeAction =
 
 /** A context-menu item (core `MenuItem`): text, icon, shortcut, `get*Callback(ctx)`, `onClick(detail)`, children. */
 export type TreeMenuItem<T = any> = MenuItem<TreeMenuContext<T>, TreeAction>;
-/** A menu item, a divider (`menuDivider(text?)`) or a built-in action name. */
+/** A menu item, a divider (`createMenuDivider(text?)`) or a built-in action name. */
 export type TreeMenuEntry<T = any> = MenuEntry<TreeMenuContext<T>, TreeAction> | TreeAction;
 /** Detail of `onAction` / an item's `onClick` / `beforeActionCallback`. */
 export type TreeActionEventDetail<T = any> = ActionEventDetail<TreeMenuContext<T>, TreeAction>;

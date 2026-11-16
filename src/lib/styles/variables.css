@@ -165,6 +165,12 @@
 	/* Row transition. Default none = instant hover (crisper). Restore a fade with
 	   `background-color var(--stv-transition-normal) var(--stv-ease-standard)`. */
 	--stv-node-transition: none;
+	/* Row animation: the rows an expand reveals fade in while sliding down from this
+	   distance (0 = a plain fade). Part of `motion` (no on/off prop — core SPEC §12.16):
+	   motion="none" / reduced motion → 0s → instant; 0s here turns off just the rows.
+	   The duration must stay on a speed token, or motion stops reaching it. */
+	--stv-row-animation-duration: var(--stv-transition-normal);
+	--stv-row-animation-distance: calc(-0.6 * var(--stv-rem));
 
 	/* Per-node icon: colour inherits the row text (a per-node iconColor overrides
 	   it); width is the reserved column used when shouldAlignNodeIcons is on. */

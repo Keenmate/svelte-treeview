@@ -62,13 +62,17 @@ chains to the `--base-*` contract the same way; `npm run check:contract` checks 
 
 ## Motion
 
-Only the contract's four speeds and its easings — there is no prop for animations:
+Only the contract's four speeds and its easings. `motion` (prop, `data-motion` section, page-wide
+`window.components.motion`) is the one switch — there is no per-animation on/off prop; one animation is
+turned off by its own duration token (`--stv-row-animation-duration: 0s` = rows appear at once):
 
 | Variable | Default |
 |---|---|
 | `--stv-transition-fast` / `-normal` / `-medium` / `-slow` | `var(--base-duration-*, 0.1s / 0.15s / 0.25s / 0.3s)` |
 | `--stv-ease-standard` / `-out` / `-in` | `var(--base-ease-*)` |
 | `--stv-scroll-behavior` | `var(--base-scroll-behavior, smooth)` (`auto` under reduced motion) — `scrollToPath` when no `behavior` is passed; keyboard moves always scroll instantly |
+| `--stv-row-animation-duration` | `var(--stv-transition-normal)` — rows an expand reveals / a collapse hides; `0s` turns off just them (keep it on a speed token, or `motion` stops reaching it) |
+| `--stv-row-animation-distance` | `calc(-0.6 * var(--stv-rem))` — the slide they enter from; `0` = a plain fade |
 | `--stv-loader-duration` | `var(--base-loader-duration, 0.8s)` — one turn of the loader (a loop period, not on the duration scale; the contract slows it to 1.5s under reduced motion) |
 
 ```css
@@ -99,9 +103,9 @@ page-wide: `--base-loader-*`.
 | `--stv-loader-color` | `var(--stv-accent-color)` |
 
 Overlay content, highest first: the `loadingPlaceholder` snippet → the page-wide
-`window.components.renderLoaderCallback` (the hook the web components use; ctx `{ component:
+`window.components.renderLoadingCallback` (the hook the web components use — optional; ctx `{ component:
 'svelte-treeview', context: 'overlay', containerElement, element, label }`, may return a cleanup)
-→ the default `.stv-loader`. The overlay always has `role="status"` + `aria-label` = `labels.loading`.
+→ the default `.stv__loader`. The overlay always has `role="status"` + `aria-label` = `labels.loading`.
 
 ## Cascade-layer contract
 

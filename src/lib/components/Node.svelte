@@ -4,7 +4,7 @@
 	import type {Ltree, DropPosition, DropOperation, NodeRenderContext} from "../ltree/types.js"
 	import type {NodeCallbacks, NodeConfig} from "../core/TreeController.svelte.js"
 	import { uiLogger } from "../logger.js"
-	import { observeElementSize } from "../vendor/environment/element-size.js"
+	import { observeElementSize } from "../vendor/core/environment/element-size.js"
 	import { computePosition, autoUpdate, offset, flip, shift } from "@floating-ui/dom"
 	import { tooltip } from "../actions/tooltip.js"
 
@@ -59,6 +59,12 @@
 	// This node is part of the active drag (lead, a multi-drag member, or a traveling
 	// descendant). Derived per-node from the controller's complete manifest.
 	const isDraggedNode = $derived(config.draggedPaths?.has(node.path) ?? false);
+	// Row animation: only rows the last expand revealed play the enter keyframes
+	// (a _rev re-key re-mounts the row — mounting alone must not animate).
+	const isOpening = $derived(config.revealedPaths?.has(node.path) ?? false);
+	// Collapse half: core animateOut adds the closing class to the live element; this keeps
+	// it (and inert) when a _rev re-key re-creates the row mid-animation.
+	const isClosing = $derived(config.closingPaths?.has(node.path) ?? false);
 	// An async beforeExpandCallback is in flight for this node (lazy load): the toggle
 	// shows the loader and the row carries aria-busy + data-loading.
 	const isExpandPending = $derived(config.expandPendingPaths?.has(node.path) ?? false);
@@ -298,6 +304,9 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	class="stv__node {customNodeClass}"
+	class:stv__node--opening={isOpening}
+	class:stv__node--closing={isClosing}
+	inert={isClosing || undefined}
 	id="{node.treeId}-{node.id}"
 	data-tree-path="{node.path}"
 	data-loading={isExpandPending ? '' : undefined}

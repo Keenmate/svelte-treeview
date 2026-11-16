@@ -14,14 +14,21 @@
  * *structural* (a different DOM / a JS decision, not just restyling).
  *
  * Semantics mirror the environment observable: fires once immediately with the
- * current box (unless `immediate: false`), then on box changes, throttled to
+ * current box (unless `shouldFireImmediately: false`), then on box changes, throttled to
  * ~30 ms (leading + trailing) so a drag-resize reflows a bounded number of times
  * and never re-enters the `ResizeObserver` loop. Identical consecutive sizes are
  * deduped. SSR-safe: with no `ResizeObserver` it fires once (a `0×0` measure) and
  * returns a no-op unsubscribe. Zero runtime deps.
  */
 
-/** An element's border-box size in CSS px (matches `getBoundingClientRect()`). */
+import { once } from '../dom/once.js';
+import { callSafely } from '../logging/safe-call.js';
+import { createThrottle, type Throttle } from '../dom/throttle.js';
+
+/**
+ * An element's border-box LAYOUT size in CSS px: CSS transforms are not applied (a panel in a
+ * `scale(.95)` open animation reports its real size), unlike `getBoundingClientRect()`.
+ */
 export interface ElementSize {
   /** Border-box width in CSS px. */
   readonly width: number;
@@ -35,7 +42,7 @@ export type ElementSizeListener = (size: ElementSize, el: Element) => void;
 /** Options for {@link observeElementSize}. */
 export interface ObserveElementSizeOptions {
   /** Fire the listener synchronously with the current box on subscribe. Default `true`. */
-  immediate?: boolean;
+  shouldFireImmediately?: boolean;
   /** Throttle window in ms (leading + trailing). Default `30`; `0` disables throttling. */
   throttleMs?: number;
 }
@@ -46,10 +53,8 @@ const DEFAULT_ELEMENT_THROTTLE_MS = 30;
 /** One live subscription; each carries its own throttle state so listeners are independent. */
 interface Subscription {
   readonly el: Element;
-  readonly cb: ElementSizeListener;
-  readonly throttleMs: number;
-  timer?: ReturnType<typeof setTimeout>;
-  lastNotify: number;
+  readonly listener: ElementSizeListener;
+  readonly throttle: Throttle;
   pendingSize?: ElementSize;
   lastFired?: ElementSize;
 }
@@ -57,7 +62,7 @@ interface Subscription {
 /** The single shared observer, created on the first subscribe and dropped when the last leaves. */
 let ro: ResizeObserver | null = null;
 /** Live subscriptions per target element. */
-const targets = new WeakMap<Element, Set<Subscription>>();
+let targets = new WeakMap<Element, Set<Subscription>>();
 /** Count of distinct observed elements (WeakMap isn't countable) — the ref-count for `ro`. */
 let observedCount = 0;
 
@@ -65,11 +70,28 @@ function canObserve(): boolean {
   return typeof ResizeObserver !== 'undefined';
 }
 
-/** Border-box read; SSR-safe (`0×0` when there's no layout). Same source for immediate + RO fires. */
+/**
+ * The immediate (no observer entry) border-box layout size: `offsetWidth` / `offsetHeight`
+ * for an HTML element (untransformed, whole px — the first observer entry refines it), the
+ * bounding box for anything else (SVG has no offset size). SSR-safe: `0×0` with no layout.
+ */
 function measure(el: Element): ElementSize {
+  if (typeof HTMLElement !== 'undefined' && el instanceof HTMLElement) return { width: el.offsetWidth, height: el.offsetHeight };
   if (typeof el.getBoundingClientRect !== 'function') return { width: 0, height: 0 };
   const r = el.getBoundingClientRect();
   return { width: r.width, height: r.height };
+}
+
+/**
+ * The size from an observer entry, with no extra layout (review V-15): `borderBoxSize` is
+ * the untransformed border box in LOGICAL axes, so a vertical writing mode swaps it back to
+ * width / height. Falls back to {@link measure} where `borderBoxSize` is missing.
+ */
+function entrySize(entry: ResizeObserverEntry): ElementSize {
+  const box = entry.borderBoxSize?.[0];
+  if (!box) return measure(entry.target);
+  const isVertical = typeof getComputedStyle === 'function' && !/^horizontal/.test(getComputedStyle(entry.target).writingMode || 'horizontal-tb');
+  return isVertical ? { width: box.blockSize, height: box.inlineSize } : { width: box.inlineSize, height: box.blockSize };
 }
 
 function sizesEqual(a: ElementSize | undefined, b: ElementSize): boolean {
@@ -79,37 +101,28 @@ function sizesEqual(a: ElementSize | undefined, b: ElementSize): boolean {
 /** Deliver `size` to one subscription, applying its leading + trailing throttle and dedup. */
 function dispatch(sub: Subscription, size: ElementSize): void {
   if (sizesEqual(sub.lastFired, size)) return; // no change since last fire — skip
-  sub.pendingSize = size;
-  if (sub.timer !== undefined) return; // trailing edge already pending; it'll read pendingSize
-  const elapsed = Date.now() - sub.lastNotify;
-  if (elapsed >= sub.throttleMs) {
-    sub.lastNotify = Date.now();
-    fire(sub);
-  } else {
-    sub.timer = setTimeout(() => {
-      sub.timer = undefined;
-      sub.lastNotify = Date.now();
-      fire(sub);
-    }, sub.throttleMs - elapsed);
-  }
+  sub.pendingSize = size; // a queued trailing fire reads the latest
+  sub.throttle.schedule();
 }
 
 function fire(sub: Subscription): void {
   const size = sub.pendingSize;
   if (!size) return;
   sub.lastFired = size;
-  sub.cb(size, sub.el);
+  // A throwing listener is logged; the other subscriptions (and entries) still get their fire.
+  callSafely(() => sub.listener(size, sub.el), SIZE_LOG);
 }
+
+const SIZE_LOG = { message: 'element size listener threw' } as const;
 
 /** The shared observer's callback — fan out each entry to its target's subscriptions. */
 function onResize(entries: ResizeObserverEntry[]): void {
   for (const entry of entries) {
     const subs = targets.get(entry.target);
     if (!subs) continue;
-    // Read the border box via getBoundingClientRect for identical semantics with the
-    // immediate fire (and to sidestep writing-mode axis ambiguity in entry sizes).
-    const size = measure(entry.target);
-    for (const sub of [...subs]) dispatch(sub, size);
+    const size = entrySize(entry);
+    // A listener may unsubscribe a later one mid-delivery: skip whoever is gone by then.
+    for (const sub of [...subs]) if (subs.has(sub)) dispatch(sub, size);
   }
 }
 
@@ -121,31 +134,30 @@ function ensureObserver(): ResizeObserver | null {
 
 /**
  * Observe one element's border-box size. The listener fires immediately with the
- * current box (unless `immediate: false`), then on size changes, throttled to
+ * current box (unless `shouldFireImmediately: false`), then on size changes, throttled to
  * {@link ObserveElementSizeOptions.throttleMs} (default 30 ms, leading + trailing);
- * identical consecutive sizes are deduped. All subscriptions share one page-wide
- * `ResizeObserver`. Returns an unsubscribe; the shared observer is torn down when
+ * identical consecutive sizes are deduped. All subscriptions of this copy of core share
+ * one `ResizeObserver` (each bundled copy has its own — they don't need to share it). Returns an unsubscribe; the shared observer is torn down when
  * its last target leaves. No-op-safe during SSR (fires once, returns a working
- * unsubscribe). Components normally consume this via `BlissElement`'s `resized()`
+ * unsubscribe). Components normally consume this via `BlissElement`'s `sizeChanged()`
  * hook rather than subscribing directly.
  */
 export function observeElementSize(
   el: Element,
-  cb: ElementSizeListener,
+  listener: ElementSizeListener,
   opts: ObserveElementSizeOptions = {},
 ): () => void {
   const sub: Subscription = {
     el,
-    cb,
-    throttleMs: opts.throttleMs ?? DEFAULT_ELEMENT_THROTTLE_MS,
-    lastNotify: 0,
+    listener,
+    throttle: createThrottle(() => fire(sub), opts.throttleMs ?? DEFAULT_ELEMENT_THROTTLE_MS),
   };
 
-  if (opts.immediate !== false) {
+  if (opts.shouldFireImmediately !== false) {
     const size = measure(el);
     sub.lastFired = size;
-    sub.lastNotify = Date.now();
-    cb(size, el);
+    sub.throttle.markRun();
+    callSafely(() => listener(size, el), SIZE_LOG);
   }
 
   const observer = ensureObserver();
@@ -159,14 +171,8 @@ export function observeElementSize(
     subs.add(sub);
   }
 
-  let live = true;
-  return () => {
-    if (!live) return;
-    live = false;
-    if (sub.timer !== undefined) {
-      clearTimeout(sub.timer);
-      sub.timer = undefined;
-    }
+  return once(() => {
+    sub.throttle.cancel();
     const subs = targets.get(el);
     if (!subs) return;
     subs.delete(sub);
@@ -179,7 +185,7 @@ export function observeElementSize(
         ro = null;
       }
     }
-  };
+  });
 }
 
 /** Test-only: disconnect the shared observer and drop all subscriptions. */
@@ -188,5 +194,6 @@ export function __resetElementSizeObservers(): void {
     ro.disconnect();
     ro = null;
   }
+  targets = new WeakMap(); // else a re-subscribed element finds its old entry and is never observed
   observedCount = 0;
 }
