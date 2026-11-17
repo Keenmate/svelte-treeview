@@ -116,14 +116,14 @@ test.describe('Click Behavior tree', () => {
 		await gotoInteraction(page);
 		const card = clickBehaviorCard(page);
 
-		// Highlighted starts empty.
-		await expect(outputValue(card, 'Highlighted').first()).toContainText('(none');
+		// Selected starts empty.
+		await expect(outputValue(card, 'Selected').first()).toContainText('(none');
 
 		await nodeContent(nodeInCard(card, '1')).click(); // anchors focus on Documents
 		await nodeContent(nodeInCard(card, '2')).click({ modifiers: ['Control'] }); // adds Downloads
 		await nodeContent(nodeInCard(card, '3')).click({ modifiers: ['Control'] }); // adds Projects
 
-		const highlighted = outputValue(card, 'Highlighted');
+		const highlighted = outputValue(card, 'Selected');
 		// All three paths should be present; render order is the Set insertion order.
 		await expect(highlighted).toContainText('1');
 		await expect(highlighted).toContainText('2');
@@ -136,11 +136,11 @@ test.describe('Click Behavior tree', () => {
 
 		await nodeContent(nodeInCard(card, '1')).click();
 		await nodeContent(nodeInCard(card, '2')).click({ modifiers: ['Control'] });
-		await expect(outputValue(card, 'Highlighted')).not.toContainText('(none');
+		await expect(outputValue(card, 'Selected')).not.toContainText('(none');
 
 		await card.getByRole('button', { name: 'Clear All' }).click();
-		await expect(outputValue(card, 'Highlighted')).toContainText('(none');
-		await expect(outputValue(card, 'Selected / Checked')).toContainText('(none');
+		await expect(outputValue(card, 'Selected')).toContainText('(none');
+		await expect(outputValue(card, 'Checked')).toContainText('(none');
 	});
 
 	test('toggling Show Checkboxes renders checkboxes on selectable nodes', async ({ page }) => {
@@ -169,7 +169,7 @@ test.describe('Click Behavior tree', () => {
 		// at expandLevel=2.
 		await checkboxLabelOf(nodeInCard(card, '1')).click();
 
-		const selected = outputValue(card, 'Selected / Checked');
+		const selected = outputValue(card, 'Checked');
 		// Default cascadeCheckPolicy is 'rolled-up': a fully-checked subtree collapses to its
 		// root, so the EMITTED set is just the parent path — not the flattened descendants.
 		// (The 'all' projection is covered separately in e2e/checkbox-policy.spec.ts.)
@@ -202,7 +202,7 @@ test.describe('Click Behavior tree', () => {
 		// Parent must remain unchecked — independent mode means no ancestor sync.
 		await expect(checkboxInputOf(nodeInCard(card, '1'))).not.toBeChecked();
 
-		const selected = outputValue(card, 'Selected / Checked');
+		const selected = outputValue(card, 'Checked');
 		await expect(selected).toContainText('1.1');
 		await expect(selected).toContainText('1.2');
 		await expect(selected).not.toContainText('(none)');
@@ -222,11 +222,11 @@ test.describe('Click Behavior tree', () => {
 
 		// Checkbox toggled.
 		await expect(checkboxInputOf(nodeInCard(card, '1.1'))).toBeChecked();
-		await expect(outputValue(card, 'Selected / Checked')).toContainText('1.1');
+		await expect(outputValue(card, 'Checked')).toContainText('1.1');
 
 		// Focus and highlight stay empty — that's the whole point of the flag.
 		await expect(outputValue(card, 'Focused Node')).toHaveText('(none)');
-		await expect(outputValue(card, 'Highlighted')).toHaveText('(none)');
+		await expect(outputValue(card, 'Selected')).toHaveText('(none)');
 
 		// Click again unchecks it.
 		await nodeContent(nodeInCard(card, '1.1')).click();
@@ -244,8 +244,8 @@ test.describe('Click Behavior tree', () => {
 		await nodeContent(nodeInCard(card, '1.1')).click({ modifiers: ['Control'] });
 		await nodeContent(nodeInCard(card, '1.2')).click({ modifiers: ['Control'] });
 
-		await expect(outputValue(card, 'Highlighted')).toContainText('1.1');
-		await expect(outputValue(card, 'Highlighted')).toContainText('1.2');
+		await expect(outputValue(card, 'Selected')).toContainText('1.1');
+		await expect(outputValue(card, 'Selected')).toContainText('1.2');
 
 		// Checkboxes untouched — modifier path doesn't toggle them.
 		await expect(checkboxInputOf(nodeInCard(card, '1.1'))).not.toBeChecked();
@@ -345,7 +345,7 @@ test.describe('Multi-Select tree', () => {
 		await nodeContent(nodeInCard(card, '1')).click();
 		await nodeContent(nodeInCard(card, '3')).click({ modifiers: ['Control'] });
 
-		const highlighted = outputValue(card, 'Highlighted');
+		const highlighted = outputValue(card, 'Selected');
 		await expect(highlighted).toContainText('1');
 		await expect(highlighted).toContainText('3');
 	});
@@ -359,7 +359,7 @@ test.describe('Multi-Select tree', () => {
 		await nodeContent(nodeInCard(card, '1')).click();
 		await nodeContent(nodeInCard(card, '3')).click({ modifiers: ['Shift'] });
 
-		const highlighted = outputValue(card, 'Highlighted');
+		const highlighted = outputValue(card, 'Selected');
 		// Anchor + endpoint at minimum.
 		await expect(highlighted).toContainText('1');
 		await expect(highlighted).toContainText('3');
@@ -373,10 +373,10 @@ test.describe('Multi-Select tree', () => {
 
 		await nodeContent(nodeInCard(card, '1')).click();
 		await nodeContent(nodeInCard(card, '2')).click({ modifiers: ['Control'] });
-		await expect(outputValue(card, 'Highlighted')).not.toContainText('(none');
+		await expect(outputValue(card, 'Selected')).not.toContainText('(none');
 
 		await card.getByRole('button', { name: 'Clear All' }).click();
-		await expect(outputValue(card, 'Highlighted')).toContainText('(none');
+		await expect(outputValue(card, 'Selected')).toContainText('(none');
 	});
 });
 

@@ -554,7 +554,7 @@
 	let guardDestData = $state<GuardItem[]>(initialGuardDest());
 	let guardSourceRef: Tree<GuardItem>;
 	let guardDestRef: Tree<GuardItem>;
-	let guardHighlighted = $state(new Set<string>());
+	let guardSelected = $state(new Set<string>());
 	let guardLog = $state<LogEntry[]>([]);
 	let guardNextId = 900;
 
@@ -612,7 +612,7 @@
 	function resetGuard() {
 		guardSourceData = initialGuardSource();
 		guardDestData = initialGuardDest();
-		guardHighlighted = new Set();
+		guardSelected = new Set();
 		guardLog = [];
 		guardNextId = 900;
 	}
@@ -641,7 +641,7 @@
 	}
 
 	let leaveBehindData = $state<LbItem[]>(initialLeaveBehind());
-	let leaveBehindHighlighted = $state(new Set<string>());
+	let leaveBehindSelected = $state(new Set<string>());
 	let leaveBehindLog = $state<LogEntry[]>([]);
 
 	function addLbLog(name: string, detail?: string, variant?: LogVariant) {
@@ -663,7 +663,7 @@
 
 	function resetLeaveBehind() {
 		leaveBehindData = initialLeaveBehind();
-		leaveBehindHighlighted = new Set();
+		leaveBehindSelected = new Set();
 		leaveBehindLog = [];
 	}
 
@@ -697,8 +697,8 @@
 	let pantryData = $state<ProduceItem[]>(initialPantry());
 	let basketRef: Tree<ProduceItem>;
 	let pantryRef: Tree<ProduceItem>;
-	let basketHighlighted = $state(new Set<string>());
-	let pantryHighlighted = $state(new Set<string>());
+	let basketSelected = $state(new Set<string>());
+	let pantrySelected = $state(new Set<string>());
 	let produceLog = $state<LogEntry[]>([]);
 	let produceNextId = 950;
 
@@ -769,8 +769,8 @@
 	function resetProduce() {
 		basketData = initialBasket();
 		pantryData = initialPantry();
-		basketHighlighted = new Set();
-		pantryHighlighted = new Set();
+		basketSelected = new Set();
+		pantrySelected = new Set();
 		produceLog = [];
 		produceNextId = 950;
 	}
@@ -1196,7 +1196,7 @@ const data = [
 					dragDropMode="both"
 					selectionMode="multiple"
 					selectedNodeClass="stv__node-content--selected-bold"
-					bind:selectedPaths={guardHighlighted}
+					bind:selectedPaths={guardSelected}
 					getIsDraggableCallback={({ node }) => (node.data as GuardItem)?.locked !== true}
 					getIsDropAllowedCallback={() => true}
 					beforeDragStartCallback={beforeGuardDragStart}
@@ -1292,7 +1292,7 @@ beforeDragStartCallback={(ctx) => {
 			dragDropMode="self"
 			selectionMode="multiple"
 			selectedNodeClass="stv__node-content--selected-bold"
-			bind:selectedPaths={leaveBehindHighlighted}
+			bind:selectedPaths={leaveBehindSelected}
 			getIsDraggableCallback={() => true}
 			getIsDropAllowedCallback={() => true}
 			beforeDragStartCallback={beforeLeaveBehindDragStart}
@@ -1370,7 +1370,7 @@ beforeDragStartCallback={(ctx) => {
 					dragDropMode="both"
 					selectionMode="multiple"
 					selectedNodeClass="stv__node-content--selected-bold"
-					bind:selectedPaths={basketHighlighted}
+					bind:selectedPaths={basketSelected}
 					getIsDraggableCallback={() => true}
 					getIsDropAllowedCallback={() => true}
 					{...getTreeProps()}
@@ -1399,7 +1399,7 @@ beforeDragStartCallback={(ctx) => {
 					dragDropMode="both"
 					selectionMode="multiple"
 					selectedNodeClass="stv__node-content--selected-bold"
-					bind:selectedPaths={pantryHighlighted}
+					bind:selectedPaths={pantrySelected}
 					getIsDraggableCallback={({ node }: { node: LTreeNode<ProduceItem> }) =>
 						node.data?.kind !== 'category'}
 					getIsDropAllowedCallback={() => false}

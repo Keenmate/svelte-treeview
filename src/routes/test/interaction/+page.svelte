@@ -30,13 +30,13 @@
 	let checkboxMode = $state<CheckboxMode>('independent');
 	let shouldClickToggleCheckbox = $state(false);
 	let focusedNode1 = $state<LTreeNode<Item> | null>(null);
-	let highlightedPaths1 = $state(new Set<string>());
 	let selectedPaths1 = $state(new Set<string>());
+	let checkedPaths1 = $state(new Set<string>());
 
 	// ── Multi-Select card ───────────────────────────────────────────────
 	let focusedNode2 = $state<LTreeNode<Item> | null>(null);
-	let highlightedPaths2 = $state(new Set<string>());
 	let selectedPaths2 = $state(new Set<string>());
+	let checkedPaths2 = $state(new Set<string>());
 
 	// ── Keyboard Navigation card ────────────────────────────────────────
 	let navFocusedNode = $state<LTreeNode<Item> | null>(null);
@@ -82,7 +82,7 @@
 					Click row toggles checkbox
 				</label>
 			{/if}
-			<button onclick={() => { highlightedPaths1 = new Set(); selectedPaths1 = new Set(); }}>Clear All</button>
+			<button onclick={() => { selectedPaths1 = new Set(); checkedPaths1 = new Set(); }}>Clear All</button>
 		</div>
 
 		<div class="tree-container">
@@ -99,8 +99,8 @@
 				{checkboxMode}
 				{shouldClickToggleCheckbox}
 				bind:focusedNode={focusedNode1}
-				bind:selectedPaths={highlightedPaths1}
-				bind:checkedPaths={selectedPaths1}
+				bind:selectedPaths={selectedPaths1}
+				bind:checkedPaths={checkedPaths1}
 			>
 				{#snippet nodeTemplate(node: LTreeNode<Item>)}
 					<span>{node.data?.icon} {node.data?.name}</span>
@@ -113,19 +113,19 @@
 			<pre>{focusedNode1 ? `${focusedNode1.data?.icon} ${focusedNode1.data?.name} (${focusedNode1.path})` : '(none)'}</pre>
 		</div>
 		<div class="output">
-			<p class="output-label">Highlighted</p>
-			<pre>{highlightedPaths1.size > 0 ? [...highlightedPaths1].join(', ') : '(none)'}</pre>
+			<p class="output-label">Selected</p>
+			<pre>{selectedPaths1.size > 0 ? [...selectedPaths1].join(', ') : '(none)'}</pre>
 		</div>
 		<div class="output">
-			<p class="output-label">Selected / Checked</p>
-			<pre>{selectedPaths1.size > 0 ? [...selectedPaths1].join(', ') : '(none)'}</pre>
+			<p class="output-label">Checked</p>
+			<pre>{checkedPaths1.size > 0 ? [...checkedPaths1].join(', ') : '(none)'}</pre>
 		</div>
 	</div>
 
 	<div class="card">
 		<h2>Multi-Select</h2>
 		<div class="controls">
-			<button onclick={() => { highlightedPaths2 = new Set(); selectedPaths2 = new Set(); }}>Clear All</button>
+			<button onclick={() => { selectedPaths2 = new Set(); checkedPaths2 = new Set(); }}>Clear All</button>
 		</div>
 
 		<div class="tree-container">
@@ -138,8 +138,8 @@
 				expandLevel={3}
 				selectionMode="multiple"
 				bind:focusedNode={focusedNode2}
-				bind:selectedPaths={highlightedPaths2}
-				bind:checkedPaths={selectedPaths2}
+				bind:selectedPaths={selectedPaths2}
+				bind:checkedPaths={checkedPaths2}
 			>
 				{#snippet nodeTemplate(node: LTreeNode<Item>)}
 					<span>{node.data?.icon} {node.data?.name}</span>
@@ -152,8 +152,8 @@
 			<pre>{focusedNode2 ? `${focusedNode2.data?.icon} ${focusedNode2.data?.name} (${focusedNode2.path})` : '(none)'}</pre>
 		</div>
 		<div class="output">
-			<p class="output-label">Highlighted</p>
-			<pre>{highlightedPaths2.size > 0 ? [...highlightedPaths2].join(', ') : '(none)'}</pre>
+			<p class="output-label">Selected</p>
+			<pre>{selectedPaths2.size > 0 ? [...selectedPaths2].join(', ') : '(none)'}</pre>
 		</div>
 	</div>
 

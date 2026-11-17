@@ -663,10 +663,10 @@
 
 			<tr><th colspan="3" scope="colgroup">Selection &amp; highlight states</th></tr>
 			<tr><td><code>--stv-selected-fill-bg</code></td><td><code>#cce8ff</code></td><td>Explorer-style highlight background</td></tr>
-			<tr><td><code>--stv-selected-fill-text-color</code></td><td><code>inherit</code></td><td>Highlight text color</td></tr>
+			<tr><td><code>--stv-selected-fill-text-color</code></td><td><code>inherit</code></td><td>Selected (fill) text color</td></tr>
 			<tr><td><code>--stv-selected-bg</code></td><td><code>var(--base-selected-bg) → primary 10%</code></td><td>Default highlight tint (multi-select)</td></tr>
 			<tr><td><code>--stv-selected-preset-ring-color</code></td><td><code>color-mix(primary 45%, transparent)</code></td><td>Hairline ring of the border / glow presets</td></tr>
-			<tr><td><code>--stv-selected-bg-hover</code> / <code>-color</code> / <code>-border</code></td><td><code>var(--base-selected-bg-hover / -text / -ring)</code></td><td>Highlighted row on hover, its text color, optional ring (outline shorthand)</td></tr>
+			<tr><td><code>--stv-selected-bg-hover</code> / <code>-color</code> / <code>-border</code></td><td><code>var(--base-selected-bg-hover / -text / -ring)</code></td><td>Selected row on hover, its text color, optional ring (outline shorthand)</td></tr>
 			<tr><td><code>--stv-focused-outline</code></td><td><code>var(--base-focused-outline) → 1px solid primary</code></td><td>Default focus ring, drawn inset (<code>none</code> hides it)</td></tr>
 			<tr><td><code>--stv-focused-bg</code> / <code>-color</code></td><td><code>var(--base-focused-bg / -text)</code></td><td>Focused row background (transparent) and text color</td></tr>
 			<tr><td><code>--stv-checkbox-gap</code></td><td><code>calc(0.6 * rem)</code></td><td>Space between checkbox and node row</td></tr>

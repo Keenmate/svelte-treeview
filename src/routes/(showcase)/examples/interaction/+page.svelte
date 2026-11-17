@@ -95,10 +95,25 @@
 		rangeSelectionMode: 'visual'
 	};
 
+	// The values each select offers. A saved value that is no longer one of them (an older
+	// name, e.g. selectionMode 'multi' before the 'multiple' rename) falls back to the default
+	// — otherwise the select shows empty and the tree gets an invalid value.
+	const allowedSettings: Partial<Record<keyof Settings, readonly unknown[]>> = {
+		clickBehavior: ['expand-and-focus', 'select', 'expand'],
+		selectionMode: ['single', 'multiple'],
+		checkboxMode: ['independent', 'cascade'],
+		rangeSelectionMode: ['visual', 'logical']
+	};
+
 	function loadSettings(): Settings {
 		try {
 			const raw = localStorage?.getItem(STORAGE_KEY);
-			if (raw) return { ...defaultSettings, ...JSON.parse(raw) };
+			if (raw) {
+				const settings: Settings = { ...defaultSettings, ...JSON.parse(raw) };
+				for (const [key, allowed] of Object.entries(allowedSettings) as [keyof Settings, readonly unknown[]][])
+					if (!allowed.includes(settings[key])) (settings as Record<keyof Settings, unknown>)[key] = defaultSettings[key];
+				return settings;
+			}
 		} catch {}
 		return { ...defaultSettings };
 	}
@@ -146,8 +161,10 @@
 	// ── Click Behavior demo ──────────────────────────────────────────
 	let clickBehavior = $state<ClickBehavior>(saved.clickBehavior);
 	let selectionMode = $state<SelectionMode>(saved.selectionMode);
-	let selectedNodeClass = $state(saved.selectedNodeClass);
-	let focusedNodeClass = $state(saved.focusedNodeClass);
+	// Same fallback for the style selects (class names changed in the rc11 ltree → stv rename).
+	const savedOr = (value: string, options: { value: string }[]) => (options.some((o) => o.value === value) ? value : '');
+	let selectedNodeClass = $state(savedOr(saved.selectedNodeClass, selectedNodeClassOptions));
+	let focusedNodeClass = $state(savedOr(saved.focusedNodeClass, focusedNodeClassOptions));
 	let isCheckboxesShown = $state(saved.isCheckboxesShown);
 	let checkboxMode = $state<CheckboxMode>(saved.checkboxMode);
 	let shouldClickToggleCheckbox = $state(saved.shouldClickToggleCheckbox);
@@ -155,8 +172,8 @@
 	// Three-level state
 	let clickTreeRef: Tree<Item>;
 	let focusedNode1 = $state<LTreeNode<Item> | null>(null);
-	let highlightedPaths1 = $state(new Set<string>());
 	let selectedPaths1 = $state(new Set<string>());
+	let checkedPaths1 = $state(new Set<string>());
 
 	$effect(() => {
 		clickBehavior;
@@ -207,7 +224,7 @@
 	function handleSelectionChange({ paths }: { paths: Set<string> }) {
 		selectionChangeFires++;
 		// In a real app this is the listener that would re-fetch & overwrite
-		// form data based on the newly highlighted node.
+		// form data based on the newly selected node.
 		const last = [...paths].pop();
 		if (last) formNotes = `Form reloaded for ${last} (overwrote any URL-loaded data)`;
 	}
@@ -264,7 +281,7 @@
 		<code>selectionMode="multiple"</code>, hold <kbd>Ctrl</kbd> (or <kbd>Cmd</kbd>) and click to toggle
 		individual nodes, hold <kbd>Shift</kbd> and click to select a range, and
 		<kbd>Shift+ArrowUp/Down</kbd> extends from the focused node. <code>rangeSelectionMode</code> controls
-		whether a range includes collapsed children. Pick a <strong>Highlighted Style</strong> below and
+		whether a range includes collapsed children. Pick a <strong>Selected Style</strong> below and
 		build up a set to see it on every row.
 	</p>
 
@@ -285,7 +302,7 @@
 			</select>
 		</label>
 		<label>
-			Highlighted Style:
+			Selected Style:
 			<select bind:value={selectedNodeClass}>
 				{#each selectedNodeClassOptions as opt}
 					<option value={opt.value}>{opt.label}</option>
@@ -329,7 +346,7 @@
 				clickTreeRef?.clearSelection();
 				clickTreeRef?.selectNodes(['1.1.1', '1.1.3', '1.2.1']);
 			}}
-			>Highlight 1.1.1, 1.1.3, 1.2.1</button
+			>Select 1.1.1, 1.1.3, 1.2.1</button
 		>
 		<button
 			class="secondary"
@@ -344,14 +361,14 @@
 	<div class="note">
 		<p class="note-title">How the styles stack</p>
 		<p>
-			<strong>Highlighted Style</strong> applies to every row in <code>selectedPaths</code>.
-			<strong>Focused Style</strong> is <em>additive</em> — it stacks on top of the highlight,
+			<strong>Selected Style</strong> applies to every row in <code>selectedPaths</code>.
+			<strong>Focused Style</strong> is <em>additive</em> — it stacks on top of the selection,
 			only on the single row in <code>focusedNode</code>. After a plain click the same row is both
-			highlighted and focused, so you'll see both styles on it. After a <kbd>Shift</kbd>+click
-			range, the anchor and intermediate rows are highlighted only, while the row you clicked last
-			is highlighted <em>and</em>
+			selected and focused, so you'll see both styles on it. After a <kbd>Shift</kbd>+click
+			range, the anchor and intermediate rows are selected only, while the row you clicked last
+			is selected <em>and</em>
 			focused. After <kbd>Ctrl</kbd>+click (or Arrow over an unselectable row) the focused row can
-			have no highlight at all — that's when Focused Style alone shows.
+			is not selected at all — that's when Focused Style alone shows.
 		</p>
 		<p>
 			<strong>Visual vs logical range</strong> — in <strong>visual</strong> mode, Shift+click selects
@@ -379,8 +396,8 @@
 				{checkboxMode}
 				{shouldClickToggleCheckbox}
 				bind:focusedNode={focusedNode1}
-				bind:selectedPaths={highlightedPaths1}
-				bind:checkedPaths={selectedPaths1}
+				bind:selectedPaths={selectedPaths1}
+				bind:checkedPaths={checkedPaths1}
 				onNodeClick={onClickDemoNodeClick}
 				{...getTreeProps()}
 			>
@@ -397,15 +414,15 @@
 						: '(none)'}</pre>
 			</div>
 			<div class="output">
-				<p class="output-label">Highlighted ({highlightedPaths1.size})</p>
-				<pre>{highlightedPaths1.size > 0
-						? [...highlightedPaths1].join(', ')
+				<p class="output-label">Selected — <code>selectedPaths</code> ({selectedPaths1.size})</p>
+				<pre>{selectedPaths1.size > 0
+						? [...selectedPaths1].join(', ')
 						: '(none — try Ctrl+click or Shift+click)'}</pre>
 			</div>
 			<div class="output">
-				<p class="output-label">Selected / Checked ({selectedPaths1.size})</p>
-				<pre>{selectedPaths1.size > 0
-						? [...selectedPaths1].join(', ')
+				<p class="output-label">Checked — <code>checkedPaths</code> ({checkedPaths1.size})</p>
+				<pre>{checkedPaths1.size > 0
+						? [...checkedPaths1].join(', ')
 						: '(none — use checkboxes)'}</pre>
 			</div>
 		</div>
