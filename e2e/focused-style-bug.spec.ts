@@ -16,7 +16,7 @@ test('shift+click range only marks the clicked node as focused (not the anchor)'
 
 	// Pick explicit styles so each state is identifiable by class (the demo now
 	// defaults to the built-in soft-tint highlight + inset-bar focus).
-	await page.getByLabel('Highlighted Style:').selectOption('stv__node-content--selected-bold');
+	await page.getByLabel('Selected Style:').selectOption('stv__node-content--selected-bold');
 	await page.getByLabel('Focused Style:').selectOption('demo-focused-bar');
 
 	await page.waitForSelector('.stv__node-content', { timeout: 5000 });

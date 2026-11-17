@@ -67,6 +67,10 @@
 		<button data-testid="focus-2" onclick={() => treeRef.focusNode('2')}>focusNode('2')</button>
 		<button data-testid="focus-1-silent" onclick={() => treeRef.focusNode('1', { isSilent: true })}>focusNode('1', silent)</button>
 		<button data-testid="clear-focus" onclick={() => treeRef.clearFocus()}>clearFocus</button>
+		<button data-testid="select-1-silent" onclick={() => treeRef.selectNode('1', 'replace', { isSilent: true })}>selectNode('1', silent)</button>
+		<button data-testid="select-nodes-2-silent" onclick={() => treeRef.selectNodes(['2'], { isSilent: true })}>selectNodes(['2'], silent)</button>
+		<button data-testid="select-all-silent" onclick={() => treeRef.selectAll({ isSilent: true })}>selectAll(silent)</button>
+		<button data-testid="select-1" onclick={() => treeRef.selectNode('1')}>selectNode('1')</button>
 		<button data-testid="add-node" onclick={() => treeRef.addNode('2', { id: 99, path: '2.9', name: 'Added' } as Item)}>addNode</button>
 		<button data-testid="batch" onclick={() => { treeRef.addNode('', { id: 98, path: '9', name: 'Root9' } as Item); treeRef.removeNode('3'); }}>add + remove</button>
 		<button data-testid="sort-all" onclick={() => treeRef.sortAll()}>sortAll</button>

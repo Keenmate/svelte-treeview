@@ -4529,8 +4529,8 @@ export class TreeController<T> {
 			this._shiftCursor = null;
 		}
 
-		// Update focus (always — focus is independent of selectability)
-		this._setFocusedNode(node);
+		// Update focus (always — focus is independent of selectability; silent = no onFocusChange)
+		this._setFocusedNode(node, silent);
 
 		if (!silent) {
 			this.onNodeClickHandler?.(this._ctx(this.getNodeRef(node)));
@@ -5129,7 +5129,7 @@ export class TreeController<T> {
 		}
 		this.selectedPaths = newPaths;
 		if (lastNode) {
-			this._setFocusedNode(lastNode);
+			this._setFocusedNode(lastNode, options?.isSilent);
 			this._shiftCursor = lastNode.path;
 		}
 		if (!options?.isSilent) {
@@ -5163,7 +5163,7 @@ export class TreeController<T> {
 		}
 		this.selectedPaths = newPaths;
 		if (lastNode) {
-			this._setFocusedNode(lastNode);
+			this._setFocusedNode(lastNode, options?.isSilent);
 			this._shiftCursor = lastNode.path;
 		}
 		if (!options?.isSilent) {

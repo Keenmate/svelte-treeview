@@ -127,14 +127,16 @@ export interface ExpandOptions {
 	/** Expand only: collapse every expanded branch that isn't an ancestor of (or, for
 	 *  `expandAll`, inside) the targets — focus the tree on them. Default `false`. */
 	isExclusive?: boolean;
-	/** Suppress events / callbacks only — the tree ALWAYS re-renders. (svelte-treeview fires no
-	 *  expand callbacks, so this is accepted for API parity with web-treeview.) */
+	/** Change the state without firing `onNodeExpand` / `onNodeCollapse` / `onExpandedChange` —
+	 *  the tree ALWAYS re-renders (the `beforeExpandCallback` gate still runs). */
 	isSilent?: boolean;
 }
 
 export interface TreeMutationOptions {
-	/** Update state without firing onNodeClick / onSelectionChange / onCheckedChange
-	 *  (e.g. when restoring state from URL params or other external sources). */
+	/** Change the state without firing the change callbacks (onSelectionChange /
+	 *  onCheckedChange / onFocusChange / onNodeClick) — for changes your own code makes and
+	 *  already knows about (restoring from a URL, syncing from another control). The state and
+	 *  the bound props still update. */
 	isSilent?: boolean;
 }
 export type DropZoneLayout = 'around' | 'before' | 'after' | 'wave' | 'wave2';

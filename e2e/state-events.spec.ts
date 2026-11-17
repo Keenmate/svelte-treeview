@@ -130,6 +130,14 @@ test('onFocusChange: focusNode / clearFocus fire, isSilent does not, same node d
 	await expect.poll(() => log2(page)).toEqual(['focus:2:ctrl', 'focus:null:ctrl']);
 });
 
+test('onFocusChange: silent selectNode / selectNodes / selectAll move focus without firing it', async ({ page }) => {
+	await page.getByTestId('select-1-silent').click();
+	await page.getByTestId('select-nodes-2-silent').click();
+	await page.getByTestId('select-all-silent').click();
+	await page.getByTestId('select-1').click(); // non-silent: fires (focus moves off the last silent one)
+	await expect.poll(() => log2(page)).toEqual(['focus:1:ctrl']);
+});
+
 test('onFocusChange fires on a node click', async ({ page }) => {
 	await page.getByTestId('tree').getByText('B', { exact: true }).click();
 	await expect.poll(() => log2(page)).toEqual(['focus:2:ctrl']);

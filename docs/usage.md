@@ -276,7 +276,7 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `cancelCut` / `hasClipboardContent` / `getClipboardOperation` | | Clipboard state (page-wide clipboard) |
 | `navTo(path)`, `navNext`, `navPrev`, `navNextSibling`, `navPrevSibling`, `navInto`, `navOut`, `navBackOut`, `navToggle`, `navFirst`, `navLast`, `navPageDown`, `navPageUp`, `navSelectNext`, `navSelectPrev`, `navSelectFirst`, `navSelectLast`, `navSelectPageDown`, `navSelectPageUp` | | Keyboard navigation — what the built-in keys call (overridable via `navigationOverrides`). `navNext` / `navPrev` = next / previous visible node (flat order) |
 
-`ExpandOptions = { isExclusive?: boolean; isSilent?: boolean }` — `isExclusive` (expand only) collapses every open branch off the targets' spine; `isSilent` suppresses events / callbacks only — the tree always re-renders (svelte-treeview has no expand callbacks, so it is accepted for API parity).
+`ExpandOptions = { isExclusive?: boolean; isSilent?: boolean }` — `isExclusive` (expand only) collapses every open branch off the targets' spine; `isSilent` suppresses `onNodeExpand` / `onNodeCollapse` / `onExpandedChange` only — the tree always re-renders and `beforeExpandCallback` still runs.
 
 ### Sorting & positions
 
@@ -305,7 +305,7 @@ treeRef.sortAll(null, { compareCallback: ({ a, b }) => a.data.size - b.data.size
 
 ### Selection / checked / focus methods
 
-Three independent concerns, each with the same method shape. `opts` is always `TreeMutationOptions = { isSilent?: boolean }` — pass `{ isSilent: true }` to mutate state without firing the change callbacks (e.g. restoring state from a URL). Keep the verbs straight: **`select*`** drives the UI multi-select set (`selectedPaths`), **`check*`** drives the checkbox/data set (`checkedPaths`), **`focus*`** drives the single cursor (`focusedNode`).
+Three independent concerns, each with the same method shape. `opts` is always `TreeMutationOptions = { isSilent?: boolean }` — pass `{ isSilent: true }` to mutate state without firing the change callbacks (`onSelectionChange` / `onCheckedChange` / `onFocusChange` / `onNodeClick`) — for changes your own code makes and already knows about, e.g. restoring from a URL on a master / detail page so the detail doesn't reload what it already loaded. Only the callbacks are skipped: the state and the bound props still update, so a detail driven by an `$effect` on `bind:selectedPaths` still reloads. Keep the verbs straight: **`select*`** drives the UI multi-select set (`selectedPaths`), **`check*`** drives the checkbox/data set (`checkedPaths`), **`focus*`** drives the single cursor (`focusedNode`).
 
 | Method | Parameters | Description |
 |--------|------------|-------------|

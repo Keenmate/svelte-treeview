@@ -207,55 +207,70 @@
 		navLog = [...navLog.slice(-49), logLine('Navigated', `${node?.data?.name} (${path})`)];
 	}
 
-	// ── Silent state restore demo ────────────────────────────────────
-	// Imagine the user shares a URL like  /app?nodePath=1.2.3&detailId=42
-	// On load the page parses the URL, fetches the detail record into the
-	// form, and just needs the tree to scroll + highlight the matching node.
-	// Firing onSelectionChange in that flow would re-trigger the form-load
-	// listener and cause a loop or wipe the data the URL just supplied.
+	// ── Silent state restore demo (master / detail) ──────────────────
+	// The page opens with ?nodePath=1.2.3. The detail (right) knows the path from the URL,
+	// so it starts loading at once and is usually ready first. The tree (master) loads its
+	// data, then selects the node from the URL so it matches. If that select announces
+	// itself (onSelectionChange), the page's "user picked a node → load its detail"
+	// handler loads the same record again — the detail blinks to "loading…" and back
+	// (flicker). With { isSilent: true } the tree selects + focuses the node quietly.
 	let silentTreeRef: Tree<Item>;
 	let silentSelectedPaths = $state(new Set<string>());
 
-	// "Form data" — only updated by onSelectionChange so we can see when
-	// it would have been clobbered.
-	let formNotes = $state<string>('(form not loaded yet)');
-	let selectionChangeFires = $state(0);
-
-	function handleSelectionChange({ paths }: { paths: Set<string> }) {
-		selectionChangeFires++;
-		// In a real app this is the listener that would re-fetch & overwrite
-		// form data based on the newly selected node.
-		const last = [...paths].pop();
-		if (last) formNotes = `Form reloaded for ${last} (overwrote any URL-loaded data)`;
-	}
-
-	// Simulated "load from URL" — picks a path + writes some form data, then
-	// asks the tree to scroll + highlight either silently or noisily.
 	let pathFromUrl = $state('1.2.3');
 	let silentMode = $state(true);
+	let detailText = $state('(nothing loaded yet)');
+	let isDetailLoading = $state(false);
+	let detailLoads = $state(0);
+	let isDetailReloaded = $state(false); // the same record loaded twice in a row = the flicker
+	let detailPath: string | null = null;
+	let detailTimer: ReturnType<typeof setTimeout> | undefined;
+	let masterTimer: ReturnType<typeof setTimeout> | undefined;
 
-	async function simulateUrlLoad() {
-		// 1. The page loads form data based on the URL — this is the value
-		//    we want to preserve.
-		formNotes = `URL-loaded data for "${pathFromUrl}" — do not overwrite`;
-		selectionChangeFires = 0;
+	// The detail's loader (in a real app: fetch the record, fill the form fields).
+	function loadDetail(path: string, reason: string) {
+		detailLoads++;
+		isDetailReloaded = path === detailPath;
+		detailPath = path;
+		isDetailLoading = true;
+		clearTimeout(detailTimer);
+		detailTimer = setTimeout(() => {
+			const name = sampleData.find((item) => item.path === path)?.name ?? '?';
+			detailText = `${name} (${path}) — loaded by ${reason}`;
+			isDetailLoading = false;
+		}, 400);
+	}
 
-		// 2. Mark the matching tree node so the user sees what's selected.
-		silentTreeRef.selectNode(pathFromUrl, 'replace', { isSilent: silentMode });
+	// Master → detail: a selection the USER makes loads its detail.
+	function handleSelectionChange({ paths }: { paths: Set<string> }) {
+		const last = [...paths].pop();
+		if (last) loadDetail(last, 'onSelectionChange');
+	}
 
-		// 3. Scroll the tree into view. scrollToPath itself never fires
-		//    selection callbacks, only the visual scroll-flash highlight.
-		await silentTreeRef.scrollToPath(pathFromUrl, {
-			shouldExpandAncestors: true,
-			shouldHighlight: true,
-			behavior: 'smooth', block: 'center'
-		});
+	// Simulated page open with ?nodePath=… : the detail loads from the URL right away,
+	// the tree "finishes loading" a moment later and selects the node from the URL.
+	function simulateUrlLoad() {
+		silentReset();
+		loadDetail(pathFromUrl, 'the URL');
+		masterTimer = setTimeout(() => {
+			silentTreeRef.selectNode(pathFromUrl, 'replace', { isSilent: silentMode });
+			silentTreeRef.scrollToPath(pathFromUrl, {
+				shouldExpandAncestors: true,
+				behavior: 'smooth', block: 'center'
+			});
+		}, 700);
 	}
 
 	function silentReset() {
+		clearTimeout(detailTimer);
+		clearTimeout(masterTimer);
 		silentSelectedPaths = new Set();
-		formNotes = '(form not loaded yet)';
-		selectionChangeFires = 0;
+		silentTreeRef?.clearFocus({ isSilent: true });
+		detailText = '(nothing loaded yet)';
+		isDetailLoading = false;
+		detailLoads = 0;
+		isDetailReloaded = false;
+		detailPath = null;
 	}
 </script>
 
@@ -656,92 +671,129 @@ End    Go to last visible node
 <div class="card">
 	<h2>IN04 · Silent State Restore</h2>
 	<p class="description">
-		Restore tree state from URL parameters <em>without</em> firing selection callbacks. You share a
-		link like <code>?nodePath=1.2.3</code>. The page loads form data from the URL, and the tree just
-		needs to scroll + visually highlight the matching node. Firing <code>onSelectionChange</code> in
-		that flow would re-trigger your form-loader and overwrite whatever the URL just supplied.
+		<code>{`{ isSilent: true }`}</code> changes the tree's state <em>without announcing it</em>: the
+		tree ends up exactly as after the normal call, but your change callbacks don't run. Use it
+		whenever your own code makes the change and the rest of the page already knows about it —
+		restoring state from a URL or a saved session, syncing the tree to another control, undo.
+	</p>
+	<p class="description">
+		Example — a <strong>master / detail</strong> page opened with <code>?nodePath=1.2.3</code>. The
+		detail knows the path from the URL, so it starts loading at once and is usually ready first.
+		Then the tree finishes loading and selects node 1.2.3 so the master matches. A normal
+		<code>selectNode()</code> fires <code>onSelectionChange</code>, the "user picked a node → load
+		its detail" handler runs, and the detail loads the same record again: the fields blank out and
+		refill (flicker), or overwrite what the user already typed. With <code>isSilent</code> the tree
+		selects and focuses the node quietly and the detail is left alone.
 	</p>
 
+	<table class="reference-table">
+		<thead><tr><th>With <code>isSilent: true</code></th><th>What happens</th></tr></thead>
+		<tbody>
+			<tr><td>Still changes</td><td><code>selectedPaths</code> (the bound prop updates), the node's selected style, the focused node (<code>bind:focusedNode</code>)</td></tr>
+			<tr><td>Not fired</td><td><code>onSelectionChange</code>, <code>onFocusChange</code>, <code>onNodeClick</code></td></tr>
+			<tr><td>Not done</td><td>keyboard focus does not jump into the tree (it stays where the user is); with checkboxes hidden, the selection is not copied into <code>checkedPaths</code> (and <code>onCheckedChange</code> does not fire)</td></tr>
+		</tbody>
+	</table>
+
 	<p class="description">
-		Pass <code>{`{ isSilent: true }`}</code> to <code>selectNode()</code> /
-		<code>selectNodes()</code> / <code>clearSelection()</code> / <code>uncheckAll()</code>.
-		State (<code>selectedPaths</code>, <code>isSelected</code> CSS class, focused node) still
-		updates — only <code>onNodeClick</code> / <code>onSelectionChange</code> / <code>onCheckedChange</code>
-		are suppressed.
+		Press <strong>Simulate page open</strong> with <strong>isSilent</strong> on, then off. The detail
+		loads from the URL and the tree selects the node 0.7 s later: silent leaves the detail alone
+		(1 load), loud loads it again (2 loads — the "loading…" blink). Clicking a node yourself always
+		loads its detail.
 	</p>
 
 	<div class="controls">
 		<label>
-			Path from URL:
+			<code>?nodePath=</code>
 			<input type="text" bind:value={pathFromUrl} class="w-sm" />
 		</label>
 		<label>
 			<input type="checkbox" bind:checked={silentMode} />
 			isSilent: true
 		</label>
-		<button onclick={simulateUrlLoad}>Simulate URL load</button>
+		<button onclick={simulateUrlLoad}>Simulate page open</button>
 		<button class="secondary" onclick={silentReset}>Reset</button>
 	</div>
 
-	<div class="tree-container tree-container-tall">
-		<Tree
-			bind:this={silentTreeRef}
-			nodes={sampleData}
-			idMember="id"
-			pathMember="path"
-			sortCallback={sortByName}
-			isSorted={true}
-			expandLevel={2}
-			selectedNodeClass="stv__node-content--selected-bold"
-			bind:selectedPaths={silentSelectedPaths}
-			onSelectionChange={handleSelectionChange}
-			{...getTreeProps()}
-		>
-			{#snippet nodeTemplate(node: LTreeNode<Item>)}
-				<span>{node.data?.icon} {node.data?.name}</span>
-			{/snippet}
-		</Tree>
-	</div>
-
-	<div class="output">
-		<p class="output-label">Form data (only changes when onSelectionChange fires)</p>
-		<pre>{formNotes}</pre>
-	</div>
-
-	<div class="output">
-		<p class="output-label">onSelectionChange fired</p>
-		<pre>{selectionChangeFires} time(s)
-{silentMode
-? '→ expected 0 in silent mode'
-: '→ expected 1 in loud mode (form data was overwritten)'}</pre>
+	<div class="grid grid-2">
+		<div class="tree-container tree-container-tall">
+			<Tree
+				bind:this={silentTreeRef}
+				nodes={sampleData}
+				idMember="id"
+				pathMember="path"
+				sortCallback={sortByName}
+				isSorted={true}
+				expandLevel={2}
+				selectedNodeClass="stv__node-content--selected-bold"
+				bind:selectedPaths={silentSelectedPaths}
+				onSelectionChange={handleSelectionChange}
+				{...getTreeProps()}
+			>
+				{#snippet nodeTemplate(node: LTreeNode<Item>)}
+					<span>{node.data?.icon} {node.data?.name}</span>
+				{/snippet}
+			</Tree>
+		</div>
+		<div>
+			<div class="output">
+				<p class="output-label">Detail</p>
+				<pre>{isDetailLoading ? 'loading…' : detailText}</pre>
+			</div>
+			<div class="output">
+				<p class="output-label">Detail loads</p>
+				<pre>{detailLoads}{isDetailReloaded ? ' — the same record loaded again: that is the flicker' : ''}</pre>
+			</div>
+		</div>
 	</div>
 
 	<div class="code-block" data-language="ts">
-		<pre>{`// Restore tree state from URL params without firing onSelectionChange
-function restoreFromUrl(nodePath: string) {
-  // 1. Load form data based on the URL — preserve this value
-  loadFormDataFromUrl(nodePath);
+		<pre>{`// Page script — the detail starts right away, from the URL
+const nodePath = page.url.searchParams.get('nodePath');
+if (nodePath) loadDetail(nodePath);
 
-  // 2. Mark the matching node visually — { isSilent: true } skips
-  //    onNodeClick / onSelectionChange so the form-load handler
-  //    doesn't re-fire and clobber the data above.
-  tree.selectNode(nodePath, 'replace', { isSilent: true });
-
-  // 3. Scroll into view (scrollToPath never fires selection events).
-  tree.scrollToPath(nodePath, { shouldExpandAncestors: true, shouldHighlight: true });
-}`}</pre>
+let tree: Tree<Item>;
+let nodes = $state.raw<Item[]>([]);
+onMount(async () => {
+  nodes = await fetchTree();
+  await tick();
+  if (nodePath) {
+    // match the master to the URL — quietly: the detail already has this record
+    tree.selectNode(nodePath, 'replace', { isSilent: true });
+    tree.scrollToPath(nodePath, { block: 'center' });
+  }
+});`}</pre>
+	</div>
+	<div class="code-block" data-language="svelte">
+		<pre>{`<!-- the user's picks load the detail; silent selects never reach it -->
+<Tree bind:this={tree} {nodes} onSelectionChange={({ paths }) => loadDetail([...paths].pop())} ... />`}</pre>
 	</div>
 
 	<div class="note">
-		<p class="note-title">Also supported</p>
+		<p class="note-title">Load the detail from the callback, not from the bound value</p>
 		<p>
-			All four methods accept <code>{`{ isSilent: true }`}</code>:
-			<code>selectNode(path, mode, opts)</code>,
-			<code>selectNodes(paths, opts)</code>,
-			<code>clearSelection(paths?, opts)</code>,
-			<code>uncheckNodes(paths, opts?)</code> / <code>uncheckAll(opts?)</code>.
-			The bindable props (<code>selectedPaths</code>, <code>checkedPaths</code>, <code>focusedNode</code>)
-			still sync back to the parent — silent only skips the explicit callbacks.
+			<code>isSilent</code> skips the <em>callbacks</em> only — <code>bind:selectedPaths</code> and
+			<code>bind:focusedNode</code> still update, so the tree and your page agree on what is
+			selected. If the detail reloads from an <code>$effect</code> on one of those bound values, a
+			silent select still triggers it. Load the detail from <code>onSelectionChange</code> (it fires
+			only for changes your code didn't make quietly), or let the effect skip a path whose record
+			is already loaded.
+		</p>
+	</div>
+
+	<div class="note">
+		<p class="note-title">Every state method takes it</p>
+		<p>
+			Selection: <code>selectNode(path, mode, opts)</code>, <code>selectNodes</code>,
+			<code>selectAll</code>, <code>clearSelection</code> — skips <code>onSelectionChange</code> /
+			<code>onFocusChange</code>. Checkboxes: <code>checkNode</code>, <code>checkNodes</code>,
+			<code>checkAll</code>, <code>uncheckNode</code>, <code>uncheckNodes</code>,
+			<code>uncheckAll</code> — skips <code>onCheckedChange</code>. Focus: <code>focusNode</code>,
+			<code>clearFocus</code> — skips <code>onFocusChange</code>. Expand: <code>expandNodes</code>,
+			<code>collapseNodes</code>, <code>expandAll</code>, <code>collapseAll</code>,
+			<code>toggleNodeExpanded</code> — skips <code>onNodeExpand</code> / <code>onNodeCollapse</code> /
+			<code>onExpandedChange</code>. Assigning a bound prop (<code>selectedPaths</code>,
+			<code>checkedPaths</code>, <code>focusedNode</code>, <code>expandedPaths</code>) is always silent.
 		</p>
 	</div>
 </div>
