@@ -41,7 +41,7 @@
 	// Reskin the default chevron via the shared --base-icon-* contract: setting
 	// --base-icon-chevron on an ancestor of .stv__container flows into
 	// --stv-icon-expand, so the whole tree's chevron swaps to a custom mask — the
-	// same override a theme applies to every KeenMate component at once. (Only the
+	// same override a theme applies to every Keenmate component at once. (Only the
 	// chevron set consults --base-icon-chevron; the others chain to their own token.)
 	let brandChevron = $state(false);
 	const brandChevronUrl =
@@ -138,7 +138,7 @@
 		<code>theme</code> prop → the theme context (the nearest ancestor signal, read here via
 		<code>themeSource="closest"</code>, else the page's own <code>&lt;html data-theme&gt;</code> —
 		the header switch) → the inherited <code>color-scheme</code> → the OS preference. It's the
-		same KeenMate core detection every web-* component uses (<code>setThemeMode()</code> forces
+		same Keenmate core detection every web-* component uses (<code>setThemeMode()</code> forces
 		it page-wide). OS <code>prefers-color-scheme</code> can't be controlled from JavaScript —
 		flip your OS or browser dev-tools setting to test that path. The demo lives in its own
 		scope, so these controls never touch the header switch.
@@ -458,7 +458,7 @@
 		meaningless) so it glyph-swaps regardless of <code>toggleIconMode</code>. All
 		built-in glyphs are Lucide SVGs rendered via <code>mask-image</code>, so they
 		inherit <code>currentColor</code> and chain to <code>--base-icon-*</code> — set
-		that token once and every KeenMate component's disclosure glyph follows.
+		that token once and every Keenmate component's disclosure glyph follows.
 	</p>
 </div>
 

@@ -107,7 +107,7 @@
 	// Rich content comes from the `tooltip` snippet (via context); the plain-text
 	// callback is the fallback. The snippet is rendered into a hidden host element
 	// which the `tooltip` action adopts into its portaled panel on show (mirrors
-	// the KeenMate core createTooltip `content: HTMLElement` path).
+	// the Keenmate core createTooltip `content: HTMLElement` path).
 	const nodeTooltipSnippet = getContext<Snippet<[LTreeNode<T>, NodeRenderContext]> | undefined>('NodeTooltip')
 	const tooltipText = $derived(
 		config.getNodeTooltipCallback ? (config.getNodeTooltipCallback({ node }) ?? null) : null
@@ -328,7 +328,7 @@
 		{/if}
 
 		{#if isCheckboxesShown && node.isSelectable}
-			<!-- Canonical single-<input> checkbox — the shared KeenMate render
+			<!-- Canonical single-<input> checkbox — the shared Keenmate render
 			     contract (same DOM as web-multiselect / web-treeview): the input IS
 			     the box, indeterminate is a modifier class + aria-checked="mixed"
 			     (not the native .indeterminate prop, which doesn't survive re-render /

@@ -435,9 +435,9 @@ resetLogging();                           // back to the page-wide level, else w
 ```
 
 Categories (`STV:INIT` / `DATA` / `RENDER` / `INDEX` / `DRAG` / `UI`, plus `STV:PERF` for
-`enablePerfLogging()` timings) run on the KeenMate core logger, vendored in
+`enablePerfLogging()` timings) run on the Keenmate core logger, vendored in
 `src/lib/vendor/core` — the same engine and colour-coded `%c[NS:CAT]` prefix as every web-*
 component. Levels coalesce, closest first: category → the tree (these functions, or
 `window.components['svelte-treeview'].logging`) → the page (`window.components.logging`, one switch
-for every KeenMate component on the page) → `warn`. A level set with a logger's own
+for every Keenmate component on the page) → `warn`. A level set with a logger's own
 `setLevel(level)` is persisted in `localStorage` (`km-log:STV:<CAT>`).

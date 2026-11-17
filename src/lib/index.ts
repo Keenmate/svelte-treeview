@@ -53,7 +53,7 @@ export {
 export type { Logger, LogLevelDesc } from "./logger.js"
 
 // Theme context (vendored core SPEC §12.10) — the page / themeSource dark-light signal
-// shared with every KeenMate component on the page. setThemeMode('dark'|'light'|'auto')
+// shared with every Keenmate component on the page. setThemeMode('dark'|'light'|'auto')
 // forces it for ALL of them (web-* components included); Tree's `themeSource` prop picks
 // where one tree reads it from.
 export { setThemeMode, getThemeMode, getThemeContext, observeThemeContext } from "./vendor/core/environment/theme.js"

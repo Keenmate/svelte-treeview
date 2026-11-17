@@ -99,7 +99,7 @@ Override CSS custom properties to customize the look
     --stv-font-size: 16px;
   }
 
-  /* Or globally for all KeenMate components: */
+  /* Or globally for all Keenmate components: */
   :root {
     --base-primary-color: #6366f1;
     --base-font-family: 'Inter', system-ui, sans-serif;

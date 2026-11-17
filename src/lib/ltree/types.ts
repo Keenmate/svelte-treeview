@@ -51,7 +51,7 @@ export type ToggleIconMode = 'rotate' | 'swap';
  * parallel CSS-class families — `iconSet` is a single knob that re-points
  * `--stv-icon-expand` / `--stv-icon-collapse` (+ rotation) via the
  * `.stv__container[data-icon-set=…]` blocks in `variables.css`. Each set chains
- * to a shared `--base-icon-*` token so a theme reskins every KeenMate
+ * to a shared `--base-icon-*` token so a theme reskins every Keenmate
  * component's disclosure glyph at once.
  * - `chevron` (default): Lucide chevron → `--base-icon-chevron`; rotates.
  * - `triangle`: filled caret → `--base-icon-caret-down`; rotates.

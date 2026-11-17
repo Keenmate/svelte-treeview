@@ -67,7 +67,7 @@ export const EXAMPLE_PAGES: ExamplePage[] = [
 		icon: '🎭',
 		title: 'Theme Comparison',
 		badge: 'new',
-		description: 'web-multiselect and svelte-treeview side by side under one shared --base-* theme (Cobalt2) — visual proof the KeenMate token contract renders both consistently.'
+		description: 'web-multiselect and svelte-treeview side by side under one shared --base-* theme (Cobalt2) — visual proof the Keenmate token contract renders both consistently.'
 	},
 	{
 		href: '/examples/responsive',
@@ -104,13 +104,13 @@ export const EXAMPLE_PAGES: ExamplePage[] = [
 		icon: '🔗',
 		title: 'Suite Integration',
 		badge: 'new',
-		description: "One page-wide switch, every KeenMate component: theme mode, motion, breakpoints, the loader hook and logging — a svelte tree and a <web-multiselect> sharing web-components-core's state."
+		description: "One page-wide switch, every Keenmate component: theme mode, motion, breakpoints, the loader hook and logging — a svelte tree and a <web-multiselect> sharing web-components-core's state."
 	},
 	{
 		href: '/examples/logging',
 		icon: '📝',
 		title: 'Logging & Debugging',
-		description: 'The window.components registry entry, its category logging controls, live instances and performance timings — the same as every KeenMate web component.'
+		description: 'The window.components registry entry, its category logging controls, live instances and performance timings — the same as every Keenmate web component.'
 	}
 ];
 

@@ -30,6 +30,7 @@
     "!dist/demo",
     "ai",
     "CHANGELOG.md",
+    "release-notes",
     "component-variables.manifest.json"
   ],
   "sideEffects": [
@@ -100,7 +101,7 @@
     "component",
     "ui"
   ],
-  "author": "KeenMate",
+  "author": "Keenmate s.r.o.",
   "license": "MIT",
   "repository": {
     "type": "git",

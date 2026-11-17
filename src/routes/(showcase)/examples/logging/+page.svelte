@@ -177,7 +177,7 @@
 	<h1>Logging &amp; Debugging</h1>
 	<p class="subtitle">
 		The global <code>window.components</code> registry, category logging controls and
-		performance timings — the same entry shape and logger every KeenMate web component has.
+		performance timings — the same entry shape and logger every Keenmate web component has.
 	</p>
 </header>
 
@@ -357,7 +357,7 @@ tv.logging.setCategoryLevel('INDEX', 'debug');
 tv.logging.disableLogging();        // silence everything
 tv.logging.resetLogging();          // follow the page-wide level again
 
-// Page-wide — every KeenMate component on the page (see /examples/integration)
+// Page-wide — every Keenmate component on the page (see /examples/integration)
 window.components.logging.enableLogging('debug');
 
 // Fan out across instances

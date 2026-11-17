@@ -88,7 +88,7 @@ same for `--base-duration-*`); the loader keeps turning, slower — it shows sta
 
 ## Loader
 
-The `isLoading` overlay and the per-node lazy-load toggle draw the KeenMate shared loader (the
+The `isLoading` overlay and the per-node lazy-load toggle draw the Keenmate shared loader (the
 base-css-variables "Loader" contract — the same look as every web component). One place changes it
 page-wide: `--base-loader-*`.
 
@@ -134,12 +134,12 @@ or the tree's defaults won't apply.
 
 ## Dark mode
 
-Same model as every KeenMate web component (core theme context, SPEC §12.10 — vendored in
+Same model as every Keenmate web component (core theme context, SPEC §12.10 — vendored in
 `src/lib/vendor/core/environment/theme.ts`). Highest first:
 
 1. **Per-instance `theme` prop** — `'dark' | 'light'`, forwarded to `.stv__container` as `data-theme`. Beats everything.
 2. **Theme context** — detected in JS once per page and mirrored onto `.stv__container` as `data-context-theme`:
-   - `setThemeMode('dark' | 'light')` forces every KeenMate component on the page (`'auto'` resumes detection);
+   - `setThemeMode('dark' | 'light')` forces every Keenmate component on the page (`'auto'` resumes detection);
    - else the tree's **`themeSource`**: `'closest'` (the nearest ancestor carrying a signal, re-resolved when one changes),
      a CSS selector (nearest matching ancestor, else first match), or an `Element`;
    - else the **page**: `data-theme` / `data-bs-theme` / `.dark` / `.light` on `<html>`, then `<body>`.
@@ -218,7 +218,7 @@ Pick the expand/collapse glyph with one knob — `iconSet` (`'chevron'` (default
 Each set chains its glyph to a shared `--base-icon-*` token
 (`chevron` → `--base-icon-chevron`, `triangle` → `--base-icon-caret-down`,
 `plus-minus` → `--base-icon-expand`/`--base-icon-collapse`), so overriding one base
-token reskins the disclosure glyph across every KeenMate component at once:
+token reskins the disclosure glyph across every Keenmate component at once:
 
 ```css
 .my-app { --base-icon-chevron: url("data:image/svg+xml;utf8,<svg …>"); }

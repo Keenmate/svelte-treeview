@@ -17,7 +17,7 @@
  *
  * Levels coalesce, closest first: a category's own level → the tree's type level
  * (these functions / `window.components['svelte-treeview'].logging`) → the page level
- * (`window.components.logging`, shared with every KeenMate component) → `warn`.
+ * (`window.components.logging`, shared with every Keenmate component) → `warn`.
  *
  * ```js
  * import { enableLogging, setLogLevel, setCategoryLevel } from '@keenmate/svelte-treeview';

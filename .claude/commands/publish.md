@@ -32,6 +32,7 @@ Single-package repo, everything at root:
 - **`./package.json`** — `version` field is the source of truth.
 - **`./CHANGELOG.md`** — at the root. Topmost `## [X.Y.Z] - YYYY-MM-DD` heading **without** the `[PUBLISHED]` marker is the WIP section.
 - **`./README.md`** — at the root. Carries `## What's New in vX.Y.Z` sections near the top (one per release, the **two most recent** retained).
+- **`./release-notes/`** — one upgrade guide per published version (`<version>.md`, BlissFramework `web-components/release-notes.md`); listed in `package.json` `files`.
 - **`./dist/`** — gitignored. Produced by `npm run build` (`prepack` → svelte-kit sync → svelte-package → lightningcss → publint). Never staged.
 - **`./src/lib/constants.generated.ts`** — **auto-generated** from `package.json` by `npm run generate-constants` (chained into `prepack`). Tracked in git but never hand-edited; stage it if the build changes it.
 
@@ -88,6 +89,11 @@ If `WIP_VERSION` ≠ `NEW_VERSION` (e.g. the WIP is `X.Y.Z-rcN` but the user ask
   - Show the user the proposed draft as plain markdown in your reply. Ask whether to (a) insert as-is, (b) edit, or (c) abort so they can write it themselves.
   - Only proceed past step 1 once the user approves the draft (or supplies their own). On approval, insert the section directly above the current top `## What's New in vX.Y.Z` heading in `./README.md`, then continue.
   - Do not silently insert the draft without confirmation — release highlights are a writing call and the user owns the voice.
+- Confirm `./release-notes/NEW_VERSION.md` exists. Every rc, minor and major ships one, and so does a patch whose WIP CHANGELOG section has an `Added`, `Changed`, `Removed` or `Security` entry; a patch with only `Fixed` / `Internal` entries may skip it (`web-components/release-notes.md` → "Which versions get notes") — ask the user whether to write one. If it's missing and required, draft it and present it to the user for approval before continuing, exactly as for What's New:
+  - **Follow the canonical template** in the BlissFramework component guidelines (`web-components/release-notes.md` → "The template"); `release-notes.checks.sh` (C-RN-1 … C-RN-9) enforces the shape. Header (title, `**Released:**` status line, baseline paragraph, absolute CHANGELOG link) → Contents → Requirements → Upgrade checklist (`- [ ]` items grouped by audience, each linking its details) → Breaking changes → Behaviour changes → New features → New API → Visible changes without a migration → Fixes → Documentation → Internal; drop empty optional sections.
+  - **Baseline:** the last version on npm (`npm view @keenmate/svelte-treeview versions`) — except for `release` (a final after rcs), whose notes are a **consolidated guide from the previous final**, written fresh, linking the rc notes. Fold in any version that never reached npm and say so.
+  - Draft from the CHANGELOG sections between the baseline and `NEW_VERSION`: every Removed / breaking Changed entry gets a Breaking-changes `###` **and** an Upgrade-checklist item.
+  - Show the draft, ask (a) insert as-is, (b) edit, or (c) abort; write the file only on approval.
 
 ### 2. Bump version (if needed) [canonical]
 
@@ -116,11 +122,15 @@ In `./README.md`:
 
 For `rc` arg this is normally a no-op on the heading itself — only trims if someone left an extra-old section behind.
 
+Each What's New section opens with its upgrade-guide line (`Upgrade guide: the [NEW_VERSION release notes](release-notes/NEW_VERSION.md); …`); add it if missing. When a section is trimmed, move its release-notes link to the front of the `Earlier releases:` line below the retained sections.
+
 ### 5. Validate README reflects the release [canonical]
 
 Read both the finalized CHANGELOG section and the matching `What's New in vNEW_VERSION` section. Every **Added** or **Changed** bullet in the CHANGELOG that represents a user-facing feature or behavior change should have a corresponding hit in the What's New section (paraphrased, not verbatim). Pure internal refactors and `Fixed`-only entries don't need coverage, though headline bug fixes worth advertising (e.g. "X used to silently fail; now works") are worth a bullet.
 
 If you find a significant CHANGELOG entry that isn't reflected in What's New, add a bullet for it. If the section ends up with more than ~8 bullets after this pass, condense — What's New should be scannable, not exhaustive.
+
+Then validate `./release-notes/NEW_VERSION.md`, when there is one, against the same CHANGELOG sections (C-RN-12): every breaking change has an Upgrade-checklist item, the Requirements table matches the `@keenmate/*` dependencies in `package.json` (C-RN-10), and `release-notes.checks.sh` passes. Fix the notes, or ask the user, before continuing.
 
 ### 6. Validate CHANGELOG entries match recent work [canonical]
 
@@ -163,6 +173,7 @@ Run `npm pack --dry-run` and confirm the file list includes the standard svelte-
 - `package.json`
 - `README.md`
 - `LICENSE`
+- `release-notes/` (the upgrade guides, incl. `NEW_VERSION.md`)
 
 If anything user-facing is missing or anything private leaked in (e.g. `src/`, `e2e/`, `*.spec.ts`, `tsconfig.json`, `svelte.config.js`, `test-results/`, `playwright-report/`), stop and report — the `files` field in `package.json` controls this and the leak needs fixing before publish.
 
@@ -173,6 +184,7 @@ Stage:
 - `./CHANGELOG.md`
 - `./README.md`
 - `./package.json`
+- `./release-notes/NEW_VERSION.md`
 - `./src/lib/constants.generated.ts` (only if `npm run build` changed it)
 
 Do **not** stage `dist/` — it's gitignored.

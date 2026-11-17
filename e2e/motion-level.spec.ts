@@ -1,7 +1,7 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
 
 /**
- * Motion level (vendored KeenMate core, SPEC §12.16) on /test/motion: the `motion` prop
+ * Motion level (vendored Keenmate core, SPEC §12.16) on /test/motion: the `motion` prop
  * writes data-motion on .stv__container; the presets only set --base-duration-*, which
  * --stv-transition-* read, so the closest level wins through inheritance:
  * the tree's own prop → the nearest data-motion section → window.components.motion

@@ -1,5 +1,5 @@
 /**
- * `tooltip` — a Svelte action that mirrors the KeenMate core `createTooltip`
+ * `tooltip` — a Svelte action that mirrors the Keenmate core `createTooltip`
  * preset (web-components-core `positioning/tooltip.ts`, as used by
  * web-multiselect's option tooltips) but built on the `@floating-ui/dom` this
  * package already ships — no vanilla-DOM helper vendored in.

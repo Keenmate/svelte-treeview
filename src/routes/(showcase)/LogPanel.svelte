@@ -24,7 +24,7 @@
 <script lang="ts">
 	// The devkit kit's event log (.log-panel / .log-line markup, widgets.css), rendered
 	// reactively from an array instead of the kit's imperative appendLogLine(panel, …).
-	// Same markup + classes, so it looks like every other KeenMate examples site.
+	// Same markup + classes, so it looks like every other Keenmate examples site.
 	import { tick } from 'svelte';
 	import { LOG_LINE_CLASSES, LOG_LINE_VARIANT_CLASSES } from '@keenmate/web-components-devkit/examples';
 

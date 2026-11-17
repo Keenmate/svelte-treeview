@@ -257,7 +257,7 @@
 <div class="card">
 	<h2>TT05 · Tooltip CSS variables</h2>
 	<p class="description">
-		All chain to the shared <code>--base-tooltip-*</code> contract (so a KeenMate theme retints
+		All chain to the shared <code>--base-tooltip-*</code> contract (so a Keenmate theme retints
 		the tooltip), each with a fallback. Sizes are <code>calc(N × --stv-rem)</code>.
 	</p>
 	<table class="reference-table">

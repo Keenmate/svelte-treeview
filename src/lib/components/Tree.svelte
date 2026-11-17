@@ -393,7 +393,7 @@
 		 *  detected signal. Leave undefined to follow the theme context (see `themeSource`). */
 		theme?: 'dark' | 'light' | null | undefined;
 		/** Where the tree reads its dark/light signal from (core theme context, SPEC §12.10 —
-		 *  the same switch every KeenMate web component has as `theme-source`). Unset = the
+		 *  the same switch every Keenmate web component has as `theme-source`). Unset = the
 		 *  page: `data-theme` / `data-bs-theme` / `.dark` / `.light` on `<html>`, then `<body>`.
 		 *  `'closest'` = the nearest ancestor carrying such a signal (re-resolved when one
 		 *  changes); a CSS selector = the nearest matching ancestor, else the first match; or an
@@ -402,7 +402,7 @@
 		 *  for every component on the page. */
 		themeSource?: ThemeSource;
 		/** Animation speed for this tree (core motion level, SPEC §12.16 — the same `motion`
-		 *  every KeenMate web component has): `'none' | 'snappy' | 'smooth'`, or `'auto'`
+		 *  every Keenmate web component has): `'none' | 'snappy' | 'smooth'`, or `'auto'`
 		 *  (default) = follow the nearest `data-motion` section, then the page
 		 *  (`window.components.motion`), then the tree's own speeds. Written onto
 		 *  `.stv__container` as `data-motion`; a preset only sets the `--base-duration-*` /
@@ -430,7 +430,7 @@
 		 *  the ONE `--stv-icon-*` variable set via `data-icon-set` on `.stv__container`
 		 *  — it does not switch between separate CSS classes. `'plus-minus'` is a swap
 		 *  set (glyph-swaps regardless of `toggleIconMode`). Each set chains to a shared
-		 *  `--base-icon-*` token, so a theme reskins every KeenMate component at once. */
+		 *  `--base-icon-*` token, so a theme reskins every Keenmate component at once. */
 		iconSet?: 'chevron' | 'triangle' | 'plus-minus' | 'arrow';
 		leafIconClass?: string | null | undefined;
 		toggleIconMode?: 'rotate' | 'swap';
@@ -871,7 +871,7 @@
 
 	// ── Theme context (core SPEC §12.10, vendored) ─────────────────────────
 	// The page's (or `themeSource`'s) dark/light signal, detected once per watched
-	// element and shared with every KeenMate component on the page, mirrored onto
+	// element and shared with every Keenmate component on the page, mirrored onto
 	// .stv__container as data-context-theme (dark-mode.css flips color-scheme on it).
 	// Re-subscribes when themeSource changes; the listener fires immediately.
 	let contextTheme = $state<ColorScheme | null>(null);
@@ -886,7 +886,7 @@
 
 	// ── Motion level (core SPEC §12.16, vendored) ──────────────────────────
 	// The presets are plain CSS on [data-motion] (adopted into the document once, shared
-	// with every KeenMate component); publishMotionHook installs window.components.motion,
+	// with every Keenmate component); publishMotionHook installs window.components.motion,
 	// which core mirrors onto <html data-motion>. Our own level goes on .stv__container,
 	// so the closest level wins through inheritance. An invalid value reads as 'auto'.
 	const motionLevel = $derived<Motion>(isMotion(motion) ? motion : 'auto');

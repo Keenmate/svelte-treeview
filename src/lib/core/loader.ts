@@ -1,5 +1,5 @@
 /**
- * The page-wide loader hook of the KeenMate suite — `window.components.renderLoadingCallback`
+ * The page-wide loader hook of the Keenmate suite — `window.components.renderLoadingCallback`
  * (web-components-core `renderLoader()`, SPEC §12.14) — read WITHOUT depending on core.
  * Mirrored from core `src/dom/render-loader.ts` (tracked in scripts/core-sync.json).
  *

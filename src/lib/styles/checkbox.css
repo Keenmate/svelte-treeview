@@ -1,5 +1,5 @@
 /* =============================================================================
-   CHECKBOX — styled native <input>, canonical KeenMate render contract.
+   CHECKBOX — styled native <input>, canonical Keenmate render contract.
 
    Single-element model, shared byte-for-byte (modulo prefix) with
    web-multiselect's .ms__checkbox and web-treeview: the <input> ITSELF is the

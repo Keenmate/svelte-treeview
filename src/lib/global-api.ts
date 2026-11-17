@@ -1,5 +1,5 @@
 /**
- * `window.components['svelte-treeview']` — the same entry shape every KeenMate web
+ * `window.components['svelte-treeview']` — the same entry shape every Keenmate web
  * component publishes through core's `registerComponent()` (SPEC §12.3): `version()`,
  * `config`, `logging` (this tree's type-level controls) and `getInstances()` (the live
  * TreeControllers). svelte-treeview isn't a custom element, so the element bits
@@ -58,7 +58,7 @@ export interface GlobalTreeviewAPI {
 
 declare global {
 	interface Window {
-		/** Registry of KeenMate components, keyed by tag/package name (+ the non-enumerable page-wide `logging`). */
+		/** Registry of Keenmate components, keyed by tag/package name (+ the non-enumerable page-wide `logging`). */
 		components?: Record<string, unknown> & {
 			'svelte-treeview'?: GlobalTreeviewAPI;
 			readonly logging?: GlobalLoggingControls;

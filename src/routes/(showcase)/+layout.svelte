@@ -1,5 +1,5 @@
 <script lang="ts">
-	// Showcase chrome = the KeenMate devkit examples kit (@keenmate/web-components-devkit),
+	// Showcase chrome = the Keenmate devkit examples kit (@keenmate/web-components-devkit),
 	// the same kit every web-* examples site uses. Its Vite plugin only handles root *.html
 	// pages, so the SvelteKit equivalents live here: page config + no-flash theme bootstrap
 	// in <head>, and the kit's runtime helpers (re)mounted after every navigation — they are

@@ -65,7 +65,7 @@ test.describe('node tooltip', () => {
 	});
 });
 
-// The width vars size the CONTENT box (padding outside) — the KeenMate tooltip contract
+// The width vars size the CONTENT box (padding outside) — the Keenmate tooltip contract
 // shared with web-treeview / web-multiselect (shadow DOM, no page reset). /test pages load
 // Bootstrap's `* { box-sizing: border-box }`, so this guards the explicit content-box.
 test('width vars size the content box, even under a border-box page reset', async ({ page }) => {

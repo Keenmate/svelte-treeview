@@ -246,7 +246,7 @@
 	<h1>Theme Comparison</h1>
 	<p class="subtitle">
 		<code>&lt;web-multiselect&gt;</code> and <code>&lt;Tree&gt;</code> side by side, both resolving the
-		<strong>same</strong> KeenMate <code>--base-*</code> design tokens — visual proof that the shared
+		<strong>same</strong> Keenmate <code>--base-*</code> design tokens — visual proof that the shared
 		token contract renders both consistently.
 	</p>
 </header>

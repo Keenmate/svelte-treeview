@@ -6,7 +6,7 @@
    branch. Consumer --base-* themed values flow through untouched.
 
    Resolution precedence (highest first) — same model as web-treeview /
-   web-multiselect (KeenMate core theme context, SPEC §12.10):
+   web-multiselect (Keenmate core theme context, SPEC §12.10):
      1. per-instance `theme` prop → .stv__container[data-theme]   (declared last)
      2. theme context → .stv__container[data-context-theme], written by Tree.svelte
         from the vendored core detector: setThemeMode() force, else the

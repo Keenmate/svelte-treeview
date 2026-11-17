@@ -239,7 +239,7 @@
 	<p class="subtitle">
 		svelte-treeview carries a vendored copy of <code>@keenmate/web-components-core</code>; every
 		web component bundles its own. The copies keep their page-wide state on
-		<code>globalThis</code>, so one switch drives every KeenMate component on the page — shown here
+		<code>globalThis</code>, so one switch drives every Keenmate component on the page — shown here
 		with a <code>&lt;web-multiselect&gt;</code> next to the tree.
 	</p>
 </header>
@@ -276,7 +276,7 @@
 	</div>
 	<div class="code-block" data-language="ts">
 		<pre>{`import { setThemeMode } from '@keenmate/svelte-treeview';   // or from web-components-core
-setThemeMode('dark');   // every KeenMate component on the page
+setThemeMode('dark');   // every Keenmate component on the page
 setThemeMode('auto');   // back to detection (page / themeSource signal)`}</pre>
 	</div>
 </div>

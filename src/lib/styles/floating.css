@@ -6,7 +6,7 @@
    NODE TOOLTIP (hover/focus)
    Portaled to <body> by the `tooltip` action; positioned via Floating UI.
    Same shape + shared --base-tooltip-* tokens as web-multiselect's option
-   tooltip, so under one KeenMate theme both components render an identical
+   tooltip, so under one Keenmate theme both components render an identical
    tooltip surface.
    ============================================================================= */
 .stv__tooltip {
@@ -29,7 +29,7 @@
 	   with --stv-tooltip-max-width: none so the width isn't re-capped), or
 	   --stv-tooltip-min-width for a floor that still grows up to max-width. */
 	/* content-box, explicitly: the width vars size the CONTENT (padding outside) — the
-	   KeenMate tooltip contract (web-treeview / web-multiselect render in a shadow root,
+	   Keenmate tooltip contract (web-treeview / web-multiselect render in a shadow root,
 	   where no page reset reaches). This light-DOM tooltip would otherwise take a page's
 	   `* { box-sizing: border-box }` and come out 2 × padding narrower. !important because
 	   an UNLAYERED reset (Bootstrap's) beats any layered rule; size via the vars instead. */

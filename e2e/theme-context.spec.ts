@@ -1,7 +1,7 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
 
 /**
- * Theme context (vendored KeenMate core, SPEC §12.10) on /test/theme-context:
+ * Theme context (vendored Keenmate core, SPEC §12.10) on /test/theme-context:
  * Tree mirrors the detected dark/light signal onto .stv__container as
  * data-context-theme, and dark-mode.css flips color-scheme on it.
  * Guards the old ancestor-selector bug: a light PAGE signal used to beat a NEARER
