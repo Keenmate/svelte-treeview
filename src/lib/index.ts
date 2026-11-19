@@ -5,12 +5,12 @@ export {default as ContextMenuItemC} from "./components/ContextMenuItem.svelte"
 export {default as ContextMenuDividerC} from "./components/ContextMenuDivider.svelte"
 
 // Core layer (headless controller)
-export { TreeController } from "./core/TreeController.svelte"
-export type { TreeControllerProps, PasteResult, NodeTransformContext, NodeTransformCallbackContext, NodeTransformCallback, BeforeCheckboxToggleContext, KeydownContext, BeforePasteContext, BeforeCopyContext, BeforeDeleteContext, NodeRef, NodeEventContext, NodeDragContext, DragStartContext, BeforeDropContext, DropGroup, NodeDropContext, ClipboardEventContext, SelectionChangeContext, ExpandedChangeContext, BeforeExpandContext, TreeCallbackContext, FocusChangeContext, TreeChangeContext, ScrollToPathOptions } from "./core/TreeController.svelte"
+export { TreeController } from "./core/TreeController.svelte.js"
+export type { TreeControllerProps, PasteResult, NodeTransformContext, NodeTransformCallbackContext, NodeTransformCallback, BeforeCheckboxToggleContext, KeydownContext, BeforePasteContext, BeforeCopyContext, BeforeDeleteContext, NodeRef, NodeEventContext, NodeDragContext, DragStartContext, BeforeDropContext, DropGroup, NodeDropContext, ClipboardEventContext, SelectionChangeContext, ExpandedChangeContext, BeforeExpandContext, TreeCallbackContext, FocusChangeContext, TreeChangeContext, ScrollToPathOptions } from "./core/TreeController.svelte.js"
 export { createTreeController } from "./core/createTreeController.js"
 
 // Export types
-export type { LTreeNode, NodeId, VisualState } from "./ltree/ltree-node.svelte"
+export type { LTreeNode, NodeId, VisualState } from "./ltree/ltree-node.svelte.js"
 export type { Ltree, DropPosition, DragDropMode, DropOperation, ToggleIconMode, IconSet, NodeTitleOverflow, TooltipPlacement, TooltipDelay, NodeRenderContext, ClickBehavior, CheckboxMode, CascadeCheckPolicy, FilterScope, IndexProgress, SearchStatus, SelectionMode, SelectMode, TreeMutationOptions, ExpandOptions, InsertPosition, NodeContext, SortContext, SortCompareContext, SortOptions, NodesReorderContext, InsertArrayResult, InsertBranchResult, ReplaceBranchResult, RemoveBranchResult, TreeChange, ApplyChangesResult } from "./ltree/types.js"
 
 // Tooltip action (use:tooltip) — the hover/focus tooltip primitive the Tree uses
@@ -23,7 +23,7 @@ export type { ClipboardEntry, TreeClipboard } from "./core/clipboard.js"
 export { setClipboard, getClipboard, clearClipboard, hasClipboard, getClipboardOperation, uniqueName } from "./core/clipboard.js"
 export type { TreeNavigation, TreeNavigationOverrides } from "./core/navigation.js"
 export type { RenderStats } from "./ltree/types.js"
-export { DEFAULT_LABELS, resolveLabel } from "./core/labels.js"
+export { DEFAULT_LABELS, LABELS_TAG, resolveLabel } from "./core/labels.js"
 // Context-menu model (same as @keenmate/web-treeview; core /actions vendored)
 export { createMenuDivider, isMenuDivider } from "./core/menu.js"
 // Custom menu renderers: resolve a level's entries / a submenu the same way the built-in menu does
@@ -31,8 +31,11 @@ export { resolveMenuEntries, getMenuChildren } from "./vendor/actions/resolve.js
 export type { ResolvedMenuEntry } from "./vendor/actions/resolve.js"
 export type { TreeMenuContext, TreeMenuItem, TreeMenuEntry, TreeAction, TreeActionEventDetail, ActionItem, MenuItem, MenuEntry, MenuDivider, ActionEventDetail, ActionInvocation, ActionSource, ResolvedActionItem } from "./core/menu.js"
 export type { TreeLabels } from "./core/labels.js"
+// Page-wide locale (vendored core SPEC §12.24): window.components.locale.labels['svelte-treeview']
+export { getPageLocale, observeLocale } from "./vendor/core/locale/page-locale.js"
+export type { PageLocale, PageSecurity, LabelFormatContext, FormatLabelCallback } from "./vendor/core/locale/page-locale.js"
 export type { LoaderRenderContext, RenderLoaderCallback } from "./core/loader.js"
-export type { NodeCallbacks, NodeConfig, SelectionModifiers } from "./core/TreeController.svelte"
+export type { NodeCallbacks, NodeConfig, SelectionModifiers } from "./core/TreeController.svelte.js"
 
 // Logging — a thin shim over the core logging module (vendored @keenmate/web-components-core,
 // SPEC §12.1; namespace STV). Page-wide switch: window.components.logging.

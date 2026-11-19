@@ -1,6 +1,6 @@
-import FlexSearch, { Index, type SearchOptions } from 'flexsearch';
+import FlexSearch, { type Index, type SearchOptions } from 'flexsearch';
 
-import { type LTreeNode, createLTreeNode } from './ltree-node.svelte';
+import { type LTreeNode, createLTreeNode } from './ltree-node.svelte.js';
 
 import { isEmptyString } from '../helpers/string-helpers.js';
 import {
@@ -83,6 +83,9 @@ export function createLTree<T>(
 
 	// Reactive so a runtime change (Tree prop / update()) re-renders the fallback labels.
 	let displayValueFallbackState = $state<string>(opts?.displayValueFallback ?? '[N/A]');
+	// Spread last over the object below — WITHOUT displayValueFallback, which would replace the
+	// reactive accessor with a plain value (rows then never re-rendered a changed fallback).
+	const { displayValueFallback: _fallback, ...restOpts } = opts ?? {};
 
 	// this is absolutely crucial to keep order of sorted items. Segments are just numbers and numbers as properties are always sorted
 	// see https://stackoverflow.com/questions/33351816/how-to-prevent-automatic-sort-of-object-numeric-property/51497854#51497854
@@ -1035,8 +1038,12 @@ export function createLTree<T>(
 		},
 
 		getNodeDisplayValue(node: LTreeNode<T>): string {
-			if (!shouldCalculateDisplayValue && node.data)
-				return getField(node.data, _displayValueMember!);
+			// Resolution order: member → callback → fallback. A configured member absent on this
+			// node (undefined / null) falls through, so labels.noDisplayValue shows (as in web-treeview).
+			if (!shouldCalculateDisplayValue && node.data) {
+				const value = getField(node.data, _displayValueMember!);
+				if (value != null) return value as string;
+			}
 
 			if (this.getDisplayValueCallback) return this.getDisplayValueCallback({ node });
 
@@ -1044,7 +1051,11 @@ export function createLTree<T>(
 		},
 
 		getNodeSearchValue(node: LTreeNode<T>): string {
-			if (!shouldCalculateSearchValue && node.data) return getField(node.data, _searchValueMember!);
+			// Same member → callback → fallback guard; a missing member must not feed undefined to the indexer.
+			if (!shouldCalculateSearchValue && node.data) {
+				const value = getField(node.data, _searchValueMember!);
+				if (value != null) return value as string;
+			}
 
 			if (this.getSearchValueCallback) return this.getSearchValueCallback({ node });
 
@@ -2324,6 +2335,6 @@ export function createLTree<T>(
 			changeTracker = Symbol();
 		},
 
-		...opts
+		...restOpts
 	};
 }

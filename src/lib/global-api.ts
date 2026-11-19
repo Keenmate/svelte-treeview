@@ -13,6 +13,7 @@
  * window.components['svelte-treeview'].logging.enableLogging();      // just the tree(s)
  * window.components['svelte-treeview'].logging.setCategoryLevel('INDEX', 'debug');
  * window.components['svelte-treeview'].getInstances();               // TreeController[]
+ * window.components.locale = { labels: { 'svelte-treeview': { noData: 'Žádná data' } } };
  * ```
  *
  * Imported by TreeController + index.ts so it runs whenever the tree is used.
@@ -20,6 +21,7 @@
 import { logging } from './logger.js';
 import type { LogLevelDesc } from './vendor/core/logging/create-loggers.js';
 import { publishGlobalLogging, type GlobalLoggingControls } from './vendor/core/logging/global-logging.js';
+import { publishLocaleHooks } from './vendor/core/locale/page-locale.js';
 import { getRegisteredTrees } from './core/clipboard.js';
 
 // Generated constants (scripts/generate-constants.js)
@@ -94,4 +96,5 @@ if (typeof window !== 'undefined') {
 	const existing = components[ENTRY_KEY];
 	components[ENTRY_KEY] = existing && typeof existing === 'object' ? Object.assign(existing, entry) : entry;
 	publishGlobalLogging(); // re-publish if the page replaced window.components
+	publishLocaleHooks(); // window.components.locale / .security (SPEC §12.24)
 }

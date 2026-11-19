@@ -46,6 +46,18 @@
 			]
 		},
 		{
+			"name": "locale",
+			"description": "Page-wide locale + labels (SPEC §12.24): window.components.locale.labels['svelte-treeview'] between the labels prop and the English defaults; formatLabelCallback. src/lib/core/labels.ts is the seam.",
+			"mode": "identical",
+			"baseline": "3912936",
+			"files": [
+				["src/locale/labels.ts", "src/lib/vendor/core/locale/labels.ts"],
+				["src/locale/page-locale.ts", "src/lib/vendor/core/locale/page-locale.ts"],
+				["src/locale/settings.ts", "src/lib/vendor/core/locale/settings.ts"],
+				["src/dom/escape-html.ts", "src/lib/vendor/core/dom/escape-html.ts"]
+			]
+		},
+		{
 			"name": "vendored tests",
 			"description": "Core's unit tests for the vendored modules.",
 			"mode": "adapted",
@@ -111,8 +123,8 @@
 			"name": "global API",
 			"description": "global-api.ts publishes window.components['svelte-treeview'] in core registerComponent()'s shape (SPEC §12.3).",
 			"mode": "mirror",
-			"note": "baseline = the core commit current when the logger port landed (2026-11-13).",
-			"baseline": "6c4c2e2",
+			"note": "Reviewed 2026-11-17: register also publishes window.components.locale / .security (publishLocaleHooks, core 3912936).",
+			"baseline": "3912936",
 			"files": [
 				["src/global/register-component.ts", "src/lib/global-api.ts"],
 				["src/global/instances.ts", "src/lib/global-api.ts"]

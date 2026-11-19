@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.0-rc17] - 2026-11-17
+
+### Added — page-wide labels: `window.components.locale` (core SPEC §12.24, 2026-11-17)
+
+- Every built-in text can now be set once for the whole page, for every tree and every other Keenmate component: `window.components.locale = { labels: { 'svelte-treeview': { noData: 'Žádná data', copy: 'Kopírovat' } } }`. Per key the tree takes the `labels` prop (a string — `''` included — wins) → the page-wide `labels['svelte-treeview']` → the English default. Assigning a new object (or `null`) re-renders the texts of every live tree: the empty state, the drop placeholder, the loader's aria-label, the info button, the built-in menu items and the `noDisplayValue` fallback on the rows. An object assigned before the tree loads (`window.components = { locale: … }`) is adopted.
+- `window.components.locale.formatLabelCallback({ component, key, template, params, locale })` formats every label — plug in ICU / FormatJS / i18next (`component` is `'svelte-treeview'`). A throwing callback or a non-string result is logged and the default `{name}` formatting is used.
+- The same object carries core's other locale settings (`locale`, `dateFormat`, separators…) — the tree has no dates or numbers to format, so it only reads `labels` and `formatLabelCallback` (and `locale` for the callback's `ctx.locale`).
+- Exports: `LABELS_TAG` (`'svelte-treeview'`), `getPageLocale`, `observeLocale` and the types `PageLocale`, `PageSecurity`, `LabelFormatContext`, `FormatLabelCallback`. `resolveLabel()` now resolves all three layers.
+- Vendored core `locale/` (`labels.ts`, `page-locale.ts`, `settings.ts`) + `dom/escape-html.ts` from web-components-core 3912936 (1.0.0-rc25), listed in `scripts/core-sync.json` (group `locale`); `global-api.ts` publishes the `window.components.locale` / `.security` accessors like core's `registerComponent()`. Guarded by `e2e/page-labels.spec.ts` + `/test/page-labels` and unit tests in `src/lib/core/labels.test.ts`.
+
+### Fixed (2026-11-17)
+
+- Types under `moduleResolution: node16` / `nodenext` ([#30](https://github.com/Keenmate/svelte-treeview/issues/30)): imports of the `.svelte.ts` modules (`./core/TreeController.svelte`, `./ltree/ltree-node.svelte`) had no `.js`, and svelte-package copies specifiers into `dist/*.d.ts` unchanged — `TreeController`, `TreeControllerProps`, `LTreeNode`, `Ltree` and the types from those modules silently became `any` for such consumers. Now `.svelte.js`. A new `check:dist-imports` step in `prepack` (`scripts/check-dist-imports.mjs`) fails the build when any relative import in `dist/` doesn't name an existing file with its extension.
+
+- A runtime change of `labels.noDisplayValue` (prop, `update()`) never reached the rows: `createLTree` spread its options last, which replaced the reactive `displayValueFallback` accessor with a plain value.
+- A node whose `displayValueMember` / `searchValueMember` field is missing (`undefined` / `null`) now falls through to `getDisplayValueCallback` / `getSearchValueCallback` and then `labels.noDisplayValue`, instead of rendering an empty label (and feeding `undefined` to the search index and the display-value sort). web-treeview already did this.
+
+### Internal (2026-11-17)
+
+- The build is free of Rollup warnings: the `nodes` and progressive-render `$effect` bodies moved out of the `TreeController` constructor into `_applyNodesInput()` / `_syncProgressiveRender()` (the SSR build drops `$effect` calls but kept esbuild's `/* @__PURE__ */` marks on their `new Set(…)`, which Rollup reported as "an annotation that Rollup cannot interpret"); two one-line `if`s with the same mark rewritten; flexsearch `Index` is a type-only import.
+
 ## [5.0.0-rc16] - 2026-11-17 [PUBLISHED]
 
 > 5.0.0 was never published to npm (the previous `[5.0.0] - 2026-10-13 [PUBLISHED]` heading was wrong — npm `rc` is 5.0.0-rc15, `latest` 4.8.0). Its entries are folded into rc16 below.

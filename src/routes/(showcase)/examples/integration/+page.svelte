@@ -14,7 +14,10 @@
 		observeEnvironment,
 		MOTION_VALUES,
 		type Motion,
-		type EnvironmentSnapshot
+		type EnvironmentSnapshot,
+		type PageLocale,
+		type TreeLabels,
+		type TreeMenuEntry
 	} from '$lib/index.js';
 	import LogPanel, { logLine, type LogEntry } from '../../LogPanel.svelte';
 
@@ -35,6 +38,7 @@
 
 	type Components = Record<string, unknown> & {
 		motion?: Motion;
+		locale?: PageLocale | null;
 		renderLoadingCallback?: unknown;
 		logging?: { enableLogging(level?: string): void; disableLogging(): void; resetLogging(): void; getCategories(): string[] };
 	};
@@ -193,6 +197,45 @@
 		refreshLogging();
 	}
 
+	// ── IG06 · page-wide labels ─────────────────────────────────────────────
+	const LANGUAGES: Record<string, { name: string; labels: Partial<TreeLabels> | null }> = {
+		en: { name: 'English (defaults)', labels: null },
+		cs: {
+			name: 'Čeština',
+			labels: { noData: 'Žádná data', noResults: 'Nic nenalezeno', copy: 'Kopírovat', cut: 'Vyjmout', paste: 'Vložit', delete: 'Smazat', expandAll: 'Rozbalit vše', collapseAll: 'Sbalit vše' }
+		},
+		de: {
+			name: 'Deutsch',
+			labels: { noData: 'Keine Daten', noResults: 'Keine Treffer', copy: 'Kopieren', cut: 'Ausschneiden', paste: 'Einfügen', delete: 'Löschen', expandAll: 'Alle aufklappen', collapseAll: 'Alle zuklappen' }
+		}
+	};
+	let language = $state('en');
+	let isFormatterOn = $state(false);
+	let formatLog = $state<LogEntry[]>([]);
+	const labelsMenu = (): TreeMenuEntry<Item>[] => ['copy', 'cut', 'paste', 'delete', 'expand-all', 'collapse-all'];
+
+	function applyLocale() {
+		const labels = LANGUAGES[language]?.labels;
+		if (!labels && !isFormatterOn) {
+			components().locale = null;
+			return;
+		}
+		components().locale = {
+			locale: language === 'en' ? 'en-US' : language,
+			...(labels ? { labels: { 'svelte-treeview': labels } } : {}),
+			...(isFormatterOn
+				? {
+						// Stand-in for ICU / i18next: tag the text with its key. Logged on a microtask —
+						// the callback runs while the tree renders.
+						formatLabelCallback: ({ component, key, template, locale }) => {
+							queueMicrotask(() => (formatLog = [...formatLog.slice(-7), logLine('formatLabelCallback', `${component}.${key} (${locale})`)]));
+							return `${template} ·${key}`;
+						}
+					}
+				: {})
+		};
+	}
+
 	onMount(() => {
 		const stopEnvironment = observeEnvironment((snapshot) => (environment = snapshot));
 		const onBreakpointsChange = (event: Event) => {
@@ -225,6 +268,7 @@
 			components().renderLoadingCallback = undefined;
 			configureBreakpoints({ ...BREAKPOINT_PRESETS.defaults });
 			components().logging?.resetLogging();
+			components().locale = null;
 		};
 	});
 </script>
@@ -423,6 +467,63 @@ setThemeMode('auto');   // back to detection (page / themeSource signal)`}</pre>
 			<Tree nodes={data} idMember="id" pathMember="path" displayValueMember="name" sortCallback={sortByPath} expandLevel={1} />
 		</div>
 		<web-multiselect bind:this={msEls.logging}></web-multiselect>
+	</div>
+</div>
+
+<!-- IG06 · Page-wide labels -->
+<div class="card">
+	<h2>IG06 · Labels — <code>window.components.locale</code></h2>
+	<p class="description">
+		Every built-in text of every tree on the page, set once: <code>labels['svelte-treeview']</code>
+		sits between a tree's own <code>labels</code> prop and the English defaults, and assigning a new
+		object re-renders every tree. <code>formatLabelCallback</code> formats every label — the place to
+		plug in ICU, FormatJS or i18next. Switch the language, then right-click a node for the built-in
+		menu. The right tree sets <code>labels=&#123;&#123; noData &#125;&#125;</code> itself, so that
+		text never follows the page. The web components (<code>&lt;web-treeview&gt;</code>,
+		<code>&lt;web-multiselect&gt;</code>, …) read the same object from core 1.0.0-rc25.
+	</p>
+	<div class="controls">
+		<label>
+			Language
+			<select bind:value={language} onchange={applyLocale}>
+				{#each Object.entries(LANGUAGES) as [code, lang] (code)}<option value={code}>{lang.name}</option>{/each}
+			</select>
+		</label>
+		<label><input type="checkbox" bind:checked={isFormatterOn} onchange={applyLocale} /> <code>formatLabelCallback</code></label>
+	</div>
+	<div class="grid" style="--grid-min: 220px">
+		<div>
+			<span class="demo-label">nodes + built-in menu (right-click)</span>
+			<div class="tree-container">
+				<Tree nodes={data} idMember="id" pathMember="path" displayValueMember="name" sortCallback={sortByPath} expandLevel={1} getContextMenuItemsCallback={labelsMenu} />
+			</div>
+		</div>
+		<div>
+			<span class="demo-label">empty → <code>noData</code></span>
+			<div class="tree-container">
+				<Tree nodes={[]} idMember="id" pathMember="path" displayValueMember="name" sortCallback={sortByPath} />
+			</div>
+		</div>
+		<div>
+			<span class="demo-label">empty + own <code>labels</code> prop (wins)</span>
+			<div class="tree-container">
+				<Tree nodes={[]} idMember="id" pathMember="path" displayValueMember="name" sortCallback={sortByPath} labels={{ noData: 'My own empty text' }} />
+			</div>
+		</div>
+	</div>
+	{#if isFormatterOn}<LogPanel entries={formatLog} />{/if}
+	<div class="code-block" data-language="ts">
+		<pre>{`window.components.locale = {
+  locale: 'cs',
+  labels: {
+    'svelte-treeview': { noData: 'Žádná data', copy: 'Kopírovat', expandAll: 'Rozbalit vše' },
+    'web-multiselect': { /* … */ },
+  },
+  // optional — every label goes through it
+  formatLabelCallback: ({ component, key, template, params, locale }) =>
+    i18next.t(\`\${component}.\${key}\`, { defaultValue: template, ...params }),
+};
+window.components.locale = null;   // back to each component's defaults`}</pre>
 	</div>
 </div>
 

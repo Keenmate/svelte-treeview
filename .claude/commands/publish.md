@@ -33,7 +33,7 @@ Single-package repo, everything at root:
 - **`./CHANGELOG.md`** — at the root. Topmost `## [X.Y.Z] - YYYY-MM-DD` heading **without** the `[PUBLISHED]` marker is the WIP section.
 - **`./README.md`** — at the root. Carries `## What's New in vX.Y.Z` sections near the top (one per release, the **two most recent** retained).
 - **`./release-notes/`** — one upgrade guide per published version (`<version>.md`, BlissFramework `web-components/release-notes.md`); listed in `package.json` `files`.
-- **`./dist/`** — gitignored. Produced by `npm run build` (`prepack` → svelte-kit sync → svelte-package → lightningcss → publint). Never staged.
+- **`./dist/`** — gitignored. Produced by `npm run build` (`prepack` → svelte-kit sync → svelte-package → check:dist-imports → lightningcss → publint). Never staged.
 - **`./src/lib/constants.generated.ts`** — **auto-generated** from `package.json` by `npm run generate-constants` (chained into `prepack`). Tracked in git but never hand-edited; stage it if the build changes it.
 
 ## CHANGELOG convention in this repo [canonical]
@@ -154,8 +154,9 @@ Run `npm run build`. This chains:
 
 1. **`prepack`** — runs `npm run generate-constants` (regenerates `src/lib/constants.generated.ts` from `package.json`) then `svelte-kit sync`.
 2. **`svelte-package`** — emits `dist/` (ESM + d.ts).
-3. **`lightningcss`** — bundles/minifies CSS into `dist/`.
-4. **`publint`** — validates the package against npm conventions. publint errors stop the build — fix them before continuing.
+3. **`check:dist-imports`** (`scripts/check-dist-imports.mjs`) — every relative import in `dist/` (`.d.ts`, `.js`, `.svelte`) must name an existing file with its extension. svelte-package copies specifiers unchanged, so a missing `.js` in `src/lib` (`./logger`, or `./x.svelte` for a `.svelte.ts` module — must be `./x.svelte.js`) breaks consumers on `moduleResolution: node16 / nodenext`: the exports silently become `any` (GitHub issue #30). Fails the build with the file:line list — fix the import in `src/lib`.
+4. **`lightningcss`** — bundles/minifies CSS into `dist/`.
+5. **`publint`** — validates the package against npm conventions. publint errors stop the build — fix them before continuing.
 
 **Build gotcha:** `src/lib/constants.generated.ts` is regenerated on every build. If you hand-edit it, the next `npm run build` will overwrite your edits. Always change `package.json` (or the generator script) instead.
 

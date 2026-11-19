@@ -22,8 +22,13 @@ last synced against is listed in [`scripts/core-sync.json`](../../../../scripts/
   (`observeElementSize`) — the container signal behind `bind:containerSize` / the render context.
 - `environment/motion.ts` — motion level (SPEC §12.16): `[data-motion]` presets on the
   `--base-duration-*` tokens, page-wide `window.components.motion`. Tree.svelte's `motion` prop.
+- `locale/` — page-wide locale (SPEC §12.24): `page-locale.ts` (the `window.components.locale` /
+  `.security` accessors + `observeLocale`), `labels.ts` (`resolveLabel` instance → page → default,
+  `formatLabel`, `formatLabelCallback`), `settings.ts` (`resolveLocale`, Intl-derived settings).
+  `src/lib/core/labels.ts` is the tree's seam on top (tag `'svelte-treeview'`). `numbers.ts` isn't
+  copied (unused); `locale.test.ts` isn't either (needs BlissElement) — e2e `page-labels` covers it.
 - `global/` (`shared-state`, `page-setting`), `dom/` (`composed-tree`, `once`, `throttle`,
-  `frame-scheduler`, `adopt-styles`) — the helpers the above import.
+  `frame-scheduler`, `adopt-styles`, `escape-html`) — the helpers the above import.
 
 Kept byte-for-byte so a later switch to a shared package is a move, not a rewrite. The
 page-wide state sits on `globalThis[Symbol.for('@keenmate/web-components-core…')]`, so this

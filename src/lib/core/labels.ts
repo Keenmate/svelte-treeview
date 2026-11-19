@@ -1,10 +1,20 @@
 /**
- * UI strings of the tree. A partial object passed as the `labels` prop is merged per key over
- * these English defaults. `''` = deliberately empty (render nothing); `undefined` / missing =
- * the default. `{name}` placeholders are filled from `params`.
+ * UI strings of the tree (SPEC §12.24, rulebook D-NC-24). Per key: the `labels` prop (partial; a
+ * string — `''` included — wins) → the page-wide `window.components.locale.labels['svelte-treeview']`
+ * → these English defaults. `''` = deliberately empty (render nothing). Then formatting:
+ * `window.components.locale.formatLabelCallback` (ICU / FormatJS / i18next) or the default `{name}`
+ * replacement from `params`. Every label is rendered as text, so nothing is escaped.
  *
- * `resolveLabel()` is the single label seam (a future page-wide locale source plugs in here).
+ * `resolveLabel()` is the single label seam (vendored core `/locale` underneath).
  */
+import { formatLabel, resolveLabel as resolveLabelLayers } from '../vendor/core/locale/labels.js';
+import { getPageLocale } from '../vendor/core/locale/page-locale.js';
+import { resolveLocale } from '../vendor/core/locale/settings.js';
+import { callSafely } from '../vendor/core/logging/safe-call.js';
+
+/** The key of this component's table in `window.components.locale.labels`. */
+export const LABELS_TAG = 'svelte-treeview';
+
 export interface TreeLabels {
 	/** Empty state when the tree has no nodes at all. */
 	noData: string;
@@ -61,12 +71,23 @@ export function resolveLabel(
 	key: keyof TreeLabels,
 	params?: Record<string, string | number>
 ): string {
-	const own = labels?.[key];
-	let text = own === undefined || own === null ? DEFAULT_LABELS[key] : String(own);
-	if (params && text) {
-		text = text.replace(/\{(\w+)\}/g, (m, name: string) =>
-			name in params ? String(params[name]) : m
+	const own = labels && typeof labels === 'object' ? labels : null;
+	const template = resolveLabelLayers(LABELS_TAG, DEFAULT_LABELS, own, key);
+	let text = formatLabel(template, params);
+	const callback = getPageLocale()?.formatLabelCallback;
+	if (typeof callback === 'function') {
+		const result = callSafely(
+			() =>
+				callback({
+					component: LABELS_TAG,
+					key,
+					template,
+					params: params ?? {},
+					locale: resolveLocale()
+				}),
+			{ message: `formatLabelCallback threw for "${LABELS_TAG}.${key}" — using the default formatting` }
 		);
+		if (result.isOk && typeof result.value === 'string') text = result.value;
 	}
 	return text;
 }

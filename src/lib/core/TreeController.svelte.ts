@@ -37,6 +37,7 @@ import { tick, untrack } from 'svelte';
 import { uiLogger, dragLogger } from '../logger.js';
 import { perfStart, perfEnd } from '../perf-logger.js';
 import { resolveLabel, type TreeLabels } from './labels.js';
+import { observeLocale } from '../vendor/core/locale/page-locale.js';
 import {
 	type ClipboardEntry,
 	type TreeClipboard,
@@ -1288,8 +1289,15 @@ export class TreeController<T> {
 	/** UI strings (partial) — see `TreeLabels`. Resolve one with `getLabel()`. */
 	labels = $state.raw<Partial<TreeLabels> | null | undefined>(undefined);
 
-	/** The resolved UI string for `key` (`labels` over the English defaults; `''` = nothing). */
+	/** Bumped on every page-wide locale change (`window.components.locale` / `.security` assigned). */
+	#localeRevision = $state(0);
+
+	/**
+	 * The resolved UI string for `key`: `labels` → page-wide `window.components.locale.labels`
+	 * → the English defaults (`''` = nothing). Reactive to both the prop and the page-wide object.
+	 */
 	getLabel(key: keyof TreeLabels, params?: Record<string, string | number>): string {
+		void this.#localeRevision;
 		return resolveLabel(this.labels, key, params);
 	}
 
@@ -1547,6 +1555,14 @@ export class TreeController<T> {
 			this.tree.treePathSeparator = this.treePathSeparator;
 		});
 
+		// Page-wide locale (window.components.locale) changed → every getLabel() reader re-runs.
+		$effect(() =>
+			observeLocale(() => {
+				uiLogger.debug('page-wide locale changed — re-resolving labels');
+				this.#localeRevision++;
+			})
+		);
+
 		// Sync labels.noDisplayValue → LTree (the display fallback of a node without a value)
 		$effect(() => {
 			this.tree.displayValueFallback = this.getLabel('noDisplayValue');
@@ -1606,40 +1622,7 @@ export class TreeController<T> {
 		});
 
 		// InsertArray when data changes
-		$effect(() => {
-			const nodes = this.#nodes;
-			if (this.tree && nodes) {
-				// Our own write-back of the current state (after a mutation) — already in the tree.
-				if (nodes === this.#selfWrittenNodes) return;
-				if (this._skipInsertArray) {
-					this._skipInsertArray = false;
-					return;
-				}
-				this.flatRenderedIds = new Set();
-				this.flatRenderQueue = [];
-				untrack(() => this._finishRenderPass());
-				this.currentBatchSize = 0;
-				// Reset virtual scroll measurements
-				this.vsMeasuredRowHeight = null;
-				this.vsDetectedHeight = null;
-				this.insertResult = this.tree.insertArray(nodes);
-
-				// Seed checkedPaths from node.isChecked flags written by insertArray
-				if (this.tree.isCheckedMember || this.tree.getIsCheckedCallback) {
-					const seeded = new Set<string>();
-					const walk = (node: LTreeNode<T>) => {
-						if (node.isChecked) seeded.add(node.path);
-						for (const key in node.children) walk(node.children[key]!);
-					};
-					for (const key in this.tree.root.children) walk(this.tree.root.children[key]!);
-					this.checkedPaths = seeded;
-				}
-				if (this.#pendingExpanded && nodes.length) {
-					this.tree.setExpandedPaths([...this.#pendingExpanded]);
-					this.#pendingExpanded = null;
-				}
-			}
-		});
+		$effect(() => this._applyNodesInput());
 
 		// Expanded set: any tree change (data load, toggles, mutations) re-derives it and
 		// announces a change through onExpandedChange (the first sync is the baseline).
@@ -1649,68 +1632,7 @@ export class TreeController<T> {
 		});
 
 		// Progressive rendering for flat mode
-		$effect(() => {
-			if (!this.isProgressiveRenderEnabled || !this.tree?.visibleFlatNodes)
-				return;
-
-			const tracker = this.tree.changeTracker;
-			if (tracker === this.lastFlatNodesTracker) return;
-			this.lastFlatNodesTracker = tracker;
-
-			const allNodes = this.tree.visibleFlatNodes;
-			const currentIds = new Set(allNodes.map((n) => String(n.id)));
-
-			const renderedSnapshot = new Set(this.flatRenderedIds);
-			const queueSnapshot = new Set(this.flatRenderQueue);
-
-			const newIds: string[] = [];
-			for (const node of allNodes) {
-				const id = String(node.id);
-				if (!renderedSnapshot.has(id) && !queueSnapshot.has(id)) {
-					newIds.push(id);
-				}
-			}
-
-			const removedIds: string[] = [];
-			for (const id of renderedSnapshot) {
-				if (!currentIds.has(id)) {
-					removedIds.push(id);
-				}
-			}
-
-			if (removedIds.length > 0) {
-				const newRendered = new Set(renderedSnapshot);
-				for (const id of removedIds) {
-					newRendered.delete(id);
-				}
-				this.flatRenderedIds = newRendered;
-			}
-
-			if (newIds.length > 0) {
-				const alreadyHasManyNodes = renderedSnapshot.size > 1000;
-				const addingFewNodes = newIds.length < 200;
-
-				if (alreadyHasManyNodes && addingFewNodes) {
-					this.flatRenderedIds = new Set([...this.flatRenderedIds, ...newIds]);
-				} else {
-					this.currentBatchSize = this.initialBatchSize;
-					const immediateBatch = newIds.slice(0, this.currentBatchSize);
-					const remaining = newIds.slice(this.currentBatchSize);
-
-					if (immediateBatch.length > 0) {
-						this.flatRenderedIds = new Set([...this.flatRenderedIds, ...immediateBatch]);
-					}
-
-					this.currentBatchSize = Math.min(this.currentBatchSize * 2, this.maxBatchSize);
-
-					if (remaining.length > 0) {
-						this.flatRenderQueue = [...remaining];
-						untrack(() => this._beginRenderPass(immediateBatch.length));
-						this.scheduleFlatRenderBatch();
-					}
-				}
-			}
-		});
+		$effect(() => this._syncProgressiveRender());
 
 		// Virtual scroll: auto-measure row height from the first rendered node.
 		// Virtual scroll assumes UNIFORM row heights: the spacer is count * rowHeight,
@@ -1818,6 +1740,113 @@ export class TreeController<T> {
 			prevHoveredDragPath = current;
 			prevDragOverClass = cls;
 		});
+	}
+
+	/**
+	 * Body of the constructor's nodes effect: (re)insert the `nodes` input. A method, not inline —
+	 * see `_syncProgressiveRender`.
+	 */
+	private _applyNodesInput() {
+		const nodes = this.#nodes;
+		if (this.tree && nodes) {
+			// Our own write-back of the current state (after a mutation) — already in the tree.
+			if (nodes === this.#selfWrittenNodes) return;
+			if (this._skipInsertArray) {
+				this._skipInsertArray = false;
+				return;
+			}
+			this.flatRenderedIds = new Set();
+			this.flatRenderQueue = [];
+			untrack(() => this._finishRenderPass());
+			this.currentBatchSize = 0;
+			// Reset virtual scroll measurements
+			this.vsMeasuredRowHeight = null;
+			this.vsDetectedHeight = null;
+			this.insertResult = this.tree.insertArray(nodes);
+
+			// Seed checkedPaths from node.isChecked flags written by insertArray
+			if (this.tree.isCheckedMember || this.tree.getIsCheckedCallback) {
+				const seeded = new Set<string>();
+				const walk = (node: LTreeNode<T>) => {
+					if (node.isChecked) seeded.add(node.path);
+					for (const key in node.children) walk(node.children[key]!);
+				};
+				for (const key in this.tree.root.children) walk(this.tree.root.children[key]!);
+				this.checkedPaths = seeded;
+			}
+			if (this.#pendingExpanded && nodes.length) {
+				this.tree.setExpandedPaths([...this.#pendingExpanded]);
+				this.#pendingExpanded = null;
+			}
+		}
+	}
+
+	/**
+	 * Body of the constructor's progressive-render effect (reads tracked as if inline). Kept out of
+	 * the constructor: the SSR build drops `$effect` calls but keeps esbuild's @__PURE__ marks
+	 * on their `new Set(…)`, and Rollup warns about the stranded comments.
+	 */
+	private _syncProgressiveRender() {
+		if (!this.isProgressiveRenderEnabled || !this.tree?.visibleFlatNodes)
+			return;
+
+		const tracker = this.tree.changeTracker;
+		if (tracker === this.lastFlatNodesTracker) return;
+		this.lastFlatNodesTracker = tracker;
+
+		const allNodes = this.tree.visibleFlatNodes;
+		const currentIds = new Set(allNodes.map((n) => String(n.id)));
+
+		const renderedSnapshot = new Set(this.flatRenderedIds);
+		const queueSnapshot = new Set(this.flatRenderQueue);
+
+		const newIds: string[] = [];
+		for (const node of allNodes) {
+			const id = String(node.id);
+			if (!renderedSnapshot.has(id) && !queueSnapshot.has(id)) {
+				newIds.push(id);
+			}
+		}
+
+		const removedIds: string[] = [];
+		for (const id of renderedSnapshot) {
+			if (!currentIds.has(id)) {
+				removedIds.push(id);
+			}
+		}
+
+		if (removedIds.length > 0) {
+			const newRendered = new Set(renderedSnapshot);
+			for (const id of removedIds) {
+				newRendered.delete(id);
+			}
+			this.flatRenderedIds = newRendered;
+		}
+
+		if (newIds.length > 0) {
+			const alreadyHasManyNodes = renderedSnapshot.size > 1000;
+			const addingFewNodes = newIds.length < 200;
+
+			if (alreadyHasManyNodes && addingFewNodes) {
+				this.flatRenderedIds = new Set([...this.flatRenderedIds, ...newIds]);
+			} else {
+				this.currentBatchSize = this.initialBatchSize;
+				const immediateBatch = newIds.slice(0, this.currentBatchSize);
+				const remaining = newIds.slice(this.currentBatchSize);
+
+				if (immediateBatch.length > 0) {
+					this.flatRenderedIds = new Set([...this.flatRenderedIds, ...immediateBatch]);
+				}
+
+				this.currentBatchSize = Math.min(this.currentBatchSize * 2, this.maxBatchSize);
+
+				if (remaining.length > 0) {
+					this.flatRenderQueue = [...remaining];
+					untrack(() => this._beginRenderPass(immediateBatch.length));
+					this.scheduleFlatRenderBatch();
+				}
+			}
+		}
 	}
 
 	// ── Virtual scroll handler ──────────────────────────────────────────
@@ -2116,7 +2145,8 @@ export class TreeController<T> {
 			const ms = row ? readAnimationMs(row) : 0;
 			uiLogger.debug('Row animation: reveal', { rows: revealed.size, ms });
 			setTimeout(() => {
-				if (generation === this.#revealGeneration) this.revealedPaths = new Set();
+				if (generation !== this.#revealGeneration) return;
+				this.revealedPaths = new Set();
 			}, ms + 50);
 		});
 	}
@@ -4269,8 +4299,8 @@ export class TreeController<T> {
 			this._replaceSelectedPaths(updates.selectedPaths ?? []);
 		if (updates.expandedPaths !== undefined) {
 			// With new nodes in the same update the tree re-inserts later — apply after it.
-			if (updates.nodes !== undefined) this.#pendingExpanded = updates.expandedPaths ?? new Set();
-			else this._replaceExpandedPaths(updates.expandedPaths ?? []);
+			if (updates.nodes === undefined) this._replaceExpandedPaths(updates.expandedPaths ?? []);
+			else this.#pendingExpanded = new Set(updates.expandedPaths ?? []);
 		}
 		if (updates.checkedPaths !== undefined)
 			// Incoming set is a projection intent — expand it (cascade-down) into the

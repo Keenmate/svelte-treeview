@@ -104,7 +104,7 @@ export const EXAMPLE_PAGES: ExamplePage[] = [
 		icon: '🔗',
 		title: 'Suite Integration',
 		badge: 'new',
-		description: "One page-wide switch, every Keenmate component: theme mode, motion, breakpoints, the loader hook and logging — a svelte tree and a <web-multiselect> sharing web-components-core's state."
+		description: "One page-wide switch, every Keenmate component: theme mode, motion, breakpoints, the loader hook, logging and page-wide labels — a svelte tree and a <web-multiselect> sharing web-components-core's state."
 	},
 	{
 		href: '/examples/logging',

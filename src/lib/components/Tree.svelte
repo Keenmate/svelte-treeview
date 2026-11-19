@@ -333,36 +333,36 @@
 		 * cross-tree nodes are left for onNodeDrop). Return `void` to proceed. Async-capable.
 		 */
 		beforeDropCallback?: (
-			ctx: import('../core/TreeController.svelte').BeforeDropContext<T>
+			ctx: import('../core/TreeController.svelte.js').BeforeDropContext<T>
 		) =>
 			| boolean
 			| { position?: DropPosition; operation?: DropOperation }
-			| import('../core/TreeController.svelte').DropGroup[]
+			| import('../core/TreeController.svelte.js').DropGroup[]
 			| void
 			| Promise<
 					| boolean
 					| { position?: DropPosition; operation?: DropOperation }
-					| import('../core/TreeController.svelte').DropGroup[]
+					| import('../core/TreeController.svelte.js').DropGroup[]
 					| void
 			  >;
 		/** Set-level pre-drag interceptor. Return a `string[]` of top-level paths to REPLACE the
 		 *  dragged set (prune and/or force-add nodes that can't be omitted), `false` to cancel the
 		 *  drag, or `void` to keep the default. Synchronous. See DragStartContext. */
 		beforeDragStartCallback?: (
-			ctx: import('../core/TreeController.svelte').DragStartContext<T>
+			ctx: import('../core/TreeController.svelte.js').DragStartContext<T>
 		) => string[] | false | void;
 		beforeCopyCallback?: (
-			ctx: import('../core/TreeController.svelte').BeforeCopyContext<T>
+			ctx: import('../core/TreeController.svelte.js').BeforeCopyContext<T>
 		) => string[] | false | void;
 		beforeCutCallback?: (
-			ctx: import('../core/TreeController.svelte').BeforeCopyContext<T>
+			ctx: import('../core/TreeController.svelte.js').BeforeCopyContext<T>
 		) => string[] | false | void;
 		beforePasteCallback?: (
-			ctx: import('../core/TreeController.svelte').BeforePasteContext<T>
+			ctx: import('../core/TreeController.svelte.js').BeforePasteContext<T>
 		) => { targetPath?: string; position?: 'child' | 'before' | 'after' } | false | void;
 		/** Runs before the built-in Delete removes anything. Return a narrowed path[] to restrict, or false to block. */
 		beforeDeleteCallback?: (
-			ctx: import('../core/TreeController.svelte').BeforeDeleteContext<T>
+			ctx: import('../core/TreeController.svelte.js').BeforeDeleteContext<T>
 		) => string[] | false | void;
 		/** OUTPUT transform (egress) — per node as it LEAVES the source: Ctrl+C/X, or the capture
 		 *  side of a copy-drop. Strip transient/sensitive fields. Fires for copy, never a move. */

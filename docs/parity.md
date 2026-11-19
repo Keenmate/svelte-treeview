@@ -135,6 +135,8 @@ Every web event has an `on<Name>` twin receiving the detail; every detail / ctx 
 | `copy`, `cut`, `paste`, `delete`, `expand`, `collapse`, `expandSubtree`, `collapseSubtree`, `expandAll`, `collapseAll`, `sort`, `sortSubtree`, `sortAll` | ✓ | ✓ | same |
 | `showFullLabel` ("Show full label" — aria-label of the `nodeTitleOverflow: 'info'` button) | ✓ | ✓ | same |
 | export `DEFAULT_LABELS`, type `TreeViewLabels` | ✓ | `DEFAULT_LABELS`, type `TreeLabels` | intentional — type named after each library's component |
+| page-wide layer: `window.components.locale.labels[tag]` between the input and the English default; `formatLabelCallback({ component, key, template, params, locale })`; re-render on change (core `/locale`, SPEC §12.24) | — (seam ready in `src/labels.ts`; core rc25 installed) | ✓ tag `'svelte-treeview'` (2026-11-17, vendored core `locale/`) | **to mirror** in web (tag `'web-treeview'`) |
+| `back`, `close` (phone sheet / drawer menu) | ✓ | — | svelte has no sheet / drawer menu yet (§ context menu) |
 
 ## 8. Exports
 
