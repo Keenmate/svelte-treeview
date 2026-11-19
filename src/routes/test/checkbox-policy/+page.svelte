@@ -33,6 +33,19 @@
 	// Filter regression: while filtered, a parent with one visible match must still
 	// cascade against ALL its real children (Fruits → Apple only ≠ Fruits fully checked).
 	let searchTerm = $state('');
+
+	// Three levels (root → region → country leaf): check a country → region + root [-];
+	// then check the ROOT → the region must become fully checked, not stay [-].
+	const geoData: Item[] = [
+		{ id: 1, path: '1', name: 'World' },
+		{ id: 2, path: '1.1', name: 'Europe' },
+		{ id: 3, path: '1.1.1', name: 'Czechia' },
+		{ id: 4, path: '1.1.2', name: 'Germany' },
+		{ id: 5, path: '1.2', name: 'Asia' },
+		{ id: 6, path: '1.2.1', name: 'Japan' }
+	];
+	let geoTree = $state<{ checkNode(path: string): void; uncheckNode(path: string): void }>();
+	let geoChecked = $state(new Set<string>());
 </script>
 
 <svelte:head>
@@ -77,6 +90,29 @@
 			{/snippet}
 		</Tree>
 	</div>
+
+	<h2>Three levels</h2>
+	<div class="controls">
+		<button data-testid="geo-api-check-root" onclick={() => geoTree?.checkNode('1')}>checkNode('1')</button>
+		<button data-testid="geo-api-uncheck-root" onclick={() => geoTree?.uncheckNode('1')}>uncheckNode('1')</button>
+	</div>
+	<div class="tree-container" data-testid="geo-tree">
+		<Tree
+			bind:this={geoTree}
+			nodes={geoData}
+			idMember="id"
+			pathMember="path"
+			sortCallback={sortByName}
+			isSorted={true}
+			expandLevel={3}
+			isCheckboxesShown={true}
+			checkboxMode="cascade"
+			cascadeCheckPolicy="all"
+			bind:checkedPaths={geoChecked}
+			displayValueMember="name"
+		/>
+	</div>
+	<pre>geo: <span data-testid="geo-selection">{[...geoChecked].sort().join(',') || '(empty)'}</span></pre>
 
 	<div class="output">
 		<p class="output-label">State</p>

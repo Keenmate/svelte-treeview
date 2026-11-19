@@ -142,3 +142,63 @@ test.describe('Cascade select policy', () => {
 		await expect(selection(page)).toHaveText('1.1');
 	});
 });
+
+/**
+ * Three levels: World (1) → Europe (1.1) → Czechia (1.1.1), Germany (1.1.2); Asia (1.2) → Japan.
+ * Check Czechia → Europe + World [-]. Then check World → EVERY descendant is fully checked —
+ * the middle branch (Europe) used to keep its stale [-] (only the clicked node and its
+ * ancestors were re-derived, not the descendants the cascade just checked).
+ */
+test.describe('Cascade over three levels', () => {
+	const geo = (page: Page, path: string) =>
+		page
+			.getByTestId('geo-tree')
+			.locator(`.stv__node[data-tree-path="${path}"] > .stv__node-row .stv__checkbox`)
+			.first();
+	const isIndeterminate = (box: Locator) =>
+		box.evaluate((el) => el.classList.contains('stv__checkbox--indeterminate'));
+
+	async function expectAllChecked(page: Page) {
+		for (const path of ['1', '1.1', '1.1.1', '1.1.2', '1.2', '1.2.1']) {
+			await expect(geo(page, path), path).toBeChecked();
+			expect(await isIndeterminate(geo(page, path)), `${path} indeterminate`).toBe(false);
+			await expect(geo(page, path)).not.toHaveAttribute('aria-checked', 'mixed');
+		}
+		await expect(page.getByTestId('geo-selection')).toHaveText('1,1.1,1.1.1,1.1.2,1.2,1.2.1');
+	}
+	async function expectNoneChecked(page: Page) {
+		for (const path of ['1', '1.1', '1.1.1', '1.1.2', '1.2', '1.2.1']) {
+			await expect(geo(page, path), path).not.toBeChecked();
+			expect(await isIndeterminate(geo(page, path)), `${path} indeterminate`).toBe(false);
+		}
+		await expect(page.getByTestId('geo-selection')).toHaveText('(empty)');
+	}
+	async function checkCountry(page: Page) {
+		await geo(page, '1.1.1').click();
+		expect(await isIndeterminate(geo(page, '1.1'))).toBe(true);
+		expect(await isIndeterminate(geo(page, '1'))).toBe(true);
+	}
+
+	test.beforeEach(async ({ page }) => {
+		await page.goto(PAGE);
+		await page.waitForLoadState('networkidle');
+		await expect(geo(page, '1.1.1')).toBeVisible();
+	});
+
+	test('click: check a leaf, then the root → the middle branch is checked, not [-]', async ({ page }) => {
+		await checkCountry(page);
+		await geo(page, '1').click();
+		await expectAllChecked(page);
+		// …and unchecking the root clears every level again
+		await geo(page, '1').click();
+		await expectNoneChecked(page);
+	});
+
+	test('API: checkNode / uncheckNode on the root re-derive the middle branch', async ({ page }) => {
+		await checkCountry(page);
+		await page.getByTestId('geo-api-check-root').click();
+		await expectAllChecked(page);
+		await page.getByTestId('geo-api-uncheck-root').click();
+		await expectNoneChecked(page);
+	});
+});

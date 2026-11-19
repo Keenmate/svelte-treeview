@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A runtime change of `labels.noDisplayValue` (prop, `update()`) never reached the rows: `createLTree` spread its options last, which replaced the reactive `displayValueFallback` accessor with a plain value.
 - A node whose `displayValueMember` / `searchValueMember` field is missing (`undefined` / `null`) now falls through to `getDisplayValueCallback` / `getSearchValueCallback` and then `labels.noDisplayValue`, instead of rendering an empty label (and feeding `undefined` to the search index and the display-value sort). web-treeview already did this.
 
+- Cascade checkboxes over three or more levels: with root → region → country, checking a country leaves region and root `[-]`; then checking the ROOT left the region `[-]` although all its children were now checked (same for `checkNode` / `checkNodes` / `uncheckNode` …). The cascade set `isChecked` on every descendant but re-derived `visualState` only for the clicked node and its ancestors; now every node the cascade touched is re-derived, deepest first (2026-11-19, `e2e/checkbox-policy.spec.ts` "Cascade over three levels"). Same fix in web-treeview.
+
 ### Internal (2026-11-17)
 
 - The build is free of Rollup warnings: the `nodes` and progressive-render `$effect` bodies moved out of the `TreeController` constructor into `_applyNodesInput()` / `_syncProgressiveRender()` (the SSR build drops `$effect` calls but kept esbuild's `/* @__PURE__ */` marks on their `new Set(…)`, which Rollup reported as "an annotation that Rollup cannot interpret"); two one-line `if`s with the same mark rewritten; flexsearch `Index` is a type-only import.

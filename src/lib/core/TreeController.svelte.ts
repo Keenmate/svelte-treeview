@@ -4753,17 +4753,9 @@ export class TreeController<T> {
 				}
 				this.checkedPaths = canonical;
 			}
+			this._rederiveVisualStates(affectedPaths);
 			const rootPaths = isMultiSelected ? [...this.selectedPaths] : [node.path];
-			for (const rp of rootPaths) {
-				const rn = this._realNode(rp);
-				if (!rn) continue;
-				const vs = this._computeVisualState(rn);
-				if (rn.visualState !== vs) {
-					rn.visualState = vs;
-					rn._rev = (rn._rev || 0) + 1;
-				}
-				this._updateAncestorVisualStates(rp);
-			}
+			for (const rp of rootPaths) this._updateAncestorVisualStates(rp);
 		}
 
 		this._syncFilteredCheckState();
@@ -4771,6 +4763,28 @@ export class TreeController<T> {
 		this._notifyCheckedChanged();
 		this.tree.refresh();
 		if (!options?.skipFocus) this.containerElement?.focus();
+	}
+
+	/**
+	 * Re-derive visualState for every node a cascade check / uncheck touched, deepest first.
+	 * Not just the clicked node: a branch BELOW it that was [-] (root → region → country,
+	 * one country checked, then the root) gets all its children checked by the cascade and
+	 * must flip to checked too — it used to keep its stale [-].
+	 */
+	private _rederiveVisualStates(paths: Iterable<string>) {
+		const nodes: LTreeNode<T>[] = [];
+		for (const p of paths) {
+			const n = this._realNode(p);
+			if (n) nodes.push(n);
+		}
+		nodes.sort((a, b) => (b.level ?? 0) - (a.level ?? 0));
+		for (const n of nodes) {
+			const vs = this._computeVisualState(n);
+			if (n.visualState !== vs) {
+				n.visualState = vs;
+				n._rev = (n._rev || 0) + 1;
+			}
+		}
 	}
 
 	/** Walk up from a node path and set visualState on each ancestor based on descendant selection */
@@ -5307,16 +5321,8 @@ export class TreeController<T> {
 		}
 		this.checkedPaths = newPaths;
 		if (this.checkboxMode === 'cascade') {
-			for (const rp of paths) {
-				const rn = this._realNode(rp);
-				if (!rn) continue;
-				const vs = this._computeVisualState(rn);
-				if (rn.visualState !== vs) {
-					rn.visualState = vs;
-					rn._rev = (rn._rev || 0) + 1;
-				}
-				this._updateAncestorVisualStates(rp);
-			}
+			this._rederiveVisualStates(affected);
+			for (const rp of paths) this._updateAncestorVisualStates(rp);
 		}
 		this._syncFilteredCheckState();
 		return changed;
