@@ -6,16 +6,16 @@
 
 	// An org-structure dataset (branches = regions/managers, leaves = people) so the
 	// point is clear: icons render on EVERY node, including branches with children.
-	// `lucide` holds a key into the LUCIDE map below (see IC04).
+	// `lucide` holds an icon NAME (`lucide-<key>`) the IC04 renderIconCallback maps to an SVG.
 	type Item = { id: number; path: string; name: string; icon: string; emoji: string; lucide: string; color?: string };
 	const data: Item[] = [
-		{ id: 1, path: '1', name: 'Twin Peaks', icon: 'fa-solid fa-sitemap', emoji: '🗂️', lucide: 'map-pin', color: '#7c3aed' },
-		{ id: 2, path: '1.1', name: "Sheriff's Department", icon: 'fa-solid fa-building', emoji: '🏢', lucide: 'shield', color: '#2563eb' },
-		{ id: 3, path: '1.1.1', name: 'Sheriff Harry S. Truman', icon: 'fa-solid fa-user-tie', emoji: '👔', lucide: 'user-star', color: '#059669' },
-		{ id: 4, path: '1.1.1.1', name: 'Deputy Tommy "Hawk" Hill', icon: 'fa-solid fa-user', emoji: '👤', lucide: 'user' },
-		{ id: 5, path: '1.1.1.2', name: 'Deputy Andy Brennan', icon: 'fa-solid fa-user', emoji: '👤', lucide: 'user' },
-		{ id: 6, path: '1.2', name: 'Double R Diner', icon: 'fa-solid fa-store', emoji: '🏬', lucide: 'coffee', color: '#d97706' },
-		{ id: 7, path: '1.2.1', name: 'Norma Jennings', icon: 'fa-solid fa-user', emoji: '👤', lucide: 'user' }
+		{ id: 1, path: '1', name: 'Twin Peaks', icon: 'fa-solid fa-sitemap', emoji: '🗂️', lucide: 'lucide-map-pin', color: '#7c3aed' },
+		{ id: 2, path: '1.1', name: "Sheriff's Department", icon: 'fa-solid fa-building', emoji: '🏢', lucide: 'lucide-shield', color: '#2563eb' },
+		{ id: 3, path: '1.1.1', name: 'Sheriff Harry S. Truman', icon: 'fa-solid fa-user-tie', emoji: '👔', lucide: 'lucide-user-star', color: '#059669' },
+		{ id: 4, path: '1.1.1.1', name: 'Deputy Tommy "Hawk" Hill', icon: 'fa-solid fa-user', emoji: '👤', lucide: 'lucide-user' },
+		{ id: 5, path: '1.1.1.2', name: 'Deputy Andy Brennan', icon: 'fa-solid fa-user', emoji: '👤', lucide: 'lucide-user' },
+		{ id: 6, path: '1.2', name: 'Double R Diner', icon: 'fa-solid fa-store', emoji: '🏬', lucide: 'lucide-coffee', color: '#d97706' },
+		{ id: 7, path: '1.2.1', name: 'Norma Jennings', icon: 'fa-solid fa-user', emoji: '👤', lucide: 'lucide-user' }
 	];
 	function sortByPath({ nodes: items }: { nodes: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
@@ -24,7 +24,7 @@
 	let align = $state(true);
 
 	// Lucide icon inner-markup, fetched from the pure-admin icon library. Each value is
-	// the inner <path>/<circle> of a 24×24 Lucide glyph; the `icon` snippet wraps it in an
+	// the inner <path>/<circle> of a 24×24 Lucide glyph; lucideSvg wraps it in an
 	// <svg stroke="currentColor"> so it inherits the per-node color.
 	const LUCIDE: Record<string, string> = {
 		'map-pin':
@@ -37,6 +37,19 @@
 			'<path d="M10 2v2"/><path d="M14 2v2"/><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"/><path d="M6 2v2"/>',
 		user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'
 	};
+	const lucideSvg = (key: string) =>
+		`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${LUCIDE[key] ?? ''}</svg>`;
+
+	// IC03 — per-node markup from getIconCallback (a value starting with '<' goes in as is).
+	const hasChildren = (node: LTreeNode<Item>) => Object.keys(node.children ?? {}).length > 0;
+	const SVG_BRANCH =
+		'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/></svg>';
+	const SVG_LEAF =
+		'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg>';
+
+	// IC04 — the tree's icon hook owns the `lucide-*` names; null for the rest.
+	const renderLucide = (name: string) =>
+		name.startsWith('lucide-') ? lucideSvg(name.slice('lucide-'.length)) : null;
 </script>
 
 <svelte:head>
@@ -53,8 +66,10 @@
 	<h1>Icons</h1>
 	<p class="subtitle">
 		Per-node icons on <strong>every</strong> node (branch + leaf) — a dedicated
-		<code>.stv__node-icon</code> element driven by <code>iconMember</code> /
-		<code>getIconCallback</code>, with per-node color and a custom <code>icon</code> snippet.
+		<code>.stv__node-icon</code> wrapper driven by <code>iconMember</code> /
+		<code>getIconCallback</code> (markup, a built-in name, icon-font classes or text), with per-node
+		color, a <code>renderIconCallback(name, ctx)</code> that maps your own icon names to markup, and
+		a custom <code>icon</code> snippet.
 	</p>
 	<RenderModeSwitch />
 </header>
@@ -63,10 +78,11 @@
 <div class="card">
 	<h2>IC01 · FontAwesome classes + per-node color</h2>
 	<p class="description">
-		<code>iconMember</code> resolves a class string (e.g. <code>fa-solid fa-user-tie</code>),
-		rendered as <code>&lt;i class="stv__node-icon {'{value}'}"&gt;</code> — zero config for icon
-		fonts. <code>iconColorMember</code> colors each icon. Note the chevron stays on branches;
-		the icon is its own element beside it (the admin-tree look).
+		<code>iconMember</code> resolves a class string (e.g. <code>fa-solid fa-user-tie</code>); it
+		renders as <code>&lt;i class="stv__icon {'{value}'}"&gt;</code> inside the
+		<code>.stv__node-icon</code> wrapper on every node — zero config for icon fonts (the tree is
+		light DOM, so the page's FontAwesome stylesheet reaches it). <code>iconColorMember</code> colors
+		each icon. Note the chevron stays on branches; the icon is its own element beside it.
 	</p>
 
 	<label class="toggle-label">
@@ -93,10 +109,7 @@
 <!-- IC02 · Emoji via getIconCallback -->
 <div class="card">
 	<h2>IC02 · Emoji via <code>getIconCallback</code></h2>
-	<p class="description">
-		The default render puts the value's text in the element too — an emoji "just works". Use a
-		callback to derive the icon from the node instead of a data key.
-	</p>
+	<p class="description">An emoji needs no font — the value's text renders directly. Use a callback to derive it.</p>
 	<div class="tree-container">
 		<Tree
 			nodes={data}
@@ -112,13 +125,14 @@
 	</div>
 </div>
 
-<!-- IC03 · Inline SVG via the icon snippet -->
+<!-- IC03 · Per-node inline SVG via getIconCallback -->
 <div class="card">
-	<h2>IC03 · Inline SVG via the <code>icon</code> snippet</h2>
+	<h2>IC03 · Per-node inline SVG via <code>getIconCallback</code></h2>
 	<p class="description">
-		For full control (inline SVG, badges, anything) pass an <code>icon</code> snippet. It
-		receives the node and the resolved value; color still flows from
-		<code>iconColorMember</code> onto the wrapper (so <code>currentColor</code> tints the SVG).
+		An icon value that starts with <code>&lt;</code> is markup and goes in as is — so
+		<code>getIconCallback(&#123; node &#125;)</code> can return a different SVG per node (here: branch vs
+		leaf). Color flows from <code>iconColorMember</code> onto the <code>.stv__node-icon</code> wrapper,
+		so <code>stroke="currentColor"</code> tints the SVG.
 	</p>
 	<div class="tree-container">
 		<Tree
@@ -130,30 +144,24 @@
 			isSorted={true}
 			expandLevel={4}
 			iconColorMember="color"
+			getIconCallback={({ node }) => (hasChildren(node) ? SVG_BRANCH : SVG_LEAF)}
 			{...getTreeProps()}
-		>
-			{#snippet icon(node: LTreeNode<Item>)}
-				<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					{#if node.data && Object.keys(node.children ?? {}).length > 0}
-						<path d="M3 7V5a2 2 0 0 1 2-2h2" /><path d="M17 3h2a2 2 0 0 1 2 2v2" /><path d="M21 17v2a2 2 0 0 1-2 2h-2" /><path d="M7 21H5a2 2 0 0 1-2-2v-2" /><circle cx="12" cy="12" r="3" />
-					{:else}
-						<circle cx="12" cy="8" r="4" /><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
-					{/if}
-				</svg>
-			{/snippet}
-		</Tree>
+		/>
 	</div>
 </div>
 
-<!-- IC04 · Lucide SVGs via iconMember + icon snippet -->
+<!-- IC04 · Lucide SVGs via iconMember + renderIconCallback -->
 <div class="card">
-	<h2>IC04 · Lucide SVGs (data-keyed) via the <code>icon</code> snippet</h2>
+	<h2>IC04 · Lucide SVGs (data-keyed) via <code>renderIconCallback</code></h2>
 	<p class="description">
-		A data member holds a Lucide icon <em>key</em> (<code>map-pin</code>, <code>shield</code>,
-		<code>user-star</code>, <code>coffee</code>, <code>user</code>); the <code>icon</code> snippet
-		receives that resolved value and renders the matching inline SVG with
-		<code>stroke="currentColor"</code>, so <code>iconColorMember</code> tints each glyph. Icons
-		sourced from the <a href="https://icons.pureadmin.io" target="_blank" rel="noopener"><code>pure-admin</code></a> Lucide set.
+		A data member holds an icon <em>name</em> (<code>lucide-map-pin</code>, <code>lucide-shield</code>,
+		<code>lucide-user-star</code>, <code>lucide-coffee</code>, <code>lucide-user</code>);
+		<code>renderIconCallback(name, ctx)</code> maps the names it owns to an inline SVG with
+		<code>stroke="currentColor"</code> (so <code>iconColorMember</code> tints each glyph) and answers
+		<code>null</code> for any other name — the page-wide <code>window.components.renderIconCallback</code>
+		or the icon-font rule decides then. Built-in names (<code>user</code>, <code>check</code>, …) never
+		reach the hook, hence the prefix. <code>ctx</code> carries <code>node</code>, the render state and
+		<code>controller</code>. Icons from the <a href="https://icons.pureadmin.io" target="_blank" rel="noopener"><code>pure-admin</code></a> Lucide set.
 	</p>
 	<div class="tree-container">
 		<Tree
@@ -164,16 +172,61 @@
 			sortCallback={sortByPath}
 			isSorted={true}
 			expandLevel={4}
-			getIconCallback={({ node }) => node.data?.lucide ?? null}
+			iconMember="lucide"
+			iconColorMember="color"
+			shouldAlignNodeIcons
+			renderIconCallback={renderLucide}
+			{...getTreeProps()}
+		/>
+	</div>
+	<div class="code-block" data-language="svelte">
+		<pre>{`<Tree
+  iconMember="lucide"
+  renderIconCallback={(name, ctx) =>
+    name.startsWith('lucide-') ? lucideSvg(name.slice(7)) : null}
+/>
+
+<!-- or once for every Keenmate component on the page:
+     window.components.renderIconCallback = (name, ctx) => … -->`}</pre>
+	</div>
+</div>
+
+<!-- IC05 · The icon snippet -->
+<div class="card">
+	<h2>IC05 · Anything via the <code>icon</code> snippet</h2>
+	<p class="description">
+		For full Svelte control (components, badges, reactive markup) pass an <code>icon</code> snippet. It
+		receives the node, the resolved value and the render context, and wins over every rule above;
+		color still flows from <code>iconColorMember</code> onto the wrapper (so <code>currentColor</code>
+		tints the SVG). Here it draws the same Lucide names plus a child count on branches.
+	</p>
+	<div class="tree-container">
+		<Tree
+			nodes={data}
+			idMember="id"
+			pathMember="path"
+			displayValueMember="name"
+			sortCallback={sortByPath}
+			isSorted={true}
+			expandLevel={4}
+			iconMember="lucide"
 			iconColorMember="color"
 			shouldAlignNodeIcons
 			{...getTreeProps()}
 		>
-			{#snippet icon(_node: LTreeNode<Item>, value: string | null | undefined)}
-				{#if value && LUCIDE[value]}
-					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{@html LUCIDE[value]}</svg>
+			{#snippet icon(node: LTreeNode<Item>, value: string | null | undefined)}
+				{#if value}
+					{@html lucideSvg(value.slice('lucide-'.length))}
+					{#if hasChildren(node)}<sup class="icon-badge">{Object.keys(node.children).length}</sup>{/if}
 				{/if}
 			{/snippet}
 		</Tree>
 	</div>
 </div>
+
+<style>
+	.icon-badge {
+		font-size: 0.6rem;
+		margin-left: 1px;
+	}
+</style>

@@ -1,7 +1,8 @@
 <script lang="ts">
-	// e2e fixture for page-wide labels (vendored core /locale, SPEC §12.24):
-	// window.components.locale.labels['svelte-treeview'] sits between the labels prop and the
-	// English defaults; assigning a new object re-renders every tree's texts.
+	// e2e fixture for labels (vendored core /locale, SPEC §12.24): flat `<elementType>.<name>`
+	// keys; per key the labels prop → the tree's translateCallback → the page-wide one → the page
+	// dictionary window.components.locale.labels['svelte-treeview.<key>'] → English. Assigning a
+	// new page object re-renders every tree's texts.
 	// Targeted by e2e/page-labels.spec.ts.
 	import { Tree } from '$lib/index.js';
 	import type { LTreeNode, TreeMenuEntry } from '$lib/index.js';
@@ -14,6 +15,9 @@
 	const sortByPath = ({ nodes }: { nodes: LTreeNode<Item>[] }) =>
 		[...nodes].sort((a, b) => a.path.localeCompare(b.path));
 	const menu = (): TreeMenuEntry<Item>[] => ['copy', 'expand-all'];
+	// The tree's own translateCallback: answers noData, passes everything else on (null).
+	const ownTranslate = ({ key }: { key: string }) =>
+		key === 'svelte-treeview.messages.noData' ? 'element' : null;
 </script>
 
 <main>
@@ -25,8 +29,18 @@
 	</div>
 
 	<div data-scenario="own">
-		<p>Empty tree with labels.noData → the prop wins over the page-wide text.</p>
-		<Tree nodes={[]} idMember="id" pathMember="path" displayValueMember="name" sortCallback={sortByPath} labels={{ noData: 'Own empty' }} />
+		<p>Empty tree with labels messages.noData → the prop wins over the page-wide text.</p>
+		<Tree nodes={[]} idMember="id" pathMember="path" displayValueMember="name" sortCallback={sortByPath} labels={{ 'messages.noData': 'Own empty' }} />
+	</div>
+
+	<div data-scenario="own-full-key">
+		<p>The prop may use the full key (svelte-treeview.messages.noData).</p>
+		<Tree nodes={[]} idMember="id" pathMember="path" displayValueMember="name" sortCallback={sortByPath} labels={{ 'svelte-treeview.messages.noData': 'Own full' }} />
+	</div>
+
+	<div data-scenario="translate">
+		<p>Own translateCallback: answers messages.noData ("element"), null for the rest.</p>
+		<Tree nodes={[]} idMember="id" pathMember="path" displayValueMember="name" sortCallback={sortByPath} translateCallback={ownTranslate} />
 	</div>
 
 	<div data-scenario="nodes">

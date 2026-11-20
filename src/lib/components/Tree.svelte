@@ -40,7 +40,7 @@
 	import type { RenderStats } from '../ltree/types.js';
 	import { DEFAULT_INDEXER_BATCH_SIZE } from '../ltree/indexer.js';
 	import { TreeController } from '../core/TreeController.svelte.js';
-	import type { TreeLabels } from '../core/labels.js';
+	import type { TranslateCallback, TreeLabelsInput } from '../core/labels.js';
 	import type {
 		NodeEventContext,
 		NodeDragContext,
@@ -58,6 +58,7 @@
 		NodeRef,
 		PasteResult,
 		TreeCallbackContext,
+		TreeRenderIconCallback,
 		ScrollToPathOptions
 	} from '../core/TreeController.svelte.js';
 	import { uiLogger } from '../logger.js';
@@ -139,7 +140,7 @@
 		 *  getNodeTooltipCallback when both are given. Shown only if isNodeTooltipsShown. */
 		tooltip?: Snippet<[LTreeNode<T>, NodeRenderContext]>;
 		/** Custom icon render for a node. Receives (node, value, ctx) where value is the resolved
-		 *  icon from iconMember/getIconCallback. Wins over the default `<i class={value}>`. */
+		 *  icon from iconMember/getIconCallback. Wins over core renderIcon and every icon hook. */
 		icon?: Snippet<[LTreeNode<T>, string | null | undefined, NodeRenderContext]>;
 		/** Above the tree. */
 		treeHeader?: Snippet;
@@ -158,13 +159,25 @@
 		 *  (`--stv-loader-*` tokens → `--base-loader-*`). */
 		loadingPlaceholder?: Snippet;
 
-		/** UI strings — a partial object merged per key over the English defaults (`''` = render
-		 *  nothing): `noData` ("No data" — no nodes), `noResults` ("No results found" — the search
-		 *  filter left nothing), `dropHere` ("Drop here" — default drop placeholder),
-		 *  `noDisplayValue` ("[N/A]" — node without a display value; also the touch-drag ghost),
-		 *  `loading` ("Loading…" — `isLoading` overlay aria-label, progressive "more" row).
+		/** UI strings — a partial object of flat `<elementType>.<name>` keys (short `messages.noData`
+		 *  or full `svelte-treeview.messages.noData`), resolved per key by core `/locale`: this
+		 *  `labels` → `translateCallback` → the page-wide `window.components.locale.translateCallback`
+		 *  → the page-wide flat dictionary `window.components.locale.labels['svelte-treeview.<key>']`
+		 *  → English (`''` = render nothing): `messages.noData` ("No data" — no nodes),
+		 *  `messages.noResults` ("No results found" — the search filter left nothing),
+		 *  `messages.dropHere` ("Drop here" — default drop placeholder), `labels.noDisplayValue`
+		 *  ("[N/A]" — node without a display value; also the touch-drag ghost), `labels.dropBefore` /
+		 *  `labels.dropAfter` / `labels.dropChild` ("Before" / "After" / "Child" — the floating drop
+		 *  pads), `ariaLabels.loading` ("Loading…" — `isLoading` overlay aria-label),
+		 *  `ariaLabels.showFullLabel` ("Show full label" — `nodeTitleOverflow: 'info'` button),
+		 *  `menuItems.copy` … `menuItems.sortAll` (built-in context-menu items). `{name}` placeholders.
 		 *  The `noData` / `dropPlaceholder` snippets still replace the markup. */
-		labels?: Partial<TreeLabels> | null;
+		labels?: TreeLabelsInput;
+		/** This tree's own translation seam (i18next / ICU / the app's lookup): gets
+		 *  `{ component, key (full), template, params, locale }` for every key `labels` did NOT set and
+		 *  returns the finished text, or `null` / `undefined` = not mine → the page-wide
+		 *  `window.components.locale.translateCallback` → the page dictionary → English. */
+		translateCallback?: TranslateCallback | null;
 
 		// BEHAVIOUR
 		expandLevel?: number | null | undefined;
@@ -454,11 +467,19 @@
 		tooltipOffset?: number;
 		/** Anchor the tooltip to the pointer instead of the row. Default `false`. */
 		shouldTooltipFollowCursor?: boolean;
-		/** Per-node icon VALUE from a data key — rendered as a dedicated `.stv__node-icon`
-		 *  element on every node (default `<i class="stv__node-icon {value}">`, FA-friendly). */
+		/** Per-node icon VALUE from a data key — rendered into a dedicated `.stv__node-icon` wrapper
+		 *  on every node by core renderIcon: markup (`<svg…>`) as is → a core built-in name (`close`, `check`, `user`… see
+		 *  BUILT_IN_ICON_NAMES; masked from `--base-icon-<name>`) → `renderIconCallback` → the page-wide
+		 *  `window.components.renderIconCallback` → CSS class names as an icon font
+		 *  (`<i class="stv__icon fa-solid fa-folder">`) → anything else as text (an emoji). */
 		iconMember?: string | null | undefined;
-		/** Per-node icon VALUE from a callback (overrides iconMember). */
+		/** Per-node icon VALUE from a callback (overrides iconMember); may return markup. */
 		getIconCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
+		/** This tree's icon hook `(name, ctx) => markup | null`: asked for every icon value that is
+		 *  neither markup nor a core built-in name, before the page-wide
+		 *  `window.components.renderIconCallback`; `null` / `undefined` = not mine. `ctx` = `{ component,
+		 *  element, prefix, node, controller, …render state }`. The `icon` snippet still wins. */
+		renderIconCallback?: TreeRenderIconCallback<T> | null;
 		/** Per-node icon COLOR from a data key (applied to the icon element). */
 		iconColorMember?: string | null | undefined;
 		/** Per-node icon COLOR from a callback (overrides iconColorMember). */
@@ -543,6 +564,7 @@
 		dropPlaceholder = undefined,
 		loadingPlaceholder = undefined,
 		labels = undefined,
+		translateCallback = undefined,
 
 		// BEHAVIOUR
 		expandLevel = 0,
@@ -657,6 +679,7 @@
 		tooltip,
 		iconMember,
 		getIconCallback,
+		renderIconCallback,
 		iconColorMember,
 		getIconColorCallback,
 		shouldAlignNodeIcons = true,
@@ -708,6 +731,7 @@
 		displayValueMember,
 		getDisplayValueCallback,
 		labels,
+		translateCallback,
 		searchValueMember,
 		getSearchValueCallback,
 		orderMember,
@@ -816,6 +840,7 @@
 		shouldTooltipFollowCursor,
 		iconMember,
 		getIconCallback,
+		renderIconCallback,
 		iconColorMember,
 		getIconColorCallback,
 		shouldAlignNodeIcons,
@@ -858,6 +883,8 @@
 	// svelte-ignore state_referenced_locally
 	setContext('NodeIcon', icon);
 	setContext('NodeRenderEnv', nodeRenderEnv);
+	// The tree's controller for the snippet-based menu items (ContextMenuItem icons).
+	setContext('TreeController', controller);
 
 	// ── Cleanup on destroy ──────────────────────────────────────────────
 	onDestroy(() => controller.destroy());
@@ -1121,6 +1148,9 @@
 		controller.getIconCallback = getIconCallback;
 	});
 	$effect(() => {
+		controller.renderIconCallback = renderIconCallback;
+	});
+	$effect(() => {
 		controller.iconColorMember = iconColorMember;
 	});
 	$effect(() => {
@@ -1182,6 +1212,9 @@
 	});
 	$effect(() => {
 		controller.labels = labels;
+	});
+	$effect(() => {
+		controller.translateCallback = translateCallback;
 	});
 
 	// Callback sync
@@ -1816,6 +1849,7 @@
 				| 'isEmptyDropPlaceholderShown'
 				| 'isTreeDropZoneEnabled'
 				| 'labels'
+				| 'translateCallback'
 				| 'bodyClass'
 				| 'theme'
 				| 'themeSource'
@@ -1833,6 +1867,7 @@
 				| 'shouldTooltipFollowCursor'
 				| 'iconMember'
 				| 'getIconCallback'
+				| 'renderIconCallback'
 				| 'iconColorMember'
 				| 'getIconColorCallback'
 				| 'shouldAlignNodeIcons'
@@ -1976,6 +2011,7 @@
 		if (updates.isTreeDropZoneEnabled !== undefined)
 			isTreeDropZoneEnabled = updates.isTreeDropZoneEnabled;
 		if (updates.labels !== undefined) labels = updates.labels;
+		if (updates.translateCallback !== undefined) translateCallback = updates.translateCallback;
 		if (updates.bodyClass !== undefined) bodyClass = updates.bodyClass;
 		if (updates.theme !== undefined) theme = updates.theme;
 		if (updates.themeSource !== undefined) themeSource = updates.themeSource;
@@ -1996,6 +2032,7 @@
 			shouldTooltipFollowCursor = updates.shouldTooltipFollowCursor;
 		if (updates.iconMember !== undefined) iconMember = updates.iconMember;
 		if (updates.getIconCallback !== undefined) getIconCallback = updates.getIconCallback;
+		if (updates.renderIconCallback !== undefined) renderIconCallback = updates.renderIconCallback;
 		if (updates.iconColorMember !== undefined) iconColorMember = updates.iconColorMember;
 		if (updates.getIconColorCallback !== undefined)
 			getIconColorCallback = updates.getIconColorCallback;
@@ -2194,14 +2231,14 @@
 			{#if dropPlaceholder}
 				{@render dropPlaceholder()}
 			{:else}
-				{@const dropHereText = controller.getLabel('dropHere')}
+				{@const dropHereText = controller.getLabel('messages.dropHere')}
 				{#if dropHereText}<div class="stv__drop-placeholder-content">{dropHereText}</div>{/if}
 			{/if}
 		{:else if noData}
 			{@render noData()}
 		{:else}
 			<!-- No nodes at all → noData; nodes exist but the search filter hid them all → noResults -->
-			{@const emptyText = controller.getLabel(controller.hasNodes ? 'noResults' : 'noData')}
+			{@const emptyText = controller.getLabel(controller.hasNodes ? 'messages.noResults' : 'messages.noData')}
 			{#if emptyText}<div class="stv__empty-state-content">{emptyText}</div>{/if}
 		{/if}
 	</div>
@@ -2226,7 +2263,7 @@
 	{@render treeHeader?.()}
 
 	{#if controller.isLoading}
-		{@const loadingText = controller.getLabel('loading')}
+		{@const loadingText = controller.getLabel('ariaLabels.loading')}
 		<!-- Precedence: loadingPlaceholder snippet > page-wide window.components.renderLoadingCallback
 		     (the suite's shared loader hook, read without core; optional) > the default .stv__loader. -->
 		{@const pageLoaderHook = loadingPlaceholder ? undefined : getPageLoaderCallback()}
@@ -2317,7 +2354,7 @@
 					class="stv__drop-zone stv__drop-zone--before"
 					class:stv__drop-zone--active={controller.floatingHoveredZone === 'before'}
 				>
-					↑ Before
+					<span aria-hidden="true">↑</span> {controller.getLabel('labels.dropBefore')}
 				</div>
 			{/if}
 			{#if controller._isFloatingPositionAllowed('after')}
@@ -2325,7 +2362,7 @@
 					class="stv__drop-zone stv__drop-zone--after"
 					class:stv__drop-zone--active={controller.floatingHoveredZone === 'after'}
 				>
-					↓ After
+					<span aria-hidden="true">↓</span> {controller.getLabel('labels.dropAfter')}
 				</div>
 			{/if}
 			{#if controller._isFloatingPositionAllowed('child')}
@@ -2333,7 +2370,7 @@
 					class="stv__drop-zone stv__drop-zone--child"
 					class:stv__drop-zone--active={controller.floatingHoveredZone === 'child'}
 				>
-					→ Child
+					<span aria-hidden="true">→</span> {controller.getLabel('labels.dropChild')}
 				</div>
 			{/if}
 		</div>

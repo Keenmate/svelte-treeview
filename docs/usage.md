@@ -79,7 +79,8 @@ Without both requirements, no search indexing will occur.
 | `indexerBatchSize` | `number \| null` | `1000` | Max nodes per idle callback during search indexing (each callback is also time-boxed) |
 | `indexerTimeout` | `number \| null` | `50` | Maximum time (ms) to wait for idle callback before forcing indexing |
 | `isLoading` | `boolean` | `false` | Show loading placeholder instead of tree content |
-| `labels` | `Partial<TreeLabels>` | English defaults | UI strings merged per key: `noData` "No data" (no nodes), `noResults` "No results found" (search filter matched nothing), `dropHere` "Drop here", `noDisplayValue` "[N/A]" (node without a display value), `loading` "Loading…" (overlay aria-label), `showFullLabel` "Show full label" (the `nodeTitleOverflow: 'info'` button), and the built-in menu texts `copy` `cut` `paste` `delete` `expand` `collapse` `expandSubtree` `collapseSubtree` `expandAll` `collapseAll` `sort` `sortSubtree` `sortAll`. `''` = render nothing. Defaults: `DEFAULT_LABELS`. Page-wide: `window.components.locale = { labels: { 'svelte-treeview': { … } }, formatLabelCallback }` sits between this prop and the defaults (every tree re-renders on assignment) |
+| `labels` | `TreeLabelsInput` | English defaults | UI strings, flat `<elementType>.<name>` keys (short, or full `svelte-treeview.<key>`): `messages.noData` "No data" (no nodes), `messages.noResults` "No results found" (search filter matched nothing), `messages.dropHere` "Drop here", `labels.noDisplayValue` "[N/A]" (node without a display value), `labels.dropBefore` / `labels.dropAfter` / `labels.dropChild` (floating drop pads), `ariaLabels.loading` "Loading…" (overlay aria-label), `ariaLabels.showFullLabel` "Show full label" (the `nodeTitleOverflow: 'info'` button), and the built-in menu texts `menuItems.copy` `menuItems.cut` `menuItems.paste` `menuItems.delete` `menuItems.expand` `menuItems.collapse` `menuItems.expandSubtree` `menuItems.collapseSubtree` `menuItems.expandAll` `menuItems.collapseAll` `menuItems.sort` `menuItems.sortSubtree` `menuItems.sortAll`. `''` = render nothing. Defaults: `DEFAULT_LABELS`. Per key: this prop → `translateCallback` → `window.components.locale.translateCallback` → the flat page dictionary `window.components.locale.labels['svelte-treeview.<key>']` → English (every tree re-renders when the page object is assigned) |
+| `translateCallback` | `TranslateCallback \| null` | — | This tree's translation seam: `({ component, key (full), template, params, locale }) => string \| null` for every key `labels` did not set; `null` = not mine (the page-wide `translateCallback`, the page dictionary, then English decide) |
 
 ### Rendering properties
 
@@ -217,7 +218,7 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `toggleIconMode` | `'rotate' \| 'swap'` | `'rotate'` | Whether the glyph rotates or swaps to the collapse glyph on expand (`plus-minus` always swaps) |
 | `leafIconClass` | `string \| null` | `"stv__toggle-icon--leaf"` | CSS class for leaf node icons |
 | `flatIndentSize` | `string \| null` | `var(--stv-indent-size)` | Indent per level in flat rendering (a CSS length, e.g. `'24px'`) |
-| `nodeTitleOverflow` | `'wrap' \| 'ellipsis' \| 'info'` | `'ellipsis'` | A built-in label wider than the row: `ellipsis` clips on one line (fixed row heights — what virtual scroll needs), `wrap` grows the row, `info` = ellipsis + a trailing ⓘ on clipped rows that reveals the full label (accessible name: `labels.showFullLabel`) |
+| `nodeTitleOverflow` | `'wrap' \| 'ellipsis' \| 'info'` | `'ellipsis'` | A built-in label wider than the row: `ellipsis` clips on one line (fixed row heights — what virtual scroll needs), `wrap` grows the row, `info` = ellipsis + a trailing ⓘ on clipped rows that reveals the full label (accessible name: label `ariaLabels.showFullLabel`) |
 | `scrollHighlightTimeout` | `number \| null` | `4000` | Duration (ms) for scroll highlight animation |
 | `scrollHighlightClass` | `string \| null` | `'stv__scroll-highlight'` | CSS class to apply for scroll highlight effect |
 
@@ -228,7 +229,7 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `nodeTemplate` | `(node)` | Custom node template |
 | `treeHeader` | | Tree header content |
 | `treeFooter` | | Tree footer content |
-| `noData` | | Content shown when tree has no data (falls back to `labels.noData` "No data", or `labels.noResults` "No results found" when the search filter matched nothing) |
+| `noData` | | Content shown when tree has no data (falls back to label `messages.noData` "No data", or `messages.noResults` "No results found" when the search filter matched nothing) |
 | `dropPlaceholder` | | Content shown in empty drop target tree |
 | `loadingPlaceholder` | | Content shown while `isLoading` is true (in the `role="status"` overlay). Beats the page-wide `window.components.renderLoadingCallback` (optional — apps that never set it lose nothing); neither → the default shared loader (`--stv-loader-*`, see [theming](theming.md#loader)) |
 | `contextMenu` | `(node, closeMenu)` | Context menu template (an alternative to `getContextMenuItemsCallback`; use `ContextMenuItemC` / `ContextMenuDividerC`) |

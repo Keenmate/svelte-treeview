@@ -99,7 +99,9 @@ Every web event has an `on<Name>` twin receiving the detail; every detail / ctx 
 | `getDisplayValueCallback`, `getSearchValueCallback`, `getIsExpandedCallback`, `getIsCheckedCallback`, `getIsSelectableCallback`, `getIsDraggableCallback`, `getIsDropAllowedCallback`, `getIsCollapsibleCallback`, `getAllowedDropPositionsCallback`, `getIconCallback`, `getIconColorCallback`, `getNodeClassCallback`, `getNodeContentClassCallback` | same | same |
 | `getNodeTooltipCallback` (→ `string \| HTMLElement`) | `getNodeTooltipCallback` (→ `string`) + `tooltip` snippet | intentional — rich content is a snippet in svelte |
 | `getContextMenuItemsCallback(ctx)` — ctx `{ node, path, parent, siblings, controller }`; entries = core action items + a divider (`createMenuDivider()` in both) + built-in names `copy cut paste delete expand collapse expand-subtree collapse-subtree expand-all collapse-all sort sort-subtree sort-all`; order `beforeActionCallback` → item `onClick` → built-in → `action` | same model (vendored core types + runner) | same — **no default menu in either** (the menu is what the callback returns) |
-| `renderNodeCallback`, `renderIconCallback`, `renderEmptyStateCallback`, `renderEmptyZoneCallback`, `renderLoadingCallback`, `renderHeaderCallback`, `renderFooterCallback`, `renderContextMenuCallback`, `renderContextMenuItemCallback` | snippets `nodeTemplate`, `icon`, `noData`, `dropPlaceholder`, `loadingPlaceholder`, `treeHeader`, `treeFooter`, `contextMenu` (+ exported `ContextMenuItem`) | intentional — render callbacks vs Svelte snippets |
+| `renderNodeCallback`, `renderEmptyStateCallback`, `renderEmptyZoneCallback`, `renderLoadingCallback`, `renderHeaderCallback`, `renderFooterCallback`, `renderContextMenuCallback`, `renderContextMenuItemCallback` | snippets `nodeTemplate`, `noData`, `dropPlaceholder`, `loadingPlaceholder`, `treeHeader`, `treeFooter`, `contextMenu` (+ exported `ContextMenuItem`) | intentional — render callbacks vs Svelte snippets |
+| node icons: core `renderIcon` (SPEC §12.33) into a `<span class="…__node-icon">` wrapper — markup → built-in name (masked `.km-icon`) → `renderIconCallback(name, ctx)` → page-wide `window.components.renderIconCallback` → icon-font `<i class="…__icon …">` → text; ctx `{ component, element, prefix, node, controller, …render state }` | same (`renderIconCallback` prop, 2026-11-20; core `component` option → `ctx.component === 'svelte-treeview'`) + the `icon` snippet wins over all of it | same |
+| context-menu item icons through `renderIcon` (the component's `renderIconCallback`, `ctx.item`) | same (callback menu + snippet `ContextMenuItem`) | same (2026-11-20) |
 | `isLoading` overlay = the suite's shared loader (core `renderLoader`, context `'overlay'`): `renderLoadingCallback` > page-wide `window.components.renderLoadingCallback` > default `.wtv__loader`; container `role="status"` + `aria-label` = label `loading` | `loadingPlaceholder` snippet > page-wide `window.components.renderLoadingCallback` (optional; read without core: `window.components` / `Symbol.for('@keenmate/web-components-core:loader')`; ctx `{ component: 'svelte-treeview', context: 'overlay', containerElement, element: .stv__container, label }`, cleanup honoured, a throwing hook → default; the pre-rc19 name `renderLoaderCallback` is still read) > default `.stv__loader`; same `role` / `aria-label` | same precedence (snippet in place of the instance hook) |
 | per-node lazy-load loader (async `beforeExpandCallback`): the loader shape in the toggle, CSS-only (row `aria-busy` + `data-loading`, no hook, no `role="status"`) | same | same |
 
@@ -128,16 +130,21 @@ Every web event has an `on<Name>` twin receiving the detail; every detail / ctx 
 | `setAttributes(props)` (element, core: one validated batch) / `WebTreeView.update(props)` | `<Tree>` `update(partial)` | intentional (2026-11-08) — the element's `update()` is core's protected hook (rulebook C-CA-14); the public batch write is core's `setAttributes()`, which validates and fires `input-rejected`. `WebTreeView.update` (engine wrapper) = svelte's `update` |
 | `release`, `whenReady`, `whenSettled`, `flush`, `destroy` (core) | — (`destroy` on the controller) | intentional — core element lifecycle |
 
-## 7. Labels (`labels` input, partial, English defaults)
+## 7. Labels (`labels` input, partial, flat `<elementType>.<name>` keys, English defaults)
+
+Both resolve every key through core `/locale` `createLabels` (SPEC §12.24): the `labels` input (short `messages.noData` or full `<tag>.messages.noData`) → the element / tree `translateCallback` → `window.components.locale.translateCallback` → the flat page dictionary `window.components.locale.labels['<tag>.<key>']` → English; re-render on a page change. Tags `'web-treeview'` / `'svelte-treeview'`. (2026-11-20 — svelte moved from the old nested `labels['svelte-treeview']` + `formatLabelCallback`.)
 
 | key | web | svelte | status |
 |---|---|---|---|
-| `noData`, `noResults`, `noDisplayValue`, `loading`, `dropHere` | ✓ | ✓ | same |
-| `copy`, `cut`, `paste`, `delete`, `expand`, `collapse`, `expandSubtree`, `collapseSubtree`, `expandAll`, `collapseAll`, `sort`, `sortSubtree`, `sortAll` | ✓ | ✓ | same |
-| `showFullLabel` ("Show full label" — aria-label of the `nodeTitleOverflow: 'info'` button) | ✓ | ✓ | same |
-| export `DEFAULT_LABELS`, type `TreeViewLabels` | ✓ | `DEFAULT_LABELS`, type `TreeLabels` | intentional — type named after each library's component |
-| page-wide layer: `window.components.locale.labels[tag]` between the input and the English default; `formatLabelCallback({ component, key, template, params, locale })`; re-render on change (core `/locale`, SPEC §12.24) | — (seam ready in `src/labels.ts`; core rc25 installed) | ✓ tag `'svelte-treeview'` (2026-11-17, vendored core `locale/`) | **to mirror** in web (tag `'web-treeview'`) |
-| `back`, `close` (phone sheet / drawer menu) | ✓ | — | svelte has no sheet / drawer menu yet (§ context menu) |
+| `messages.noData`, `messages.noResults`, `messages.dropHere`, `labels.noDisplayValue` | ✓ | ✓ | same |
+| `labels.dropBefore`, `labels.dropAfter`, `labels.dropChild` (floating drop pads) | ✓ | ✓ (2026-11-20; were hard-coded "↑ Before" …) | same |
+| `ariaLabels.loading` (`isLoading` overlay aria-label), `ariaLabels.showFullLabel` | ✓ | ✓ | same |
+| `menuItems.copy` … `menuItems.sortAll` (13 built-ins) | ✓ | ✓ | same |
+| `translateCallback` input (asked before the page-wide one) | ✓ | ✓ prop (2026-11-20) | same |
+| export `DEFAULT_LABELS`, type `TreeViewLabels` | ✓ | `DEFAULT_LABELS`, type `TreeLabels` (+ `TreeLabelsInput`, `createTreeLabels`, `resolveLabel`) | intentional — type named after each library's component |
+| `ariaLabels.tree` (tree body `aria-label`) | ✓ | — | svelte has no `role="tree"` body yet (review decision: ARIA) |
+| `messages.loading` (lazy context-submenu loading row), `ariaLabels.closeSheet`, `menuItems.back` | ✓ | — | svelte has no lazy-submenu loading row / sheet / drawer menu yet (§ context menu) |
+| `ariaLabels.searchResults*`, `ariaLabels.moved*` / `copied*`, `ariaLabels.drop*` (screen-reader announcements, core `announce()`) | ✓ | — | svelte has no announcements yet (review decision: ARIA) |
 
 ## 8. Exports
 

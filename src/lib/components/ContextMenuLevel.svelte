@@ -133,7 +133,7 @@
 			}}
 		>
 			{#if r.icon}
-				<span class="stv__context-menu-icon">{r.icon}</span>
+				<span class="stv__context-menu-icon">{@html controller.renderMenuIconHtml(r.icon, item)}</span>
 			{/if}
 			<span class="stv__context-menu-label">{r.text}</span>
 			{#if r.shortcut}

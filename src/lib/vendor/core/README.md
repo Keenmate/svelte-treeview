@@ -22,11 +22,14 @@ last synced against is listed in [`scripts/core-sync.json`](../../../../scripts/
   (`observeElementSize`) — the container signal behind `bind:containerSize` / the render context.
 - `environment/motion.ts` — motion level (SPEC §12.16): `[data-motion]` presets on the
   `--base-duration-*` tokens, page-wide `window.components.motion`. Tree.svelte's `motion` prop.
-- `locale/` — page-wide locale (SPEC §12.24): `page-locale.ts` (the `window.components.locale` /
-  `.security` accessors + `observeLocale`), `labels.ts` (`resolveLabel` instance → page → default,
-  `formatLabel`, `formatLabelCallback`), `settings.ts` (`resolveLocale`, Intl-derived settings).
-  `src/lib/core/labels.ts` is the tree's seam on top (tag `'svelte-treeview'`). `numbers.ts` isn't
-  copied (unused); `locale.test.ts` isn't either (needs BlissElement) — e2e `page-labels` covers it.
+- `locale/` — labels + page-wide locale (SPEC §12.24): `page-locale.ts` (the `window.components.locale` /
+  `.security` accessors + `observeLocale`), `labels.ts` (`createLabels`: flat `<elementType>.<name>`
+  keys, instance → own `translateCallback` → page `translateCallback` → the flat page dictionary →
+  default), `settings.ts` (`resolveLocale`, Intl-derived settings), `numbers.ts` (`formatNumber` — number
+  params). `src/lib/core/labels.ts` is the tree's seam on top (tag `'svelte-treeview'`).
+  `locale.test.ts` isn't copied (needs BlissElement) — e2e `page-labels` + `core/labels.test.ts` cover it.
+- `dom/render-icon.ts` — icons (SPEC §12.33): `renderIcon` + `ICON_CSS` + the page-wide
+  `window.components.renderIconCallback`. The node and context-menu icons render through it.
 - `global/` (`shared-state`, `page-setting`), `dom/` (`composed-tree`, `once`, `throttle`,
   `frame-scheduler`, `adopt-styles`, `escape-html`) — the helpers the above import.
 

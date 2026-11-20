@@ -69,7 +69,7 @@
 			pathMember="path"
 			displayValueMember="name"
 			selectionMode="multiple"
-			labels={{ copy: 'Kopírovat' }}
+			labels={{ 'menuItems.copy': 'Kopírovat' }}
 			getContextMenuItemsCallback={menu}
 			beforeActionCallback={before}
 			onAction={(d) => (log = [...log, `action:${d.action}:${d.id ?? '-'}:${d.source}`])}

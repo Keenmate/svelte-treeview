@@ -31,12 +31,13 @@ import {
 	type SortContext,
 	type SortOptions,
 	type NodesReorderContext,
+	type NodeRenderContext,
 	type RenderStats
 } from '../ltree/types.js';
 import { tick, untrack } from 'svelte';
 import { uiLogger, dragLogger } from '../logger.js';
 import { perfStart, perfEnd } from '../perf-logger.js';
-import { resolveLabel, type TreeLabels } from './labels.js';
+import { createTreeLabels, LABELS_TAG, resolveLabel, type TranslateCallback, type TreeLabels, type TreeLabelsInput } from './labels.js';
 import { observeLocale } from '../vendor/core/locale/page-locale.js';
 import {
 	type ClipboardEntry,
@@ -58,11 +59,31 @@ import type { TreeMenuContext, TreeMenuEntry, TreeMenuItem, TreeAction, TreeActi
 import type { MenuItem, ResolvedActionItem } from '../vendor/actions/types.js';
 import { runAction } from '../vendor/actions/resolve.js';
 import { animateOut, readAnimationMs, type AnimateOutHandle } from '../vendor/core/dom/animate-out.js';
+import { ICON_CSS, renderIcon, type IconRenderContext, type RenderIconCallback } from '../vendor/core/dom/render-icon.js';
+import { adoptStyles } from '../vendor/core/dom/adopt-styles.js';
 
 // Re-register global API (safe to import multiple times)
 import '../global-api.js';
 
 // ─── Paste result type ────────────────────────────────────────────────────
+
+/**
+ * What a tree's `renderIconCallback` receives next to the icon name: core's icon-hook context
+ * (`component: 'svelte-treeview'`, `element` = the tree container, `prefix: 'stv'`) + the node's
+ * render state (`NodeRenderContext`) + `node` + `controller`. Same shape as web-treeview's.
+ */
+export type NodeIconRenderContext<T> = IconRenderContext &
+	NodeRenderContext & { node: LTreeNode<T>; controller: TreeController<T> };
+
+/**
+ * A tree's icon hook (core renderIcon): map an icon name to markup, or `null` / `undefined` =
+ * not mine (the page-wide `window.components.renderIconCallback`, then the icon-font / text
+ * default decide). Never sees markup (`<…>`) or a core built-in name (`close`, `check`, …).
+ */
+export type TreeRenderIconCallback<T> = (
+	name: string,
+	ctx: NodeIconRenderContext<T>
+) => string | null | undefined;
 
 export interface PasteResult<T> {
 	success: boolean;
@@ -414,13 +435,15 @@ export interface NodeConfig {
 	tooltipOffset: number;
 	shouldTooltipFollowCursor: boolean;
 	// Per-node icon rendered as a dedicated .stv__node-icon element on ALL nodes (branch
-	// + leaf), independent of nodeTemplate. VALUE from iconMember/getIconCallback; default
-	// render is `<i class="stv__node-icon {value}">` (FA-friendly), overridable via the
+	// + leaf), independent of nodeTemplate. VALUE from iconMember/getIconCallback; rendered by
+	// core renderIcon (renderIconHtml: markup → built-in name → renderIconCallback → the
+	// page-wide hook → icon-font `<i class="stv__icon …">` → text), overridable via the
 	// `icon` snippet (travels on the 'NodeIcon' context). COLOR from iconColorMember/
 	// getIconColorCallback (falls back to --stv-node-icon-color). shouldAlignNodeIcons
 	// reserves the column so labels align even on rows with no icon.
 	iconMember: string | null | undefined;
 	getIconCallback: ((ctx: NodeContext<any>) => string | null | undefined) | undefined;
+	renderIconHtml: (value: string, node: LTreeNode<any>, ctx: NodeRenderContext) => string;
 	iconColorMember: string | null | undefined;
 	getIconColorCallback: ((ctx: NodeContext<any>) => string | null | undefined) | undefined;
 	shouldAlignNodeIcons: boolean;
@@ -487,8 +510,10 @@ export interface TreeControllerProps<T> {
 
 	displayValueMember?: string | null | undefined;
 	getDisplayValueCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string;
-	/** UI strings — partial, merged per key over the English defaults ('' = render nothing). */
-	labels?: Partial<TreeLabels> | null;
+	/** UI strings — partial, flat `<elementType>.<name>` keys over the English defaults ('' = render nothing). */
+	labels?: TreeLabelsInput;
+	/** This tree's own translation seam (asked before the page-wide one; `null` = not mine). */
+	translateCallback?: TranslateCallback | null;
 
 	searchValueMember?: string | null | undefined;
 	getSearchValueCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string;
@@ -741,6 +766,8 @@ export interface TreeControllerProps<T> {
 	shouldTooltipFollowCursor?: boolean;
 	iconMember?: string | null | undefined;
 	getIconCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
+	/** This tree's icon hook (core renderIcon), asked before `window.components.renderIconCallback`. */
+	renderIconCallback?: TreeRenderIconCallback<T> | null;
 	iconColorMember?: string | null | undefined;
 	getIconColorCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
 	shouldAlignNodeIcons?: boolean;
@@ -802,6 +829,7 @@ export class TreeController<T> {
 		shouldTooltipFollowCursor: false,
 		iconMember: undefined,
 		getIconCallback: undefined,
+		renderIconHtml: () => '',
 		iconColorMember: undefined,
 		getIconColorCallback: undefined,
 		shouldAlignNodeIcons: false,
@@ -1073,6 +1101,8 @@ export class TreeController<T> {
 	getIconCallback = $state<TreeControllerProps<T>['getIconCallback']>(
 		undefined
 	);
+	/** This tree's icon hook — see `renderNodeIconHtml`. */
+	renderIconCallback = $state.raw<TreeRenderIconCallback<T> | null | undefined>(undefined);
 	iconColorMember = $state<string | null | undefined>(undefined);
 	getIconColorCallback = $state<TreeControllerProps<T>['getIconColorCallback']>(
 		undefined
@@ -1237,7 +1267,8 @@ export class TreeController<T> {
 
 	// Container element (set by the host component for scrollToPath / debug menu)
 	/** @internal */
-	containerElement: HTMLElement | null = null;
+	// Reactive: the node / menu icons re-render once it is attached (see _renderIconHtml).
+	containerElement = $state.raw<HTMLElement | null>(null);
 
 	// ── Derived ─────────────────────────────────────────────────────────
 
@@ -1286,19 +1317,68 @@ export class TreeController<T> {
 		return this.tree?.statistics;
 	}
 
-	/** UI strings (partial) — see `TreeLabels`. Resolve one with `getLabel()`. */
-	labels = $state.raw<Partial<TreeLabels> | null | undefined>(undefined);
+	/** UI strings (partial, flat `<elementType>.<name>` keys) — see `TreeLabels`. Resolve one with `getLabel()`. */
+	labels = $state.raw<TreeLabelsInput>(undefined);
+
+	/** This tree's own translation seam — asked before `window.components.locale.translateCallback`. */
+	translateCallback = $state.raw<TranslateCallback | null | undefined>(undefined);
 
 	/** Bumped on every page-wide locale change (`window.components.locale` / `.security` assigned). */
 	#localeRevision = $state(0);
 
+	/** Core `/locale` labels of this tree (reads `labels` / `translateCallback` on every call). */
+	#labels = createTreeLabels(
+		() => this.labels,
+		() => this.translateCallback
+	);
+
 	/**
-	 * The resolved UI string for `key`: `labels` → page-wide `window.components.locale.labels`
-	 * → the English defaults (`''` = nothing). Reactive to both the prop and the page-wide object.
+	 * The resolved UI string for `key`: `labels` → this tree's `translateCallback` → the page-wide
+	 * `window.components.locale.translateCallback` → `window.components.locale.labels['svelte-treeview.<key>']`
+	 * → the English defaults (`''` = nothing). Reactive to the props and the page-wide object.
 	 */
-	getLabel(key: keyof TreeLabels, params?: Record<string, string | number>): string {
+	getLabel(key: keyof TreeLabels, params?: Record<string, unknown>): string {
 		void this.#localeRevision;
-		return resolveLabel(this.labels, key, params);
+		return this.#labels.text(key, params);
+	}
+
+	/** The root the core ICON_CSS (`.km-icon`, the built-in masked glyphs) was adopted into. */
+	#iconCssRoot: Node | null = null;
+
+	/**
+	 * A node icon's markup — core `renderIcon` (SPEC §12.33): markup → built-in name (masked from
+	 * `--base-icon-<name>`) → this tree's `renderIconCallback(name, ctx)` → the page-wide
+	 * `window.components.renderIconCallback` → icon-font `<i class="stv__icon …">` → escaped text.
+	 * `ctx` = core's `{ component: 'svelte-treeview', element, prefix: 'stv' }` + the render state +
+	 * `node` + `controller`. Reads `renderIconCallback`, so a changed hook re-renders the icons.
+	 */
+	renderNodeIconHtml = (value: string, node: LTreeNode<T>, ctx: NodeRenderContext): string =>
+		this._renderIconHtml(value, { ...ctx, node, controller: this });
+
+	/**
+	 * A context-menu item's icon markup — core `renderIcon` like the node icons (and like core's
+	 * `/menu` in web-treeview): this tree's `renderIconCallback` gets `ctx.item` (no `node`).
+	 */
+	renderMenuIconHtml = (value: string, item: unknown): string =>
+		this._renderIconHtml(value, { item, controller: this });
+
+	private _renderIconHtml(value: string, context: Record<string, unknown>): string {
+		// SSR renders without hooks (no window). Svelte never repairs an {@html} mismatch while
+		// hydrating, so the client answers '' until the container is attached, then the real
+		// markup: the value changes once and the hook-aware markup replaces the server's.
+		if (typeof window !== 'undefined' && !this.containerElement) return '';
+		const root = this.containerElement?.getRootNode();
+		if (root && root !== this.#iconCssRoot && (root instanceof Document || root instanceof ShadowRoot)) {
+			adoptStyles(root, ICON_CSS);
+			this.#iconCssRoot = root;
+		}
+		return renderIcon(value, {
+			prefix: 'stv',
+			host: this.containerElement,
+			component: LABELS_TAG,
+			renderIconCallback: (this.renderIconCallback ?? null) as RenderIconCallback | null,
+			context
+		});
 	}
 
 	/** Whether the tree holds any node (an empty render with nodes = the search filtered them all). */
@@ -1319,6 +1399,7 @@ export class TreeController<T> {
 
 		this.#nodes = props.nodes;
 		this.labels = props.labels;
+		this.translateCallback = props.translateCallback;
 		this.focusedNode = props.focusedNode ?? null;
 		this.selectedPaths = props.selectedPaths ?? new Set();
 		this.checkedPaths = props.checkedPaths ?? new Set();
@@ -1367,6 +1448,7 @@ export class TreeController<T> {
 		this.shouldTooltipFollowCursor = props.shouldTooltipFollowCursor ?? false;
 		this.iconMember = props.iconMember;
 		this.getIconCallback = props.getIconCallback;
+		this.renderIconCallback = props.renderIconCallback;
 		this.iconColorMember = props.iconColorMember;
 		this.getIconColorCallback = props.getIconColorCallback;
 		this.shouldAlignNodeIcons = props.shouldAlignNodeIcons ?? true;
@@ -1472,7 +1554,7 @@ export class TreeController<T> {
 				isSorted: props.isSorted,
 				isSortingEnabled: props.isSortingEnabled ?? true,
 				sortCallback: this._withController(props.sortCallback),
-				displayValueFallback: resolveLabel(props.labels, 'noDisplayValue')
+				displayValueFallback: resolveLabel(props.labels, 'labels.noDisplayValue')
 			}
 		);
 		// Both can fire synchronously inside the searchTerm/filter $effect (filterNodes →
@@ -1520,6 +1602,7 @@ export class TreeController<T> {
 			shouldTooltipFollowCursor: this.shouldTooltipFollowCursor,
 			iconMember: this.iconMember,
 			getIconCallback: this._withController(this.getIconCallback),
+			renderIconHtml: this.renderNodeIconHtml,
 			iconColorMember: this.iconColorMember,
 			getIconColorCallback: this._withController(this.getIconColorCallback),
 			shouldAlignNodeIcons: this.shouldAlignNodeIcons,
@@ -1540,7 +1623,7 @@ export class TreeController<T> {
 			dropZoneMaxWidth: this.dropZoneMaxWidth,
 			isCopyAllowed: this.isCopyAllowed,
 			shouldExpandAsAccordion: this.shouldExpandAsAccordion,
-			showFullLabel: this.getLabel('showFullLabel')
+			showFullLabel: this.getLabel('ariaLabels.showFullLabel')
 		};
 
 		// ── Initialize default navigation strategy ─────────────────────
@@ -1565,7 +1648,7 @@ export class TreeController<T> {
 
 		// Sync labels.noDisplayValue → LTree (the display fallback of a node without a value)
 		$effect(() => {
-			this.tree.displayValueFallback = this.getLabel('noDisplayValue');
+			this.tree.displayValueFallback = this.getLabel('labels.noDisplayValue');
 		});
 
 		// Mutate (don't replace) nodeConfig so the context reference stays the same.
@@ -1588,6 +1671,7 @@ export class TreeController<T> {
 				shouldTooltipFollowCursor: this.shouldTooltipFollowCursor,
 				iconMember: this.iconMember,
 				getIconCallback: this._withController(this.getIconCallback),
+				renderIconHtml: this.renderNodeIconHtml,
 				iconColorMember: this.iconColorMember,
 				getIconColorCallback: this._withController(this.getIconColorCallback),
 				shouldAlignNodeIcons: this.shouldAlignNodeIcons,
@@ -1608,7 +1692,7 @@ export class TreeController<T> {
 				dropZoneMaxWidth: this.dropZoneMaxWidth,
 				isCopyAllowed: this.isCopyAllowed,
 				shouldExpandAsAccordion: this.shouldExpandAsAccordion,
-			showFullLabel: this.getLabel('showFullLabel')
+			showFullLabel: this.getLabel('ariaLabels.showFullLabel')
 			});
 		});
 
@@ -3660,7 +3744,8 @@ export class TreeController<T> {
 		item: MenuItem<any, string>,
 		ctx: TreeCallbackContext<T> & { node?: LTreeNode<T> | null }
 	): Partial<ResolvedActionItem<TreeAction>> | undefined {
-		const label = (key: Parameters<TreeController<T>['getLabel']>[0]) => this.getLabel(key);
+		// Built-in item texts are the `menuItems.<name>` labels.
+		const label = (name: string) => this.getLabel(`menuItems.${name}` as keyof TreeLabels);
 		const node = ctx.node;
 		if (!node) {
 			switch (item.action) {
@@ -4388,6 +4473,7 @@ export class TreeController<T> {
 			this.shouldTooltipFollowCursor = updates.shouldTooltipFollowCursor ?? false;
 		if (updates.iconMember !== undefined) this.iconMember = updates.iconMember;
 		if (updates.getIconCallback !== undefined) this.getIconCallback = updates.getIconCallback;
+		if (updates.renderIconCallback !== undefined) this.renderIconCallback = updates.renderIconCallback;
 		if (updates.iconColorMember !== undefined) this.iconColorMember = updates.iconColorMember;
 		if (updates.getIconColorCallback !== undefined)
 			this.getIconColorCallback = updates.getIconColorCallback;
@@ -4421,6 +4507,7 @@ export class TreeController<T> {
 		if (updates.touchDragDelay !== undefined)
 			this.touchDragDelay = updates.touchDragDelay ?? 300;
 		if (updates.labels !== undefined) this.labels = updates.labels;
+		if (updates.translateCallback !== undefined) this.translateCallback = updates.translateCallback;
 		if (updates.isSortingEnabled !== undefined)
 			this.isSortingEnabled = updates.isSortingEnabled ?? true;
 		if (updates.shouldIndicateUndraggable !== undefined)

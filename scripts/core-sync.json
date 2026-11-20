@@ -47,14 +47,24 @@
 		},
 		{
 			"name": "locale",
-			"description": "Page-wide locale + labels (SPEC §12.24): window.components.locale.labels['svelte-treeview'] between the labels prop and the English defaults; formatLabelCallback. src/lib/core/labels.ts is the seam.",
+			"description": "Labels + page-wide locale (SPEC §12.24): flat <elementType>.<name> keys; createLabels = labels prop → the tree's translateCallback → window.components.locale.translateCallback → the flat page dictionary labels['svelte-treeview.<key>'] → English. src/lib/core/labels.ts is the seam.",
 			"mode": "identical",
-			"baseline": "3912936",
+			"baseline": "7e87b5f",
 			"files": [
 				["src/locale/labels.ts", "src/lib/vendor/core/locale/labels.ts"],
 				["src/locale/page-locale.ts", "src/lib/vendor/core/locale/page-locale.ts"],
 				["src/locale/settings.ts", "src/lib/vendor/core/locale/settings.ts"],
+				["src/locale/numbers.ts", "src/lib/vendor/core/locale/numbers.ts"],
 				["src/dom/escape-html.ts", "src/lib/vendor/core/dom/escape-html.ts"]
+			]
+		},
+		{
+			"name": "icons",
+			"description": "Icons (SPEC §12.33): renderIcon + ICON_CSS — node icons (TreeController.renderNodeIconHtml) and context-menu item icons: markup → built-in name → the tree's renderIconCallback → window.components.renderIconCallback → icon-font <i class=\"stv__icon …\"> → text. The `component` option (core 7e87b5f) names the tree, whose host is a <div>.",
+			"mode": "identical",
+			"baseline": "7e87b5f",
+			"files": [
+				["src/dom/render-icon.ts", "src/lib/vendor/core/dom/render-icon.ts"]
 			]
 		},
 		{
@@ -72,7 +82,8 @@
 				["src/environment/element-size.test.ts", "src/lib/vendor/core/environment/element-size.test.ts"],
 				["src/dom/throttle.test.ts", "src/lib/vendor/core/dom/throttle.test.ts"],
 				["src/dom/adopt-styles.test.ts", "src/lib/vendor/core/dom/adopt-styles.test.ts"],
-				["src/dom/animate-out.test.ts", "src/lib/vendor/core/dom/animate-out.test.ts"]
+				["src/dom/animate-out.test.ts", "src/lib/vendor/core/dom/animate-out.test.ts"],
+				["src/dom/render-icon.test.ts", "src/lib/vendor/core/dom/render-icon.test.ts"]
 			]
 		},
 		{
@@ -133,8 +144,8 @@
 			"name": "global API",
 			"description": "global-api.ts publishes window.components['svelte-treeview'] in core registerComponent()'s shape (SPEC §12.3).",
 			"mode": "mirror",
-			"note": "Reviewed 2026-11-17: register also publishes window.components.locale / .security (publishLocaleHooks, core 3912936).",
-			"baseline": "3912936",
+			"note": "Reviewed 2026-11-20: register also publishes window.components.renderIconCallback (publishIconHook) and window.components.locale / .security (publishLocaleHooks).",
+			"baseline": "7e87b5f",
 			"files": [
 				["src/global/register-component.ts", "src/lib/global-api.ts"],
 				["src/global/instances.ts", "src/lib/global-api.ts"]
@@ -144,7 +155,7 @@
 			"name": "context menu",
 			"description": "Svelte context menu vs core menu/ (open-menu, sheet / drawer phone presentations, styles).",
 			"mode": "mirror",
-			"note": "baseline estimated from src/lib/core/menu.ts's last change (2026-10-29). Core's phone sheet / drawer presentations (rc22+) are not in svelte yet — see parity.md.",
+			"note": "baseline estimated from src/lib/core/menu.ts's last change (2026-10-29). Core's phone sheet / drawer presentations (rc22+) are not in svelte yet — see parity.md. 2026-11-20: item icons adopted (3daffac / 07aacb7 / 8bb6150 — renderIcon, the tree's renderIconCallback with ctx.item) via the icons group.",
 			"baseline": "e6a0771",
 			"files": [
 				["src/menu/open-menu.ts", "src/lib/core/menu.ts"],

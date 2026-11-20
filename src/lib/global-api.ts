@@ -21,7 +21,8 @@
 import { logging } from './logger.js';
 import type { LogLevelDesc } from './vendor/core/logging/create-loggers.js';
 import { publishGlobalLogging, type GlobalLoggingControls } from './vendor/core/logging/global-logging.js';
-import { publishLocaleHooks } from './vendor/core/locale/page-locale.js';
+import { publishLocaleHooks, type PageLocale, type PageSecurity } from './vendor/core/locale/page-locale.js';
+import { publishIconHook, type RenderIconCallback } from './vendor/core/dom/render-icon.js';
 import { getRegisteredTrees } from './core/clipboard.js';
 
 // Generated constants (scripts/generate-constants.js)
@@ -64,6 +65,12 @@ declare global {
 		components?: Record<string, unknown> & {
 			'svelte-treeview'?: GlobalTreeviewAPI;
 			readonly logging?: GlobalLoggingControls;
+			/** Page-wide icon hook (core SPEC §12.33): maps an icon name that isn't a built-in to markup. Non-enumerable. */
+			renderIconCallback?: RenderIconCallback;
+			/** Page-wide locale, the flat `labels` dictionary and `translateCallback` (SPEC §12.24). Non-enumerable. */
+			locale?: PageLocale;
+			/** Page-wide security switches (`shouldEscapeLabels`, SPEC §12.24). Non-enumerable. */
+			security?: PageSecurity;
 		};
 	}
 }
@@ -96,5 +103,6 @@ if (typeof window !== 'undefined') {
 	const existing = components[ENTRY_KEY];
 	components[ENTRY_KEY] = existing && typeof existing === 'object' ? Object.assign(existing, entry) : entry;
 	publishGlobalLogging(); // re-publish if the page replaced window.components
+	publishIconHook(); // window.components.renderIconCallback (SPEC §12.33)
 	publishLocaleHooks(); // window.components.locale / .security (SPEC §12.24)
 }

@@ -9,8 +9,8 @@
  *   timeFormat: '24h',
  *   weekStartDay: 1,
  *   decimalSeparator: ',', thousandsSeparator: ' ',
- *   labels: { 'web-dropzone': { cancelFile: 'Zrušit {name}' } },
- *   formatLabelCallback: ({ component, key, template, params, locale }) => i18next.t(`${component}.${key}`, params),
+ *   labels: { 'web-dropzone.buttons.cancelFile': 'Zrušit {name}' },   // flat — the app's whole JSON fits
+ *   translateCallback: ({ key, params }) => (i18next.exists(key) ? i18next.t(key, params) : null),
  * };
  * window.components.security = { shouldEscapeLabels: true };
  * ```
@@ -25,12 +25,13 @@ import { publishPageSetting } from '../global/page-setting.js';
 import { coreLog } from '../logging/element-logger.js';
 import { notifyEach } from '../logging/safe-call.js';
 
-/** `formatLabelCallback` context: format `template` (ICU / FormatJS) or look `component.key` up (i18next). */
-export interface LabelFormatContext {
-  /** The component tag (`web-dropzone`). */
+/** `translateCallback` context: look the full `key` up (i18next) or format `template` (ICU / FormatJS). */
+export interface LabelTranslateContext {
+  /** The component name (`web-dropzone`) — the key prefix. */
   component: string;
+  /** The FULL key: `<component>.<elementType>.<name>` (`web-dropzone.buttons.cancelFile`). */
   key: string;
-  /** The resolved template: instance `labels` → page-wide labels → the component's English default. */
+  /** The resolved template: the page-wide `labels[key]` → the component's English default. */
   template: string;
   /** Placeholder values; HTML-escaped already when the label goes into HTML and labels aren't escaped as a whole. */
   params: Readonly<Record<string, unknown>>;
@@ -38,7 +39,11 @@ export interface LabelFormatContext {
   locale: string;
 }
 
-export type FormatLabelCallback = (ctx: LabelFormatContext) => string;
+/**
+ * The page's translation seam: return the finished label, or `null` / `undefined` = "not mine" (core formats
+ * `template` itself). Never asked for a key the instance set in its own `labels`.
+ */
+export type TranslateCallback = (ctx: LabelTranslateContext) => string | null | undefined;
 
 /** Locale settings: every one optional; an unset one is derived from `Intl` for the resolved locale. */
 export interface LocaleSettings {
@@ -55,9 +60,13 @@ export interface LocaleSettings {
 
 /** `window.components.locale`. */
 export interface PageLocale extends LocaleSettings {
-  /** Page-wide UI strings per component tag — between an instance's own `labels` and the English defaults. */
-  labels?: Readonly<Record<string, Readonly<Record<string, string>>>>;
-  formatLabelCallback?: FormatLabelCallback;
+  /**
+   * Page-wide UI strings, ONE flat dictionary keyed `<component>.<elementType>.<name>`
+   * (`'web-grid.buttons.add'`) — the app's whole translation JSON can be assigned; other keys are ignored.
+   * Between an instance's own `labels` and the English defaults.
+   */
+  labels?: Readonly<Record<string, string>>;
+  translateCallback?: TranslateCallback;
 }
 
 /** `window.components.security`. */
@@ -90,17 +99,28 @@ const isPlainObject = (v: unknown): v is Record<string, unknown> =>
 function freezeLocale(value: Record<string, unknown>): Readonly<PageLocale> {
   const copy: Record<string, unknown> = { ...value };
   if (isPlainObject(value.labels)) {
-    const labels: Record<string, Readonly<Record<string, string>>> = {};
-    for (const [tag, table] of Object.entries(value.labels)) {
-      if (isPlainObject(table)) labels[tag] = Object.freeze({ ...(table as Record<string, string>) });
+    const labels: Record<string, string> = {};
+    let isNested = false;
+    for (const [key, text] of Object.entries(value.labels)) {
+      if (typeof text === 'string') labels[key] = text;
+      else if (isPlainObject(text)) isNested = true;
+    }
+    if (isNested) {
+      coreLog(null, 'INIT', 'ELEMENT').warn(
+        "window.components.locale.labels is ONE flat dictionary ('web-grid.buttons.add': '…') — nested per-tag objects are ignored",
+      );
     }
     copy.labels = Object.freeze(labels);
   } else if (value.labels !== undefined) {
-    coreLog(null, 'INIT', 'ELEMENT').warn('window.components.locale.labels must be an object of per-tag label objects — ignored');
+    coreLog(null, 'INIT', 'ELEMENT').warn("window.components.locale.labels must be a flat object ('web-grid.buttons.add': '…') — ignored");
     delete copy.labels;
   }
-  if (copy.formatLabelCallback !== undefined && typeof copy.formatLabelCallback !== 'function') {
-    coreLog(null, 'INIT', 'ELEMENT').warn('window.components.locale.formatLabelCallback must be a function — ignored');
+  if (copy.translateCallback !== undefined && typeof copy.translateCallback !== 'function') {
+    coreLog(null, 'INIT', 'ELEMENT').warn('window.components.locale.translateCallback must be a function — ignored');
+    delete copy.translateCallback;
+  }
+  if ('formatLabelCallback' in copy) {
+    coreLog(null, 'INIT', 'ELEMENT').warn('window.components.locale.formatLabelCallback is now translateCallback — ignored');
     delete copy.formatLabelCallback;
   }
   return Object.freeze(copy) as Readonly<PageLocale>;

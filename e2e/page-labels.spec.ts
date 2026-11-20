@@ -1,9 +1,11 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
 
 /**
- * Page-wide labels (vendored Keenmate core /locale, SPEC §12.24) on /test/page-labels:
- * per key the `labels` prop → window.components.locale.labels['svelte-treeview'] → English;
- * window.components.locale.formatLabelCallback formats; assigning a new object re-renders.
+ * Labels (vendored Keenmate core /locale, SPEC §12.24) on /test/page-labels. Keys are flat
+ * `<elementType>.<name>`; per key: the `labels` prop (short or full key) → the tree's own
+ * `translateCallback` → window.components.locale.translateCallback → the page-wide flat dictionary
+ * window.components.locale.labels['svelte-treeview.<key>'] → English. Assigning a new page object
+ * re-renders.
  */
 
 const scenario = (page: Page, name: string): Locator => page.locator(`[data-scenario="${name}"]`);
@@ -24,9 +26,12 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('a page-wide label replaces the default live; the labels prop still wins; null restores', async ({ page }) => {
-	await setLocale(page, { labels: { 'svelte-treeview': { noData: 'Žádná data', noDisplayValue: '—' } } });
+	await setLocale(page, {
+		labels: { 'svelte-treeview.messages.noData': 'Žádná data', 'svelte-treeview.labels.noDisplayValue': '—' }
+	});
 	await expect(emptyText(page, 'empty')).toHaveText('Žádná data');
 	await expect(emptyText(page, 'own')).toHaveText('Own empty');
+	await expect(emptyText(page, 'own-full-key')).toHaveText('Own full');
 	await expect(scenario(page, 'no-display').locator('.stv__node-label')).toHaveText('—');
 	await expect(scenario(page, 'nodes').locator('.stv__node-label').nth(1)).toHaveText('—'); // member set, value missing
 
@@ -36,48 +41,73 @@ test('a page-wide label replaces the default live; the labels prop still wins; n
 	await expect(scenario(page, 'nodes').locator('.stv__node-label').nth(1)).toHaveText('[N/A]');
 });
 
-test("another component's table and '' work as in core", async ({ page }) => {
-	await setLocale(page, { labels: { 'web-treeview': { noData: 'not mine' }, 'svelte-treeview': { noData: '' } } });
+test("another component's key and '' work as in core; a nested per-tag table is ignored", async ({ page }) => {
+	await setLocale(page, {
+		labels: { 'web-treeview.messages.noData': 'not mine', 'svelte-treeview.messages.noData': '' }
+	});
 	await expect(emptyText(page, 'empty')).toHaveCount(0); // '' = render nothing
-	await setLocale(page, { labels: { 'web-treeview': { noData: 'not mine' } } });
+	await setLocale(page, { labels: { 'web-treeview.messages.noData': 'not mine' } });
+	await expect(emptyText(page, 'empty')).toHaveText('No data');
+	// The old nested form (labels['svelte-treeview'] = { … }) is dropped with a warning.
+	await setLocale(page, { labels: { 'svelte-treeview': { 'messages.noData': 'nested' } } });
 	await expect(emptyText(page, 'empty')).toHaveText('No data');
 });
 
 test('built-in context-menu texts come from the page-wide labels', async ({ page }) => {
-	await setLocale(page, { labels: { 'svelte-treeview': { copy: 'Kopírovat', expandAll: 'Rozbalit vše' } } });
+	await setLocale(page, {
+		labels: { 'svelte-treeview.menuItems.copy': 'Kopírovat', 'svelte-treeview.menuItems.expandAll': 'Rozbalit vše' }
+	});
 	await scenario(page, 'nodes').getByText('Root', { exact: true }).click({ button: 'right' });
 	const items = page.locator('.stv__context-menu > .stv__context-menu-item');
 	await expect(items.nth(0)).toContainText('Kopírovat');
 	await expect(items.nth(1)).toContainText('Rozbalit vše');
 });
 
-test('formatLabelCallback gets { component, key, template, locale } and its result is used', async ({ page }) => {
+test('the page translateCallback gets { component, key (full), template, locale }; never a key the prop set', async ({ page }) => {
 	await page.evaluate(() => {
 		(window as unknown as { components: { locale: unknown } }).components.locale = {
 			locale: 'cs-CZ',
-			formatLabelCallback: (ctx: { component: string; key: string; template: string; locale: string }) =>
+			translateCallback: (ctx: { component: string; key: string; template: string; locale: string }) =>
 				`${ctx.component}/${ctx.key}/${ctx.locale}/${ctx.template}`
 		};
 	});
-	await expect(emptyText(page, 'empty')).toHaveText('svelte-treeview/noData/cs-CZ/No data');
-	await expect(emptyText(page, 'own')).toHaveText('svelte-treeview/noData/cs-CZ/Own empty');
+	await expect(emptyText(page, 'empty')).toHaveText('svelte-treeview/svelte-treeview.messages.noData/cs-CZ/No data');
+	await expect(emptyText(page, 'own')).toHaveText('Own empty');
+});
+
+test("the tree's own translateCallback beats the page-wide one; null passes on", async ({ page }) => {
+	await expect(emptyText(page, 'translate')).toHaveText('element');
+	await page.evaluate(() => {
+		(window as unknown as { components: { locale: unknown } }).components.locale = {
+			translateCallback: ({ key }: { key: string }) => `page:${key}`,
+			labels: { 'svelte-treeview.messages.noData': 'dictionary' }
+		};
+	});
+	await expect(emptyText(page, 'translate')).toHaveText('element');
+	await expect(emptyText(page, 'empty')).toHaveText('page:svelte-treeview.messages.noData');
+	// The own callback answering null for every key → the page-wide callback decides.
+	await page.evaluate(() => {
+		const api = (window as unknown as { components: Record<string, { getInstances(): { translateCallback: unknown; labels: unknown }[] }> }).components;
+		const tree = api['svelte-treeview'].getInstances().find((c) => typeof c.translateCallback === 'function')!;
+		tree.translateCallback = () => null;
+	});
+	await expect(emptyText(page, 'translate')).toHaveText('page:svelte-treeview.messages.noData');
 });
 
 test('a locale assigned before the tree loads is adopted', async ({ page }) => {
 	await page.addInitScript(() => {
 		(window as unknown as { components: Record<string, unknown> }).components = {
-			locale: { labels: { 'svelte-treeview': { noData: 'Early' } } }
+			locale: { labels: { 'svelte-treeview.messages.noData': 'Early' } }
 		};
 	});
 	await page.goto('/test/page-labels');
 	await expect(emptyText(page, 'empty')).toHaveText('Early');
 });
 
-test('a live labels.noDisplayValue change re-renders the rows (the prop path)', async ({ page }) => {
+test('a live labels change re-renders the rows (the prop path)', async ({ page }) => {
 	await page.evaluate(() => {
 		const api = (window as unknown as { components: Record<string, { getInstances(): { labels: unknown }[] }> }).components;
-		for (const c of api['svelte-treeview'].getInstances()) c.labels = { noDisplayValue: 'PROP' };
+		for (const c of api['svelte-treeview'].getInstances()) c.labels = { 'labels.noDisplayValue': 'PROP' };
 	});
 	await expect(scenario(page, 'no-display').locator('.stv__node-label')).toHaveText('PROP');
 });
-

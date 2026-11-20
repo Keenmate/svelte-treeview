@@ -1,5 +1,7 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
+	import { getContext, type Snippet } from 'svelte';
+	import type { TreeController } from '../core/TreeController.svelte.js';
+	import { renderIcon } from '../vendor/core/dom/render-icon.js';
 	import { computePosition, autoUpdate, offset, flip, shift } from '@floating-ui/dom';
 
 	interface Props {
@@ -31,6 +33,17 @@
 	}: Props = $props();
 
 	const hasChildren = $derived(!!children);
+
+	// Icons go through core renderIcon like the callback menu: the enclosing tree's
+	// renderIconCallback (ctx.item = this item's props) → the page-wide hook → icon font / text.
+	const controller = getContext<TreeController<unknown> | undefined>('TreeController');
+	const iconHtml = $derived(
+		!icon
+			? ''
+			: controller
+				? controller.renderMenuIconHtml(icon, { id, text, icon })
+				: renderIcon(icon, { prefix: 'stv', component: 'svelte-treeview', context: { item: { id, text, icon } } })
+	);
 
 	let itemEl = $state<HTMLElement | null>(null);
 	let submenuEl = $state<HTMLElement | null>(null);
@@ -104,7 +117,7 @@
 	}}
 >
 	{#if icon}
-		<span class="stv__context-menu-icon">{icon}</span>
+		<span class="stv__context-menu-icon">{@html iconHtml}</span>
 	{/if}
 	<span class="stv__context-menu-label">{text}</span>
 	{#if shortcut}

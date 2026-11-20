@@ -198,17 +198,28 @@
 	}
 
 	// ── IG06 · page-wide labels ─────────────────────────────────────────────
+	// Short keys here; the page dictionary takes FULL keys ('svelte-treeview.messages.noData').
 	const LANGUAGES: Record<string, { name: string; labels: Partial<TreeLabels> | null }> = {
 		en: { name: 'English (defaults)', labels: null },
 		cs: {
 			name: 'Čeština',
-			labels: { noData: 'Žádná data', noResults: 'Nic nenalezeno', copy: 'Kopírovat', cut: 'Vyjmout', paste: 'Vložit', delete: 'Smazat', expandAll: 'Rozbalit vše', collapseAll: 'Sbalit vše' }
+			labels: {
+				'messages.noData': 'Žádná data', 'messages.noResults': 'Nic nenalezeno',
+				'menuItems.copy': 'Kopírovat', 'menuItems.cut': 'Vyjmout', 'menuItems.paste': 'Vložit',
+				'menuItems.delete': 'Smazat', 'menuItems.expandAll': 'Rozbalit vše', 'menuItems.collapseAll': 'Sbalit vše'
+			}
 		},
 		de: {
 			name: 'Deutsch',
-			labels: { noData: 'Keine Daten', noResults: 'Keine Treffer', copy: 'Kopieren', cut: 'Ausschneiden', paste: 'Einfügen', delete: 'Löschen', expandAll: 'Alle aufklappen', collapseAll: 'Alle zuklappen' }
+			labels: {
+				'messages.noData': 'Keine Daten', 'messages.noResults': 'Keine Treffer',
+				'menuItems.copy': 'Kopieren', 'menuItems.cut': 'Ausschneiden', 'menuItems.paste': 'Einfügen',
+				'menuItems.delete': 'Löschen', 'menuItems.expandAll': 'Alle aufklappen', 'menuItems.collapseAll': 'Alle zuklappen'
+			}
 		}
 	};
+	const toPageDictionary = (labels: Partial<TreeLabels>) =>
+		Object.fromEntries(Object.entries(labels).map(([key, text]) => [`svelte-treeview.${key}`, text]));
 	let language = $state('en');
 	let isFormatterOn = $state(false);
 	let formatLog = $state<LogEntry[]>([]);
@@ -222,14 +233,14 @@
 		}
 		components().locale = {
 			locale: language === 'en' ? 'en-US' : language,
-			...(labels ? { labels: { 'svelte-treeview': labels } } : {}),
+			...(labels ? { labels: toPageDictionary(labels) } : {}),
 			...(isFormatterOn
 				? {
 						// Stand-in for ICU / i18next: tag the text with its key. Logged on a microtask —
 						// the callback runs while the tree renders.
-						formatLabelCallback: ({ component, key, template, locale }) => {
-							queueMicrotask(() => (formatLog = [...formatLog.slice(-7), logLine('formatLabelCallback', `${component}.${key} (${locale})`)]));
-							return `${template} ·${key}`;
+						translateCallback: ({ key, template, locale }) => {
+							queueMicrotask(() => (formatLog = [...formatLog.slice(-7), logLine('translateCallback', `${key} (${locale})`)]));
+							return `${template} ·${key.slice('svelte-treeview.'.length)}`;
 						}
 					}
 				: {})
@@ -474,13 +485,17 @@ setThemeMode('auto');   // back to detection (page / themeSource signal)`}</pre>
 <div class="card">
 	<h2>IG06 · Labels — <code>window.components.locale</code></h2>
 	<p class="description">
-		Every built-in text of every tree on the page, set once: <code>labels['svelte-treeview']</code>
-		sits between a tree's own <code>labels</code> prop and the English defaults, and assigning a new
-		object re-renders every tree. <code>formatLabelCallback</code> formats every label — the place to
-		plug in ICU, FormatJS or i18next. Switch the language, then right-click a node for the built-in
-		menu. The right tree sets <code>labels=&#123;&#123; noData &#125;&#125;</code> itself, so that
-		text never follows the page. The web components (<code>&lt;web-treeview&gt;</code>,
-		<code>&lt;web-multiselect&gt;</code>, …) read the same object from core 1.0.0-rc25.
+		Every built-in text of every tree on the page, set once. Keys are flat
+		<code>&lt;elementType&gt;.&lt;name&gt;</code> (<code>messages.noData</code>,
+		<code>menuItems.copy</code>); the page dictionary is ONE flat object of full keys
+		(<code>'svelte-treeview.messages.noData'</code>), so an app can assign its whole translation JSON.
+		Per key: a tree's own <code>labels</code> prop → its <code>translateCallback</code> → the
+		page-wide <code>translateCallback</code> (the place to plug in ICU, FormatJS or i18next;
+		<code>null</code> = not mine) → the page dictionary → English. Assigning a new object re-renders
+		every tree. Switch the language, then right-click a node for the built-in menu. The right tree
+		sets <code>labels=&#123;&#123; 'messages.noData': … &#125;&#125;</code> itself, so that text never
+		follows the page. The web components (<code>&lt;web-treeview&gt;</code>,
+		<code>&lt;web-multiselect&gt;</code>, …) read the same object from core.
 	</p>
 	<div class="controls">
 		<label>
@@ -489,7 +504,7 @@ setThemeMode('auto');   // back to detection (page / themeSource signal)`}</pre>
 				{#each Object.entries(LANGUAGES) as [code, lang] (code)}<option value={code}>{lang.name}</option>{/each}
 			</select>
 		</label>
-		<label><input type="checkbox" bind:checked={isFormatterOn} onchange={applyLocale} /> <code>formatLabelCallback</code></label>
+		<label><input type="checkbox" bind:checked={isFormatterOn} onchange={applyLocale} /> page-wide <code>translateCallback</code></label>
 	</div>
 	<div class="grid" style="--grid-min: 220px">
 		<div>
@@ -499,7 +514,7 @@ setThemeMode('auto');   // back to detection (page / themeSource signal)`}</pre>
 			</div>
 		</div>
 		<div>
-			<span class="demo-label">empty → <code>noData</code></span>
+			<span class="demo-label">empty → <code>messages.noData</code></span>
 			<div class="tree-container">
 				<Tree nodes={[]} idMember="id" pathMember="path" displayValueMember="name" sortCallback={sortByPath} />
 			</div>
@@ -507,7 +522,7 @@ setThemeMode('auto');   // back to detection (page / themeSource signal)`}</pre>
 		<div>
 			<span class="demo-label">empty + own <code>labels</code> prop (wins)</span>
 			<div class="tree-container">
-				<Tree nodes={[]} idMember="id" pathMember="path" displayValueMember="name" sortCallback={sortByPath} labels={{ noData: 'My own empty text' }} />
+				<Tree nodes={[]} idMember="id" pathMember="path" displayValueMember="name" sortCallback={sortByPath} labels={{ 'messages.noData': 'My own empty text' }} />
 			</div>
 		</div>
 	</div>
@@ -515,14 +530,17 @@ setThemeMode('auto');   // back to detection (page / themeSource signal)`}</pre>
 	<div class="code-block" data-language="ts">
 		<pre>{`window.components.locale = {
   locale: 'cs',
-  labels: {
-    'svelte-treeview': { noData: 'Žádná data', copy: 'Kopírovat', expandAll: 'Rozbalit vše' },
-    'web-multiselect': { /* … */ },
+  labels: {                         // ONE flat dictionary: '<component>.<elementType>.<name>'
+    'svelte-treeview.messages.noData': 'Žádná data',
+    'svelte-treeview.menuItems.copy': 'Kopírovat',
+    'svelte-treeview.menuItems.expandAll': 'Rozbalit vše',
+    'web-multiselect.messages.noResults': '…',
   },
-  // optional — every label goes through it
-  formatLabelCallback: ({ component, key, template, params, locale }) =>
-    i18next.t(\`\${component}.\${key}\`, { defaultValue: template, ...params }),
+  // optional — asked for every key a tree's own labels prop did not set; null = not mine
+  translateCallback: ({ key, template, params, locale }) =>
+    i18next.exists(key) ? i18next.t(key, params) : null,
 };
+// one tree only: <Tree translateCallback={…} /> is asked before the page-wide one
 window.components.locale = null;   // back to each component's defaults`}</pre>
 	</div>
 </div>

@@ -5,6 +5,18 @@
       "token": "--base-rem",
       "rule": "C2",
       "reason": "Standalone the component sizes in 10px units (its multipliers assume 1 unit = 10px); the contract's 1rem relies on pure-admin's html { font-size: 10px }."
+    },
+    {
+      "token": "--base-icon-settings",
+      "rule": "C2",
+      "file": "vendor/core/dom/render-icon.test.ts",
+      "reason": "Core's vendored renderIcon unit test asserts the markup string renderIcon emits (the transparent fallback keeps an unset token from masking a solid square) — a string literal, not a CSS read."
+    },
+    {
+      "token": "--base-icon-chevron",
+      "rule": "C2",
+      "file": "vendor/core/dom/render-icon.test.ts",
+      "reason": "Core's vendored renderIcon unit test asserts the markup string renderIcon emits (the transparent fallback keeps an unset token from masking a solid square) — a string literal, not a CSS read."
     }
   ]
 }
