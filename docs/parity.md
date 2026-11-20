@@ -116,6 +116,7 @@ Every web event has an `on<Name>` twin receiving the detail; every detail / ctx 
 | `refreshNode(path)`, `refreshSiblings(parentPath)` | same | same |
 | `isNodeDropAllowed(path): boolean` | same | same |
 | `addNode`, `insertNode`, `updateNode`, `removeNode`, `removeNodes`, `moveNode`, `moveNodes`, `duplicateNodes(…, transform?, sourceTree?)`, `applyChanges`, `copyNodeWithDescendants` | same | same |
+| `runDeleteCommand(paths?)` — the user's Delete command (beforeDeleteCallback → remove → `onNodeDelete`) on the instance (svelte 2026-11-19; was controller-only) | engine only (action id `delete`) | **to mirror** — together with the rename to `deleteNodes` (review 2026-11-19 §2) |
 | `addBranch` / `insertBranch` → `InsertBranchResult`; `replaceBranch` → `ReplaceBranchResult`; `removeBranch` → `RemoveBranchResult` (`{ success, count, error? }`) | same (exported types identical) | same |
 | `selectNode`, `selectNodes`, `selectAll`, `clearSelection`, `getSelectedNodes`, `isNodeSelected`, `toggleFocusedSelect()` | same | same |
 | `checkNode(s)`, `checkAll`, `uncheckNode(s)`, `uncheckAll`, `getCheckedNodes`, `isNodeChecked` | same | same |

@@ -143,3 +143,47 @@ describe('applyChanges operations', () => {
 		expect(names(tree, '1')).toEqual(['A-child']);
 	});
 });
+
+describe('insert / remove bookkeeping (review 2026-11-19 B19 / B20)', () => {
+	it('a duplicate path is reported as a failure, with the failing row as originalData', () => {
+		const tree = createTree();
+		const dup = { id: 3, path: '1', name: 'Again' };
+		const result = tree.insertArray([{ id: 2, path: '2', name: 'B' }, { id: 1, path: '1', name: 'A' }, dup]);
+		expect(result.successful).toBe(2);
+		expect(result.failed).toHaveLength(1);
+		expect(result.failed[0].error).toMatch(/Duplicate path/);
+		expect(result.failed[0].originalData).toBe(dup);
+		expect(names(tree)).toEqual(['A', 'B']);
+	});
+
+	it('removeNode drops the whole subtree from nodeCount', () => {
+		const tree = createTree();
+		tree.insertArray([
+			{ id: 1, path: '1', name: 'A' },
+			{ id: 2, path: '1.1', name: 'A1' },
+			{ id: 3, path: '1.1.1', name: 'A1a' },
+			{ id: 4, path: '2', name: 'B' }
+		]);
+		expect(tree.statistics.nodeCount).toBe(4);
+		tree.removeNode('1', false);
+		expect(tree.statistics.nodeCount).toBe(1);
+	});
+});
+
+describe('edits while a filter is active (review 2026-11-19 R3)', () => {
+	it('removeNode on the filtered view removes the REAL node', async () => {
+		const tree = createTree();
+		tree.insertArray([
+			{ id: 1, path: '1', name: 'A' },
+			{ id: 2, path: '1.1', name: 'match one' },
+			{ id: 3, path: '1.2', name: 'other' }
+		]);
+		// Build the filtered view by hand (no search index in this tree).
+		tree.createFilteredTree(['1.1']);
+		expect(tree.isFiltered).toBe(true);
+		expect(tree.removeNode('1.1').success).toBe(true);
+		expect(tree.getNodeByPath('1.1', tree.root)).toBeNull();
+		tree.filterNodes('');
+		expect(names(tree, '1')).toEqual(['other']);
+	});
+});

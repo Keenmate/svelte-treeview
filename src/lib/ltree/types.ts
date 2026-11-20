@@ -346,6 +346,7 @@ export interface Ltree<T> {
 	/** Sort whole subtrees (`null` / omitted = the whole tree). Returns the orderMember rewrites. */
 	sortAll(paths?: string | string[] | null, options?: SortOptions<T>): NodesReorderContext<T>[];
 
+	_scheduleRefilter(): void;
 	_emitTreeChanged(): void;
 
 	refresh(): void;

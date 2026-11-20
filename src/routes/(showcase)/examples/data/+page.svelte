@@ -576,7 +576,7 @@ const data = [
   { id: 2, path: '1.1', name: 'Valid Child' },
   // Orphan - parent '2' doesn't exist
   { id: 3, path: '2.1', name: 'Orphan' },
-  // Duplicate path
+  // Duplicate path — reported as failed, the first one stays
   { id: 4, path: '1.1', name: 'Duplicate' },
   // Empty path
   { id: 5, path: '', name: 'Empty Path' },

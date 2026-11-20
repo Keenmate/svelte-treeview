@@ -126,7 +126,7 @@ test.describe('Custom Path Separators', () => {
 // ── Insert Result and Validation ───────────────────────────────────────────
 
 test.describe('Insert Result and Validation', () => {
-	test('valid items render in the tree; orphans and empty paths land in insertResult.failed; duplicate path overrides', async ({ page }) => {
+	test('valid items render in the tree; orphans, empty paths and duplicate paths land in insertResult.failed', async ({ page }) => {
 		await gotoData(page);
 		const card = insertCard(page);
 		const tree = treeInCard(card);
@@ -135,14 +135,12 @@ test.describe('Insert Result and Validation', () => {
 		//   { path: '1',    name: 'Valid Root' }
 		//   { path: '1.1',  name: 'Valid Child' }
 		//   { path: '2.1',  name: 'Orphan (parent 2 missing)' }  ← fails (no parent)
-		//   { path: '1.1',  name: 'Duplicate Path' }               ← overwrites earlier 1.1
+		//   { path: '1.1',  name: 'Duplicate Path' }               ← fails (duplicate path)
 		//   { path: '',     name: 'Empty Path' }                   ← fails (empty path)
 		//   { path: '1.2',  name: 'Another Valid Child' }
 		//
-		// LTree treats a duplicate path as a no-op insert (the first occurrence
-		// wins) but still counts it as *successful*, not failed. So the tree
-		// keeps 'Valid Child' at 1.1, never shows 'Duplicate Path', and the
-		// duplicate row is included in the successful count.
+		// A duplicate path is reported as failed (rc17; it used to be dropped yet counted as
+		// successful). The first occurrence wins: the tree keeps 'Valid Child' at 1.1.
 		await expect(nodeByPath(tree, '1')).toBeVisible();
 		await expect(nodeByPath(tree, '1.1')).toBeVisible();
 		await expect(nodeByPath(tree, '1.2')).toBeVisible();
@@ -158,15 +156,14 @@ test.describe('Insert Result and Validation', () => {
 		await expect(output).toBeVisible();
 		const json = JSON.parse((await output.textContent()) ?? '{}');
 		expect(json.total).toBe(6);
-		expect(json.successful).toBe(4);
-		expect(json.failed).toBe(2);
+		expect(json.successful).toBe(3);
+		expect(json.failed).toBe(3);
 
-		// `failedDetails` lists each failure with its originalData and an error
-		// string. Orphan + Empty Path are the only failures here.
+		// `failedDetails` lists each failure with its originalData and an error string.
 		const failedNames = json.failedDetails.map((d: any) => d.originalData?.name);
 		expect(failedNames).toEqual(
-			expect.arrayContaining(['Orphan (parent 2 missing)', 'Empty Path'])
+			expect.arrayContaining(['Orphan (parent 2 missing)', 'Empty Path', 'Duplicate Path'])
 		);
-		expect(json.failedDetails).toHaveLength(2);
+		expect(json.failedDetails).toHaveLength(3);
 	});
 });

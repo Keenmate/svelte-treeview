@@ -24,6 +24,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Cascade checkboxes over three or more levels: with root → region → country, checking a country leaves region and root `[-]`; then checking the ROOT left the region `[-]` although all its children were now checked (same for `checkNode` / `checkNodes` / `uncheckNode` …). The cascade set `isChecked` on every descendant but re-derived `visualState` only for the clicked node and its ancestors; now every node the cascade touched is re-derived, deepest first (2026-11-19, `e2e/checkbox-policy.spec.ts` "Cascade over three levels"). Same fix in web-treeview.
 
+### Fixed — code review batch (2026-11-19, `docs/REVIEW-2026-11-19.md`; guarded by `e2e/regressions.spec.ts` + `/test/regressions`)
+
+- `uncheckAll()` and assigning `checkedPaths` left an indeterminate `[-]` branch behind in cascade mode (only the checked set was cleared, never `visualState`).
+- Pasting a subtree of three or more levels dropped every grandchild when `nodeInputTransformationCallback` mints new ids (descendants looked for `<new root> + <old relative path>`); the result still said `success: true`. A descendant that fails to insert now skips its subtree like a vetoed one.
+- Edits while a filter is active (`removeNode`, `moveNode`, `addNode`, `updateNode`, `insertNode` / `insertBranch`, `addBranch` / `replaceBranch` / `removeBranch`, `sortNodes` / `sortAll`) changed the filtered copy, not the real tree — a node deleted while searching came back when the search cleared. They now resolve against the real tree and the filtered view is rebuilt once afterwards (an added node shows once it is indexed).
+- A selection or focus made while filtered was lost when the filter cleared, and nodes hidden by the filter kept stale selected / focused flags; `focusedNode` now holds the real node.
+- Assigning `expandedPaths` left a still-visible row's expand arrow in the old state.
+- The context menu opened at twice `contextMenuXOffset` / `contextMenuYOffset` (16 px instead of 8).
+- Context-menu item shortcuts with a named key (`F2`, `Enter`, `Delete` / `Del`, arrows) never fired, and Cmd was ignored on a Mac — matching now uses core's shortcut syntax (`vendor/actions/shortcut.ts`, core-sync group `shortcut`).
+- Escape didn't close a snippet (`contextMenu`) menu, and the tree keyboard stayed dead until a click.
+- Keys typed into a field inside a row (an `<input>` in `nodeTemplate`) no longer trigger tree shortcuts or navigation (Delete, Backspace, arrows, Ctrl+C/V) — core `isTypingTarget`.
+- `onNodeDelete` listed the wrong paths when one removal in the middle of a Delete failed. `runDeleteCommand()` is now also on the Tree instance.
+- Enter / Space and double-click (`clickBehavior: 'select'`) toggle through `toggleNodeExpanded`, so they honour `shouldExpandAsAccordion`, a pending async `beforeExpandCallback` and `getNodeIsCollapsible` like the toggle glyph.
+- Pointer drag: released on nothing, on a refused target or vetoed by `beforeDropCallback`, it now restores the selection the grab replaced; a second click or Esc while an async `beforeDropCallback` is pending (a confirm dialog) no longer re-enters the drop and loses a curated drag manifest.
+- The drag ghost rendered unstyled (it was appended to `<body>`, outside the `--stv-touch-ghost-*` tokens); it now mounts inside the tree container. The drag-denied / drop-denied badge and the drag-over class are looked up in THIS tree only (two trees sharing a path badged the wrong row).
+- A `beforeDragStartCallback` manifest with ONE entry ignored its holes: returning `['folder']` without the folder's only child took the single-node move and carried the child along. Any returned manifest now goes through `moveNodes`.
+- A same-tree drag-copy of a multi-selection now skips locked nodes (`getIsDraggableCallback` false) like the move does. `dropAt()` applies `dragDropMode`, `isDropAllowed` and the not-onto-itself check like `drop()`.
+- Search never built its index on Safari (no `requestIdleCallback`) — a timeout fallback, as in web-treeview.
+- `destroy()` stops a drag / long-press in flight, the render frame and the scroll-highlight timer.
+- `insertResult`: a duplicate path is now reported as failed (it was dropped yet counted as successful), and a failure's `originalData` is the failing row (was the row at the same index in the sorted data). `removeNode(path, false)` no longer under-counts `statistics.nodeCount`; `statistics.filteredNodeCount` is no longer always 0.
+
 ### Internal (2026-11-17)
 
 - The build is free of Rollup warnings: the `nodes` and progressive-render `$effect` bodies moved out of the `TreeController` constructor into `_applyNodesInput()` / `_syncProgressiveRender()` (the SSR build drops `$effect` calls but kept esbuild's `/* @__PURE__ */` marks on their `new Set(…)`, which Rollup reported as "an annotation that Rollup cannot interpret"); two one-line `if`s with the same mark rewritten; flexsearch `Index` is a type-only import.

@@ -3,6 +3,7 @@
 	import Node from './Node.svelte';
 	import ContextMenuLevel from './ContextMenuLevel.svelte';
 	import { computePosition, autoUpdate, offset, flip, shift } from '@floating-ui/dom';
+	import { matchesShortcut, isTypingTarget } from '../vendor/actions/shortcut.js';
 	import { type LTreeNode } from '../ltree/ltree-node.svelte.js';
 	import {
 		type Ltree,
@@ -938,12 +939,12 @@
 		void controller.contextMenuX;
 		void controller.contextMenuY;
 		void controller.contextMenuNode;
-		const xOff = controller.contextMenuXOffset ?? 0;
-		const yOff = controller.contextMenuYOffset ?? 0;
+		// contextMenuX/Y already include contextMenuXOffset/YOffset (controller.openContextMenu —
+		// the canvas package reads them as-is); adding them here again doubled the offset.
 		const virtualRef = {
 			getBoundingClientRect: () => {
-				const ax = controller.contextMenuX + xOff;
-				const ay = controller.contextMenuY + yOff;
+				const ax = controller.contextMenuX;
+				const ay = controller.contextMenuY;
 				return {
 					x: ax,
 					y: ay,
@@ -1477,6 +1478,12 @@
 		includeDescendants: boolean = true
 	): { success: boolean; node?: LTreeNode<T>; error?: string } {
 		return controller.removeNode(path, includeDescendants);
+	}
+
+	/** The user's Delete command on `paths` (default: the selection, else the focused node):
+	 *  `beforeDeleteCallback` may narrow / veto, then `onNodeDelete` fires with the removed paths. */
+	export function runDeleteCommand(paths?: string[]): { removed: number; blocked: number } {
+		return controller.runDeleteCommand(paths);
 	}
 
 	/** Programmatic removal of several subtrees (no beforeDeleteCallback, no onNodeDelete). */
@@ -2022,7 +2029,7 @@
 		// Don't interfere with context menu keyboard handling
 		if (controller.contextMenuVisible) return;
 
-		// Call custom handler first — return true to suppress default handling. Resolve the
+		// Call custom handler first — return false to suppress default handling. Resolve the
 		// focus + selection sets up front so the consumer gets nodes, not raw paths.
 		if (beforeKeydownCallback) {
 			const selectedNodes = [...controller.selectedPaths]
@@ -2041,6 +2048,10 @@
 				return;
 			}
 		}
+
+		// A key typed into a field inside a row (an <input> in a nodeTemplate) belongs to that
+		// field — no built-in shortcut (Delete, Ctrl+C/V) and no navigation (arrows, Backspace).
+		if (isTypingTarget(event)) return;
 
 		// Built-in opt-in shortcuts (copy/cut/paste/delete/esc). Runs AFTER the consumer
 		// hook (so it can override) but BEFORE the empty-tree return (so paste works into
@@ -2120,22 +2131,6 @@
 	}
 
 	// ── Context menu keyboard shortcut handling ──────────────────────────
-	function parseShortcut(shortcut: string): {
-		key: string;
-		ctrl: boolean;
-		shift: boolean;
-		alt: boolean;
-	} {
-		const parts = shortcut.split('+').map((p) => p.trim());
-		const key = parts.pop()!; // last part is the key
-		return {
-			key: key.toLowerCase(),
-			ctrl: parts.some((p) => p.toLowerCase() === 'ctrl'),
-			shift: parts.some((p) => p.toLowerCase() === 'shift'),
-			alt: parts.some((p) => p.toLowerCase() === 'alt')
-		};
-	}
-
 	/** A visible, enabled item (this level or a static submenu) whose `shortcut` matches. */
 	function findItemByShortcut(
 		entries: TreeMenuEntry<T>[],
@@ -2147,19 +2142,9 @@
 		);
 		for (const entry of resolved) {
 			if (entry.kind !== 'item' || entry.resolved.isDisabled) continue;
-			const shortcut = entry.resolved.shortcut;
-			if (shortcut) {
-				const parsed = parseShortcut(shortcut);
-				const eventKey = event.key.length === 1 ? event.key.toLowerCase() : event.key;
-				if (
-					eventKey === parsed.key &&
-					event.ctrlKey === parsed.ctrl &&
-					event.shiftKey === parsed.shift &&
-					event.altKey === parsed.alt
-				) {
-					return entry.item;
-				}
-			}
+			// Core shortcut syntax (vendor/actions/shortcut.ts): named keys ('F2', 'Delete', 'Del'),
+			// Cmd/Mod — the old hand-rolled parser lower-cased 'F2' but not the event key.
+			if (matchesShortcut(event, entry.resolved.shortcut)) return entry.item;
 			// Search static submenus too
 			if (entry.item.children?.length) {
 				const found = findItemByShortcut(entry.item.children as TreeMenuEntry<T>[], menuCtx, event);
@@ -2170,17 +2155,15 @@
 	}
 
 	async function handleContextMenuKeydown(event: KeyboardEvent) {
-		if (
-			!controller.contextMenuVisible ||
-			!controller.contextMenuNode ||
-			!getContextMenuItemsCallback
-		)
-			return;
+		if (!controller.contextMenuVisible || !controller.contextMenuNode) return;
 
+		// Escape closes BOTH menu kinds — it used to sit behind the callback guard, so a
+		// snippet (`contextMenu`) menu never closed and the tree keyboard stayed dead.
 		if (event.key === 'Escape') {
 			controller.closeContextMenu();
 			return;
 		}
+		if (!getContextMenuItemsCallback) return;
 
 		const menuCtx = controller.menuContext(controller.contextMenuNode);
 		const match = findItemByShortcut(getContextMenuItemsCallback(menuCtx), menuCtx, event);

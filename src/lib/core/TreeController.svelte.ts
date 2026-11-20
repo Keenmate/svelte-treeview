@@ -1728,15 +1728,10 @@ export class TreeController<T> {
 			const cls = this.dragOverNodeClass ?? null;
 			if (current === prevHoveredDragPath && cls === prevDragOverClass) return;
 
-			const root: ParentNode = this.containerElement ?? document;
 			if (prevHoveredDragPath && prevDragOverClass) {
-				root
-					.querySelector(`[data-tree-path="${prevHoveredDragPath}"] .stv__node-content`)
-					?.classList.remove(prevDragOverClass);
+				this._rowContentEl(prevHoveredDragPath)?.classList.remove(prevDragOverClass);
 			}
-			if (current && cls) {
-				root.querySelector(`[data-tree-path="${current}"] .stv__node-content`)?.classList.add(cls);
-			}
+			if (current && cls) this._rowContentEl(current)?.classList.add(cls);
 			prevHoveredDragPath = current;
 			prevDragOverClass = cls;
 		});
@@ -3375,7 +3370,11 @@ export class TreeController<T> {
 
 			// Descendants from the snapshot. A descendant the transform vetoes (null)
 			// takes its own subtree with it (parent-first order makes this a prefix skip).
+			// Each pasted node's NEW path by its old relative path: addNode names a new segment
+			// after the (possibly re-minted) id, so `<new root> + <old relative path>` didn't
+			// exist from the 3rd level down and every grandchild was skipped.
 			const skippedDescRel = new Set<string>();
+			const newPathByRel = new Map<string, string>([['', addResult.node.path]]);
 			for (const desc of entry.descendants) {
 				const parentRel = desc.relativePath.substring(0, desc.relativePath.lastIndexOf(sep));
 				if (parentRel && skippedDescRel.has(parentRel)) {
@@ -3383,7 +3382,7 @@ export class TreeController<T> {
 					skipped++;
 					continue;
 				}
-				const descParentPath = parentRel ? addResult.node.path + parentRel : addResult.node.path;
+				const descParentPath = newPathByRel.get(parentRel) ?? addResult.node.path;
 				const descData = apply(
 					desc.data,
 					ctxFor(descParentPath, 'child', false, index, entry.sourcePath + desc.relativePath)
@@ -3394,8 +3393,14 @@ export class TreeController<T> {
 					continue;
 				}
 				const descResult = this.tree.addNode(descParentPath, descData);
-				if (descResult.success) totalCount++;
-				else skipped++;
+				if (descResult.success && descResult.node) {
+					totalCount++;
+					newPathByRel.set(desc.relativePath, descResult.node.path);
+				} else {
+					// Its subtree has no parent to land in — skip it like a vetoed one.
+					skippedDescRel.add(desc.relativePath);
+					skipped++;
+				}
 			}
 		}
 
@@ -3538,16 +3543,17 @@ export class TreeController<T> {
 		// (the tree no longer holds them once removeNode runs).
 		const preRemoval = new Map(targets.map((p) => [p, this.tree.getNodeByPath(p)]));
 
-		let removed = 0;
-		let blocked = 0;
+		// Collect the paths that were actually removed — a failure in the middle used to shift
+		// `targets.slice(0, removed)` onto the wrong paths.
+		const removedPaths: string[] = [];
 		for (const p of targets) {
-			if (this.removeNode(p, true).success) removed++;
-			else blocked++;
+			if (this.removeNode(p, true).success) removedPaths.push(p);
 		}
+		const removed = removedPaths.length;
+		const blocked = targets.length - removed;
 		if (removed > 0) {
 			this.clearSelection();
 			this.clearFocus();
-			const removedPaths = targets.slice(0, removed);
 			this.onNodeDeleteHandler?.(this._ctx({
 				paths: removedPaths,
 				nodes: removedPaths
@@ -4002,6 +4008,24 @@ export class TreeController<T> {
 					this.draggedNode = JSON.parse(data);
 				}
 			}
+		}
+
+		// Same gates as drop(): dragDropMode, the target's isDropAllowed, not onto itself.
+		const dragged = this.draggedNode;
+		if (
+			dragged &&
+			(!this.isDropAllowedByMode(dragged.treeId) ||
+				!node.isDropAllowed ||
+				(dragged.treeId === this.treeId && dragged.path === node.path))
+		) {
+			dragLogger.debug('dropAt REJECTED', {
+				from: dragged.path,
+				to: node.path,
+				dragDropMode: this.dragDropMode,
+				isDropAllowed: node.isDropAllowed
+			});
+			this._resetDragState();
+			return;
 		}
 
 		if (this.draggedNode) {
@@ -4478,16 +4502,9 @@ export class TreeController<T> {
 				this._lastClickPath = null;
 				this._lastClickTime = 0;
 				this.onNodeDoubleClickHandler?.(this._ctx(this.getNodeRef(node)));
-				if (this.clickBehavior === 'select') {
-					const canonical = this.tree.getNodeByPath(node.path) ?? node;
-					if (canonical.hasChildren && canonical.isCollapsible !== false) {
-						if (canonical.isExpanded) {
-							this.collapseNodes(canonical.path);
-						} else {
-							this.expandNodes(canonical.path);
-						}
-					}
-				}
+				// Same path as the toggle glyph: accordion, the pending beforeExpand guard,
+				// getNodeIsCollapsible and a mid-collapse cancel all apply.
+				if (this.clickBehavior === 'select') void this.toggleNodeExpanded(node.path);
 				return;
 			}
 			this._lastClickPath = node.path;
@@ -4517,14 +4534,10 @@ export class TreeController<T> {
 		if (ctrl && canSelect) {
 			// Toggle this node in/out of highlight
 			const newPaths = new Set([...this.selectedPaths]);
-			if (newPaths.has(node.path)) {
-				newPaths.delete(node.path);
-				node.isSelected = false;
-			} else {
-				newPaths.add(node.path);
-				node.isSelected = true;
-			}
-			node._rev = (node._rev || 0) + 1;
+			const isNowSelected = !newPaths.has(node.path);
+			if (isNowSelected) newPaths.add(node.path);
+			else newPaths.delete(node.path);
+			this._setNodeFlag(node.path, 'isSelected', isNowSelected);
 			this.selectedPaths = newPaths;
 			this._shiftCursor = node.path;
 		} else if (shift && canSelect && (this._shiftCursor || this.focusedNode)) {
@@ -4537,8 +4550,7 @@ export class TreeController<T> {
 				const n = this.tree.getNodeByPath(path);
 				if (!n || !n.isSelectable) continue;
 				newPaths.add(path);
-				n.isSelected = true;
-				n._rev = (n._rev || 0) + 1;
+				this._setNodeFlag(n.path, 'isSelected', true);
 			}
 			this.selectedPaths = newPaths;
 			// Anchor stays put on shift+click — _shiftCursor unchanged
@@ -4546,8 +4558,7 @@ export class TreeController<T> {
 			// Plain click (or Ctrl/Shift+click in single mode → treated as plain):
 			// clear all highlights, highlight only this node.
 			this._clearAllSelectionFlags();
-			node.isSelected = true;
-			node._rev = (node._rev || 0) + 1;
+			this._setNodeFlag(node.path, 'isSelected', true);
 			this.selectedPaths = new Set([node.path]);
 			this._shiftCursor = node.path;
 		} else {
@@ -4611,6 +4622,17 @@ export class TreeController<T> {
 	 */
 	private _realNode(path: string): LTreeNode<T> | null {
 		return this.tree.getNodeByPath(path, this.tree.root);
+	}
+
+	/**
+	 * The row content element of `path` in THIS tree. Scoped to the container (two trees on
+	 * a page share paths — a page-wide lookup badged the other tree's row) and CSS-escaped.
+	 */
+	private _rowContentEl(path: string): HTMLElement | null {
+		if (!this.containerElement) return null;
+		return this.containerElement.querySelector<HTMLElement>(
+			`[data-tree-path="${CSS.escape(path)}"] .stv__node-content`
+		);
 	}
 
 	/** Mirror isChecked/visualState from the real nodes onto the filtered copies
@@ -4954,19 +4976,14 @@ export class TreeController<T> {
 		// `node.isFocused = false` writes to the clone and the rendered row
 		// (which reads the canonical node's flag) never updates. Same applies to
 		// the incoming `node`: prefer the tree's canonical ref.
+		// While filtered the flag goes to BOTH the real node and its filtered copy (_setNodeFlag),
+		// and focusedNode keeps the REAL node — the copy is thrown away when the filter clears.
 		const prevPath = this.focusedNode?.path;
-		if (prevPath && prevPath !== node?.path) {
-			const prev = this.tree.getNodeByPath(prevPath);
-			if (prev) {
-				prev.isFocused = false;
-				prev._rev = (prev._rev || 0) + 1;
-			}
-		}
-		const canonical = node ? (this.tree.getNodeByPath(node.path) ?? node) : null;
-		if (canonical) {
-			canonical.isFocused = true;
-			canonical._rev = (canonical._rev || 0) + 1;
-		}
+		if (prevPath && prevPath !== node?.path) this._setNodeFlag(prevPath, 'isFocused', false);
+		const canonical = node
+			? (this._realNode(node.path) ?? this.tree.getNodeByPath(node.path) ?? node)
+			: null;
+		if (canonical) this._setNodeFlag(canonical.path, 'isFocused', true);
 		this.focusedNode = canonical;
 		if (!isSilent && prevPath !== canonical?.path && (prevPath !== undefined || canonical))
 			this.onFocusChangeHandler?.(this._ctx({ focusedNode: canonical }));
@@ -5009,22 +5026,40 @@ export class TreeController<T> {
 	/** Clear isSelected flag on all currently highlighted nodes */
 	private _clearAllSelectionFlags() {
 		for (const path of this.selectedPaths) {
-			const n = this.tree.getNodeByPath(path);
-			if (n) {
-				n.isSelected = false;
-				n._rev = (n._rev || 0) + 1;
-			}
+			this._setNodeFlag(path, 'isSelected', false);
 		}
 	}
 
-	/** Clear isChecked flag on all currently selected (checkbox) nodes */
+	/**
+	 * Reset checkbox state on the whole REAL tree: isChecked AND visualState. Walking only
+	 * the checked set missed indeterminate branches (a [-] branch is never in the canonical
+	 * set), so `uncheckAll()` / assigning `checkedPaths` left their dash behind.
+	 */
 	private _clearAllCheckedFlags() {
-		for (const path of this.checkedPaths) {
-			const n = this._realNode(path);
-			if (n) {
+		const visit = (n: LTreeNode<T>) => {
+			if (n.isChecked || n.visualState !== VisualState.unchecked) {
 				n.isChecked = false;
+				n.visualState = VisualState.unchecked;
 				n._rev = (n._rev || 0) + 1;
 			}
+			for (const key in n.children) visit(n.children[key]!);
+		};
+		for (const key in this.tree.root.children) visit(this.tree.root.children[key]!);
+	}
+
+	/**
+	 * Set a UI flag (isSelected / isFocused) on the REAL node and, while a filter is active,
+	 * on its filtered copy too — Node.svelte renders the copy, the real node survives the
+	 * filter. Writing only `getNodeByPath()` (= the copy while filtered) lost selections made
+	 * while filtered and left stale flags on hidden nodes.
+	 */
+	private _setNodeFlag(path: string, key: 'isSelected' | 'isFocused', value: boolean) {
+		const real = this._realNode(path);
+		const copy = this.tree.isFiltered ? this.tree.getNodeByPath(path) : null;
+		for (const n of copy && copy !== real ? [real, copy] : [real]) {
+			if (!n) continue;
+			n[key] = value;
+			n._rev = (n._rev || 0) + 1;
 		}
 	}
 
@@ -5165,8 +5200,7 @@ export class TreeController<T> {
 		for (const path of paths) {
 			const node = this.tree.getNodeByPath(path);
 			if (node && node.isSelectable) {
-				node.isSelected = true;
-				node._rev = (node._rev || 0) + 1;
+				this._setNodeFlag(node.path, 'isSelected', true);
 				newPaths.add(path);
 				lastNode = node;
 			}
@@ -5200,8 +5234,7 @@ export class TreeController<T> {
 		let lastNode: LTreeNode<T> | null = null;
 		for (const node of this.tree.visibleFlatNodes) {
 			if (!node.isSelectable) continue;
-			node.isSelected = true;
-			node._rev = (node._rev || 0) + 1;
+			this._setNodeFlag(node.path, 'isSelected', true);
 			newPaths.add(node.path);
 			lastNode = node;
 		}
@@ -5223,11 +5256,7 @@ export class TreeController<T> {
 		if (paths && paths.length > 0) {
 			const newPaths = new Set(this.selectedPaths);
 			for (const path of paths) {
-				const n = this.tree.getNodeByPath(path);
-				if (n) {
-					n.isSelected = false;
-					n._rev = (n._rev || 0) + 1;
-				}
+				this._setNodeFlag(path, 'isSelected', false);
 				newPaths.delete(path);
 			}
 			this.selectedPaths = newPaths;
@@ -5415,6 +5444,20 @@ export class TreeController<T> {
 		this.tree.refresh();
 	}
 
+	/**
+	 * The top-level selected paths a multi-drag carries (move AND copy): minus the drop target,
+	 * minus locked nodes (getIsDraggableCallback false). The single-drag path is gated at drag
+	 * start, but a multi-drag reads straight from selectedPaths, so a locked node that merely
+	 * sits in the selection must not ride along — the copy branch used to skip this gate.
+	 */
+	private _getDraggableTopLevelSelection(dropPath: string): string[] {
+		return this._getTopLevelSelectedPaths().filter((p) => {
+			if (p === dropPath) return false;
+			const n = this.tree.getNodeByPath(p);
+			return n ? this.getNodeIsDraggable(n) : false;
+		});
+	}
+
 	/** Clear the focused node. Fires `onFocusChange` unless `{ isSilent: true }`. */
 	clearFocus(options?: TreeMutationOptions) {
 		this._setFocusedNode(null, options?.isSilent);
@@ -5582,8 +5625,7 @@ export class TreeController<T> {
 					Array.from(this._preDragSelectionSnapshot)
 				);
 				this._clearAllSelectionFlags();
-				node.isSelected = true;
-				node._rev = (node._rev || 0) + 1;
+				this._setNodeFlag(node.path, 'isSelected', true);
 				this.selectedPaths = new Set([node.path]);
 				this._shiftCursor = node.path;
 				this._notifySelectionChanged();
@@ -5619,11 +5661,7 @@ export class TreeController<T> {
 			this._clearAllSelectionFlags();
 			this.selectedPaths = new Set(prior);
 			for (const path of prior) {
-				const n = this.tree.getNodeByPath(path);
-				if (n) {
-					n.isSelected = true;
-					n._rev = (n._rev || 0) + 1;
-				}
+				this._setNodeFlag(path, 'isSelected', true);
 			}
 			this._notifySelectionChanged();
 			this._mirrorSelectedToChecked();
@@ -5720,33 +5758,26 @@ export class TreeController<T> {
 		// When the dragged node is part of a multi-highlight, move the whole highlight
 		// set as top-level-selected subtrees. Descendants whose nearest highlighted
 		// ancestor is in the set are absorbed (ride along inside the subtree).
-		// A beforeDragStartCallback override takes over as the authoritative set: "multi"
-		// then means the override carries more than one top-level path (a single-highlight
-		// grab can become a multi-move when the callback force-adds companions).
+		// A beforeDragStartCallback override takes over as the authoritative set and ALWAYS
+		// goes through moveNodes — even a ONE-entry override: ['folder'] with the folder's only
+		// child omitted is a manifest with a hole, and the single-node moveNode below would
+		// carry that child along. (It also turns a single grab into a multi-move when the
+		// callback force-adds companions.)
 		const isMultiDrag =
 			isSameTreeDrag &&
 			operation === 'move' &&
 			dropNode &&
 			this.shouldAutoHandleMove &&
 			(this._dragSetOverride
-				? this._dragSetOverride.length > 1
+				? this._dragSetOverride.length > 0
 				: this.selectedPaths.has(draggedNodeRef.path) && this.selectedPaths.size > 1);
 
 		if (isMultiDrag) {
-			const topLevelPaths = (this._dragSetOverride ?? this._getTopLevelSelectedPaths())
-				// drop target can't be moved onto itself
-				.filter((p) => p !== dropNode!.path)
-				// Respect per-node draggability: a locked node (isDraggable=false) that
-				// merely happens to be in the highlight set must NOT ride along. The
-				// single-drag path is already gated at drag *start*, but multi-drag
-				// pulls straight from selectedPaths, so it has to re-check here. An
-				// explicit override skips this gate — the consumer forced these in on purpose,
-				// so honor them even if getIsDraggableCallback would reject them.
-				.filter((p) => {
-					if (this._dragSetOverride) return !!this.tree.getNodeByPath(p);
-					const n = this.tree.getNodeByPath(p);
-					return n ? this.getNodeIsDraggable(n) : false;
-				});
+			// drop target can't be moved onto itself. An explicit override skips the draggability
+			// gate — the consumer forced these in on purpose.
+			const topLevelPaths = this._dragSetOverride
+				? this._dragSetOverride.filter((p) => p !== dropNode!.path && !!this.tree.getNodeByPath(p))
+				: this._getDraggableTopLevelSelection(dropNode!.path);
 			dragLogger.info(`Multi-drag: moving ${topLevelPaths.length} top-level subtree(s)`, {
 				topLevelPaths,
 				totalSelected: this.selectedPaths.size,
@@ -5791,9 +5822,7 @@ export class TreeController<T> {
 			const manifest = this._dragSetOverride
 				? this._dragSetOverride
 				: isMulti
-					? this._completeManifest(
-							this._getTopLevelSelectedPaths().filter((p) => p !== dropNode.path)
-						)
+					? this._completeManifest(this._getDraggableTopLevelSelection(dropNode.path))
 					: this._completeManifest([draggedNodeRef.path]);
 			const result = this.duplicateNodes(manifest, dropNode.path, position, transform);
 			fireDrop(result.copiedNodes);
@@ -5969,8 +5998,7 @@ export class TreeController<T> {
 		if (node.isSelectable && !this.selectedPaths.has(node.path)) {
 			this._preDragSelectionSnapshot = new Set(this.selectedPaths);
 			this._clearAllSelectionFlags();
-			node.isSelected = true;
-			node._rev = (node._rev || 0) + 1;
+			this._setNodeFlag(node.path, 'isSelected', true);
 			this.selectedPaths = new Set([node.path]);
 			this._shiftCursor = node.path;
 			this._notifySelectionChanged();
@@ -5992,11 +6020,7 @@ export class TreeController<T> {
 		this._clearAllSelectionFlags();
 		this.selectedPaths = new Set(prior);
 		for (const path of prior) {
-			const n = this.tree.getNodeByPath(path);
-			if (n) {
-				n.isSelected = true;
-				n._rev = (n._rev || 0) + 1;
-			}
+			this._setNodeFlag(path, 'isSelected', true);
 		}
 		this._notifySelectionChanged();
 		this._mirrorSelectedToChecked();
@@ -6213,7 +6237,14 @@ export class TreeController<T> {
 		const st = this.touchDragState;
 
 		if (st.isDragging && this.draggedNode) {
+			// Detach BEFORE any await: an async beforeDropCallback (a confirm dialog) must not see
+			// a second pointerup / Esc re-enter the drop and reset the drag state (curated
+			// manifest) underneath it.
+			this._removePointerListeners();
 			if (st.ghostElement) st.ghostElement.style.display = 'none';
+			// Nothing landed (no valid target, denied, or vetoed) → restore the selection the
+			// grab replaced, like an Esc-cancel and the HTML5 path's dropEffect 'none'.
+			let isDropped = false;
 
 			const dropEl = document.elementFromPoint(event.clientX, event.clientY);
 			const ctx = this._resolveDropContext(dropEl);
@@ -6240,24 +6271,25 @@ export class TreeController<T> {
 					: floatingZone.classList.contains('stv__drop-zone--after')
 						? 'after'
 						: 'child';
-				await targetCtrl._handleDrop(targetCtrl.hoveredNodeForDrop, dragged, pos, event);
+				isDropped = await targetCtrl._handleDrop(targetCtrl.hoveredNodeForDrop, dragged, pos, event);
 			} else if (dropNode && dropNode !== dragged && dropNode.isDropAllowed && modeOk) {
 				const rowEl = (dropEl as Element).closest('.stv__node-content') as HTMLElement | null;
 				const positions = targetCtrl.getNodeAllowedDropPositions(dropNode);
 				const position = rowEl
 					? targetCtrl.calculateDropPositionFromEvent(event, rowEl, positions)
 					: 'child';
-				await targetCtrl._handleDrop(dropNode, dragged, position, event);
+				isDropped = await targetCtrl._handleDrop(dropNode, dragged, position, event);
 			} else if (targetCtrl.isTreeDropZoneEnabled && inTargetContainer && modeOk) {
 				// Whole-tree drop zone: ANY release inside the container that didn't land as a valid
 				// node drop — empty area, or a node whose getIsDropAllowedCallback rejected it —
 				// lands with target=null so beforeDrop can fan it out via DropGroup[].
-				await targetCtrl._handleDrop(null, dragged, 'child', event);
+				isDropped = await targetCtrl._handleDrop(null, dragged, 'child', event);
 			} else if ((emptyZone || rootZone) && !dropNode && modeOk) {
-				await targetCtrl._handleDrop(null, dragged, 'child', event);
+				isDropped = await targetCtrl._handleDrop(null, dragged, 'child', event);
 			} else if (dropNode && dropNode !== dragged) {
 				targetCtrl._indicateDropDenied(dropNode);
 			}
+			if (!isDropped) this._restorePreDragSelection();
 		}
 
 		this.removeGhostElement();
@@ -6375,10 +6407,7 @@ export class TreeController<T> {
 			/* blocked by browser policy */
 		}
 
-		if (typeof document === 'undefined') return;
-		const el = document.querySelector(
-			`[data-tree-path="${node.path}"] .stv__node-content`
-		) as HTMLElement | null;
+		const el = this._rowContentEl(node.path);
 		if (!el) return;
 
 		// Clear any previous indicator, then show one that persists until release.
@@ -6427,10 +6456,7 @@ export class TreeController<T> {
 			/* blocked by browser policy */
 		}
 
-		if (typeof document === 'undefined') return;
-		const el = document.querySelector(
-			`[data-tree-path="${node.path}"] .stv__node-content`
-		) as HTMLElement | null;
+		const el = this._rowContentEl(node.path);
 		if (!el) return;
 
 		el.classList.add('stv__node-content--drag-denied');
@@ -6450,14 +6476,17 @@ export class TreeController<T> {
 	private createGhostElement(node: LTreeNode<any>, x: number, y: number) {
 		// Remove any stale ghost elements (e.g. from interrupted drags)
 		this.removeGhostElement();
-		document.querySelectorAll('.stv__touch-ghost').forEach((el) => el.remove());
+		this._removeOrphanGhosts();
 
 		const ghost = document.createElement('div');
 		ghost.className = 'stv__touch-ghost';
 		ghost.textContent = this.tree.getNodeDisplayValue(node);
 		ghost.style.left = `${x}px`;
 		ghost.style.top = `${y}px`;
-		document.body.appendChild(ghost);
+		// Inside the tree's own container (position: fixed still escapes its overflow), like
+		// the tooltips: every --stv-touch-ghost-* / z-index token and the theme are declared on
+		// .stv__container — under <body> the ghost rendered unstyled.
+		(this.containerElement ?? document.body).appendChild(ghost);
 		this.touchDragState.ghostElement = ghost;
 	}
 
@@ -6472,10 +6501,27 @@ export class TreeController<T> {
 	destroy() {
 		unregisterClipboardTree(this.treeId, this);
 		if (typeof document === 'undefined') return;
-		this._removePointerListeners();
+		// A drag / long-press in flight: stop the autoscroll loop, the long-press timer and the
+		// listeners (only when THIS tree is dragging — the reset also clears the shared drag set).
+		if (this.touchDragState.isDragging || this.touchTimer) this._resetPointerState();
+		else this._removePointerListeners();
+		if (this.flatRenderAnimationFrame) {
+			cancelAnimationFrame(this.flatRenderAnimationFrame);
+			this.flatRenderAnimationFrame = null;
+		}
+		if (this.currentSelection) {
+			clearTimeout(this.currentSelection.timeoutId);
+			this.currentSelection = null;
+		}
 		this.removeGhostElement();
-		// Remove any orphaned ghosts from document body
-		document.querySelectorAll('.stv__touch-ghost').forEach((el) => el.remove());
+		this._removeOrphanGhosts();
+	}
+
+	/** Ghosts left behind by an interrupted drag — this tree's only (another tree may be dragging). */
+	private _removeOrphanGhosts() {
+		(this.containerElement ?? document.body)
+			.querySelectorAll('.stv__touch-ghost')
+			.forEach((el) => el.remove());
 	}
 
 	// ── Helpers ──────────────────────────────────────────────────────────
@@ -6734,9 +6780,8 @@ export class TreeController<T> {
 				if (!node?.parentPath) return;
 				const parent = this.getNodeByPath(node.parentPath);
 				if (!parent) return;
-				if (parent.hasChildren && parent.isExpanded && parent.isCollapsible !== false) {
+				if (parent.hasChildren && parent.isExpanded && this.tree.getNodeIsCollapsible(parent)) {
 					this.collapseNodes(parent.path);
-					parent._rev = (parent._rev || 0) + 1;
 				}
 				tick().then(() => {
 					this.navigation.navTo(parent.path);
@@ -6746,13 +6791,8 @@ export class TreeController<T> {
 			navToggle: () => {
 				const currentPath = this.focusedNode?.path;
 				if (!currentPath) return;
-				const node = this.getNodeByPath(currentPath);
-				if (!node?.hasChildren || node.isCollapsible === false) return;
-				if (node.isExpanded) {
-					this.collapseNodes(currentPath);
-				} else {
-					this.expandNodes(currentPath);
-				}
+				// Enter / Space = the toggle glyph (accordion, pending beforeExpand, collapsible).
+				void this.toggleNodeExpanded(currentPath);
 			},
 
 			navFirst: () => {
@@ -6873,8 +6913,7 @@ export class TreeController<T> {
 			this._shiftCursor = anchorNode.path;
 			// Ensure anchor is highlighted so range computation has a starting point visible
 			if (anchorNode.isSelectable && !anchorNode.isSelected) {
-				anchorNode.isSelected = true;
-				anchorNode._rev = (anchorNode._rev || 0) + 1;
+				this._setNodeFlag(anchorNode.path, 'isSelected', true);
 				this.selectedPaths = new Set([anchorNode.path]);
 			}
 		}

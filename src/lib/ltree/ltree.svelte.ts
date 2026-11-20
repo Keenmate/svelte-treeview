@@ -126,7 +126,6 @@ export function createLTree<T>(
 		}
 	}
 	let filteredTree: LTreeNode<T>[] | null = null;
-	let isFiltered = false;
 
 	// Cache for visibleFlatNodes - only recompute when tree changes
 	let cachedVisibleFlatNodes: LTreeNode<T>[] = [];
@@ -141,6 +140,7 @@ export function createLTree<T>(
 	// the active query here and re-apply it from the indexer's onComplete
 	// callback so the visible filter eventually reflects the final index.
 	let _lastFilterSearchText: string | null | undefined = null;
+	let _isRefilterScheduled = false;
 	let _lastFilterSearchOptions: SearchOptions | undefined = undefined;
 
 	// Initialize indexer when search index is available
@@ -200,7 +200,7 @@ export function createLTree<T>(
 
 		// Properties for filtering
 		filteredTree,
-		isFiltered,
+		isFiltered: false,
 
 		// Methods (will be bound later)
 		get tree(): LTreeNode<T>[] {
@@ -267,7 +267,17 @@ export function createLTree<T>(
 		},
 
 		get statistics() {
-			const filteredNodeCount = isFiltered ? filteredTree?.length || 0 : 0;
+			// Count the filtered view's nodes (the old closure `isFiltered` was never written → always 0).
+			let filteredNodeCount = 0;
+			if (this.isFiltered) {
+				const count = (n: LTreeNode<T>) => {
+					for (const key in n.children) {
+						filteredNodeCount++;
+						count(n.children[key]!);
+					}
+				};
+				count(filteredRoot);
+			}
 			const indexerStatus = indexer?.getStatus() || { isProcessing: false, queueSize: 0 };
 
 			return (
@@ -435,7 +445,9 @@ export function createLTree<T>(
 				if (result) {
 					failedNodes.push({
 						node: node,
-						originalData: data[index],
+						// node.data, not data[index] — `index` counts the SORTED / mapped rows, so
+						// data[index] reported some other row as the failed one.
+						originalData: node.data as T,
 						error: result
 					});
 				} else {
@@ -544,16 +556,19 @@ export function createLTree<T>(
 					this.treePathSeparator
 				);
 
-			if (!parentNode.children.hasOwnProperty(newSegment)) {
-				parentNode.children[newSegment] = newNode;
-				if (shouldCalculateHasChildren && !parentNode.hasChildren) {
-					parentNode.hasChildren = true;
-				}
-
-				// Update statistics
-				nodeCount++;
-				maxLevel = Math.max(maxLevel, newNode.level || 0);
+			// A duplicate path is a failure, not a silent success: it used to be dropped here yet
+			// counted as inserted (and pushed to the search list as an orphan the search could return).
+			if (parentNode.children.hasOwnProperty(newSegment)) {
+				return `Duplicate path: ${newNode.path}`;
 			}
+			parentNode.children[newSegment] = newNode;
+			if (shouldCalculateHasChildren && !parentNode.hasChildren) {
+				parentNode.hasChildren = true;
+			}
+
+			// Update statistics
+			nodeCount++;
+			maxLevel = Math.max(maxLevel, newNode.level || 0);
 
 			if (!noEmitChanges) {
 				this._emitTreeChanged();
@@ -1137,7 +1152,7 @@ export function createLTree<T>(
 		 * @param parentPath - Path to parent node (empty string for root)
 		 */
 		refreshSiblings(parentPath: string): void {
-			const parent = parentPath ? this.getNodeByPath(parentPath) : root;
+			const parent = parentPath ? this.getNodeByPath(parentPath, root) : root;
 			if (!parent) return;
 
 			// Get current children as array
@@ -1180,14 +1195,15 @@ export function createLTree<T>(
 			targetPath: string,
 			position: 'before' | 'after' | 'child'
 		): { success: boolean; error?: string } {
+			this._scheduleRefilter();
 			// Find source node
-			const sourceNode = this.getNodeByPath(sourcePath);
+			const sourceNode = this.getNodeByPath(sourcePath, root);
 			if (!sourceNode) {
 				return { success: false, error: `Source node not found: ${sourcePath}` };
 			}
 
 			// Find target node
-			const targetNode = this.getNodeByPath(targetPath);
+			const targetNode = this.getNodeByPath(targetPath, root);
 			if (!targetNode) {
 				return { success: false, error: `Target node not found: ${targetPath}` };
 			}
@@ -1199,7 +1215,7 @@ export function createLTree<T>(
 
 			// Get source's current parent
 			const sourceParentPath = sourceNode.parentPath || '';
-			const sourceParent = sourceParentPath ? this.getNodeByPath(sourceParentPath) : root;
+			const sourceParent = sourceParentPath ? this.getNodeByPath(sourceParentPath, root) : root;
 			if (!sourceParent) {
 				return { success: false, error: `Source parent not found: ${sourceParentPath}` };
 			}
@@ -1227,7 +1243,7 @@ export function createLTree<T>(
 			} else {
 				// Insert as sibling (before or after)
 				newParentPath = targetNode.parentPath || '';
-				newParent = newParentPath ? this.getNodeByPath(newParentPath)! : root;
+				newParent = newParentPath ? this.getNodeByPath(newParentPath, root)! : root;
 			}
 
 			// Generate new path segment (use source's original segment if unique)
@@ -1355,14 +1371,15 @@ export function createLTree<T>(
 			path: string,
 			includeDescendants: boolean = true
 		): { success: boolean; node?: LTreeNode<T>; error?: string } {
-			const node = this.getNodeByPath(path);
+			this._scheduleRefilter();
+			const node = this.getNodeByPath(path, root);
 			if (!node) {
 				return { success: false, error: `Node not found: ${path}` };
 			}
 
 			// Get parent
 			const parentPath = node.parentPath || '';
-			const parent = parentPath ? this.getNodeByPath(parentPath) : root;
+			const parent = parentPath ? this.getNodeByPath(parentPath, root) : root;
 			if (!parent) {
 				return { success: false, error: `Parent not found: ${parentPath}` };
 			}
@@ -1391,19 +1408,9 @@ export function createLTree<T>(
 				}
 			}
 
-			// Update node count
-			if (includeDescendants) {
-				const countDescendants = (n: LTreeNode<T>): number => {
-					let count = 1;
-					for (const child of Object.values(n.children)) {
-						count += countDescendants(child);
-					}
-					return count;
-				};
-				nodeCount -= countDescendants(node);
-			} else {
-				nodeCount--;
-			}
+			// The whole subtree leaves the tree either way (the node keeps its children), so the
+			// count drops by all of it — `includeDescendants=false` used to subtract just 1.
+			nodeCount -= removedPaths.size;
 
 			this._emitTreeChanged();
 			return { success: true, node };
@@ -1421,7 +1428,8 @@ export function createLTree<T>(
 			data: T,
 			pathSegment?: string
 		): { success: boolean; node?: LTreeNode<T>; error?: string } {
-			const parent = parentPath ? this.getNodeByPath(parentPath) : root;
+			this._scheduleRefilter();
+			const parent = parentPath ? this.getNodeByPath(parentPath, root) : root;
 			if (!parent && parentPath) {
 				return { success: false, error: `Parent not found: ${parentPath}` };
 			}
@@ -1443,7 +1451,7 @@ export function createLTree<T>(
 				: segment;
 
 			// Check if path already exists
-			if (this.getNodeByPath(newPath)) {
+			if (this.getNodeByPath(newPath, root)) {
 				return { success: false, error: `Node already exists at path: ${newPath}` };
 			}
 
@@ -1542,7 +1550,8 @@ export function createLTree<T>(
 			path: string,
 			dataUpdates: Partial<T>
 		): { success: boolean; node?: LTreeNode<T>; error?: string } {
-			const node = this.getNodeByPath(path);
+			this._scheduleRefilter();
+			const node = this.getNodeByPath(path, root);
 			if (!node) {
 				return { success: false, error: `Node not found: ${path}` };
 			}
@@ -1720,7 +1729,7 @@ export function createLTree<T>(
 
 			// Handle positioning relative to sibling if specified
 			if (siblingPath && position && rootNode.data) {
-				const siblingNode = this.getNodeByPath(siblingPath);
+				const siblingNode = this.getNodeByPath(siblingPath, root);
 				// orderMember: order value between the neighbours; sorting disabled: exact position.
 				if (
 					siblingNode &&
@@ -1762,8 +1771,11 @@ export function createLTree<T>(
 		setExpandedPaths(paths: string[]): void {
 			const pathSet = new Set(paths);
 			const traverse = (node: LTreeNode<T>) => {
-				if (node.path) {
+				// Bump _rev on change: rows are keyed on it, so a visible row would otherwise keep
+				// its old expanded arrow (class:expanded) after an `expandedPaths` assignment.
+				if (node.path && node.isExpanded !== pathSet.has(node.path)) {
 					node.isExpanded = pathSet.has(node.path);
+					node._rev = (node._rev || 0) + 1;
 				}
 				for (const child of Object.values(node.children)) {
 					traverse(child);
@@ -1803,7 +1815,8 @@ export function createLTree<T>(
 			data: T,
 			position: InsertPosition
 		): { success: boolean; node?: LTreeNode<T>; error?: string } {
-			const target = this.getNodeByPath(targetPath);
+			this._scheduleRefilter();
+			const target = this.getNodeByPath(targetPath, root);
 			if (!target) return { success: false, error: `Target node not found: ${targetPath}` };
 			if (position === 'child') return this.addNode(targetPath, data);
 			const result = this.addNode(target.parentPath || '', data);
@@ -1821,7 +1834,8 @@ export function createLTree<T>(
 		 * between the target and its neighbour.
 		 */
 		insertBranch(targetPath: string, data: T[], position: InsertPosition): InsertBranchResult<T> {
-			const target = this.getNodeByPath(targetPath);
+			this._scheduleRefilter();
+			const target = this.getNodeByPath(targetPath, root);
 			if (!target) return { success: false, count: 0, failed: [], parentNode: null, error: 'Target not found: ' + targetPath };
 			if (position === 'child') return this.addBranch(targetPath, data);
 			const parentPath = target.parentPath || '';
@@ -1829,7 +1843,7 @@ export function createLTree<T>(
 			const blockRoots: LTreeNode<T>[] = [];
 			for (const row of data) {
 				const p = _pathMember ? getField(row, _pathMember) : undefined;
-				const node = typeof p === 'string' ? this.getNodeByPath(p) : null;
+				const node = typeof p === 'string' ? this.getNodeByPath(p, root) : null;
 				if (node && node.data === row && (node.parentPath || '') === parentPath) blockRoots.push(node);
 			}
 			if (blockRoots.length > 0) {
@@ -1842,7 +1856,7 @@ export function createLTree<T>(
 		/** Position `nodes` (already children of the target's parent) right before / after `target`. */
 		_placeNextTo(nodes: LTreeNode<T>[], target: LTreeNode<T>, position: 'before' | 'after'): void {
 			const parentPath = target.parentPath || '';
-			const parent = parentPath ? this.getNodeByPath(parentPath) : root;
+			const parent = parentPath ? this.getNodeByPath(parentPath, root) : root;
 			if (!parent || nodes.length === 0) return;
 			const block = new Set(nodes);
 			const om = this.orderMember;
@@ -1890,7 +1904,8 @@ export function createLTree<T>(
 		},
 
 		addBranch(parentPath: string, data: T[]): InsertBranchResult<T> {
-			const targetParent = parentPath ? this.getNodeByPath(parentPath) : root;
+			this._scheduleRefilter();
+			const targetParent = parentPath ? this.getNodeByPath(parentPath, root) : root;
 			if (!targetParent && parentPath) {
 				return { success: false, count: 0, failed: [], parentNode: null, error: 'Parent not found: ' + parentPath };
 			}
@@ -2002,7 +2017,7 @@ export function createLTree<T>(
 
 			// Re-sort each affected parent's children (without emitting; sorting disabled: appended)
 			for (const pp of this.isSortingEnabled ? affectedParents : []) {
-				const parent = pp ? this.getNodeByPath(pp) : root;
+				const parent = pp ? this.getNodeByPath(pp, root) : root;
 				if (!parent) continue;
 				const children = Object.values(parent.children) as LTreeNode<T>[];
 				if (children.length === 0) continue;
@@ -2018,7 +2033,7 @@ export function createLTree<T>(
 			// ── Pipeline: directly update all affected parents ──────────
 			// Update hasChildren + _hasChildrenMember on EVERY parent that received children
 			for (const pp of affectedParents) {
-				const parent = pp ? this.getNodeByPath(pp) : root;
+				const parent = pp ? this.getNodeByPath(pp, root) : root;
 				if (!parent) continue;
 				parent.hasChildren = Object.keys(parent.children).length > 0;
 				if (_hasChildrenMember && parent.data) {
@@ -2032,7 +2047,7 @@ export function createLTree<T>(
 				let walkPath = pp;
 				while (walkPath && !bumpedPaths.has(walkPath)) {
 					bumpedPaths.add(walkPath);
-					const ancestor = this.getNodeByPath(walkPath);
+					const ancestor = this.getNodeByPath(walkPath, root);
 					if (ancestor) ancestor._rev = (ancestor._rev || 0) + 1;
 					const sepIdx = walkPath.lastIndexOf(this.treePathSeparator);
 					walkPath = sepIdx > 0 ? walkPath.substring(0, sepIdx) : '';
@@ -2059,7 +2074,8 @@ export function createLTree<T>(
 		},
 
 		replaceBranch(parentPath: string, data: T[]): ReplaceBranchResult<T> {
-			const targetParent = parentPath ? this.getNodeByPath(parentPath) : root;
+			this._scheduleRefilter();
+			const targetParent = parentPath ? this.getNodeByPath(parentPath, root) : root;
 			if (!targetParent && parentPath) {
 				return { success: false, count: 0, failed: [], parentNode: null, removed: 0, added: 0, error: 'Parent not found: ' + parentPath };
 			}
@@ -2102,6 +2118,7 @@ export function createLTree<T>(
 		},
 
 		removeBranch(path: string, keepParent: boolean = false): RemoveBranchResult<T> {
+			this._scheduleRefilter();
 			const countDescendants = (n: LTreeNode<T>): number => {
 				let count = 0;
 				for (const child of Object.values(n.children)) {
@@ -2119,7 +2136,7 @@ export function createLTree<T>(
 
 			if (keepParent) {
 				// Keep the node, clear its children
-				const node = path ? this.getNodeByPath(path) : root;
+				const node = path ? this.getNodeByPath(path, root) : root;
 				if (!node && path) {
 					return { success: false, count: 0, error: `Node not found: ${path}` };
 				}
@@ -2149,7 +2166,7 @@ export function createLTree<T>(
 					const sepIdx = ancestorPath.lastIndexOf(this.treePathSeparator);
 					ancestorPath = sepIdx > 0 ? ancestorPath.substring(0, sepIdx) : '';
 					if (ancestorPath) {
-						const ancestor = this.getNodeByPath(ancestorPath);
+						const ancestor = this.getNodeByPath(ancestorPath, root);
 						if (ancestor) ancestor._rev = (ancestor._rev || 0) + 1;
 					}
 				}
@@ -2162,13 +2179,13 @@ export function createLTree<T>(
 					return { success: false, count: 0, error: 'Cannot delete root node' };
 				}
 
-				const node = this.getNodeByPath(path);
+				const node = this.getNodeByPath(path, root);
 				if (!node) {
 					return { success: false, count: 0, error: `Node not found: ${path}` };
 				}
 
 				const parentPath = node.parentPath || '';
-				const parent = parentPath ? this.getNodeByPath(parentPath) : root;
+				const parent = parentPath ? this.getNodeByPath(parentPath, root) : root;
 				if (!parent) {
 					return { success: false, count: 0, error: `Parent not found: ${parentPath}` };
 				}
@@ -2197,7 +2214,7 @@ export function createLTree<T>(
 				// Bump _rev on ancestors
 				let ancestorPath = parentPath;
 				while (ancestorPath) {
-					const ancestor = this.getNodeByPath(ancestorPath);
+					const ancestor = this.getNodeByPath(ancestorPath, root);
 					if (ancestor) ancestor._rev = (ancestor._rev || 0) + 1;
 					const sepIdx = ancestorPath.lastIndexOf(this.treePathSeparator);
 					ancestorPath = sepIdx > 0 ? ancestorPath.substring(0, sepIdx) : '';
@@ -2276,9 +2293,10 @@ export function createLTree<T>(
 		},
 
 		sortNodes(paths: string | string[], options?: SortOptions<T>): NodesReorderContext<T>[] {
+			this._scheduleRefilter();
 			const out: NodesReorderContext<T>[] = [];
 			for (const p of Array.isArray(paths) ? paths : [paths]) {
-				const node = isEmptyString(p) ? root : this.getNodeByPath(p);
+				const node = isEmptyString(p) ? root : this.getNodeByPath(p, root);
 				if (node) this._sortChildrenOf(node, options, out);
 			}
 			this._emitTreeChanged();
@@ -2286,12 +2304,13 @@ export function createLTree<T>(
 		},
 
 		sortAll(paths?: string | string[] | null, options?: SortOptions<T>): NodesReorderContext<T>[] {
+			this._scheduleRefilter();
 			const out: NodesReorderContext<T>[] = [];
 			const list =
 				paths == null
 					? []
 					: (Array.isArray(paths) ? paths : [paths]).filter((p) => !isEmptyString(p));
-			const targets = list.length === 0 ? [root] : list.map((p) => this.getNodeByPath(p));
+			const targets = list.length === 0 ? [root] : list.map((p) => this.getNodeByPath(p, root));
 			const walk = (node: LTreeNode<T>) => {
 				this._sortChildrenOf(node, options, out);
 				for (const child of Object.values(node.children) as LTreeNode<T>[]) walk(child);
@@ -2328,6 +2347,24 @@ export function createLTree<T>(
 
 				// Finally sort by display value
 				return displayCollator.compare(self.getNodeDisplayValue(a), self.getNodeDisplayValue(b));
+			});
+		},
+
+		/**
+		 * While a filter is active, rebuild the filtered view after an edit (once per microtask,
+		 * so a batch rebuilds once). Edits resolve against the REAL tree (`getNodeByPath(p, root)`
+		 * in every mutator) — they used to hit the filtered COPY, so a node deleted / moved while
+		 * searching came back when the filter cleared. An added node shows once it is indexed
+		 * (the indexer re-applies the filter on completion).
+		 */
+		_scheduleRefilter(): void {
+			if (!this.isFiltered || _isRefilterScheduled) return;
+			_isRefilterScheduled = true;
+			queueMicrotask(() => {
+				_isRefilterScheduled = false;
+				if (this.isFiltered && !isEmptyString(_lastFilterSearchText)) {
+					this.filterNodes(_lastFilterSearchText as string, _lastFilterSearchOptions);
+				}
 			});
 		},
 

@@ -89,6 +89,16 @@
 			]
 		},
 		{
+			"name": "shortcut",
+			"description": "Keyboard shortcut parse / match (SPEC §12.12) + isTypingTarget — context-menu item shortcuts and the tree keydown guard.",
+			"mode": "adapted",
+			"note": "Only the environment import path differs (../core/environment/environment.js). Vendored 2026-11-19.",
+			"baseline": "f399f63",
+			"files": [
+				["src/actions/shortcut.ts", "src/lib/vendor/actions/shortcut.ts"]
+			]
+		},
+		{
 			"name": "tooltip action",
 			"description": "use:tooltip mirrors core createTooltip (portal, autoUpdate, followCursor, theme inherit) on @floating-ui/dom.",
 			"mode": "mirror",

@@ -12,6 +12,7 @@ transferred from [`@keenmate/web-components-core`](../../../../web-components-co
 | `resolve.ts` | `src/actions/resolve.ts` |
 | `before-callback.ts` | `src/element/before-callback.ts` |
 | `resolve.test.ts` | `src/actions/resolve.test.ts` (+ jsdom docblock; console spies → `uiLogger`) |
+| `shortcut.ts` | `src/actions/shortcut.ts` (core f399f63, 2026-11-19; own core-sync group `shortcut`) — environment import → `../core/environment/environment.js` |
 
 svelte-treeview does not depend on web-components-core, so the files are copied with the minimum
 adaptation (each file's header names it):
