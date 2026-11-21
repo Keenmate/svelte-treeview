@@ -37,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `contextMenu` snippet: it renders into core's custom-menu element (positioned and dismissed by core: Escape / Tab, no roving item keyboard — core's rule). `ContextMenuItem` / `ContextMenuDivider` emit core's `km-menu__*` markup and format their `shortcut`. Item icons (callback and snippet) render as core's menu does: a class list is `<i class="fa-solid fa-star">` (no `stv__icon`); the tree's `renderIconCallback` still gets `ctx.item`.
 - Guarded by `e2e/menu-actions.spec.ts` (Shift+F10 + arrows + Escape focus return, Enter / → submenu, formatted shortcut, lazy loading row, `menuPresentation="sheet"`) + the existing context-menu specs on the new classes. `ContextMenuLevel.svelte` removed.
 
+### Docs — tooltip sizing demo (2026-11-21)
+
+- `/examples/tooltips` TT03: a `0` (or less) in the width / min-width / max-width fields counts as empty, like web-treeview's demo. It used to set `--stv-tooltip-width: 0px`, and a fixed width plus a `--stv-tooltip-min-width` pins the box at the min-width, so the tooltip looked like the min-width didn't let it grow. The library was right: `--stv-tooltip-width` must stay `auto` for the box to grow between min and max. The page remembers its control values, so a stray `0` used to stick.
+
 ### Fixed (2026-11-17)
 
 - Types under `moduleResolution: node16` / `nodenext` ([#30](https://github.com/Keenmate/svelte-treeview/issues/30)): imports of the `.svelte.ts` modules (`./core/TreeController.svelte`, `./ltree/ltree-node.svelte`) had no `.js`, and svelte-package copies specifiers into `dist/*.d.ts` unchanged — `TreeController`, `TreeControllerProps`, `LTreeNode`, `Ltree` and the types from those modules silently became `any` for such consumers. Now `.svelte.js`. A new `check:dist-imports` step in `prepack` (`scripts/check-dist-imports.mjs`) fails the build when any relative import in `dist/` doesn't name an existing file with its extension.

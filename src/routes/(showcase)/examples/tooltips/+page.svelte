@@ -37,15 +37,16 @@
 	// TT03 sizing — the library declares --stv-tooltip-* on .stv__container, so a value set
 	// on a wrapper is shadowed there. The wrapper carries page vars (--tt-*) instead and
 	// .tt-sizing (style below) maps them onto .stv__container. An empty field falls back to
-	// the variable's own default; an empty max-width means `none`.
+	// the variable's own default; an empty max-width means `none`. 0 (or less) counts as empty: a
+	// fixed `width: 0px` + a min-width would pin the box at the min-width, never growing.
 	let tipWidth = $state<number | null>(null);
 	let tipMinWidth = $state<number | null>(null);
 	let tipMaxWidth = $state<number | null>(320);
 	const sizeStyle = $derived(
 		[
-			tipWidth != null && `--tt-width: ${tipWidth}px`,
-			tipMinWidth != null && `--tt-min-width: ${tipMinWidth}px`,
-			`--tt-max-width: ${tipMaxWidth != null ? `${tipMaxWidth}px` : 'none'}`
+			tipWidth != null && tipWidth > 0 && `--tt-width: ${tipWidth}px`,
+			tipMinWidth != null && tipMinWidth > 0 && `--tt-min-width: ${tipMinWidth}px`,
+			`--tt-max-width: ${tipMaxWidth != null && tipMaxWidth > 0 ? `${tipMaxWidth}px` : 'none'}`
 		]
 			.filter(Boolean)
 			.join('; ')
