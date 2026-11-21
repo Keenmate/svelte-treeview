@@ -335,32 +335,40 @@
 	--stv-tooltip-z-index: var(--base-z-tooltip, 9000);
 
 	/* -------------------------------------------------------------------------
-	   CONTEXT MENU — the same --*-context-menu-* names as web-treeview (whose
-	   menu is rendered by web-components-core, so its defaults live there).
+	   CONTEXT MENU
+	   Rendered by core's openMenu() (vendor/core/menu — the same menu as
+	   web-treeview). The public --stv-context-menu-* variables are inputs, UNSET by
+	   default: each maps onto core's PRIVATE --_km-menu-* with NO fallback, so a value
+	   resolves --stv-context-menu-* (this tree) -> --km-menu-* (every menu on the
+	   page, set on :root) -> --base-* -> core's default. Never set --km-menu-* here: a
+	   tree-level value would shadow the page-wide one. The menu is appended inside
+	   .stv__container, so it inherits these.
 	   ------------------------------------------------------------------------- */
-	--stv-context-menu-z-index: var(--stv-z-index-dropdown);
-	--stv-context-menu-bg: var(--base-dropdown-bg, var(--stv-main-bg));
-	--stv-context-menu-bg-hover: var(--stv-hover-bg);
-	--stv-context-menu-text-color: var(--stv-text-color-1);
-	--stv-context-menu-border: var(--base-dropdown-border, var(--stv-border-width) solid var(--stv-border-color));
-	--stv-context-menu-border-radius: var(--stv-border-radius-sm);
-	--stv-context-menu-box-shadow: var(--base-dropdown-box-shadow, 0 8px 16px var(--stv-shadow-color));
-	--stv-context-menu-min-width: calc(15 * var(--stv-rem));
-	--stv-context-menu-padding: var(--stv-spacing-sm) 0;
-	--stv-context-menu-font-size: var(--stv-font-size-sm);
-	--stv-context-menu-item-padding: var(--stv-spacing-md) var(--stv-spacing-xl);
-	--stv-context-menu-item-gap: var(--stv-spacing-md);
-	--stv-context-menu-toggled-color: var(--stv-accent-color);
-	--stv-context-menu-icon-width: calc(1.6 * var(--stv-rem));
-	--stv-context-menu-icon-font-size: var(--stv-font-size-xs);
-	--stv-context-menu-shortcut-color: var(--stv-text-color-4);
-	--stv-context-menu-shortcut-font-size: var(--stv-font-size-xs);
-	--stv-context-menu-danger-color: var(--stv-danger-text-color);
-	--stv-context-menu-danger-bg-hover: var(--base-danger-bg-subtle, light-dark(color-mix(in srgb, var(--stv-danger-color) 10%, transparent), color-mix(in srgb, var(--stv-danger-color) 20%, transparent)));
-	--stv-context-menu-divider-color: var(--stv-border-color);
-	--stv-context-menu-divider-margin: var(--stv-spacing-sm) 0;
-	--stv-context-menu-divider-label-color: var(--stv-text-color-4);
-	--stv-context-menu-disabled-opacity: var(--stv-disabled-opacity);
+	--_km-menu-z-index: var(--stv-context-menu-z-index);
+	--_km-menu-bg: var(--stv-context-menu-bg);
+	--_km-menu-hover-bg: var(--stv-context-menu-bg-hover);
+	--_km-menu-hover-color: var(--stv-context-menu-text-color-hover);
+	--_km-menu-text-color: var(--stv-context-menu-text-color);
+	--_km-menu-border: var(--stv-context-menu-border);
+	--_km-menu-border-radius: var(--stv-context-menu-border-radius);
+	--_km-menu-shadow: var(--stv-context-menu-box-shadow);
+	--_km-menu-min-width: var(--stv-context-menu-min-width);
+	--_km-menu-padding: var(--stv-context-menu-padding);
+	--_km-menu-font-size: var(--stv-context-menu-font-size);
+	--_km-menu-item-padding: var(--stv-context-menu-item-padding);
+	--_km-menu-item-gap: var(--stv-context-menu-item-gap);
+	--_km-menu-toggled-color: var(--stv-context-menu-toggled-color);
+	--_km-menu-icon-size: var(--stv-context-menu-icon-width);
+	--_km-menu-icon-font-size: var(--stv-context-menu-icon-font-size);
+	--_km-menu-arrow-font-size: var(--stv-context-menu-arrow-font-size);
+	--_km-menu-shortcut-color: var(--stv-context-menu-shortcut-color);
+	--_km-menu-shortcut-font-size: var(--stv-context-menu-shortcut-font-size);
+	--_km-menu-divider-label-color: var(--stv-context-menu-divider-label-color);
+	--_km-menu-danger-color: var(--stv-context-menu-danger-color);
+	--_km-menu-danger-hover-bg: var(--stv-context-menu-danger-bg-hover);
+	--_km-menu-divider-color: var(--stv-context-menu-divider-color);
+	--_km-menu-divider-margin: var(--stv-context-menu-divider-margin);
+	--_km-menu-disabled-opacity: var(--stv-context-menu-disabled-opacity);
 
 	/* -------------------------------------------------------------------------
 	   LOADING OVERLAY + SPINNERS

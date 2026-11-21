@@ -588,7 +588,7 @@
 		background-color: rgba(0, 0, 0, 0.05);
 	}
 
-	:global(.stv__context-menu) {
+	:global(.km-menu) {
 		position: fixed;
 		background: white;
 		border: 1px solid #ccc;

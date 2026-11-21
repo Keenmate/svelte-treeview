@@ -23,6 +23,8 @@ export interface TreeLabels {
 	'messages.noResults': string;
 	/** Default drop-placeholder text (when no `dropPlaceholder` snippet is given). */
 	'messages.dropHere': string;
+	/** The loading row of a lazy context submenu (`getChildrenCallback` still resolving). */
+	'messages.loading': string;
 	/** Shown for a node that has no display value. */
 	'labels.noDisplayValue': string;
 	/** Floating drop pads over a hovered node (`dropZoneMode: 'floating'`): drop before the node. */
@@ -35,6 +37,8 @@ export interface TreeLabels {
 	'ariaLabels.loading': string;
 	/** Accessible label of the trailing info button on a clipped node label (`nodeTitleOverflow: 'info'`). */
 	'ariaLabels.showFullLabel': string;
+	/** Accessible label of the context menu sheet / drawer close button (`menuPresentation`). */
+	'ariaLabels.closeSheet': string;
 	/** Built-in context-menu items (texts of the built-in action names). */
 	'menuItems.copy': string;
 	'menuItems.cut': string;
@@ -49,6 +53,8 @@ export interface TreeLabels {
 	'menuItems.sort': string;
 	'menuItems.sortSubtree': string;
 	'menuItems.sortAll': string;
+	/** The row on top of a drilled-in submenu in the context menu sheet / drawer (goes up one level). */
+	'menuItems.back': string;
 }
 
 /** Built-in English strings. */
@@ -56,12 +62,14 @@ export const DEFAULT_LABELS: Readonly<TreeLabels> = Object.freeze({
 	'messages.noData': 'No data',
 	'messages.noResults': 'No results found',
 	'messages.dropHere': 'Drop here',
+	'messages.loading': 'Loading…',
 	'labels.noDisplayValue': '[N/A]',
 	'labels.dropBefore': 'Before',
 	'labels.dropAfter': 'After',
 	'labels.dropChild': 'Child',
 	'ariaLabels.loading': 'Loading…',
 	'ariaLabels.showFullLabel': 'Show full label',
+	'ariaLabels.closeSheet': 'Close',
 	'menuItems.copy': 'Copy',
 	'menuItems.cut': 'Cut',
 	'menuItems.paste': 'Paste',
@@ -74,7 +82,8 @@ export const DEFAULT_LABELS: Readonly<TreeLabels> = Object.freeze({
 	'menuItems.collapseAll': 'Collapse all',
 	'menuItems.sort': 'Sort',
 	'menuItems.sortSubtree': 'Sort subtree',
-	'menuItems.sortAll': 'Sort all'
+	'menuItems.sortAll': 'Sort all',
+	'menuItems.back': 'Back'
 });
 
 /** A tree's `labels` prop: short keys (`messages.noData`) and / or full keys (`svelte-treeview.messages.noData`). */

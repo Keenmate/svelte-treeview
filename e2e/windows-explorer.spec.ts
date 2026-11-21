@@ -144,10 +144,10 @@ test.describe('Windows File Explorer demo', () => {
 
 	test('right-click opens the library context menu; Delete removes the item', async ({ page }) => {
 		await rowContent(page, 'Branding').click({ button: 'right' });
-		const menu = page.locator('.stv__context-menu').first();
+		const menu = page.locator('.km-menu:not(.km-menu--submenu)').first();
 		await expect(menu).toBeVisible();
-		await expect(menu.locator('.stv__context-menu-item', { hasText: 'Open' })).toBeVisible();
-		await menu.locator('.stv__context-menu-item', { hasText: 'Delete' }).click();
+		await expect(menu.locator('.km-menu__item', { hasText: 'Open' })).toBeVisible();
+		await menu.locator('.km-menu__item', { hasText: 'Delete' }).click();
 		await expect(row(page, 'Branding')).toHaveCount(0);
 	});
 
@@ -155,9 +155,9 @@ test.describe('Windows File Explorer demo', () => {
 		// The demo's menu callback does NOT call the close() argument — the library
 		// auto-closes after a leaf item is activated.
 		await rowContent(page, 'Fonts').click({ button: 'right' });
-		await expect(page.locator('.stv__context-menu')).toBeVisible();
-		await page.locator('.stv__context-menu-item', { hasText: 'Copy path' }).click();
-		await expect(page.locator('.stv__context-menu')).toHaveCount(0);
+		await expect(page.locator('.km-menu:not(.km-menu--submenu)')).toBeVisible();
+		await page.locator('.km-menu__item', { hasText: 'Copy path' }).click();
+		await expect(page.locator('.km-menu:not(.km-menu--submenu)')).toHaveCount(0);
 	});
 
 	test('New folder creates it (nav + contents); Delete removes it; nav stays expanded', async ({ page }) => {

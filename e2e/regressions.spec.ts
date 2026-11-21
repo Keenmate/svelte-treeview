@@ -86,13 +86,13 @@ test.describe('context menu', () => {
 		const x = Math.round(r.x + 10);
 		const y = Math.round(r.y + 5);
 		await page.mouse.click(x, y, { button: 'right' });
-		const menu = (await main(page).locator('.stv__context-menu').boundingBox())!;
+		const menu = (await main(page).locator('.km-menu:not(.km-menu--submenu)').boundingBox())!;
 		expect(Math.round(menu.x - x)).toBe(8);
 	});
 
 	test('R7: named-key item shortcuts fire (F2, Del alias)', async ({ page }) => {
 		await label(page, '1.1').click({ button: 'right' });
-		await expect(main(page).locator('.stv__context-menu')).toBeVisible();
+		await expect(main(page).locator('.km-menu:not(.km-menu--submenu)')).toBeVisible();
 		await page.keyboard.press('F2');
 		await expect(page.getByTestId('shortcut-hits')).toHaveText('F2;');
 		await label(page, '1.1').click({ button: 'right' });
@@ -103,9 +103,9 @@ test.describe('context menu', () => {
 	test('B4: Escape closes a snippet (contextMenu) menu', async ({ page }) => {
 		const section = page.getByTestId('snippet-section');
 		await section.locator('.stv__node[data-tree-path="1"] .stv__node-label').click({ button: 'right' });
-		await expect(section.locator('.stv__context-menu')).toBeVisible();
+		await expect(section.locator('.km-menu:not(.km-menu--submenu)')).toBeVisible();
 		await page.keyboard.press('Escape');
-		await expect(section.locator('.stv__context-menu')).toHaveCount(0);
+		await expect(section.locator('.km-menu:not(.km-menu--submenu)')).toHaveCount(0);
 	});
 });
 

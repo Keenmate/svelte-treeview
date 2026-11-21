@@ -17,6 +17,150 @@
       "rule": "C2",
       "file": "vendor/core/dom/render-icon.test.ts",
       "reason": "Core's vendored renderIcon unit test asserts the markup string renderIcon emits (the transparent fallback keeps an unset token from masking a solid square) — a string literal, not a CSS read."
+    },
+    {
+      "token": "--base-shadow-color",
+      "rule": "C2",
+      "file": "vendor/core/menu/styles.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-border-color",
+      "rule": "C3",
+      "file": "vendor/core/menu/styles.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-text-color-3",
+      "rule": "C3",
+      "file": "vendor/core/menu/styles.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-danger-color",
+      "rule": "C2",
+      "file": "vendor/core/menu/styles.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-elevated-bg",
+      "rule": "C3",
+      "file": "vendor/core/menu/styles.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-main-bg",
+      "rule": "C2",
+      "file": "vendor/core/menu/styles.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-text-color-1",
+      "rule": "C2",
+      "file": "vendor/core/menu/styles.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-font-family",
+      "rule": "C2",
+      "file": "vendor/core/menu/styles.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-hover-bg",
+      "rule": "C3",
+      "file": "vendor/core/menu/styles.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-touch-target-min",
+      "rule": "C1",
+      "file": "vendor/core/menu/styles.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-dropdown-border",
+      "rule": "C3",
+      "file": "vendor/core/menu/styles.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-dropdown-box-shadow",
+      "rule": "C3",
+      "file": "vendor/core/menu/styles.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-danger-bg-subtle",
+      "rule": "C3",
+      "file": "vendor/core/menu/styles.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-primary-color",
+      "rule": "C2",
+      "file": "vendor/core/menu/styles.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-overlay-bg",
+      "rule": "C2",
+      "file": "vendor/core/menu/styles.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-touch-target-min",
+      "rule": "C1",
+      "file": "vendor/core/overlay/sheet-chrome.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-hover-bg",
+      "rule": "C3",
+      "file": "vendor/core/overlay/sheet-chrome.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-border-color",
+      "rule": "C3",
+      "file": "vendor/core/overlay/sheet-chrome.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-icon-close",
+      "rule": "C2",
+      "file": "vendor/core/overlay/sheet-chrome.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-primary-color",
+      "rule": "C2",
+      "file": "vendor/core/overlay/sheet-chrome.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-elevated-bg",
+      "rule": "C3",
+      "file": "vendor/core/overlay/sheet-chrome.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-main-bg",
+      "rule": "C2",
+      "file": "vendor/core/overlay/sheet-chrome.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-text-color-1",
+      "rule": "C2",
+      "file": "vendor/core/overlay/sheet-chrome.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
+    },
+    {
+      "token": "--base-shadow-color",
+      "rule": "C2",
+      "file": "vendor/core/overlay/sheet-chrome.ts",
+      "reason": "Core's own fallback in the vendored context menu (web-components-core /menu, /overlay — byte-for-byte copies, scripts/core-sync.json). Fix it in core, then re-sync; never edit the copy."
     }
   ]
 }

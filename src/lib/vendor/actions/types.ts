@@ -1,4 +1,4 @@
-// Vendored from @keenmate/web-components-core dd29c43 — src/actions/types.ts (tracked in scripts/core-sync.json).
+// Vendored from @keenmate/web-components-core 3d40786 — src/actions/types.ts (tracked in scripts/core-sync.json).
 // Adapted (see README.md): `ComponentContext` is declared locally (svelte has no host element). Keep in sync by re-copying; don't diverge.
 /** The context every ctx carries (core: `controller` + `element`; svelte-treeview: `controller`). */
 export interface ComponentContext<C = unknown> {
@@ -40,7 +40,11 @@ export interface ActionItem<Ctx = ComponentContext, A extends string = string> {
   /** Icon — the component's icon convention (class name, glyph, or markup). */
   icon?: string;
   tooltip?: string;
-  /** Display hint for the key chord (`'Ctrl+D'`). Whether it is also bound is the component's call. */
+  /**
+   * The key chord (`'Ctrl+D'`, `'Mod+S'`, `'F2'`, a sequence `'g f'` — the `/actions` shortcut syntax). Menus
+   * show it formatted for the platform (`formatShortcut`) and run the item on it while open; binding it
+   * page- or component-wide is the component's call (`bindShortcuts`). Free text (`'right-click'`) shows as is.
+   */
   shortcut?: string;
   /** Extra CSS classes on the item. */
   cssClass?: string;

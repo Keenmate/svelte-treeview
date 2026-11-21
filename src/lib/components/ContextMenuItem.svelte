@@ -2,8 +2,14 @@
 	import { getContext, type Snippet } from 'svelte';
 	import type { TreeController } from '../core/TreeController.svelte.js';
 	import { renderIcon } from '../vendor/core/dom/render-icon.js';
+	import { formatShortcut } from '../vendor/actions/shortcut.js';
 	import { computePosition, autoUpdate, offset, flip, shift } from '@floating-ui/dom';
 
+	/**
+	 * One item of a `contextMenu` snippet. The snippet renders into core `openMenu()`'s custom-menu
+	 * element (Tree.svelte), so the item carries core's `/menu` markup — `km-menu__item` + icon /
+	 * label / shortcut spans, the same classes and styles as a `getContextMenuItemsCallback` item.
+	 */
 	interface Props {
 		id?: string;
 		text: string;
@@ -34,15 +40,15 @@
 
 	const hasChildren = $derived(!!children);
 
-	// Icons go through core renderIcon like the callback menu: the enclosing tree's
-	// renderIconCallback (ctx.item = this item's props) → the page-wide hook → icon font / text.
+	// Icons go through core renderIcon like core's menu: the enclosing tree's renderIconCallback
+	// (ctx.item = this item's props) → the page-wide hook → icon font / text.
 	const controller = getContext<TreeController<unknown> | undefined>('TreeController');
 	const iconHtml = $derived(
 		!icon
 			? ''
 			: controller
 				? controller.renderMenuIconHtml(icon, { id, text, icon })
-				: renderIcon(icon, { prefix: 'stv', component: 'svelte-treeview', context: { item: { id, text, icon } } })
+				: renderIcon(icon, { component: 'svelte-treeview', context: { item: { id, text, icon } } })
 	);
 
 	let itemEl = $state<HTMLElement | null>(null);
@@ -57,6 +63,15 @@
 	function scheduleHide() {
 		if (hideTimeout) clearTimeout(hideTimeout);
 		hideTimeout = setTimeout(() => { submenuOpen = false; hideTimeout = null; }, 150);
+	}
+
+	async function activate() {
+		if (isDisabled || hasChildren) return;
+		try {
+			await onClick?.();
+		} catch (error) {
+			console.error('Context menu callback error:', error);
+		}
 	}
 
 	$effect(() => {
@@ -83,55 +98,43 @@
 <!-- svelte-ignore a11y_no_noninteractive_tabindex (role is menuitem | menuitemcheckbox) -->
 <div
 	bind:this={itemEl}
-	class="stv__context-menu-item {cssClass || ''}"
-	class:stv__context-menu-item--disabled={isDisabled}
-	class:stv__context-menu-item--danger={isDanger}
-	class:stv__context-menu-item--toggled={isToggled}
-	class:stv__context-menu-item--has-children={hasChildren}
-	data-context-menu-id={id}
+	class="km-menu__item {cssClass || ''}"
+	class:km-menu__item--disabled={isDisabled}
+	class:km-menu__item--danger={isDanger}
+	class:km-menu__item--toggled={isToggled}
+	class:km-menu__item--has-submenu={hasChildren}
+	data-id={id}
 	role={isToggled !== undefined ? 'menuitemcheckbox' : 'menuitem'}
 	aria-checked={isToggled !== undefined ? isToggled : undefined}
 	aria-disabled={isDisabled || undefined}
+	aria-haspopup={hasChildren ? 'menu' : undefined}
+	aria-expanded={hasChildren ? submenuOpen : undefined}
 	title={tooltip}
 	tabindex={isDisabled ? -1 : 0}
 	onmouseenter={() => { if (hasChildren) { cancelHide(); submenuOpen = true; } }}
 	onmouseleave={() => { if (hasChildren) scheduleHide(); }}
-	onclick={async () => {
-		if (!isDisabled && !hasChildren) {
-			try {
-				await onClick?.();
-			} catch (error) {
-				console.error('Context menu callback error:', error);
-			}
-		}
-	}}
-	onkeydown={async (e) => {
-		if ((e.key === 'Enter' || e.key === ' ') && !isDisabled && !hasChildren) {
+	onclick={activate}
+	onkeydown={(e) => {
+		if (e.key === 'Enter' || e.key === ' ') {
 			e.preventDefault();
-			try {
-				await onClick?.();
-			} catch (error) {
-				console.error('Context menu callback error:', error);
-			}
+			if (hasChildren) submenuOpen = true;
+			else activate();
 		}
 	}}
 >
 	{#if icon}
-		<span class="stv__context-menu-icon">{@html iconHtml}</span>
+		<span class="km-menu__icon" aria-hidden="true">{@html iconHtml}</span>
 	{/if}
-	<span class="stv__context-menu-label">{text}</span>
+	<span class="km-menu__label">{text}</span>
 	{#if shortcut}
-		<span class="stv__context-menu-shortcut">{shortcut}</span>
-	{/if}
-	{#if hasChildren}
-		<span class="stv__context-menu-arrow" aria-hidden="true"></span>
+		<span class="km-menu__shortcut">{formatShortcut(shortcut)}</span>
 	{/if}
 </div>
 
 {#if hasChildren && submenuOpen}
 	<div
 		bind:this={submenuEl}
-		class="stv__context-menu stv__context-submenu"
+		class="km-menu km-menu--submenu km-menu--custom"
 		role="menu"
 		tabindex="-1"
 		onmouseenter={cancelHide}

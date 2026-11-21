@@ -20,6 +20,10 @@
 	let log = $state<string[]>([]);
 	let isBlocking = $state(false);
 	let expanded = $state<Set<string>>(new Set());
+	let presentation = $state<'auto' | 'sheet'>('auto');
+	// A lazy submenu the test resolves (window.__resolveLazy) — core shows its loading row meanwhile.
+	let resolveLazy: (() => void) | null = null;
+	if (typeof window !== 'undefined') (window as any).__resolveLazy = () => resolveLazy?.();
 
 	function menu(ctx: TreeMenuContext<Item>): TreeMenuEntry<Item>[] {
 		// Called while the menu renders — record on a microtask (no state writes during render).
@@ -40,8 +44,16 @@
 			'sort',
 			{ action: 'sort-all', text: 'Sort everything' },
 			{ id: 'hidden', text: 'Hidden', isVisible: false },
-			{ id: 'custom', text: 'Custom', icon: '★', onClick: (d) => { log = [...log, `click:${d.id}:${d.path}`]; } },
-			{ id: 'parent', text: 'More', children: [{ id: 'child', text: 'Child item', onClick: (d) => { log = [...log, `click:${d.id}`]; } }] }
+			{ id: 'custom', text: 'Custom', icon: '★', shortcut: 'Ctrl+K', onClick: (d) => { log = [...log, `click:${d.id}:${d.path}`]; } },
+			{ id: 'parent', text: 'More', children: [{ id: 'child', text: 'Child item', onClick: (d) => { log = [...log, `click:${d.id}`]; } }] },
+			{
+				id: 'lazy',
+				text: 'Lazy',
+				getChildrenCallback: () =>
+					new Promise<TreeMenuEntry<Item>[]>((resolve) => {
+						resolveLazy = () => resolve([{ id: 'loaded', text: 'Loaded item' }]);
+					})
+			}
 		];
 	}
 
@@ -58,6 +70,7 @@
 <main>
 	<button data-testid="block" onclick={() => (isBlocking = !isBlocking)}>block: {isBlocking}</button>
 	<button data-testid="clear-log" onclick={() => (log = [])}>clear</button>
+	<button data-testid="sheet" onclick={() => (presentation = presentation === 'sheet' ? 'auto' : 'sheet')}>presentation: {presentation}</button>
 	<pre data-testid="log">{JSON.stringify(log)}</pre>
 	<pre data-testid="expanded">{JSON.stringify([...expanded].sort())}</pre>
 
@@ -71,6 +84,7 @@
 			selectionMode="multiple"
 			labels={{ 'menuItems.copy': 'Kopírovat' }}
 			getContextMenuItemsCallback={menu}
+			menuPresentation={presentation}
 			beforeActionCallback={before}
 			onAction={(d) => (log = [...log, `action:${d.action}:${d.id ?? '-'}:${d.source}`])}
 		/>

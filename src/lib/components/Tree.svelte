@@ -1,8 +1,8 @@
 <script lang="ts" generics="T">
 	import type { Index, SearchOptions } from 'flexsearch';
 	import Node from './Node.svelte';
-	import ContextMenuLevel from './ContextMenuLevel.svelte';
-	import { computePosition, autoUpdate, offset, flip, shift } from '@floating-ui/dom';
+	import { openMenu } from '../vendor/core/menu/open-menu.js';
+	import type { MenuDrawerSide, MenuHandle, MenuPresentation } from '../vendor/core/menu/types.js';
 	import { matchesShortcut, isTypingTarget } from '../vendor/actions/shortcut.js';
 	import { type LTreeNode } from '../ltree/ltree-node.svelte.js';
 	import {
@@ -65,8 +65,7 @@
 	import { getPageLoaderCallback, pageLoader } from '../core/loader.js';
 	import { createTreeController } from '../core/createTreeController.js';
 	import type { TreeNavigationOverrides } from '../core/navigation.js';
-	import type { TreeMenuContext, TreeMenuEntry, TreeMenuItem, TreeActionEventDetail } from '../core/menu.js';
-	import { resolveMenuEntries } from '../vendor/actions/resolve.js';
+	import type { TreeMenuContext, TreeMenuEntry, TreeAction, TreeActionEventDetail } from '../core/menu.js';
 	import { containerSize as trackContainerSize, environmentState } from '../core/responsive.svelte.js';
 	import { classifyDevice, getEnvironment } from '../vendor/core/environment/environment.js';
 	import type { ElementSize } from '../vendor/core/environment/element-size.js';
@@ -490,6 +489,12 @@
 		scrollHighlightClass?: string | null | undefined;
 		contextMenuXOffset?: number | null | undefined;
 		contextMenuYOffset?: number | null | undefined;
+		/** How the context menu opens (core `menuPresentation`, same as web-treeview): `'auto'`
+		 *  (default — a bottom sheet on a phone, else floating), `'floating'`, `'sheet'` or
+		 *  `'drawer'`. Read when the menu opens. */
+		menuPresentation?: MenuPresentation | null | undefined;
+		/** The edge a `'drawer'` context menu slides in from (core `menuSide`): `'start'` (default) or `'end'`. */
+		menuSide?: MenuDrawerSide | null | undefined;
 
 		/** Milliseconds to hold a touch before a touch-drag engages (long-press). Default 300. */
 		touchDragDelay?: number | null | undefined;
@@ -695,6 +700,8 @@
 		scrollHighlightClass = 'stv__node-content--scroll-highlight',
 		contextMenuXOffset = 8,
 		contextMenuYOffset = 0,
+		menuPresentation = 'auto',
+		menuSide = 'start',
 		touchDragDelay = 300,
 		shouldIndicateUndraggable = true,
 		beforeKeydownCallback,
@@ -894,6 +901,10 @@
 	$effect(() => {
 		if (treeContainerRef) {
 			controller.containerElement = treeContainerRef;
+			// Core's /menu asks its host's `renderIconCallback` for item icons (a web component's
+			// own input): the container answers with this tree's hook (ctx.item).
+			(treeContainerRef as HTMLElement & { renderIconCallback?: unknown }).renderIconCallback =
+				controller.menuRenderIconCallback;
 		}
 	});
 
@@ -955,50 +966,94 @@
 		nodeRenderEnv.container = { width: _box.width, height: _box.height };
 	});
 
-	// ── Context menu element + Floating UI positioning ─────────────────
-	let contextMenuEl = $state<HTMLDivElement | null>(null);
+	// ── Context menu (core /menu `openMenu()` — the same menu as web-treeview) ─────
+	// Core renders it, positions it, dismisses it (outside press, scroll, blur, Escape, Tab, phone
+	// Back) and runs the WAI-ARIA menu keyboard; a phone gets the sheet / drawer (`menuPresentation`).
+	// It opens once per (node, point) and reports its own close back to the controller. A
+	// `contextMenu` snippet renders into a host below and moves into core's custom-menu element.
+	let contextMenuHandle: MenuHandle | null = null;
+	let snippetMenuHost = $state<HTMLDivElement | null>(null);
+	/** The next open came from the keyboard (Shift+F10 / ContextMenu) → focus its first item. */
+	let isMenuOpeningFromKeyboard = false;
+	// Core owns the dismiss; the controller's own (for headless renderers — canvas) stays off.
+	controller.shouldAutoCloseContextMenu = false;
 	$effect(() => {
-		if (!controller.contextMenuVisible || !contextMenuEl) return;
-		// Track position + target so the effect re-runs (tears down the old autoUpdate
-		// and re-anchors) when a right-click moves the menu to a DIFFERENT node while
-		// it's already open — otherwise autoUpdate only recomputes on scroll/resize and
-		// the menu stays stuck at the first node's position.
-		void controller.contextMenuX;
-		void controller.contextMenuY;
-		void controller.contextMenuNode;
-		// contextMenuX/Y already include contextMenuXOffset/YOffset (controller.openContextMenu —
-		// the canvas package reads them as-is); adding them here again doubled the offset.
-		const virtualRef = {
-			getBoundingClientRect: () => {
-				const ax = controller.contextMenuX;
-				const ay = controller.contextMenuY;
-				return {
-					x: ax,
-					y: ay,
-					width: 0,
-					height: 0,
-					top: ay,
-					left: ax,
-					right: ax,
-					bottom: ay,
-					toJSON() {
-						return this;
+		const node = controller.contextMenuNode;
+		const host = controller.containerElement;
+		// contextMenuX/Y already include contextMenuXOffset/YOffset (controller.openContextMenu).
+		const at = { x: controller.contextMenuX, y: controller.contextMenuY };
+		const isSnippet = !getContextMenuItemsCallback && !!contextMenu;
+		const snippetHost = snippetMenuHost;
+		if (!controller.contextMenuVisible || !node || !host) return;
+		if (isSnippet && !snippetHost) return; // the snippet renders first, then moves into the menu
+		return untrack(() => {
+			const isFromKeyboard = isMenuOpeningFromKeyboard;
+			isMenuOpeningFromKeyboard = false;
+			// One surface ctx per open: every item callback, onClick and submenu share it.
+			const ctx = controller.menuContext(node);
+			const menu: MenuHandle = openMenu<TreeMenuContext<T>, TreeAction>(
+				isSnippet ? [] : (getContextMenuItemsCallback?.(ctx) ?? []),
+				ctx,
+				{
+					at,
+					host,
+					shouldFocusFirst: isFromKeyboard,
+					returnFocusTo: host,
+					// The node's text names the menu: the phone sheet's header and the menu's aria-label.
+					title: controller.tree?.getNodeDisplayValue(node) || node.path,
+					presentation: menuPresentation ?? 'auto',
+					side: menuSide ?? 'start',
+					// The tree's own strings: a lazy submenu's loading row, the sheet's back / close buttons.
+					labels: {
+						loading: controller.getLabel('messages.loading'),
+						back: controller.getLabel('menuItems.back'),
+						close: controller.getLabel('ariaLabels.closeSheet')
+					},
+					defaults: (item) => controller.menuItemDefaults(item, ctx),
+					renderMenuCallback:
+						isSnippet && snippetHost ? (el) => el.appendChild(snippetHost) : undefined,
+					runAction: (item, { triggerElement, sourceEvent }) =>
+						controller.activateMenuItem(item, ctx, triggerElement, sourceEvent),
+					onClose: () => {
+						if (contextMenuHandle !== menu) return; // replaced by a newer open / torn down
+						contextMenuHandle = null;
+						if (controller.contextMenuVisible) controller.closeContextMenu();
 					}
-				};
+				}
+			);
+			if (!menu.isOpen) {
+				// No visible item — nothing was shown; keep the controller in sync.
+				controller.closeContextMenu();
+				return;
 			}
-		};
-		const menu = contextMenuEl;
-		return autoUpdate(virtualRef, menu, () => {
-			computePosition(virtualRef, menu, {
-				strategy: 'fixed',
-				placement: 'bottom-start',
-				middleware: [offset(0), flip(), shift({ padding: 8 })]
-			}).then(({ x, y }) => {
-				menu.style.left = `${x}px`;
-				menu.style.top = `${y}px`;
-			});
+			contextMenuHandle = menu;
+			return () => {
+				if (contextMenuHandle === menu) contextMenuHandle = null;
+				menu.close();
+			};
 		});
 	});
+
+	/** Shift+F10 / the ContextMenu key: the focused node's menu, below its row, first item focused. */
+	function openContextMenuFromKeyboard(): boolean {
+		if (!contextMenu && !getContextMenuItemsCallback) return false;
+		const node = controller.focusedNode;
+		if (!node || !treeContainerRef) return false;
+		const row = treeContainerRef.querySelector(
+			`[data-tree-path="${CSS.escape(node.path)}"] .stv__node-content`
+		);
+		const rect = (row ?? treeContainerRef).getBoundingClientRect();
+		isMenuOpeningFromKeyboard = true;
+		// At the node's inline-start corner (the right edge in a right-to-left tree). openContextMenu
+		// adds the cursor offsets; take them back off — a keyboard menu sits on the row.
+		const isRtl = getComputedStyle(treeContainerRef).direction === 'rtl';
+		controller.openContextMenu(
+			node.path,
+			(isRtl ? rect.right : rect.left) - controller.contextMenuXOffset,
+			rect.bottom - controller.contextMenuYOffset
+		);
+		return true;
+	}
 
 	// ── Sync props → controller (one-way: parent prop changes flow in) ─
 	// `nodes` is input AND current state: the controller writes the tree's data back after a
@@ -1882,6 +1937,8 @@
 				| 'scrollHighlightClass'
 				| 'contextMenuXOffset'
 				| 'contextMenuYOffset'
+				| 'menuPresentation'
+				| 'menuSide'
 				| 'touchDragDelay'
 				| 'shouldIndicateUndraggable'
 				| 'shouldExpandAsAccordion'
@@ -2052,6 +2109,8 @@
 			scrollHighlightClass = updates.scrollHighlightClass;
 		if (updates.contextMenuXOffset !== undefined) contextMenuXOffset = updates.contextMenuXOffset;
 		if (updates.contextMenuYOffset !== undefined) contextMenuYOffset = updates.contextMenuYOffset;
+		if (updates.menuPresentation !== undefined) menuPresentation = updates.menuPresentation;
+		if (updates.menuSide !== undefined) menuSide = updates.menuSide;
 		if (updates.touchDragDelay !== undefined) touchDragDelay = updates.touchDragDelay;
 		if (updates.shouldIndicateUndraggable !== undefined)
 			shouldIndicateUndraggable = updates.shouldIndicateUndraggable;
@@ -2089,6 +2148,12 @@
 		// A key typed into a field inside a row (an <input> in a nodeTemplate) belongs to that
 		// field — no built-in shortcut (Delete, Ctrl+C/V) and no navigation (arrows, Backspace).
 		if (isTypingTarget(event)) return;
+
+		// Shift+F10 / the ContextMenu key open the focused node's context menu.
+		if (matchesShortcut(event, 'ContextMenu') || matchesShortcut(event, 'Shift+F10')) {
+			if (openContextMenuFromKeyboard()) event.preventDefault();
+			return;
+		}
 
 		// Built-in opt-in shortcuts (copy/cut/paste/delete/esc). Runs AFTER the consumer
 		// hook (so it can override) but BEFORE the empty-tree return (so paste works into
@@ -2166,53 +2231,8 @@
 
 		if (handled) event.preventDefault();
 	}
-
-	// ── Context menu keyboard shortcut handling ──────────────────────────
-	/** A visible, enabled item (this level or a static submenu) whose `shortcut` matches. */
-	function findItemByShortcut(
-		entries: TreeMenuEntry<T>[],
-		menuCtx: TreeMenuContext<T>,
-		event: KeyboardEvent
-	): TreeMenuItem<T> | null {
-		const resolved = resolveMenuEntries(entries, menuCtx, (item) =>
-			controller.menuItemDefaults(item, menuCtx)
-		);
-		for (const entry of resolved) {
-			if (entry.kind !== 'item' || entry.resolved.isDisabled) continue;
-			// Core shortcut syntax (vendor/actions/shortcut.ts): named keys ('F2', 'Delete', 'Del'),
-			// Cmd/Mod — the old hand-rolled parser lower-cased 'F2' but not the event key.
-			if (matchesShortcut(event, entry.resolved.shortcut)) return entry.item;
-			// Search static submenus too
-			if (entry.item.children?.length) {
-				const found = findItemByShortcut(entry.item.children as TreeMenuEntry<T>[], menuCtx, event);
-				if (found) return found;
-			}
-		}
-		return null;
-	}
-
-	async function handleContextMenuKeydown(event: KeyboardEvent) {
-		if (!controller.contextMenuVisible || !controller.contextMenuNode) return;
-
-		// Escape closes BOTH menu kinds — it used to sit behind the callback guard, so a
-		// snippet (`contextMenu`) menu never closed and the tree keyboard stayed dead.
-		if (event.key === 'Escape') {
-			controller.closeContextMenu();
-			return;
-		}
-		if (!getContextMenuItemsCallback) return;
-
-		const menuCtx = controller.menuContext(controller.contextMenuNode);
-		const match = findItemByShortcut(getContextMenuItemsCallback(menuCtx), menuCtx, event);
-		if (match) {
-			event.preventDefault();
-			await controller.activateMenuItem(match, menuCtx, undefined, event);
-			if (match.shouldCloseOnClick !== false) controller.closeContextMenu();
-		}
-	}
 </script>
 
-<svelte:window onkeydown={handleContextMenuKeydown} />
 
 <!-- Empty-tree drop zone. Shared by all render modes (virtual / flat / recursive)
      and the no-container fallback. Shows the drop placeholder mid-drag, or
@@ -2259,6 +2279,11 @@
 	data-tree-id={controller.treeId}
 	bind:this={treeContainerRef}
 	onkeydown={handleTreeKeydown}
+	oncontextmenu={(e) => {
+		// The browser's keyboard-initiated `contextmenu` (Shift+F10 / ContextMenu key) targets the
+		// focused container — ours is already open, don't show the native one too.
+		if (controller.contextMenuVisible && e.target === treeContainerRef) e.preventDefault();
+	}}
 >
 	{@render treeHeader?.()}
 
@@ -2376,24 +2401,14 @@
 		</div>
 	{/if}
 
-	<!-- Context Menu -->
-	{#if controller.contextMenuVisible && controller.contextMenuNode}
-		<div bind:this={contextMenuEl} class="stv__context-menu" role="menu">
-			{#if getContextMenuItemsCallback}
-				{@const menuCtx = controller.menuContext(controller.contextMenuNode)}
-				{@const menuEntries = getContextMenuItemsCallback(menuCtx)}
-				<ContextMenuLevel
-					entries={menuEntries}
-					{menuCtx}
-					{controller}
-					closeContextMenu={controller.closeContextMenu.bind(controller)}
-				/>
-			{:else if contextMenu}
-				{@render contextMenu(
-					controller.contextMenuNode,
-					controller.closeContextMenu.bind(controller)
-				)}
-			{/if}
+	<!-- Context menu snippet: rendered here, moved into core's custom-menu element (openMenu's
+	     renderMenuCallback, the effect above) — the callback menu is all core's. -->
+	{#if controller.contextMenuVisible && controller.contextMenuNode && contextMenu && !getContextMenuItemsCallback}
+		<div bind:this={snippetMenuHost} class="stv__context-menu-content" role="menu">
+			{@render contextMenu(
+				controller.contextMenuNode,
+				controller.closeContextMenu.bind(controller)
+			)}
 		</div>
 	{/if}
 </div>

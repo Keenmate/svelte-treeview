@@ -30,6 +30,14 @@ last synced against is listed in [`scripts/core-sync.json`](../../../../scripts/
   `locale.test.ts` isn't copied (needs BlissElement) — e2e `page-labels` + `core/labels.test.ts` cover it.
 - `dom/render-icon.ts` — icons (SPEC §12.33): `renderIcon` + `ICON_CSS` + the page-wide
   `window.components.renderIconCallback`. The node and context-menu icons render through it.
+- `menu/` — the context menu (SPEC §12.13): `open-menu.ts` (`openMenu()` — rendering, submenus incl.
+  lazy ones, positioning, dismiss, the WAI-ARIA keyboard, the phone sheet / drawer), `styles.ts`
+  (`MENU_CSS`, the `--km-menu-*` variables), `types.ts`. `Tree.svelte` opens it (the same menu as
+  web-treeview); its only edit is the `/actions` import path (`../../actions/`, svelte's adapted copy).
+  `inputs.ts` isn't copied (BlissElement input rows) — `menuPresentation` / `menuSide` are props.
+  It brings `overlay/` (one overlay open at a time, sheet session + chrome, scroll lock, keyboard
+  inset, phone Back), `positioning/` (anchor, scroll close, containing block, theme inherit) and
+  `dom/active-element`, `dom/direction`.
 - `global/` (`shared-state`, `page-setting`), `dom/` (`composed-tree`, `once`, `throttle`,
   `frame-scheduler`, `adopt-styles`, `escape-html`) — the helpers the above import.
 

@@ -177,7 +177,7 @@ The tree emits BEM-style classes (`stv__<element>` / `stv__<element>--<modifier>
 - `.stv__node` — individual node container
 - `.stv__node-content` — node content area
 - `.stv__toggle-icon` — expand/collapse icons
-- `.stv__context-menu` — context menu
+- `.km-menu` — context menu (core `openMenu()`; theme via `--stv-context-menu-*` / page-wide `--km-menu-*`)
 
 ### Pre-built selected node styles
 

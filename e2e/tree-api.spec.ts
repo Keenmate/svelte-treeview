@@ -51,7 +51,7 @@ test('navNext / navPrev move through the visible nodes', async ({ page }) => {
 
 test('openContextMenu(path, x, y) opens the menu for that node', async ({ page }) => {
 	await page.getByTestId('menu').click();
-	await expect(page.locator('.stv__context-menu .stv__context-menu-label')).toHaveText('Menu for 3');
+	await expect(page.locator('.km-menu:not(.km-menu--submenu) .km-menu__label')).toHaveText('Menu for 3');
 });
 
 test('event ctxs carry a non-enumerable controller', async ({ page }) => {

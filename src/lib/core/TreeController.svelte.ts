@@ -1153,6 +1153,9 @@ export class TreeController<T> {
 	contextMenuX = $state(0);
 	contextMenuY = $state(0);
 	contextMenuNode: LTreeNode<T> | null = $state.raw(null);
+	/** Close the open context menu on an outside click / contextmenu, a scroll or a wheel — for a
+	 *  renderer drawing its own menu (canvas). Tree.svelte sets it `false`: core's menu dismisses itself. */
+	shouldAutoCloseContextMenu = true;
 
 	// Scroll highlight
 	currentSelection: {
@@ -1356,11 +1359,28 @@ export class TreeController<T> {
 		this._renderIconHtml(value, { ...ctx, node, controller: this });
 
 	/**
-	 * A context-menu item's icon markup — core `renderIcon` like the node icons (and like core's
-	 * `/menu` in web-treeview): this tree's `renderIconCallback` gets `ctx.item` (no `node`).
+	 * The icon hook core's `/menu` reads off its host (`host.renderIconCallback` — Tree.svelte puts
+	 * it on `.stv__container`): this tree's `renderIconCallback` with `ctx.item` (no `node`) +
+	 * `component: 'svelte-treeview'`, `prefix: 'stv'`, `controller`. `null` → the page-wide hook.
 	 */
-	renderMenuIconHtml = (value: string, item: unknown): string =>
-		this._renderIconHtml(value, { item, controller: this });
+	readonly menuRenderIconCallback: RenderIconCallback = (name, ctx) => {
+		const hook = this.renderIconCallback as RenderIconCallback | null | undefined;
+		return hook ? hook(name, { ...ctx, component: LABELS_TAG, prefix: 'stv', controller: this } as IconRenderContext) : null;
+	};
+
+	/**
+	 * A `contextMenu`-snippet item's icon markup (`ContextMenuItem`) — exactly what core's `/menu`
+	 * renders for a callback item: `renderIcon(value, { host, context: { item } })` through
+	 * {@link menuRenderIconCallback} (no `prefix`: icon-font classes render as given).
+	 */
+	renderMenuIconHtml = (value: string, item: unknown): string => {
+		if (typeof window !== 'undefined' && !this.containerElement) return '';
+		return renderIcon(value, {
+			host: this.containerElement,
+			renderIconCallback: this.menuRenderIconCallback,
+			context: { item }
+		});
+	};
 
 	private _renderIconHtml(value: string, context: Record<string, unknown>): string {
 		// SSR renders without hooks (no window). Svelte never repairs an {@html} mismatch while
@@ -1767,9 +1787,10 @@ export class TreeController<T> {
 			}
 		});
 
-		// Context menu global event listeners
+		// Context menu global event listeners — for a headless renderer (canvas) drawing its own
+		// menu. Tree.svelte turns them off: its menu is core openMenu(), which dismisses itself.
 		$effect(() => {
-			if (this.contextMenuVisible) {
+			if (this.contextMenuVisible && this.shouldAutoCloseContextMenu) {
 				const handleGlobalClick = (event: MouseEvent) => {
 					const target = event.target as Element;
 					if (!target.closest('.stv__context-menu')) {

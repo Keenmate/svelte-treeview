@@ -156,8 +156,8 @@
 </header>
 
 <div class="note">
-	<p class="note-title">Positioning is handled by Floating UI</p>
-	<p>The menu and its submenus are placed by <a href="https://floating-ui.com/" target="_blank" rel="noopener"><code>@floating-ui/dom</code></a> (a runtime dependency). It uses <code>computePosition</code> with <code>offset</code>, <code>flip</code>, and <code>shift</code> middleware so the menu stays inside the viewport — submenus automatically flip to the left edge when there's no room on the right, and <code>autoUpdate</code> keeps everything anchored on scroll/resize. The <code>contextMenuXOffset</code>/<code>contextMenuYOffset</code> props feed into the root menu's offset from the cursor.</p>
+	<p class="note-title">The same menu as web-treeview</p>
+	<p>The menu is web-components-core's <code>openMenu()</code>: it keeps itself and its submenus inside the viewport (a submenu flips left when there's no room on the right), closes on an outside click, a scroll that moves the tree, Escape or Tab, and runs the menu keyboard — arrows, Home / End, → / ← for submenus, Enter, an item's shortcut while open. <kbd>Shift+F10</kbd> or the ContextMenu key opens the focused node's menu. On a phone it opens as a bottom sheet (<code>menuPresentation</code>: <code>'auto'</code> · <code>'floating'</code> · <code>'sheet'</code> · <code>'drawer'</code>). The <code>contextMenuXOffset</code>/<code>contextMenuYOffset</code> props set the root menu's offset from the cursor.</p>
 </div>
 
 <!-- Dynamic Context Menu (Callback approach) -->
@@ -424,7 +424,12 @@ type TreeAction = 'copy' | 'cut' | 'paste' | 'delete' | 'expand' | 'collapse'
 <!-- CSS Customization -->
 <div class="card">
 	<h2>CM07 · CSS Customization</h2>
-	<p class="description">Style the context menu using these CSS classes.</p>
+	<p class="description">
+		The menu is core's <code>openMenu()</code> (the same menu as web-treeview), so it carries core's
+		<code>km-menu</code> classes and styles. Theme it through the variables, not the classes:
+		<code>--stv-context-menu-*</code> for this tree, <code>--km-menu-*</code> on <code>:root</code>
+		for every Keenmate menu on the page, then the shared <code>--base-*</code> tokens.
+	</p>
 
 	<table class="reference-table">
 		<thead>
@@ -435,44 +440,36 @@ type TreeAction = 'copy' | 'cut' | 'paste' | 'delete' | 'expand' | 'collapse'
 		</thead>
 		<tbody>
 			<tr>
-				<td><code>.stv__context-menu</code></td>
-				<td>The menu container</td>
+				<td><code>.km-menu</code></td>
+				<td>A menu level (root and submenus); <code>--submenu</code>, <code>--custom</code> (a <code>contextMenu</code> snippet), <code>--sheet</code></td>
 			</tr>
 			<tr>
-				<td><code>.stv__context-menu-item</code></td>
-				<td>Each menu item</td>
+				<td><code>.km-menu__item</code></td>
+				<td>Each menu item; <code>--disabled</code>, <code>--danger</code>, <code>--toggled</code>, <code>--has-submenu</code></td>
 			</tr>
 			<tr>
-				<td><code>.stv__context-menu-item--disabled</code></td>
-				<td>Disabled menu items</td>
+				<td><code>.km-menu__icon</code></td>
+				<td>Icon column (core <code>renderIcon</code>)</td>
 			</tr>
 			<tr>
-				<td><code>.stv__context-menu-label</code></td>
+				<td><code>.km-menu__label</code></td>
 				<td>Label text span</td>
 			</tr>
 			<tr>
-				<td><code>.stv__context-menu-shortcut</code></td>
-				<td>Right-aligned shortcut hint</td>
+				<td><code>.km-menu__shortcut</code></td>
+				<td>Shortcut hint, formatted for the platform (<code>Ctrl+K</code> / <code>⌘K</code>)</td>
 			</tr>
 			<tr>
-				<td><code>.stv__context-menu-arrow</code></td>
-				<td>Submenu arrow indicator</td>
+				<td><code>.km-menu__divider</code></td>
+				<td>Divider line; <code>--named</code> carries the label text</td>
 			</tr>
 			<tr>
-				<td><code>.stv__context-menu-divider</code></td>
-				<td>Divider lines</td>
+				<td><code>.km-menu__loading</code></td>
+				<td>Loading row of a lazy (<code>getChildrenCallback</code>) submenu</td>
 			</tr>
 			<tr>
-				<td><code>.stv__context-menu-divider-label</code></td>
-				<td>Named divider label text</td>
-			</tr>
-			<tr>
-				<td><code>.stv__context-submenu</code></td>
-				<td>Nested submenu container</td>
-			</tr>
-			<tr>
-				<td><code>.danger</code></td>
-				<td>Danger-styled item (red text)</td>
+				<td><code>.km-menu-sheet</code></td>
+				<td>The phone bottom sheet / drawer (<code>menuPresentation</code>): <code>__header</code>, <code>__title</code>, <code>__close</code></td>
 			</tr>
 		</tbody>
 	</table>

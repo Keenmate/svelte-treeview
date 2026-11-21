@@ -108,13 +108,13 @@ test.describe('context-menu item icons (core renderIcon, like web-treeview\'s co
 	const menuIcon = (page: Page, treeId: string, text: string) =>
 		page
 			.getByTestId(treeId)
-			.locator('.stv__context-menu-item', { hasText: text })
+			.locator('.km-menu__item', { hasText: text })
 			.first()
-			.locator('.stv__context-menu-icon');
+			.locator('.km-menu__icon');
 
 	test('callback menu: icon font, the tree hook with ctx.item, text', async ({ page }) => {
 		await page.getByTestId('tree-custom').locator('[data-tree-path="1.2"] .stv__node-label').click({ button: 'right' });
-		await expect(menuIcon(page, 'tree-custom', 'Font').locator('i')).toHaveClass('stv__icon fa-solid fa-star');
+		await expect(menuIcon(page, 'tree-custom', 'Font').locator('i')).toHaveClass('fa-solid fa-star');
 		const b = menuIcon(page, 'tree-custom', 'Hooked').locator('b');
 		await expect(b).toHaveAttribute('data-hook', 'element-menu');
 		await expect(b).toHaveAttribute('data-item', 'hooked');
@@ -125,6 +125,6 @@ test.describe('context-menu item icons (core renderIcon, like web-treeview\'s co
 		await page.getByTestId('tree-snippet-menu').locator('[data-tree-path="1"] .stv__node-label').click({ button: 'right' });
 		const b = menuIcon(page, 'tree-snippet-menu', 'Hooked').locator('b');
 		await expect(b).toHaveAttribute('data-hook', 'element-menu');
-		await expect(menuIcon(page, 'tree-snippet-menu', 'Font').locator('i')).toHaveClass('stv__icon fa-solid fa-star');
+		await expect(menuIcon(page, 'tree-snippet-menu', 'Font').locator('i')).toHaveClass('fa-solid fa-star');
 	});
 });

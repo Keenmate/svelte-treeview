@@ -90,8 +90,8 @@
 			"name": "actions",
 			"description": "Clickable-item model + activation runner behind the context menu (src/lib/core/menu.ts).",
 			"mode": "adapted",
-			"note": "coreLog(source,'UI',…) → the tree's uiLogger; ComponentContext = { controller } (no host element); resolve.test.ts: console spies → uiLogger, jsdom docblock. See src/lib/vendor/actions/README.md. Re-synced 2026-11-14.",
-			"baseline": "dd29c43",
+			"note": "coreLog(source,'UI',…) → the tree's uiLogger; ComponentContext = { controller } (no host element); resolve.test.ts: console spies → uiLogger, jsdom docblock. See src/lib/vendor/actions/README.md. Re-synced 2026-11-14; types.ts shortcut doc 2026-11-21 (f8bd89f).",
+			"baseline": "3d40786",
 			"files": [
 				["src/actions/types.ts", "src/lib/vendor/actions/types.ts"],
 				["src/actions/resolve.ts", "src/lib/vendor/actions/resolve.ts"],
@@ -153,15 +153,36 @@
 		},
 		{
 			"name": "context menu",
-			"description": "Svelte context menu vs core menu/ (open-menu, sheet / drawer phone presentations, styles).",
-			"mode": "mirror",
-			"note": "baseline estimated from src/lib/core/menu.ts's last change (2026-10-29). Core's phone sheet / drawer presentations (rc22+) are not in svelte yet — see parity.md. 2026-11-20: item icons adopted (3daffac / 07aacb7 / 8bb6150 — renderIcon, the tree's renderIconCallback with ctx.item) via the icons group.",
-			"baseline": "e6a0771",
+			"description": "Context menu = core openMenu() (SPEC §12.13): rendering, submenus (lazy too), positioning, dismiss, the WAI-ARIA keyboard, the phone sheet / drawer (menuPresentation / menuSide). Tree.svelte opens it; a contextMenu snippet fills its custom-menu element.",
+			"mode": "adapted",
+			"note": "Only the /actions import paths differ (../../actions/ — svelte's adapted copy). menu/inputs.ts is NOT vendored (BlissElement input rows): Tree.svelte has menuPresentation / menuSide props instead. Vendored 2026-11-21 (was a hand-written Svelte mirror, baseline e6a0771).",
+			"baseline": "3d40786",
 			"files": [
-				["src/menu/open-menu.ts", "src/lib/core/menu.ts"],
-				["src/menu/types.ts", "src/lib/core/menu.ts"],
-				["src/menu/inputs.ts", "src/lib/core/menu.ts"],
-				["src/menu/styles.ts", "src/lib/core/menu.ts"]
+				["src/menu/open-menu.ts", "src/lib/vendor/core/menu/open-menu.ts"],
+				["src/menu/types.ts", "src/lib/vendor/core/menu/types.ts"]
+			]
+		},
+		{
+			"name": "menu helpers",
+			"description": "What core openMenu() imports: its stylesheet, overlay (one-open-at-a-time, sheet session / chrome, scroll lock, keyboard inset, phone Back), positioning (anchor, scroll close, containing block, theme inherit), dom (active element, direction).",
+			"mode": "identical",
+			"baseline": "3d40786",
+			"files": [
+				["src/menu/styles.ts", "src/lib/vendor/core/menu/styles.ts"],
+				["src/overlay/active-overlay.ts", "src/lib/vendor/core/overlay/active-overlay.ts"],
+				["src/overlay/back-entry.ts", "src/lib/vendor/core/overlay/back-entry.ts"],
+				["src/overlay/keyboard-inset.ts", "src/lib/vendor/core/overlay/keyboard-inset.ts"],
+				["src/overlay/scroll-lock.ts", "src/lib/vendor/core/overlay/scroll-lock.ts"],
+				["src/overlay/sheet-chrome.ts", "src/lib/vendor/core/overlay/sheet-chrome.ts"],
+				["src/overlay/sheet-session.ts", "src/lib/vendor/core/overlay/sheet-session.ts"],
+				["src/positioning/anchor.ts", "src/lib/vendor/core/positioning/anchor.ts"],
+				["src/positioning/containing-block.ts", "src/lib/vendor/core/positioning/containing-block.ts"],
+				["src/positioning/dropdown-offset.ts", "src/lib/vendor/core/positioning/dropdown-offset.ts"],
+				["src/positioning/inherit-theme.ts", "src/lib/vendor/core/positioning/inherit-theme.ts"],
+				["src/positioning/scroll-close.ts", "src/lib/vendor/core/positioning/scroll-close.ts"],
+				["src/positioning/types.ts", "src/lib/vendor/core/positioning/types.ts"],
+				["src/dom/active-element.ts", "src/lib/vendor/core/dom/active-element.ts"],
+				["src/dom/direction.ts", "src/lib/vendor/core/dom/direction.ts"]
 			]
 		}
 	]

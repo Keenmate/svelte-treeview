@@ -58,7 +58,7 @@ test('built-in context-menu texts come from the page-wide labels', async ({ page
 		labels: { 'svelte-treeview.menuItems.copy': 'Kopírovat', 'svelte-treeview.menuItems.expandAll': 'Rozbalit vše' }
 	});
 	await scenario(page, 'nodes').getByText('Root', { exact: true }).click({ button: 'right' });
-	const items = page.locator('.stv__context-menu > .stv__context-menu-item');
+	const items = page.locator('.km-menu:not(.km-menu--submenu) > .km-menu__item');
 	await expect(items.nth(0)).toContainText('Kopírovat');
 	await expect(items.nth(1)).toContainText('Rozbalit vše');
 });

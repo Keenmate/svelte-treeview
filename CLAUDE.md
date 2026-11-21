@@ -166,7 +166,7 @@ STYLING:
 - Classes (stv__ BEM, rc11 rename — NO ltree-* classes remain): highlight states .stv__node-content--selected-bold, --highlight-border, --highlight-brackets, --highlight-fill, --highlight-glow, --scroll-highlight
 - Drag-over classes: .stv__node-content--dragover-highlight, --dragover-glow (plus --glow-before/-after/-child for snap zones)
 - Touch ghost class: .stv__touch-ghost (customizable via --stv-touch-ghost-bg, --stv-touch-ghost-text-color)
-- Context menu classes: .stv__context-menu, .stv__context-menu-item (--disabled, --has-children, --danger, --toggled), .stv__context-menu-divider, .stv__context-menu-divider-label, .stv__context-menu-label, .stv__context-menu-shortcut, .stv__context-menu-icon, .stv__context-menu-arrow, .stv__context-submenu
+- Context menu classes = core openMenu's: .km-menu (--submenu, --custom = a contextMenu snippet, --sheet), .km-menu__item (--disabled, --has-submenu, --danger, --toggled), .km-menu__icon, .km-menu__label, .km-menu__shortcut, .km-menu__divider (--named), .km-menu__loading, .km-menu-sheet (__header/__title/__close). Themed via --stv-context-menu-* → private --_km-menu-* (variables.css) → page-wide --km-menu-* → --base-*
 
 CONSTRAINTS:
 - Svelte 5 only (uses runes)
@@ -176,13 +176,14 @@ CONSTRAINTS:
 
 CONTEXT_MENU:
 - Same model as web-treeview (core /actions vendored): types TreeMenuContext / TreeMenuItem / TreeMenuEntry / TreeAction / TreeActionEventDetail (src/lib/core/menu.ts); createMenuDivider(text?)
+- RENDERED BY CORE openMenu() (vendored src/lib/vendor/core/menu + overlay/ + positioning/, 2026-11-21) — the same menu as web-treeview: Tree.svelte $effect opens it once per (node, point) from controller.contextMenuVisible/Node/X/Y (host = .stv__container, runAction → controller.activateMenuItem, defaults → menuItemDefaults, labels messages.loading / menuItems.back / ariaLabels.closeSheet, title = node text), onClose → controller.closeContextMenu. Core owns dismiss + the WAI-ARIA keyboard + formatted shortcuts + lazy loading row + phone sheet/drawer (menuPresentation / menuSide props). Shift+F10 / ContextMenu key opens the focused node's menu (first item focused). controller.shouldAutoCloseContextMenu (true) = the old global close listeners, kept for headless renderers (canvas); Tree.svelte sets false. Item icons: core reads host.renderIconCallback → Tree.svelte puts controller.menuRenderIconCallback on .stv__container (the tree's renderIconCallback + ctx.item, component 'svelte-treeview'). contextMenu SNIPPET renders into a .stv__context-menu-content host (display: contents) that renderMenuCallback moves into core's custom-menu element; ContextMenuItem/ContextMenuDivider emit km-menu__* markup. Guarded by e2e/menu-actions.spec.ts (+ context-menu, regressions, node-icons specs).
 - Two approaches: snippet-based (contextMenu snippet + ContextMenuItemC/ContextMenuDividerC components) and callback-based
 - Callback: getContextMenuItemsCallback(ctx: TreeMenuContext = { node, path, parent, siblings, controller }) returns TreeMenuEntry[] (items, dividers, built-in names); item onClick(detail) gets ctx + { action, id, item, source, ... }
 - Built-ins: copy cut paste delete expand collapse expand-subtree collapse-subtree expand-all collapse-all sort sort-subtree sort-all (labels texts; selection-aware); beforeActionCallback (false cancels) / onAction
 - Item features: text, icon, tooltip, shortcut, isDisabled, isVisible, isDanger, isToggled, cssClass, get*Callback, onClick(detail), shouldCloseOnClick (default true), children / getChildrenCallback
-- Submenus: children[] opens nested menu on hover (CSS position: absolute; left: 100%)
+- Submenus: children[] / getChildrenCallback (lazy, loading row) open a sibling .km-menu--submenu level on hover / →
 - Position offset: contextMenuXOffset/YOffset for cursor clearance
-- Auto-close: closes on scroll, click outside, or programmatically
+- Auto-close (core): outside press, a scroll that moves the tree, blur, another overlay, Escape, Tab, or programmatically
 - Dev page: /dev/context-menu with examples
 - Spec document: context-menu-spec.md (migration guide for web-treeview)
 
