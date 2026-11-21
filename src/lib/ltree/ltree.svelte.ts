@@ -671,7 +671,7 @@ export function createLTree<T>(
 				}
 			});
 
-			// 1b. EXPERIMENTAL filterScope — pull in (some of) each match's descendants.
+			// 1b. filterScope — pull in (some of) each match's descendants.
 			// Matches + ancestors are the "context" rows and always expand; the added
 			// descendants expand only when shouldExpandFilterDescendants (default true).
 			const contextPaths = new Set(allRequiredPaths);

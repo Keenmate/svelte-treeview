@@ -197,11 +197,11 @@
 		 * Orthogonal to `checkboxMode`; ignored in `'independent'` mode.
 		 */
 		cascadeCheckPolicy?: CascadeCheckPolicy | null | undefined;
-		/** EXPERIMENTAL — which descendants of a filter match stay visible. See {@link FilterScope}. */
+		/** Which descendants of a filter match stay visible. See {@link FilterScope}. */
 		filterScope?: FilterScope | null | undefined;
-		/** EXPERIMENTAL — the `x` for the depth-limited filterScopes (default 1). */
+		/** The `x` for the depth-limited filterScopes (default 1). */
 		filterDescendantDepth?: number | null | undefined;
-		/** EXPERIMENTAL — expand the descendants a filterScope adds (default true). */
+		/** Expand the descendants a filterScope adds (default true). */
 		shouldExpandFilterDescendants?: boolean | null | undefined;
 		shouldClickToggleCheckbox?: boolean | null | undefined;
 		beforeCheckboxToggleCallback?: (ctx: BeforeCheckboxToggleContext<T>) => string[] | false | void;

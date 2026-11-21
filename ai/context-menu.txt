@@ -162,27 +162,38 @@ POSITION OFFSET
   contextMenuYOffset={0}
 />
 
+RENDERING, KEYBOARD, PHONES
+---------------------------
+The menu is web-components-core's openMenu() (the same menu as web-treeview).
+Keyboard: arrows / Home / End, → / ← open / close submenus, Enter / Space run, Escape closes a
+level, Tab leaves, an item's shortcut runs it while open. Shift+F10 / the ContextMenu key open the
+focused node's menu (first item focused). Shortcuts show formatted (Ctrl+K, ⌘K on a Mac).
+A lazy getChildrenCallback submenu shows a loading row ('messages.loading').
+menuPresentation: 'auto' (default — bottom sheet on a phone, else floating) | 'floating' | 'sheet' |
+'drawer'; menuSide: 'start' | 'end' (the drawer's edge).
+A contextMenu snippet renders into core's custom-menu element (Escape / Tab only, no item keyboard).
+
 AUTO-CLOSE BEHAVIOR
 -------------------
 Context menu automatically closes on:
-- Click outside the menu
-- Scroll events
-- Another right-click
-- Pressing Escape
-- Window resize
+- Click outside the menu (and another right-click)
+- A scroll that moves the tree (not one inside the menu, not a bare wheel)
+- Window blur, another Keenmate overlay opening
+- Pressing Escape / Tab, or an item running
 
 STYLING
 -------
-CSS classes:
-- .stv__context-menu - Menu container
-- .stv__context-menu-item - Menu item (modifiers: --disabled, --danger, --toggled, --has-children; data-action / data-id)
-- .stv__context-menu-divider - Divider line
-- .stv__context-menu-divider-label - Named divider text
-- .stv__context-menu-label - Item label
-- .stv__context-menu-shortcut - Shortcut hint
-- .stv__context-menu-icon - Item icon
-- .stv__context-menu-arrow - Submenu arrow indicator
-- .stv__context-submenu - Submenu container
+CSS classes (core's):
+- .km-menu - A menu level (--submenu: a sibling level; --custom: a contextMenu snippet; --sheet)
+- .km-menu__item - Menu item (modifiers: --disabled, --danger, --toggled, --has-submenu; data-action / data-id)
+- .km-menu__divider - Divider line (--named: the text is inside)
+- .km-menu__label - Item label
+- .km-menu__shortcut - Shortcut hint
+- .km-menu__icon - Item icon (core renderIcon; the tree's renderIconCallback gets ctx.item)
+- .km-menu__loading - Lazy submenu loading row
+- .km-menu-sheet (__header / __title / __close) - Phone sheet / drawer
+Theme through variables: --stv-context-menu-* (this tree) → --km-menu-* on :root (every
+Keenmate menu) → --base-*.
 
 BEST PRACTICES
 --------------

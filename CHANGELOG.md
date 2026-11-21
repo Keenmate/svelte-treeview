@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [5.0.0-rc17] - 2026-11-17
+## [5.0.0-rc17] - 2026-11-22 [PUBLISHED]
 
 ### Changed — labels: flat `<elementType>.<name>` keys, `translateCallback`, page-wide dictionary (core SPEC §12.24, 2026-11-20)
 
@@ -36,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dismiss is core's: an outside press, a scroll that moves the tree (never one inside the menu or a bare wheel), window blur, another Keenmate overlay opening. The controller's own close-on-any-scroll listeners now run only for headless renderers (canvas) — new `controller.shouldAutoCloseContextMenu` (Tree.svelte sets it `false`).
 - `contextMenu` snippet: it renders into core's custom-menu element (positioned and dismissed by core: Escape / Tab, no roving item keyboard — core's rule). `ContextMenuItem` / `ContextMenuDivider` emit core's `km-menu__*` markup and format their `shortcut`. Item icons (callback and snippet) render as core's menu does: a class list is `<i class="fa-solid fa-star">` (no `stv__icon`); the tree's `renderIconCallback` still gets `ctx.item`.
 - Guarded by `e2e/menu-actions.spec.ts` (Shift+F10 + arrows + Escape focus return, Enter / → submenu, formatted shortcut, lazy loading row, `menuPresentation="sheet"`) + the existing context-menu specs on the new classes. `ContextMenuLevel.svelte` removed.
+
+### Changed — `filterScope` is no longer experimental (2026-11-22)
+
+- `filterScope`, `filterDescendantDepth` and `shouldExpandFilterDescendants` are a regular part of the API (web-treeview never marked them experimental): the "EXPERIMENTAL" notes are gone from the prop docs and types, and `/examples/search` SF04 is "Filter Scope". No behaviour change.
 
 ### Docs — tooltip sizing demo (2026-11-21)
 

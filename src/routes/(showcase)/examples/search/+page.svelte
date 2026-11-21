@@ -301,7 +301,7 @@
 		navigateToResult(index);
 	}
 
-	// ── SF04 · Filter Scope (experimental) ──────────────────────────────
+	// ── SF04 · Filter Scope ──────────────────────────────
 	// A deep, RAGGED org chart: Sales is 6 levels deep, Marketing 5, IT / Finance / Operations
 	// 4, HR only 3.
 	type OrgItem = { id: number; path: string; name: string };
@@ -707,9 +707,9 @@ ${"<"}/script>
 	</div>
 </div>
 
-<!-- Filter Scope (experimental) -->
+<!-- Filter Scope -->
 <div class="card">
-	<h2>SF04 · Filter Scope (experimental)</h2>
+	<h2>SF04 · Filter Scope</h2>
 	<p class="description">
 		Which <em>descendants</em> of a filter match stay visible. Ancestors always do.
 		Same term + same <code>x</code> (<code>filterDescendantDepth</code>) across five

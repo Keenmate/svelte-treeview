@@ -237,11 +237,11 @@ export interface Ltree<T> {
 	// Filtering properties
 	filteredTree: LTreeNode<T>[] | null;
 	isFiltered: boolean;
-	/** EXPERIMENTAL — which descendants of a filter match stay visible. See {@link FilterScope}. */
+	/** Which descendants of a filter match stay visible. See {@link FilterScope}. */
 	filterScope?: FilterScope;
-	/** EXPERIMENTAL — the `x` used by the depth-limited {@link FilterScope}s (default 1). */
+	/** The `x` used by the depth-limited {@link FilterScope}s (default 1). */
 	filterDescendantDepth?: number;
-	/** EXPERIMENTAL — expand the descendants a filterScope ADDS (default true). When false they
+	/** Expand the descendants a filterScope ADDS (default true). When false they
 	 *  start collapsed; matches + their ancestors are always expanded. */
 	shouldExpandFilterDescendants?: boolean;
 
@@ -301,7 +301,7 @@ export interface Ltree<T> {
 		searchTerm: string,
 		searchOptions?: SearchOptions
 	): { nodes: LTreeNode<T>[]; isLimited: boolean; limit: number };
-	/** @internal Adds descendants of filter matches per filterScope (EXPERIMENTAL). */
+	/** @internal Adds descendants of filter matches per filterScope. */
 	_addFilterScopeDescendants(targetPaths: string[], required: Set<string>): void;
 
 	clearFilter(): void;
@@ -410,7 +410,7 @@ export interface Ltree<T> {
 }
 
 /**
- * EXPERIMENTAL — which descendants of a filter match stay visible (ancestors always do).
+ * Which descendants of a filter match stay visible (ancestors always do).
  * `x` = `filterDescendantDepth`.
  * - `'matches'` (default) — matches + their ancestors only (today's behaviour).
  * - `'descendants'` — every match also shows its whole subtree.

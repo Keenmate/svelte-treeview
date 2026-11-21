@@ -1716,7 +1716,7 @@ export class TreeController<T> {
 			});
 		});
 
-		// Filter when searchTerm (or the experimental filterScope / depth) changes
+		// Filter when searchTerm (or filterScope / depth) changes
 		$effect(() => {
 			this.tree.filterScope = this.filterScope;
 			this.tree.filterDescendantDepth = this.filterDescendantDepth;

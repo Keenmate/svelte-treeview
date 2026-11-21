@@ -1,4 +1,4 @@
-.PHONY: help setup dev install build build-all build-showcase test test-watch test-e2e test-e2e-ui test-e2e-headed publish publish-rc publish-dry image-build image-run image-stop image-clean
+.PHONY: help setup dev install build build-all build-showcase test test-watch test-e2e test-e2e-ui test-e2e-headed publish publish-rc publish-dry image-build image-run image-stop image-logs image-push image-clean
 
 # Per-developer overrides (container runner, image name, served port). Optional:
 # the leading `-` means it's fine if the file is absent, and the `?=` defaults below
@@ -6,7 +6,7 @@
 # .makefile.env to switch the runner (e.g. DOCKER_RUNNER = docker) or the port.
 -include .makefile.env
 DOCKER_RUNNER  ?= podman
-IMAGE_NAME     ?= registry.km8.es/svelte-treeview-examples:prod
+IMAGE_NAME     ?= registry.keenmate.dev/svelte-treeview-examples:prod
 CONTAINER_NAME ?= svelte-treeview-examples
 IMAGE_PORT     ?= 17780
 
@@ -78,6 +78,12 @@ image-stop: ## Stop and remove the showcase container
 	@echo "Stopping $(CONTAINER_NAME)..."
 	-@$(DOCKER_RUNNER) rm -f $(CONTAINER_NAME) >/dev/null 2>&1
 	@echo "Stopped"
+
+image-logs: ## Follow the showcase container logs
+	$(DOCKER_RUNNER) logs -f $(CONTAINER_NAME)
+
+image-push: ## Push the showcase image to the registry (log in first: $(DOCKER_RUNNER) login <registry>)
+	$(DOCKER_RUNNER) push $(IMAGE_NAME)
 
 image-clean: image-stop ## Remove the showcase container and image
 	@echo "Removing image $(IMAGE_NAME)..."

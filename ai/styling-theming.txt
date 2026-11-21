@@ -198,38 +198,23 @@ CSS classes for glow indicators (applied to .stv__node-content):
 
 CONTEXT MENU STYLING
 --------------------
-.stv__context-menu {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  padding: 4px;
-  min-width: 160px;
+The menu is web-components-core's openMenu() (km-menu* classes, core's stylesheet). Theme it
+through variables — this tree's --stv-context-menu-* win, then the page-wide --km-menu-* (every
+Keenmate menu), then --base-*:
+
+.my-tree {
+  --stv-context-menu-bg: white;
+  --stv-context-menu-border: 1px solid #e5e7eb;
+  --stv-context-menu-border-radius: 8px;
+  --stv-context-menu-box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --stv-context-menu-min-width: 160px;
+  --stv-context-menu-item-padding: 8px 12px;
+  --stv-context-menu-bg-hover: #f3f4f6;
+  --stv-context-menu-disabled-opacity: 0.5;
+  --stv-context-menu-divider-color: #e5e7eb;
 }
 
-.stv__context-menu-item {
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  gap: 8px;
-}
-
-.stv__context-menu-item:hover {
-  background: #f3f4f6;
-}
-
-.stv__context-menu-item--disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.stv__context-menu-divider {
-  height: 1px;
-  background: #e5e7eb;
-  margin: 4px 0;
-}
+:root { --km-menu-border-radius: 8px; }   /* every Keenmate menu on the page */
 
 TOUCH GHOST STYLING
 -------------------
@@ -269,11 +254,11 @@ Drop zones:
 - .stv__drop-zone--child - Child position
 - .stv__node-content--drop-copy - Copy operation active
 
-Context menu:
-- .stv__context-menu - Menu container
-- .stv__context-menu-item - Menu item
-- .stv__context-menu-icon - Item icon
-- .stv__context-menu-divider - Divider
+Context menu (core openMenu):
+- .km-menu - Menu level (--submenu, --custom, --sheet)
+- .km-menu__item - Menu item (--disabled, --danger, --toggled, --has-submenu)
+- .km-menu__icon / __label / __shortcut - Item parts
+- .km-menu__divider - Divider (--named)
 
 Empty/loading:
 - .stv__empty-state - Empty tree state

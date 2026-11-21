@@ -245,17 +245,24 @@ Custom message when tree is empty:
 </Tree>
 
 The snippet name is noData (not noDataFound). Without a snippet the
-labels prop supplies the text: labels.noData (default "No data") when the
-tree has no nodes, labels.noResults (default "No results found") when the
+labels prop supplies the text: 'messages.noData' (default "No data") when the
+tree has no nodes, 'messages.noResults' (default "No results found") when the
 search filter matched nothing. '' renders nothing.
-<Tree nodes={data} labels={{ noData: 'Nothing here yet' }} />
+<Tree nodes={data} labels={{ 'messages.noData': 'Nothing here yet' }} />
 
 LABELS (UI strings)
 -------------------
-labels?: Partial<TreeLabels> — merged per key over the English defaults:
-  noData "No data" | noResults "No results found" | dropHere "Drop here"
-  noDisplayValue "[N/A]" (node with no display value) | loading "Loading…"
+labels?: TreeLabelsInput — flat `<elementType>.<name>` keys (web-treeview's), short
+('messages.noData') or full ('svelte-treeview.messages.noData'):
+  messages.noData "No data" | messages.noResults "No results found" | messages.dropHere "Drop here"
+  messages.loading "Loading…" (lazy context submenu) | labels.noDisplayValue "[N/A]"
+  labels.dropBefore / dropAfter / dropChild "Before" / "After" / "Child" (floating drop pads)
+  ariaLabels.loading "Loading…" | ariaLabels.showFullLabel | ariaLabels.closeSheet "Close"
+  menuItems.copy … menuItems.sortAll (13 built-in menu items) | menuItems.back "Back"
 '' = deliberately empty (render nothing); missing/undefined = default.
+Per key: labels prop → translateCallback prop → window.components.locale.translateCallback
+({ component, key (full), template, params, locale }; null = not mine) → the page-wide flat
+dictionary window.components.locale.labels['svelte-treeview.<key>'] → English.
 Text only (escaped by Svelte). Snippets noData / dropPlaceholder /
 loadingPlaceholder still replace the markup.
 
@@ -269,8 +276,8 @@ Show a loading placeholder while data is being fetched:
   {/snippet}
 </Tree>
 
-Overlay: role="status" + aria-label = labels.loading. Content precedence:
-loadingPlaceholder snippet > page-wide window.components.renderLoaderCallback
+Overlay: role="status" + aria-label = 'ariaLabels.loading'. Content precedence:
+loadingPlaceholder snippet > page-wide window.components.renderLoadingCallback
 (the Keenmate shared loader hook, ctx { component: 'svelte-treeview',
 context: 'overlay', containerElement, element, label }, may return a cleanup)
 > the default .stv-loader, drawn from --stv-loader-icon / -rotate / -duration /
