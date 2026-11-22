@@ -260,7 +260,7 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `getChildren` | `parentPath: string` | Get direct children of a node |
 | `getSiblings` | `path: string` | Get siblings of a node (including itself) |
 | `updateNode` | `path: string, data: Partial<T>` | Update a node's data properties |
-| `copyNodeWithDescendants` | `sourcePath: string, targetPath: string, position: DropPosition` | Copy a node and its subtree to a new location |
+| `duplicateNode` | `sourcePath: string, targetPath: string, position: DropPosition` | Copy a node and its subtree to a new location |
 | `refreshNode` | `path: string` | Force re-render of a specific node |
 | `refreshSiblings` | `parentPath: string` | Re-sort a parent's children by the tree's rule (= `sortNodes(parentPath)`) |
 | `sortNodes` | `paths: string \| string[], options?: SortOptions` | Sort the children of each node — one level (`''` = root level) |
@@ -275,7 +275,7 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `copyNodes` / `cutNodes` | `paths?: string[]` | Copy / cut `paths` (default: the selection) — `before*Callback`, `onNodeCopy` / `onNodeCut` |
 | `pasteNodes` | `targetPath, transform?, position = 'child'` | Paste the clipboard → `PasteResult` (`beforePasteCallback`, `onNodePaste`) |
 | `cancelCut` / `hasClipboardContent` / `getClipboardOperation` | | Clipboard state (page-wide clipboard) |
-| `navTo(path)`, `navNext`, `navPrev`, `navNextSibling`, `navPrevSibling`, `navInto`, `navOut`, `navBackOut`, `navToggle`, `navFirst`, `navLast`, `navPageDown`, `navPageUp`, `navSelectNext`, `navSelectPrev`, `navSelectFirst`, `navSelectLast`, `navSelectPageDown`, `navSelectPageUp` | | Keyboard navigation — what the built-in keys call (overridable via `navigationOverrides`). `navNext` / `navPrev` = next / previous visible node (flat order) |
+| `focusAndSelectNode(path)`, `focusNext`, `focusPrevious`, `focusNextAtLevel`, `focusPreviousAtLevel`, `focusFirstChild`, `focusParent`, `collapseParent`, `toggleFocusedNodeExpanded`, `focusFirst`, `focusLast`, `focusNextPage`, `focusPreviousPage`, `extendSelectionNext`, `extendSelectionPrevious`, `extendSelectionToFirst`, `extendSelectionToLast`, `extendSelectionNextPage`, `extendSelectionPreviousPage` | | Keyboard navigation — what the built-in keys call (overridable via `navigationOverrides`). `focusNext` / `focusPrevious` = next / previous visible node (flat order) |
 
 `ExpandOptions = { isExclusive?: boolean; isSilent?: boolean }` — `isExclusive` (expand only) collapses every open branch off the targets' spine; `isSilent` suppresses `onNodeExpand` / `onNodeCollapse` / `onExpandedChange` only — the tree always re-renders and `beforeExpandCallback` still runs.
 

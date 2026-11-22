@@ -5,45 +5,45 @@
  */
 export interface TreeNavigation<T> {
 	/** Select a node and scroll it into view (core navigation primitive) */
-	navTo(path: string): void;
+	focusAndSelectNode(path: string): void;
 	/** Move to the next visible node (flat order; the first one when nothing is focused) */
-	navNext(): void;
+	focusNext(): void;
 	/** Move to the previous visible node (flat order; the last one when nothing is focused) */
-	navPrev(): void;
+	focusPrevious(): void;
 	/** Move to next visible node at the same level */
-	navNextSibling(): void;
+	focusNextAtLevel(): void;
 	/** Move to previous visible node at the same level */
-	navPrevSibling(): void;
+	focusPreviousAtLevel(): void;
 	/** Move to first child (expands if collapsed) */
-	navInto(): void;
+	focusFirstChild(): void;
 	/** Move to parent node (no collapse) */
-	navOut(): void;
+	focusParent(): void;
 	/** Collapse parent and select it (Backspace behavior) */
-	navBackOut(): void;
+	collapseParent(): void;
 	/** Toggle expand/collapse of current node */
-	navToggle(): void;
+	toggleFocusedNodeExpanded(): void;
 	/** Select first visible node */
-	navFirst(): void;
+	focusFirst(): void;
 	/** Select last visible node */
-	navLast(): void;
+	focusLast(): void;
 	/** PageDown — jump forward ~10 visible nodes */
-	navPageDown(): void;
+	focusNextPage(): void;
 	/** PageUp — jump back ~10 visible nodes */
-	navPageUp(): void;
+	focusPreviousPage(): void;
 
 	// ── Shift+navigation: extend highlight range ────────────────────
 	/** Shift+ArrowDown — extend highlight to next visible node */
-	navSelectNext(): void;
+	extendSelectionNext(): void;
 	/** Shift+ArrowUp — extend highlight to previous visible node */
-	navSelectPrev(): void;
+	extendSelectionPrevious(): void;
 	/** Shift+Home — extend highlight to first visible node */
-	navSelectFirst(): void;
+	extendSelectionToFirst(): void;
 	/** Shift+End — extend highlight to last visible node */
-	navSelectLast(): void;
+	extendSelectionToLast(): void;
 	/** Shift+PageDown — extend highlight forward ~10 visible nodes */
-	navSelectPageDown(): void;
+	extendSelectionNextPage(): void;
 	/** Shift+PageUp — extend highlight back ~10 visible nodes */
-	navSelectPageUp(): void;
+	extendSelectionPreviousPage(): void;
 }
 
 export type TreeNavigationOverrides<T> = Partial<TreeNavigation<T>>;

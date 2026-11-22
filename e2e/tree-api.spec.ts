@@ -3,7 +3,7 @@ import { test, expect, Page } from '@playwright/test';
 /**
  * <Tree> instance exports added for web-treeview parity on /test/tree-api: getNodeRef,
  * getVisibleFlatNodes, getTree, getSelectedNodes / isNodeSelected, isNodeDropAllowed, the
- * clipboard methods, navNext / navPrev (+ the nav* family), openContextMenu(path) — and the
+ * clipboard methods, focusNext / focusPrevious (+ the rest of the keyboard-navigation family), openContextMenu(path) — and the
  * `controller` on every callback ctx (non-enumerable, like web's component context).
  */
 
@@ -45,7 +45,7 @@ test('clipboard: copy / paste / cut / cancelCut / hasClipboardContent / getClipb
 	expect(log).toContain('onNodePaste:ctrl:hidden');
 });
 
-test('navNext / navPrev move through the visible nodes', async ({ page }) => {
+test('focusNext / focusPrevious move through the visible nodes', async ({ page }) => {
 	expect(await run(page, 'nav')).toEqual(['1.1', '2']);
 });
 

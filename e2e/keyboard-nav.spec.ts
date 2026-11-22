@@ -152,7 +152,7 @@ test.describe('ArrowRight / ArrowLeft — descend and ascend', () => {
 	});
 });
 
-// ── Backspace: navBackOut (collapse parent, focus parent) ──────────────────
+// ── Backspace: collapseParent (collapse parent, focus parent) ──────────────────
 
 test.describe('Backspace — collapse parent and focus it', () => {
 	test('Backspace collapses the focused node\'s parent and moves focus there', async ({ page }) => {
@@ -179,7 +179,7 @@ test.describe('Backspace — collapse parent and focus it', () => {
 	});
 });
 
-// ── Enter: navToggle (WAI-ARIA default action; Space toggles the selection) ─────────
+// ── Enter: toggleFocusedNodeExpanded (WAI-ARIA default action; Space toggles the selection) ─────────
 
 test.describe('Enter — toggle expand state of focused node', () => {
 	test('Enter collapses an expanded parent', async ({ page }) => {
@@ -297,7 +297,7 @@ test.describe('Shift+ArrowDown / Shift+ArrowUp — extend highlight by sibling',
 
 		await page.keyboard.press('Shift+ArrowDown');
 
-		// navSelectNext walks to next level-2 sibling → '1.2'.
+		// extendSelectionNext walks to next level-2 sibling → '1.2'.
 		// Range fills visible-flat from '1.1' to '1.2' = [1.1, 1.1.1, 1.1.2, 1.2].
 		await expect(page.getByTestId('focused-path')).toHaveText('1.2');
 		await expect(page.getByTestId('highlighted-size')).toHaveText('4');
@@ -311,7 +311,7 @@ test.describe('Shift+ArrowDown / Shift+ArrowUp — extend highlight by sibling',
 
 		await page.keyboard.press('Shift+ArrowUp');
 
-		// navSelectPrev → '1.1'. Range '1.2' to '1.1' = [1.1, 1.1.1, 1.1.2, 1.2].
+		// extendSelectionPrevious → '1.1'. Range '1.2' to '1.1' = [1.1, 1.1.1, 1.1.2, 1.2].
 		await expect(page.getByTestId('focused-path')).toHaveText('1.1');
 		await expect(page.getByTestId('highlighted-size')).toHaveText('4');
 		await expect(page.getByTestId('highlighted-sorted')).toHaveText('1.1,1.1.1,1.1.2,1.2');

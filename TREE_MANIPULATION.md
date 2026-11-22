@@ -201,12 +201,12 @@ interface ApplyChangesResult {
 
 ---
 
-### copyNodeWithDescendants() - Copy Node with Children
+### duplicateNode() - Copy Node with Children
 
 **Location:** `ltree.svelte.ts:1083-1135`, exposed in `Tree.svelte:291-300`
 
 ```typescript
-copyNodeWithDescendants(
+duplicateNode(
   sourceNode: LTreeNode<T>,
   targetParentPath: string,
   transformData: (data: T) => T
@@ -218,7 +218,7 @@ copyNodeWithDescendants(
 - `targetParentPath` - Path where to insert the copy (`""` for root)
 - `transformData` - Function to transform each node's data (assign new IDs, etc.)
 
-**What happens when you call copyNodeWithDescendants():**
+**What happens when you call duplicateNode():**
 
 1. Validates source node has data
 2. Calls `transformData()` on source node's data
@@ -231,7 +231,7 @@ copyNodeWithDescendants(
 
 ```typescript
 // In your onNodeDrop handler
-const result = targetTreeRef.copyNodeWithDescendants(
+const result = targetTreeRef.duplicateNode(
   draggedNode,
   dropNode?.path || '',
   (data) => ({
@@ -782,6 +782,6 @@ This documentation reflects `@keenmate/svelte-treeview` v4.6.0+ with:
 - Move vs copy operation support (Ctrl+drag)
 - Touch drag support with ghost element
 - Glow and floating drop zone modes
-- `copyNodeWithDescendants()` for cross-tree hierarchy copies
+- `duplicateNode()` for cross-tree hierarchy copies
 - `_skipInsertArray` mechanism with `tick()` reset for reliable internal mutations
 - State persistence: `bind:expandedPaths`, `bind:nodes` (current state)

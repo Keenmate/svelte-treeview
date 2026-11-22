@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.0-rc18] - 2026-11-22
+
+### Changed — `copyNodeWithDescendants` → `duplicateNode` (2026-11-22)
+
+- One verb for "make a copy in the tree without the clipboard": `duplicateNode` (one subtree) next to `duplicateNodes` (a batch, built on it per root). `copy*` stays the clipboard's (`copyNodes` / `cutNodes` / `pasteNodes`). Same arguments and result; on the `<Tree>` instance, the controller and `Ltree`. Same in web-treeview; `duplicate` is now in the Keenmate verb glossary (D-NC-13). No alias.
+
+### Changed — keyboard-navigation methods renamed: `nav*` → `focus*` / `extendSelection*` (2026-11-22)
+
+- The 19 keyboard-navigation methods (on the `<Tree>` instance, the controller, the `TreeNavigation` interface and so the `navigationOverrides` keys) say what they do instead of the `nav` abbreviation (Keenmate naming guideline: moving the cursor is `focus`; Shift+key grows a range, so `extendSelection`). Same in web-treeview and svelte-treeview-canvas; no aliases. Behaviour unchanged.
+
+| Key | Was | Now |
+|---|---|---|
+| (API) | `navTo(path)` | `focusAndSelectNode(path)` — focus + replace the selection + scroll into view (NOT `focusNode`, which only moves the focus) |
+| (API) | `navNext` / `navPrev` | `focusNext` / `focusPrevious` |
+| ↓ / ↑ | `navNextSibling` / `navPrevSibling` | `focusNextAtLevel` / `focusPreviousAtLevel` — the next visible row at the same depth, which can be a cousin in another branch |
+| → | `navInto` | `focusFirstChild` (expands first if collapsed) |
+| ← | `navOut` | `focusParent` |
+| Backspace | `navBackOut` | `collapseParent` (collapses the parent, then focuses it) |
+| Enter | `navToggle` | `toggleFocusedNodeExpanded` |
+| Home / End | `navFirst` / `navLast` | `focusFirst` / `focusLast` |
+| PageDown / PageUp | `navPageDown` / `navPageUp` | `focusNextPage` / `focusPreviousPage` |
+| Shift+↓ / ↑ | `navSelectNext` / `navSelectPrev` | `extendSelectionNext` / `extendSelectionPrevious` |
+| Shift+Home / End | `navSelectFirst` / `navSelectLast` | `extendSelectionToFirst` / `extendSelectionToLast` |
+| Shift+PageDown / PageUp | `navSelectPageDown` / `navSelectPageUp` | `extendSelectionNextPage` / `extendSelectionPreviousPage` |
+
 ## [5.0.0-rc17] - 2026-11-22 [PUBLISHED]
 
 ### Changed — labels: flat `<elementType>.<name>` keys, `translateCallback`, page-wide dictionary (core SPEC §12.24, 2026-11-20)

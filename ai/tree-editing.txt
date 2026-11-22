@@ -273,7 +273,7 @@ method copies a single node + subtree directly to a destination.
 
 <script>
   function copyNode(sourceNode, targetParentPath) {
-    const result = treeRef.copyNodeWithDescendants(
+    const result = treeRef.duplicateNode(
       sourceNode,
       targetParentPath,
       (data) => ({ ...data, id: crypto.randomUUID() })  // transform each copy
@@ -285,8 +285,8 @@ method copies a single node + subtree directly to a destination.
   }
 </script>
 
-copyNodeWithDescendants signature:
-copyNodeWithDescendants(
+duplicateNode signature:
+duplicateNode(
   sourceNode: LTreeNode<T>,
   targetParentPath: string,
   transformData: (data: T) => T,

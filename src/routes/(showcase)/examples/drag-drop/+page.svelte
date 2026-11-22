@@ -206,7 +206,7 @@
 			return;
 		}
 
-		// Cross-tree drags - use copyNodeWithDescendants to include children
+		// Cross-tree drags - use duplicateNode to include children
 		// Calculate parent path and sibling for positioning
 		let parentPath: string;
 		let siblingPath: string | undefined;
@@ -253,7 +253,7 @@
 			const usePos = i === 0 ? firstPos : undefined;
 			const rootSort = batchSort;
 			batchSort += 10;
-			const result = targetTreeRef.copyNodeWithDescendants(
+			const result = targetTreeRef.duplicateNode(
 				srcNode,
 				useParent,
 				({ data }: { data: FileItem }) => ({
@@ -749,7 +749,7 @@
 			const src = basketRef.getNodeByPath(ref.path);
 			if (!src || src.data?.kind === 'category') continue;
 			const targetPath = categoryPathFor(src.data?.kind);
-			const r = pantryRef.copyNodeWithDescendants(src, targetPath, ({ data: d }: { data: ProduceItem }) => ({
+			const r = pantryRef.duplicateNode(src, targetPath, ({ data: d }: { data: ProduceItem }) => ({
 				...d,
 				id: produceNextId++,
 				path: ''

@@ -1626,14 +1626,14 @@
 		return controller.removeBranch(path, keepParent);
 	}
 
-	export function copyNodeWithDescendants(
+	export function duplicateNode(
 		sourceNode: LTreeNode<T>,
 		targetParentPath: string,
 		transformData: (ctx: { data: T; node: LTreeNode<T> }) => T | null,
 		siblingPath?: string,
 		position?: 'before' | 'after'
 	): { success: boolean; rootNode?: LTreeNode<T>; count: number; error?: string } {
-		return controller.copyNodeWithDescendants(
+		return controller.duplicateNode(
 			sourceNode,
 			targetParentPath,
 			transformData,
@@ -1708,25 +1708,25 @@
 	}
 
 	// ── Keyboard navigation (what the built-in keys call; overridable via navigationOverrides) ──
-	export function navTo(path: string): void { controller.navTo(path); }
-	export function navNext(): void { controller.navNext(); }
-	export function navPrev(): void { controller.navPrev(); }
-	export function navNextSibling(): void { controller.navNextSibling(); }
-	export function navPrevSibling(): void { controller.navPrevSibling(); }
-	export function navInto(): void { controller.navInto(); }
-	export function navOut(): void { controller.navOut(); }
-	export function navBackOut(): void { controller.navBackOut(); }
-	export function navToggle(): void { controller.navToggle(); }
-	export function navFirst(): void { controller.navFirst(); }
-	export function navLast(): void { controller.navLast(); }
-	export function navPageDown(): void { controller.navPageDown(); }
-	export function navPageUp(): void { controller.navPageUp(); }
-	export function navSelectNext(): void { controller.navSelectNext(); }
-	export function navSelectPrev(): void { controller.navSelectPrev(); }
-	export function navSelectFirst(): void { controller.navSelectFirst(); }
-	export function navSelectLast(): void { controller.navSelectLast(); }
-	export function navSelectPageDown(): void { controller.navSelectPageDown(); }
-	export function navSelectPageUp(): void { controller.navSelectPageUp(); }
+	export function focusAndSelectNode(path: string): void { controller.focusAndSelectNode(path); }
+	export function focusNext(): void { controller.focusNext(); }
+	export function focusPrevious(): void { controller.focusPrevious(); }
+	export function focusNextAtLevel(): void { controller.focusNextAtLevel(); }
+	export function focusPreviousAtLevel(): void { controller.focusPreviousAtLevel(); }
+	export function focusFirstChild(): void { controller.focusFirstChild(); }
+	export function focusParent(): void { controller.focusParent(); }
+	export function collapseParent(): void { controller.collapseParent(); }
+	export function toggleFocusedNodeExpanded(): void { controller.toggleFocusedNodeExpanded(); }
+	export function focusFirst(): void { controller.focusFirst(); }
+	export function focusLast(): void { controller.focusLast(); }
+	export function focusNextPage(): void { controller.focusNextPage(); }
+	export function focusPreviousPage(): void { controller.focusPreviousPage(); }
+	export function extendSelectionNext(): void { controller.extendSelectionNext(); }
+	export function extendSelectionPrevious(): void { controller.extendSelectionPrevious(); }
+	export function extendSelectionToFirst(): void { controller.extendSelectionToFirst(); }
+	export function extendSelectionToLast(): void { controller.extendSelectionToLast(); }
+	export function extendSelectionNextPage(): void { controller.extendSelectionNextPage(); }
+	export function extendSelectionPreviousPage(): void { controller.extendSelectionPreviousPage(); }
 
 	// ── Selection set (UI multi-select — selectedPaths) ──────────────
 	export function selectNode(
@@ -2168,38 +2168,38 @@
 		let handled = true;
 
 		// Shift+nav extends the selection range. In single mode the controller
-		// short-circuits these to no-ops (see _navSelectTo).
+		// short-circuits these to no-ops (see _extendSelectionTo).
 		switch (event.key) {
 			case 'ArrowDown':
-				event.shiftKey ? controller.navSelectNext() : controller.navNextSibling();
+				event.shiftKey ? controller.extendSelectionNext() : controller.focusNextAtLevel();
 				break;
 			case 'ArrowUp':
-				event.shiftKey ? controller.navSelectPrev() : controller.navPrevSibling();
+				event.shiftKey ? controller.extendSelectionPrevious() : controller.focusPreviousAtLevel();
 				break;
 			case 'ArrowRight':
-				controller.navInto();
+				controller.focusFirstChild();
 				break;
 			case 'ArrowLeft':
-				controller.navOut();
+				controller.focusParent();
 				break;
 			case 'Backspace':
-				controller.navBackOut();
+				controller.collapseParent();
 				break;
 			case 'Home':
-				event.shiftKey ? controller.navSelectFirst() : controller.navFirst();
+				event.shiftKey ? controller.extendSelectionToFirst() : controller.focusFirst();
 				break;
 			case 'End':
-				event.shiftKey ? controller.navSelectLast() : controller.navLast();
+				event.shiftKey ? controller.extendSelectionToLast() : controller.focusLast();
 				break;
 			case 'PageDown':
-				event.shiftKey ? controller.navSelectPageDown() : controller.navPageDown();
+				event.shiftKey ? controller.extendSelectionNextPage() : controller.focusNextPage();
 				break;
 			case 'PageUp':
-				event.shiftKey ? controller.navSelectPageUp() : controller.navPageUp();
+				event.shiftKey ? controller.extendSelectionPreviousPage() : controller.focusPreviousPage();
 				break;
 			case 'Enter':
 				// WAI-ARIA tree: Enter = the node's default action (expand / collapse).
-				controller.navToggle();
+				controller.toggleFocusedNodeExpanded();
 				break;
 			case ' ':
 				// WAI-ARIA tree: Space toggles selection. With checkboxes: the focused node's

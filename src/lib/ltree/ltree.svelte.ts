@@ -1469,7 +1469,7 @@ export function createLTree<T>(
 			newNode.hasChildren = false;
 
 			// Seed the resolved per-node flags exactly as insertArray does. Nodes
-			// added here (addNode, and therefore copyNodeWithDescendants and
+			// added here (addNode, and therefore duplicateNode and
 			// applyChanges 'add') otherwise keep createLTreeNode's defaults —
 			// notably isDraggable=false and isDropAllowed=false — which the DOM
 			// `draggable` attribute and the drag-over / drop gates read directly
@@ -1672,7 +1672,7 @@ export function createLTree<T>(
 		 * @param position - Optional position relative to sibling ('before' or 'after')
 		 * @returns Object with success status, the created root node, and count of nodes created
 		 */
-		copyNodeWithDescendants(
+		duplicateNode(
 			sourceNode: LTreeNode<T>,
 			targetParentPath: string,
 			transformData: (ctx: { data: T; node: LTreeNode<T> }) => T | null,
@@ -1701,7 +1701,7 @@ export function createLTree<T>(
 				const result = this.addNode(parentPath, transformedData);
 				if (!result.success || !result.node) {
 					dataLogger.warn(
-						`[Tree ${_treeId}] copyNodeWithDescendants: Failed to add node`,
+						`[Tree ${_treeId}] duplicateNode: Failed to add node`,
 						result.error
 					);
 					return null;

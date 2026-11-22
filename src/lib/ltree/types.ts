@@ -389,8 +389,8 @@ export interface Ltree<T> {
 	replaceBranch(parentPath: string, data: T[]): ReplaceBranchResult<T>;
 	removeBranch(path: string, keepParent?: boolean): RemoveBranchResult<T>;
 
-	// Cross-tree copy method
-	copyNodeWithDescendants(
+	// Duplicate one subtree (also from another tree — duplicateNodes runs it per root)
+	duplicateNode(
 		sourceNode: LTreeNode<T>,
 		targetParentPath: string,
 		transformData: (ctx: { data: T; node: LTreeNode<T> }) => T | null,

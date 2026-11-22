@@ -754,7 +754,7 @@
 			}
 
 			let isFirst = true;
-			const result = treeRefB.copyNodeWithDescendants(draggedNode, parentPath, ({ data }) => {
+			const result = treeRefB.duplicateNode(draggedNode, parentPath, ({ data }) => {
 				const order = isFirst ? rootSortOrder : data.sortOrder || 10;
 				isFirst = false;
 				return { ...data, id: nextIdB++, path: '', sortOrder: order };
@@ -960,7 +960,7 @@
 		}
 
 		let isFirst = true;
-		const result = treeRefE.copyNodeWithDescendants(draggedNode, parentPath, ({ data }) => {
+		const result = treeRefE.duplicateNode(draggedNode, parentPath, ({ data }) => {
 			const order = isFirst ? rootSortOrder : data.sortOrder || 10;
 			isFirst = false;
 			return { ...data, id: nextIdE++, path: '', sortOrder: order };
@@ -1249,7 +1249,7 @@
 				<td>Update data properties of a node in place</td>
 			</tr>
 			<tr>
-				<td><code>copyNodeWithDescendants(node, parentPath, transformFn)</code></td>
+				<td><code>duplicateNode(node, parentPath, transformFn)</code></td>
 				<td>Deep-copy a node and its subtree under a new parent</td>
 			</tr>
 			<tr>
@@ -1864,7 +1864,7 @@ async function handleDrop({ source, target, position }) {
 function handleDrop({ source, target, position }) {
   const draggedNode = source.node, dropNode = target?.node ?? null;
   // Add to tree WITHOUT saving
-  treeRef.copyNodeWithDescendants(
+  treeRef.duplicateNode(
     draggedNode,
     dropNode?.path || '',
     (data) => ({ ...data, id: nextId++ })

@@ -574,8 +574,8 @@ End    Go to last visible node
 		<pre>{`<!-- Override specific navigation methods -->
 <Tree
   navigationOverrides={{
-    navInto: (node) => { /* custom expand behavior */ },
-    navOut: (node) => { /* custom collapse behavior */ },
+    focusFirstChild: (node) => { /* custom expand behavior */ },
+    focusParent: (node) => { /* custom collapse behavior */ },
   }}
   ...
 />`}</pre>

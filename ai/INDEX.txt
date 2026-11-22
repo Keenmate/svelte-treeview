@@ -159,8 +159,8 @@ moveNodes → tree-editing.txt
 N
 -
 navigationOverrides → advanced-patterns.txt
-navInto → typescript-types.txt, advanced-patterns.txt
-navOut → typescript-types.txt, advanced-patterns.txt
+focusFirstChild → typescript-types.txt, advanced-patterns.txt
+focusParent → typescript-types.txt, advanced-patterns.txt
 noData → basic-setup.txt
 labels (flat keys messages.noData / menuItems.copy …, translateCallback, page-wide window.components.locale) → basic-setup.txt
 nodeInputTransformationCallback → tree-editing.txt

@@ -126,7 +126,7 @@
 			copyPos = position as 'before' | 'after';
 		}
 
-		targetTreeRef.copyNodeWithDescendants(
+		targetTreeRef.duplicateNode(
 			draggedNode,
 			parentPath,
 			({ data }: { data: Item }) => ({ ...data, id: crossTreeId++, path: '', sortOrder: data.sortOrder || 10 }),
@@ -566,7 +566,7 @@
 		dhLockParent = '';
 	}
 
-	// ── Section 12: copyNodeWithDescendants null-skip (cross-tree leave-behind) ──
+	// ── Section 12: duplicateNode null-skip (cross-tree leave-behind) ──
 	// The copy transform returning null SKIPS that node + its subtree — the copy twin of the
 	// moveNodes hole. Copying CS-Src into CS-Dest while returning null for CS-Locked drops it.
 	type CsItem = { id: number; path: string; name: string; sortOrder: number; locked?: boolean };
@@ -592,7 +592,7 @@
 		const src = csTreeRef.getNodeByPath('1');
 		const dest = csTreeRef.getNodeByPath('2');
 		if (!src || !dest) return;
-		const r = csTreeRef.copyNodeWithDescendants(src, dest.path, ({ data: d }: { data: CsItem }) =>
+		const r = csTreeRef.duplicateNode(src, dest.path, ({ data: d }: { data: CsItem }) =>
 			d.locked ? null : { ...d, id: csNextId++, path: '' }
 		);
 		csResult = `success:${r.success},count:${r.count}`;
@@ -1198,7 +1198,7 @@
 	</section>
 
 	<section data-testid="section-copy-skip">
-		<h2>copyNodeWithDescendants null-skip (leave a descendant behind on copy)</h2>
+		<h2>duplicateNode null-skip (leave a descendant behind on copy)</h2>
 		<button data-testid="cs-copy" onclick={csCopySkipLocked}>Copy skip locked</button>
 		<button data-testid="cs-reset" onclick={resetCs}>Reset</button>
 		<div class="drop-state">

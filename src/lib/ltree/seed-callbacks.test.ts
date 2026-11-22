@@ -145,7 +145,7 @@ describe('addBranch seed-time get*Callback', () => {
 });
 
 // Regression for the cross-tree drop bug: addNode (and therefore
-// copyNodeWithDescendants / applyChanges 'add') created nodes via
+// duplicateNode / applyChanges 'add') created nodes via
 // createLTreeNode WITHOUT running the seed callbacks, so the new node kept the
 // defaults isDraggable=false / isDropAllowed=false. The DOM `draggable` attr and
 // the drop gates read those raw properties, so a node dropped into a target tree
@@ -168,7 +168,7 @@ describe('addNode seed-time get*Callback', () => {
 	});
 });
 
-describe('copyNodeWithDescendants seeds flags on the copies', () => {
+describe('duplicateNode seeds flags on the copies', () => {
 	const ltree = buildTree({ withCallbacks: true });
 	ltree.insertArray([
 		{ id: 'src', path: '1', name: 'Source' },
@@ -179,7 +179,7 @@ describe('copyNodeWithDescendants seeds flags on the copies', () => {
 	// cross-tree copy). Root copy id = copy100, its child = copy101.
 	let nid = 100;
 	const src = ltree.getNodeByPath('1')!;
-	ltree.copyNodeWithDescendants(src, '', ({ data: d }) => ({ ...d, id: `copy${nid++}`, path: '' }));
+	ltree.duplicateNode(src, '', ({ data: d }) => ({ ...d, id: `copy${nid++}`, path: '' }));
 
 	it('the copied root is draggable + drop-allowed (was false pre-fix)', () => {
 		const rootCopy = ltree.getNodeByPath('copy100');

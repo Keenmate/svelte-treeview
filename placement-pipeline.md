@@ -20,7 +20,7 @@ There are two distinct layers, and every confusion comes from conflating them.
 | Layer | Members | Have hooks? |
 |---|---|---|
 | **Operations** (user gestures / entry points) | drag-drop, clipboard copy, clipboard cut, clipboard paste | yes — the `before*Callback` gates + `on*` events |
-| **Primitives** (raw verbs that mutate the tree) | `moveNode`, `moveNodes`, `duplicateNodes`, `copyNodeWithDescendants`, `addNode`, `removeNode` | no — bare methods |
+| **Primitives** (raw verbs that mutate the tree) | `moveNode`, `moveNodes`, `duplicateNodes`, `duplicateNode`, `addNode`, `removeNode` | no — bare methods |
 
 The `before*Callback` gates belong to **operations**. Primitives are what an operation
 *calls* once its gates pass. When the library can't finish an operation itself (a cross-tree
@@ -206,7 +206,7 @@ decision the manifest already made, writing a placement loop the move side never
 ```mermaid
 flowchart LR
     subgraph before["before"]
-        A["cross-tree copy"] --> B["onNodeDrop(null)"] --> C["consumer loop:<br/>for root → copyNodeWithDescendants<br/>+ transformData null re-prune"]
+        A["cross-tree copy"] --> B["onNodeDrop(null)"] --> C["consumer loop:<br/>for root → duplicateNode<br/>+ transformData null re-prune"]
     end
     subgraph after["now"]
         D["cross-tree copy"] --> E["library duplicateNodes(manifest,<br/>INPUT transform, sourceTree)"] --> F["onNodeDrop(dropped = copies)"]

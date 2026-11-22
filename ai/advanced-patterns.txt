@@ -178,8 +178,8 @@ Accepts a Partial<TreeNavigationOverrides<T>> object.
 
 <Tree
   navigationOverrides={{
-    navInto: () => { /* custom enter-children logic */ },
-    navOut: () => { /* custom move-to-parent logic */ },
+    focusFirstChild: () => { /* custom enter-children logic */ },
+    focusParent: () => { /* custom move-to-parent logic */ },
     // other methods use default flat-list traversal
   }}
 />

@@ -2899,7 +2899,7 @@ export class TreeController<T> {
 				return transform(this._ctx({ ...ctxFor(srcNode, srcNode === root, index), data }));
 			};
 
-			const result = tree.copyNodeWithDescendants(
+			const result = tree.duplicateNode(
 				root,
 				parentPath,
 				wrapped,
@@ -3000,7 +3000,7 @@ export class TreeController<T> {
 		return result;
 	}
 
-	copyNodeWithDescendants(
+	duplicateNode(
 		sourceNode: LTreeNode<T>,
 		targetParentPath: string,
 		transformData: (ctx: { data: T; node: LTreeNode<T> }) => T | null,
@@ -3009,7 +3009,7 @@ export class TreeController<T> {
 	): { success: boolean; rootNode?: LTreeNode<T>; count: number; error?: string } {
 		this._skipInsertArray = true;
 		this._markNodesChanged();
-		const result = this.tree?.copyNodeWithDescendants(
+		const result = this.tree?.duplicateNode(
 			sourceNode,
 			targetParentPath,
 			transformData,
@@ -4235,7 +4235,7 @@ export class TreeController<T> {
 
 	/** The default scroll behaviour of programmatic jumps — scrollToPath with no `behavior` passed:
 	 *  the `--stv-scroll-behavior` token (→ `--base-scroll-behavior`; `auto` under reduced motion).
-	 *  Keyboard moves (navTo, range moves) never read it — they always scroll instantly (`'auto'`). */
+	 *  Keyboard moves (focusAndSelectNode, range moves) never read it — they always scroll instantly (`'auto'`). */
 	private resolveScrollBehavior(): ScrollBehavior {
 		const el = this.containerElement;
 		if (!el || typeof getComputedStyle === 'undefined') return 'smooth';
@@ -6698,157 +6698,157 @@ export class TreeController<T> {
 	// ── Keyboard navigation (delegates to this.navigation strategy) ─────
 
 	/** Select a node and scroll it into view (core navigation primitive) */
-	navTo(path: string): void {
-		this.navigation.navTo(path);
+	focusAndSelectNode(path: string): void {
+		this.navigation.focusAndSelectNode(path);
 	}
 	/** Move to next visible node at the same level */
 	/** Move to the next visible node (flat order). */
-	navNext(): void {
-		this.navigation.navNext();
+	focusNext(): void {
+		this.navigation.focusNext();
 	}
 
 	/** Move to the previous visible node (flat order). */
-	navPrev(): void {
-		this.navigation.navPrev();
+	focusPrevious(): void {
+		this.navigation.focusPrevious();
 	}
 
-	navNextSibling(): void {
-		this.navigation.navNextSibling();
+	focusNextAtLevel(): void {
+		this.navigation.focusNextAtLevel();
 	}
 	/** Move to previous visible node at the same level */
-	navPrevSibling(): void {
-		this.navigation.navPrevSibling();
+	focusPreviousAtLevel(): void {
+		this.navigation.focusPreviousAtLevel();
 	}
 	/** Move to first child (expands if collapsed) */
-	navInto(): void {
-		this.navigation.navInto();
+	focusFirstChild(): void {
+		this.navigation.focusFirstChild();
 	}
 	/** Move to parent node (no collapse) */
-	navOut(): void {
-		this.navigation.navOut();
+	focusParent(): void {
+		this.navigation.focusParent();
 	}
 	/** Collapse parent and select it (Backspace behavior) */
-	navBackOut(): void {
-		this.navigation.navBackOut();
+	collapseParent(): void {
+		this.navigation.collapseParent();
 	}
 	/** Toggle expand/collapse of current node */
-	navToggle(): void {
-		this.navigation.navToggle();
+	toggleFocusedNodeExpanded(): void {
+		this.navigation.toggleFocusedNodeExpanded();
 	}
 	/** Select first visible node */
-	navFirst(): void {
-		this.navigation.navFirst();
+	focusFirst(): void {
+		this.navigation.focusFirst();
 	}
 	/** Select last visible node */
-	navLast(): void {
-		this.navigation.navLast();
+	focusLast(): void {
+		this.navigation.focusLast();
 	}
 	/** PageDown — jump forward ~10 visible nodes */
-	navPageDown(): void {
-		this.navigation.navPageDown();
+	focusNextPage(): void {
+		this.navigation.focusNextPage();
 	}
 	/** PageUp — jump back ~10 visible nodes */
-	navPageUp(): void {
-		this.navigation.navPageUp();
+	focusPreviousPage(): void {
+		this.navigation.focusPreviousPage();
 	}
 
 	// ── Shift+navigation: extend highlight range ────────────────────
 	/** Shift+ArrowDown — extend highlight to next visible node */
-	navSelectNext(): void {
-		this.navigation.navSelectNext();
+	extendSelectionNext(): void {
+		this.navigation.extendSelectionNext();
 	}
 	/** Shift+ArrowUp — extend highlight to previous visible node */
-	navSelectPrev(): void {
-		this.navigation.navSelectPrev();
+	extendSelectionPrevious(): void {
+		this.navigation.extendSelectionPrevious();
 	}
 	/** Shift+Home — extend highlight to first visible node */
-	navSelectFirst(): void {
-		this.navigation.navSelectFirst();
+	extendSelectionToFirst(): void {
+		this.navigation.extendSelectionToFirst();
 	}
 	/** Shift+End — extend highlight to last visible node */
-	navSelectLast(): void {
-		this.navigation.navSelectLast();
+	extendSelectionToLast(): void {
+		this.navigation.extendSelectionToLast();
 	}
 	/** Shift+PageDown — extend highlight forward ~10 visible nodes */
-	navSelectPageDown(): void {
-		this.navigation.navSelectPageDown();
+	extendSelectionNextPage(): void {
+		this.navigation.extendSelectionNextPage();
 	}
 	/** Shift+PageUp — extend highlight back ~10 visible nodes */
-	navSelectPageUp(): void {
-		this.navigation.navSelectPageUp();
+	extendSelectionPreviousPage(): void {
+		this.navigation.extendSelectionPreviousPage();
 	}
 
 	/** @internal Create the default flat-list navigation strategy (used by the HTML tree renderer) */
 	createDefaultNavigation(): TreeNavigation<T> {
 		return {
-			navTo: (path: string) => {
+			focusAndSelectNode: (path: string) => {
 				const node = this.getNodeByPath(path);
 				if (!node) return;
 				this.selectNode(path, 'replace');
 				this._scrollToPath(path, { shouldExpandAncestors: false, block: 'nearest', behavior: 'auto' }, true);
 			},
 
-			navNext: () => {
+			focusNext: () => {
 				const flatNodes = this.allFlatNodes;
 				if (flatNodes.length === 0) return;
 				const currentPath = this.focusedNode?.path;
 				const idx = currentPath ? flatNodes.findIndex((n) => n.path === currentPath) : -1;
 				if (idx === -1) {
-					this.navigation.navTo(flatNodes[0].path);
+					this.navigation.focusAndSelectNode(flatNodes[0].path);
 					return;
 				}
-				if (idx < flatNodes.length - 1) this.navigation.navTo(flatNodes[idx + 1].path);
+				if (idx < flatNodes.length - 1) this.navigation.focusAndSelectNode(flatNodes[idx + 1].path);
 			},
 
-			navPrev: () => {
+			focusPrevious: () => {
 				const flatNodes = this.allFlatNodes;
 				if (flatNodes.length === 0) return;
 				const currentPath = this.focusedNode?.path;
 				const idx = currentPath ? flatNodes.findIndex((n) => n.path === currentPath) : -1;
 				if (idx === -1) {
-					this.navigation.navTo(flatNodes[flatNodes.length - 1].path);
+					this.navigation.focusAndSelectNode(flatNodes[flatNodes.length - 1].path);
 					return;
 				}
-				if (idx > 0) this.navigation.navTo(flatNodes[idx - 1].path);
+				if (idx > 0) this.navigation.focusAndSelectNode(flatNodes[idx - 1].path);
 			},
 
-			navNextSibling: () => {
+			focusNextAtLevel: () => {
 				const flatNodes = this.allFlatNodes;
 				if (flatNodes.length === 0) return;
 				const currentPath = this.focusedNode?.path;
 				const currentIndex = currentPath ? flatNodes.findIndex((n) => n.path === currentPath) : -1;
 				if (currentIndex === -1) {
-					this.navigation.navTo(flatNodes[0].path);
+					this.navigation.focusAndSelectNode(flatNodes[0].path);
 					return;
 				}
 				const currentLevel = flatNodes[currentIndex].level;
 				for (let i = currentIndex + 1; i < flatNodes.length; i++) {
 					if (flatNodes[i].level === currentLevel) {
-						this.navigation.navTo(flatNodes[i].path);
+						this.navigation.focusAndSelectNode(flatNodes[i].path);
 						return;
 					}
 				}
 			},
 
-			navPrevSibling: () => {
+			focusPreviousAtLevel: () => {
 				const flatNodes = this.allFlatNodes;
 				if (flatNodes.length === 0) return;
 				const currentPath = this.focusedNode?.path;
 				const currentIndex = currentPath ? flatNodes.findIndex((n) => n.path === currentPath) : -1;
 				if (currentIndex === -1) {
-					this.navigation.navTo(flatNodes[flatNodes.length - 1].path);
+					this.navigation.focusAndSelectNode(flatNodes[flatNodes.length - 1].path);
 					return;
 				}
 				const currentLevel = flatNodes[currentIndex].level;
 				for (let i = currentIndex - 1; i >= 0; i--) {
 					if (flatNodes[i].level === currentLevel) {
-						this.navigation.navTo(flatNodes[i].path);
+						this.navigation.focusAndSelectNode(flatNodes[i].path);
 						return;
 					}
 				}
 			},
 
-			navInto: () => {
+			focusFirstChild: () => {
 				const currentPath = this.focusedNode?.path;
 				if (!currentPath) return;
 				const node = this.getNodeByPath(currentPath);
@@ -6862,26 +6862,26 @@ export class TreeController<T> {
 						const updatedFlat = this.allFlatNodes;
 						const idx = updatedFlat.findIndex((n) => n.path === currentPath);
 						if (idx >= 0 && idx + 1 < updatedFlat.length) {
-							this.navigation.navTo(updatedFlat[idx + 1].path);
+							this.navigation.focusAndSelectNode(updatedFlat[idx + 1].path);
 						}
 					});
 				} else if (node.hasChildren && node.isExpanded) {
 					const nextIdx = currentIndex + 1;
 					if (nextIdx < flatNodes.length) {
-						this.navigation.navTo(flatNodes[nextIdx].path);
+						this.navigation.focusAndSelectNode(flatNodes[nextIdx].path);
 					}
 				}
 			},
 
-			navOut: () => {
+			focusParent: () => {
 				const currentPath = this.focusedNode?.path;
 				if (!currentPath) return;
 				const node = this.getNodeByPath(currentPath);
 				if (!node?.parentPath) return;
-				this.navigation.navTo(node.parentPath);
+				this.navigation.focusAndSelectNode(node.parentPath);
 			},
 
-			navBackOut: () => {
+			collapseParent: () => {
 				const currentPath = this.focusedNode?.path;
 				if (!currentPath) return;
 				const node = this.getNodeByPath(currentPath);
@@ -6892,32 +6892,32 @@ export class TreeController<T> {
 					this.collapseNodes(parent.path);
 				}
 				tick().then(() => {
-					this.navigation.navTo(parent.path);
+					this.navigation.focusAndSelectNode(parent.path);
 				});
 			},
 
-			navToggle: () => {
+			toggleFocusedNodeExpanded: () => {
 				const currentPath = this.focusedNode?.path;
 				if (!currentPath) return;
 				// Enter / Space = the toggle glyph (accordion, pending beforeExpand, collapsible).
 				void this.toggleNodeExpanded(currentPath);
 			},
 
-			navFirst: () => {
+			focusFirst: () => {
 				const flatNodes = this.allFlatNodes;
 				if (flatNodes.length > 0) {
-					this.navigation.navTo(flatNodes[0].path);
+					this.navigation.focusAndSelectNode(flatNodes[0].path);
 				}
 			},
 
-			navLast: () => {
+			focusLast: () => {
 				const flatNodes = this.allFlatNodes;
 				if (flatNodes.length > 0) {
-					this.navigation.navTo(flatNodes[flatNodes.length - 1].path);
+					this.navigation.focusAndSelectNode(flatNodes[flatNodes.length - 1].path);
 				}
 			},
 
-			navPageDown: () => {
+			focusNextPage: () => {
 				const flatNodes = this.allFlatNodes;
 				if (flatNodes.length === 0) return;
 				const currentPath = this.focusedNode?.path;
@@ -6926,10 +6926,10 @@ export class TreeController<T> {
 					(currentIndex === -1 ? 0 : currentIndex) + 10,
 					flatNodes.length - 1
 				);
-				this.navigation.navTo(flatNodes[targetIndex].path);
+				this.navigation.focusAndSelectNode(flatNodes[targetIndex].path);
 			},
 
-			navPageUp: () => {
+			focusPreviousPage: () => {
 				const flatNodes = this.allFlatNodes;
 				if (flatNodes.length === 0) return;
 				const currentPath = this.focusedNode?.path;
@@ -6940,11 +6940,11 @@ export class TreeController<T> {
 					(currentIndex === -1 ? flatNodes.length : currentIndex) - 10,
 					0
 				);
-				this.navigation.navTo(flatNodes[targetIndex].path);
+				this.navigation.focusAndSelectNode(flatNodes[targetIndex].path);
 			},
 
 			// ── Shift+navigation: extend highlight range ────────────
-			navSelectNext: () => {
+			extendSelectionNext: () => {
 				const flatNodes = this.allFlatNodes;
 				if (flatNodes.length === 0) return;
 				const currentPath = this.focusedNode?.path;
@@ -6954,13 +6954,13 @@ export class TreeController<T> {
 				const currentLevel = flatNodes[currentIndex].level;
 				for (let i = currentIndex + 1; i < flatNodes.length; i++) {
 					if (flatNodes[i].level === currentLevel) {
-						this._navSelectTo(flatNodes[i].path);
+						this._extendSelectionTo(flatNodes[i].path);
 						return;
 					}
 				}
 			},
 
-			navSelectPrev: () => {
+			extendSelectionPrevious: () => {
 				const flatNodes = this.allFlatNodes;
 				if (flatNodes.length === 0) return;
 				const currentPath = this.focusedNode?.path;
@@ -6969,51 +6969,51 @@ export class TreeController<T> {
 				const currentLevel = flatNodes[currentIndex].level;
 				for (let i = currentIndex - 1; i >= 0; i--) {
 					if (flatNodes[i].level === currentLevel) {
-						this._navSelectTo(flatNodes[i].path);
+						this._extendSelectionTo(flatNodes[i].path);
 						return;
 					}
 				}
 			},
 
-			navSelectFirst: () => {
+			extendSelectionToFirst: () => {
 				const flatNodes = this.allFlatNodes;
 				if (flatNodes.length > 0) {
-					this._navSelectTo(flatNodes[0].path);
+					this._extendSelectionTo(flatNodes[0].path);
 				}
 			},
 
-			navSelectLast: () => {
+			extendSelectionToLast: () => {
 				const flatNodes = this.allFlatNodes;
 				if (flatNodes.length > 0) {
-					this._navSelectTo(flatNodes[flatNodes.length - 1].path);
+					this._extendSelectionTo(flatNodes[flatNodes.length - 1].path);
 				}
 			},
 
-			navSelectPageDown: () => {
+			extendSelectionNextPage: () => {
 				const flatNodes = this.allFlatNodes;
 				if (flatNodes.length === 0) return;
 				const currentPath = this.focusedNode?.path;
 				const currentIndex = currentPath ? flatNodes.findIndex((n) => n.path === currentPath) : -1;
 				if (currentIndex === -1) return;
 				const targetIndex = Math.min(currentIndex + 10, flatNodes.length - 1);
-				this._navSelectTo(flatNodes[targetIndex].path);
+				this._extendSelectionTo(flatNodes[targetIndex].path);
 			},
 
-			navSelectPageUp: () => {
+			extendSelectionPreviousPage: () => {
 				const flatNodes = this.allFlatNodes;
 				if (flatNodes.length === 0) return;
 				const currentPath = this.focusedNode?.path;
 				const currentIndex = currentPath ? flatNodes.findIndex((n) => n.path === currentPath) : -1;
 				if (currentIndex === -1) return;
 				const targetIndex = Math.max(currentIndex - 10, 0);
-				this._navSelectTo(flatNodes[targetIndex].path);
+				this._extendSelectionTo(flatNodes[targetIndex].path);
 			}
 		};
 	}
 
 	/** Extend highlight to target path (Shift+nav) — uses range from the shift cursor
 	 *  (or current focus if no cursor yet), moves focus. No-op in single mode. */
-	private _navSelectTo(path: string) {
+	private _extendSelectionTo(path: string) {
 		if (this.selectionMode !== 'multiple') return;
 		// Seed the shift cursor from the focused node on the first Shift+Arrow
 		if (!this._shiftCursor && this.focusedNode) {

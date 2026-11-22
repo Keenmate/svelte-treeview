@@ -38,7 +38,7 @@
 		<button data-testid="select" onclick={() => { treeRef.selectNodes(['1', '3']); show([treeRef.getSelectedNodes().map((n) => n.path), treeRef.isNodeSelected('3'), treeRef.isNodeSelected('2')]); }}>select + getSelectedNodes</button>
 		<button data-testid="drop" onclick={() => show([treeRef.isNodeDropAllowed('1'), treeRef.isNodeDropAllowed('2'), treeRef.isNodeDropAllowed('nope')])}>isNodeDropAllowed</button>
 		<button data-testid="clip" onclick={() => { treeRef.copyNodes(['3']); const a = [treeRef.hasClipboardContent(), treeRef.getClipboardOperation()]; const r = treeRef.pasteNodes('1'); treeRef.cutNodes(['3']); const b = treeRef.getClipboardOperation(); treeRef.cancelCut(); show([...a, r.success, b, treeRef.hasClipboardContent()]); }}>clipboard</button>
-		<button data-testid="nav" onclick={() => { treeRef.navFirst(); treeRef.navNext(); const a = treeRef.getVisibleFlatNodes().find((n) => n.isFocused)?.path; treeRef.navLast(); treeRef.navPrev(); const b = treeRef.getVisibleFlatNodes().find((n) => n.isFocused)?.path; show([a, b]); }}>nav</button>
+		<button data-testid="nav" onclick={() => { treeRef.focusFirst(); treeRef.focusNext(); const a = treeRef.getVisibleFlatNodes().find((n) => n.isFocused)?.path; treeRef.focusLast(); treeRef.focusPrevious(); const b = treeRef.getVisibleFlatNodes().find((n) => n.isFocused)?.path; show([a, b]); }}>nav</button>
 		<button data-testid="menu" onclick={() => treeRef.openContextMenu('3', 100, 100)}>openContextMenu('3')</button>
 	</div>
 	<pre data-testid="out">{out}</pre>

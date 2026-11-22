@@ -182,15 +182,15 @@ function createMenu(
 TREENAVIGATION INTERFACE
 ------------------------
 interface TreeNavigation<T> {
-  navTo(path: string): void;
-  navNextSibling(): void;
-  navPrevSibling(): void;
-  navInto(): void;
-  navOut(): void;
-  navBackOut(): void;
-  navToggle(): void;
-  navFirst(): void;
-  navLast(): void;
+  focusAndSelectNode(path: string): void;
+  focusNextAtLevel(): void;
+  focusPreviousAtLevel(): void;
+  focusFirstChild(): void;
+  focusParent(): void;
+  collapseParent(): void;
+  toggleFocusedNodeExpanded(): void;
+  focusFirst(): void;
+  focusLast(): void;
 }
 
 type TreeNavigationOverrides<T> = Partial<TreeNavigation<T>>;

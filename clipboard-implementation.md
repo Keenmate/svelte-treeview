@@ -99,7 +99,7 @@ For large trees (50k+ nodes), consumers need the "database-first" workflow:
 | Prop | Type | Default | Effect when `false` |
 |------|------|---------|---------------------|
 | `shouldAutoHandleMove` | `boolean` | `true` | Same-tree move: skips `moveNode()`, still fires `onNodeDrop` |
-| `shouldAutoHandleCopy` | `boolean` | `true` | Same-tree copy: skips `copyNodeWithDescendants()`, still fires `onNodeDrop` |
+| `shouldAutoHandleCopy` | `boolean` | `true` | Same-tree copy: skips `duplicateNode()`, still fires `onNodeDrop` |
 | `shouldAutoHandlePaste` | `boolean` | `true` | Paste: skips `addNode`/`removeNode`, fires `onPaste` with clipboard data |
 
 When `shouldAutoHandleMove=false` or `shouldAutoHandleCopy=false`:

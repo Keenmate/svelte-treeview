@@ -393,7 +393,7 @@ test.describe('Keyboard Navigation tree', () => {
 		// Focused Node output is only rendered after navFocusedNode is set.
 		await expect(outputValue(card, 'Focused Node')).toContainText('Documents');
 
-		// ArrowDown is wired to navNextSibling — it walks siblings at the same
+		// ArrowDown is wired to focusNextAtLevel — it walks siblings at the same
 		// level, not into children. From Documents (1), next sibling is Downloads (2).
 		await page.keyboard.press('ArrowDown');
 
@@ -420,7 +420,7 @@ test.describe('Keyboard Navigation tree', () => {
 		await nodeContent(nodeInCard(card, '1')).click();
 		await expect(outputValue(card, 'Focused Node')).toContainText('Documents');
 
-		// ArrowRight is wired to navInto — it descends into children when the
+		// ArrowRight is wired to focusFirstChild — it descends into children when the
 		// node is already expanded. Path order vs alpha-sorted display order
 		// can disagree here, so just assert that focus landed on *some* child
 		// of '1' (level-2 path '1.x').

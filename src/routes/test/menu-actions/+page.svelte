@@ -4,7 +4,7 @@
 	// built-in targets (the selection when the clicked node is in it).
 	// Targeted by e2e/menu-actions.spec.ts.
 	import { Tree, createMenuDivider } from '$lib/index.js';
-	import type { TreeMenuContext, TreeMenuEntry, TreeActionEventDetail } from '$lib/index.js';
+	import type { TreeMenuContext, TreeMenuEntry, TreeMenuItem, TreeActionEventDetail } from '$lib/index.js';
 
 	type Item = { id: number; path: string; name: string };
 
@@ -50,7 +50,7 @@
 				id: 'lazy',
 				text: 'Lazy',
 				getChildrenCallback: () =>
-					new Promise<TreeMenuEntry<Item>[]>((resolve) => {
+					new Promise<TreeMenuItem<Item>[]>((resolve) => {
 						resolveLazy = () => resolve([{ id: 'loaded', text: 'Loaded item' }]);
 					})
 			}
