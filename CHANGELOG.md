@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.0.0-rc18] - 2026-11-22
 
+### Removed — the HTML5 drag API: `startDrag` / `dragOver` / `dragLeave` / `drop` / `dropAt` (2026-11-22)
+
+- The tree drags with pointer events (mouse, pen, touch) since rc15; these controller methods were the leftover native-drag path for custom renderers and ran a second drag implementation next to it. A custom renderer now calls `controller.attachPointerDrag(container)` (below). `_onNodeDragEnd` is gone with them; `cancelDrag()` stays and aborts a pointer drag. The drag contexts' `event` is now typed `PointerEvent` (was `DragEvent | TouchEvent | PointerEvent`) — nothing produced the other two any more. No alias.
+
+### Changed — the pointer drag runs on core `createPointerDrag` (2026-11-22)
+
+- The tree's own pointer-drag manager (window listeners, threshold, long-press timer, edge auto-scroll, Escape) is replaced by the vendored web-components-core `createPointerDrag` (SPEC §12.28) — the same gesture web-treeview's renderer uses; `scripts/core-sync.json` group "pointer-drag" (`dom/pointer-drag`, `dom/scroll-container`, `overlay/ghost-click`). `<Tree>` attaches it once on `.stv__container` (a row's `.stv__node-content` is the grab handle) instead of a `pointerdown` per row; the controller keeps the tree side (`_engagePointerDrag`, `_updatePointerHover`, `_onPointerDrop`, cancel). New from core: the click that ends a drag is swallowed, a touch drag suppresses the long-press context menu, and the hit test pierces shadow roots. Auto-scroll now scrolls the source tree's scroll container (core) — it used to follow the scroller under the pointer. `NodeCallbacks` loses `onPointerDown`.
+
+### Added — `controller.attachPointerDrag(container)` for custom renderers (2026-11-22)
+
+- Attach it once to the element holding your nodes (Svelte: `{@attach (el) => controller.attachPointerDrag(el)}`; returns the detach); the drag is the built-in pointer drag (5px engage for mouse / pen, long-press for touch, ghost, autoscroll, Esc, `beforeDragStartCallback` / `beforeDropCallback`, multi-drag, cross-tree). A press inside a `[data-tree-path]` element drags that node. Drop targets are found under the pointer: the nearest `[data-tree-path]` element is the target node, and a `[data-drop-position="before|after|child"]` pad inside it fixes the position (a position `getAllowedDropPositionsCallback` disallows is not a target); without a pad the position comes from where the pointer sits. `/examples/custom-layout` (tokens + both dendrograms) moved to it; guarded by `e2e/custom-drag.spec.ts` + `/test/custom-drag`. Docs: `docs/usage.md` "Custom drag renderer", `ai/drag-drop.txt`.
+
+### Fixed — checkbox cascade + bound focus (2026-11-22)
+
+- A path that `beforeCheckboxToggleCallback` ADDS to a toggle now re-derives its own parents too (they used to keep their old checked / [-] state, because only the clicked node's ancestors were walked). A check / uncheck also assigns the canonical checked set once instead of once per ancestor walk, so `checkNodes(1000 paths)` runs one `cascadeCheckPolicy` projection, not 1000.
+- Assigning `bind:focusedNode` from the parent moves the focus visual: the old row drops it and the new row gets it (the raw write skipped both, and `onFocusChange` stays silent as before). A multi-drag that moves the focused node still re-emits its new path through `bind:focusedNode`.
+
+### Internal — one writer per state family (2026-11-22)
+
+- The UI selection is written in one place (`_setSelection`: set + row flags, diffed so only rows whose membership changed re-render) — click, Ctrl / Shift range, `selectNodes` / `selectAll` / `clearSelection`, an assigned `selectedPaths`, drag-start replace and the Esc-cancel restore all go through it. The checkbox click and `checkNode(s)` / `uncheckNode(s)` / an assigned `checkedPaths` share one cascade core (`_setChecked`). Behaviour unchanged apart from the fixes above.
+
 ### Changed — `copyNodeWithDescendants` → `duplicateNode` (2026-11-22)
 
 - One verb for "make a copy in the tree without the clipboard": `duplicateNode` (one subtree) next to `duplicateNodes` (a batch, built on it per root). `copy*` stays the clipboard's (`copyNodes` / `cutNodes` / `pasteNodes`). Same arguments and result; on the `<Tree>` instance, the controller and `Ltree`. Same in web-treeview; `duplicate` is now in the Keenmate verb glossary (D-NC-13). No alias.

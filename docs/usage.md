@@ -112,7 +112,7 @@ Without both requirements, no search indexing will occur.
 | `shouldAutoHandleCopy` | `boolean` | `true` | Auto-handle same-tree copies (false for external DB/API) |
 | `allowedDropPositionsMember` | `string \| null` | `null` | Property name for allowed drop positions array |
 | `getAllowedDropPositionsCallback` | `({ node }) => DropPosition[] \| null` | `undefined` | Callback returning allowed drop positions per node |
-| `beforeDropCallback` | `(dropNode, draggedNode, position, event, operation) => ...` | `undefined` | Async-capable callback to validate/modify drops |
+| `beforeDropCallback` | `(ctx: BeforeDropContext<T>) => false \| { position?, operation? } \| DropGroup[] \| void \| Promise<…>` | `undefined` | Async-capable drop interceptor. `ctx = { target, dragged, position, operation, event }`: `false` blocks, `{ position?, operation? }` redirects, `DropGroup[]` routes the dragged nodes to several targets |
 
 ### Event handler properties
 
@@ -188,6 +188,31 @@ Rendering your own menu (a `contextMenu` snippet, or a headless `TreeProvider` /
     {/if}
   {/snippet}
 </TreeProvider>
+```
+
+### Custom drag renderer
+
+Drag and drop is one pointer-events drag for mouse, pen and touch (core `createPointerDrag`, no HTML5 drag session). A headless `TreeProvider` / `createTreeController` UI plugs into it with one call and two attributes:
+
+- `controller.attachPointerDrag(container)` once on the element holding your nodes (Svelte: `{@attach (el) => controller.attachPointerDrag(el)}`; returns the detach). Mouse / pen engage after a 5px move, touch after a long-press; ghost, edge autoscroll, Esc-cancel, `beforeDragStartCallback` / `beforeDropCallback`, multi-drag and cross-tree all work as in `<Tree>`.
+- `data-tree-path={node.path}` on each node's element — a press inside it drags that node, and the nearest one under the pointer is the drop target.
+- `data-drop-position="before" | "after" | "child"` on drop pads inside it fixes the position (a pad whose position `getAllowedDropPositionsCallback` disallows is not a target). Without a pad the position comes from where the pointer sits on the target element.
+
+Read `controller.draggedNode` / `hoveredNodeForDrop` / `activeDropPosition` for the visuals. Give the draggable element `touch-action: none` so a held touch doesn't scroll. `cancelDrag()` aborts a drag in flight. Example: `/examples/custom-layout` (tokens and two dendrograms).
+
+```svelte
+<div {@attach (el) => controller.attachPointerDrag(el)}>
+  {#each controller.tree.visibleFlatNodes as node (node.id)}
+    <div data-tree-path={node.path}>
+      <button style="touch-action: none">{node.data.name}</button>
+      {#if controller.hoveredNodeForDrop?.path === node.path}
+        <div data-drop-position="before">Before</div>
+        <div data-drop-position="child">Inside</div>
+        <div data-drop-position="after">After</div>
+      {/if}
+    </div>
+  {/each}
+</div>
 ```
 
 ### Clipboard interceptor properties

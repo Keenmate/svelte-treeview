@@ -299,11 +299,12 @@ When dropping to empty tree:
 - ctx.target is null
 - ctx.position is 'child'
 
-TOUCH DRAG SUPPORT
-------------------
-Enabled by default on touch devices:
+POINTER DRAG (MOUSE / PEN / TOUCH)
+----------------------------------
+One pointer-events drag for every input — core createPointerDrag (no HTML5 drag session, no dataTransfer):
 
-- Long-press (300ms) initiates drag
+- Mouse / pen: the drag engages after a 5px move
+- Touch: long-press (300ms) initiates drag
 - Distinguishes from tap and scroll
 - Ghost element follows finger
 - Haptic feedback on supported devices
@@ -311,6 +312,28 @@ Enabled by default on touch devices:
 
 Same callback as desktop:
 <Tree onNodeDrop={handleDrop} />
+
+CUSTOM RENDERER (TreeProvider / createTreeController)
+-----------------------------------------------------
+controller.attachPointerDrag(container)   // once, on the element holding the nodes (returns detach)
+data-tree-path={node.path}                // on each node's element: press = drag it; nearest under the pointer = target
+data-drop-position="before|after|child"   // on drop pads inside it (else computed from the pointer)
+
+<div {@attach (el) => controller.attachPointerDrag(el)}>
+  {#each controller.tree.visibleFlatNodes as node (node.id)}
+    <div data-tree-path={node.path}>
+      <button style="touch-action: none">{node.data.name}</button>
+      {#if controller.hoveredNodeForDrop?.path === node.path}
+        <div data-drop-position="before">Before</div>
+        <div data-drop-position="child">Inside</div>
+        <div data-drop-position="after">After</div>
+      {/if}
+    </div>
+  {/each}
+</div>
+
+Visual state: controller.draggedNode / hoveredNodeForDrop / activeDropPosition. cancelDrag() aborts.
+(The old HTML5 methods startDrag / dragOver / dragLeave / drop / dropAt were removed in 5.0.0-rc18.)
 
 DRAG EVENTS
 -----------

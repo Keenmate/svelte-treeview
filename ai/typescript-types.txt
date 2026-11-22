@@ -276,7 +276,7 @@ beforeDropCallback?: (
   dropNode: LTreeNode<T> | null,
   draggedNode: LTreeNode<T>,
   position: DropPosition,
-  event: DragEvent,
+  event: PointerEvent,
   operation: DropOperation
 ) => boolean | { position?: DropPosition; operation?: DropOperation } | void | Promise<...>;
 
@@ -336,7 +336,7 @@ type NodeEventContext<T> = NodeRef<T>;
 // onNodeDragStart / onNodeDragOver. A drag is single-origin → fires ONCE even
 // for a multi-selection; `dragged` carries the full top-level set.
 interface NodeDragContext<T> extends NodeRef<T> {
-  event: DragEvent;
+  event: PointerEvent;
   dragged: NodeRef<T>[];  // full top-level set (single-item array for a single drag)
 }
 
@@ -349,7 +349,7 @@ interface NodeDropContext<T> {
   dropped: NodeRef<T>[] | null;         // placed nodes; null when library didn't place them
   position: DropPosition;
   operation: DropOperation;
-  event: DragEvent | TouchEvent;
+  event: PointerEvent;
 }
 
 // onNodeCopy / onNodeCut / onNodeDelete. operation omitted for delete. For cut/delete,

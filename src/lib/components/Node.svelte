@@ -79,7 +79,7 @@
 	const checkboxMode = $derived(config.checkboxMode);
 	const shouldClickToggleCheckbox = $derived(config.shouldClickToggleCheckbox);
 
-	// Indeterminate state: driven by controller's _updateAncestorVisualStates
+	// Indeterminate state: driven by controller's _reconcileCascadeStates
 	const isIndeterminate = $derived(checkboxMode === 'cascade' && node.visualState === 'indeterminate');
 
 	// Read dropZoneMode through the proxy each time (not destructured) so it stays
@@ -379,7 +379,6 @@
 				e.stopPropagation();
 				callbacks.onNodeRightClicked(node, e);
 			}}
-			onpointerdown={(e) => callbacks.onPointerDown(node, e)}
 			use:tooltip={{
 				enabled: tooltipEnabled,
 				content: tooltipContent,

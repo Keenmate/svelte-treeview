@@ -209,16 +209,11 @@
 	{@const showZones = isDropTarget && !isDragging}
 	<div class="hz-token-group">
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div class="hz-token-wrapper" role="group"
-			ondragover={() => { if (ctrl.isDragInProgress && !isDragging) ctrl.hoveredNodeForDrop = node; }}
-			ondragleave={(e) => { if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as globalThis.Node)) { ctrl.hoveredNodeForDrop = null; ctrl.activeDropPosition = null; } }}
-		>
+		<div class="hz-token-wrapper" role="group" data-tree-path={node.path}>
 			{#if showZones}<div class="hz-hitbox"></div>{/if}
 			<button class="hz-token hz-depth-{depth}"
-				draggable={true}
 				class:hz-dragging={isDragging}
 				onclick={() => { if (node.hasChildren) toggleToken(node.path); }}
-				ondragstart={(e) => ctrl.startDrag(node, e)}
 			>
 				<span class="hz-token-icon">{node.data?.icon}</span>
 				<span class="hz-token-name">{node.data?.name}</span>
@@ -229,19 +224,13 @@
 			</button>
 
 			{#if showZones}
-				<div role="button" tabindex="-1" class="hz-zone hz-zone-before"
-					ondragover={(e) => { e.preventDefault(); e.stopPropagation(); ctrl.hoveredNodeForDrop = node; ctrl.activeDropPosition = 'before'; }}
-					ondrop={(e) => { e.stopPropagation(); ctrl.dropAt(node, 'before', e); }}
+				<div role="button" tabindex="-1" class="hz-zone hz-zone-before" data-drop-position="before"
 					class:hz-zone-active={dropPos === 'before'}
 				>Before</div>
-				<div role="button" tabindex="-1" class="hz-zone hz-zone-after"
-					ondragover={(e) => { e.preventDefault(); e.stopPropagation(); ctrl.hoveredNodeForDrop = node; ctrl.activeDropPosition = 'after'; }}
-					ondrop={(e) => { e.stopPropagation(); ctrl.dropAt(node, 'after', e); }}
+				<div role="button" tabindex="-1" class="hz-zone hz-zone-after" data-drop-position="after"
 					class:hz-zone-active={dropPos === 'after'}
 				>After</div>
-				<div role="button" tabindex="-1" class="hz-zone hz-zone-child"
-					ondragover={(e) => { e.preventDefault(); e.stopPropagation(); ctrl.hoveredNodeForDrop = node; ctrl.activeDropPosition = 'child'; }}
-					ondrop={(e) => { e.stopPropagation(); ctrl.dropAt(node, 'child', e); }}
+				<div role="button" tabindex="-1" class="hz-zone hz-zone-child" data-drop-position="child"
 					class:hz-zone-active={dropPos === 'child'}
 				>Child</div>
 			{/if}
@@ -267,18 +256,13 @@
 	{@const showZones = isDropTarget && !isDragging}
 	<div class="dg-row">
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div class="dg-node-wrapper" role="group"
-			ondragover={() => { if (ctrl.isDragInProgress && !isDragging) ctrl.hoveredNodeForDrop = node; }}
-			ondragleave={(e) => { if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as globalThis.Node)) { ctrl.hoveredNodeForDrop = null; ctrl.activeDropPosition = null; } }}
-		>
+		<div class="dg-node-wrapper" role="group" data-tree-path={node.path}>
 			{#if showZones}<div class="dg-hitbox"></div>{/if}
 			<button
 				class="dg-label dg-depth-{depth}"
 				class:dg-expandable={node.hasChildren}
 				class:dg-dragging={isDragging}
-				draggable={true}
 				onclick={() => { if (node.hasChildren) toggleDendro(node.path); }}
-				ondragstart={(e) => ctrl.startDrag(node, e)}
 			>
 				<span class="dg-node-icon">{node.data?.icon}</span>
 				<span class="dg-node-name">{node.data?.name}</span>
@@ -287,19 +271,13 @@
 				{/if}
 			</button>
 			{#if showZones}
-				<div role="button" tabindex="-1" class="dg-zone dg-zone-before"
-					ondragover={(e) => { e.preventDefault(); e.stopPropagation(); ctrl.hoveredNodeForDrop = node; ctrl.activeDropPosition = 'before'; }}
-					ondrop={(e) => { e.stopPropagation(); ctrl.dropAt(node, 'before', e); }}
+				<div role="button" tabindex="-1" class="dg-zone dg-zone-before" data-drop-position="before"
 					class:dg-zone-active={dropPos === 'before'}
 				>Before</div>
-				<div role="button" tabindex="-1" class="dg-zone dg-zone-after"
-					ondragover={(e) => { e.preventDefault(); e.stopPropagation(); ctrl.hoveredNodeForDrop = node; ctrl.activeDropPosition = 'after'; }}
-					ondrop={(e) => { e.stopPropagation(); ctrl.dropAt(node, 'after', e); }}
+				<div role="button" tabindex="-1" class="dg-zone dg-zone-after" data-drop-position="after"
 					class:dg-zone-active={dropPos === 'after'}
 				>After</div>
-				<div role="button" tabindex="-1" class="dg-zone dg-zone-child"
-					ondragover={(e) => { e.preventDefault(); e.stopPropagation(); ctrl.hoveredNodeForDrop = node; ctrl.activeDropPosition = 'child'; }}
-					ondrop={(e) => { e.stopPropagation(); ctrl.dropAt(node, 'child', e); }}
+				<div role="button" tabindex="-1" class="dg-zone dg-zone-child" data-drop-position="child"
 					class:dg-zone-active={dropPos === 'child'}
 				>Child</div>
 			{/if}
@@ -327,18 +305,13 @@
 	{@const showZones = isDropTarget && !isDragging}
 	<div class="vdg-subtree">
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div class="vdg-node-wrapper" role="group"
-			ondragover={() => { if (ctrl.isDragInProgress && !isDragging) ctrl.hoveredNodeForDrop = node; }}
-			ondragleave={(e) => { if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as globalThis.Node)) { ctrl.hoveredNodeForDrop = null; ctrl.activeDropPosition = null; } }}
-		>
+		<div class="vdg-node-wrapper" role="group" data-tree-path={node.path}>
 			{#if showZones}<div class="vdg-hitbox"></div>{/if}
 			<button
 				class="vdg-label vdg-depth-{depth}"
 				class:vdg-expandable={node.hasChildren}
 				class:vdg-dragging={isDragging}
-				draggable={true}
 				onclick={() => { if (node.hasChildren) toggleDendro(node.path); }}
-				ondragstart={(e) => ctrl.startDrag(node, e)}
 			>
 				<span class="vdg-node-icon">{node.data?.icon}</span>
 				<span class="vdg-node-name">{node.data?.name}</span>
@@ -347,19 +320,13 @@
 				{/if}
 			</button>
 			{#if showZones}
-				<div role="button" tabindex="-1" class="vdg-zone vdg-zone-before"
-					ondragover={(e) => { e.preventDefault(); e.stopPropagation(); ctrl.hoveredNodeForDrop = node; ctrl.activeDropPosition = 'before'; }}
-					ondrop={(e) => { e.stopPropagation(); ctrl.dropAt(node, 'before', e); }}
+				<div role="button" tabindex="-1" class="vdg-zone vdg-zone-before" data-drop-position="before"
 					class:vdg-zone-active={dropPos === 'before'}
 				>Before</div>
-				<div role="button" tabindex="-1" class="vdg-zone vdg-zone-after"
-					ondragover={(e) => { e.preventDefault(); e.stopPropagation(); ctrl.hoveredNodeForDrop = node; ctrl.activeDropPosition = 'after'; }}
-					ondrop={(e) => { e.stopPropagation(); ctrl.dropAt(node, 'after', e); }}
+				<div role="button" tabindex="-1" class="vdg-zone vdg-zone-after" data-drop-position="after"
 					class:vdg-zone-active={dropPos === 'after'}
 				>After</div>
-				<div role="button" tabindex="-1" class="vdg-zone vdg-zone-child"
-					ondragover={(e) => { e.preventDefault(); e.stopPropagation(); ctrl.hoveredNodeForDrop = node; ctrl.activeDropPosition = 'child'; }}
-					ondrop={(e) => { e.stopPropagation(); ctrl.dropAt(node, 'child', e); }}
+				<div role="button" tabindex="-1" class="vdg-zone vdg-zone-child" data-drop-position="child"
 					class:vdg-zone-active={dropPos === 'child'}
 				>Child</div>
 			{/if}
@@ -708,7 +675,7 @@
 				<button class="secondary" onclick={() => collapseAllTokens()}>Collapse All</button>
 			</div>
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div class="hz-container" role="group" ondragend={ctrl._onNodeDragEnd}>
+			<div class="hz-container" role="group" {@attach (el) => ctrl.attachPointerDrag(el)}>
 				{#key ctrl.tree.changeTracker}
 					{#each ctrl.tree.tree as rootNode (rootNode.id)}
 						{@render tokenNode(rootNode, (path: string) => ctrl.getChildren(path), ctrl)}
@@ -842,7 +809,7 @@
 				<button class="secondary" onclick={() => collapseAllDendro()}>Collapse All</button>
 			</div>
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div class="dg-viewport" role="group" ondragend={ctrl._onNodeDragEnd}>
+			<div class="dg-viewport" role="group" {@attach (el) => ctrl.attachPointerDrag(el)}>
 				<div class="dg-canvas">
 					{#key ctrl.tree.changeTracker}
 						{#each ctrl.tree.tree as rootNode (rootNode.id)}
@@ -901,7 +868,7 @@
 				<button class="secondary" onclick={() => collapseAllDendro()}>Collapse All</button>
 			</div>
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div class="vdg-viewport" role="group" ondragend={ctrl._onNodeDragEnd}>
+			<div class="vdg-viewport" role="group" {@attach (el) => ctrl.attachPointerDrag(el)}>
 				<!-- Virtual root connecting all top-level nodes -->
 				<div class="vdg-subtree">
 					<div class="vdg-label vdg-root-label">
@@ -1441,14 +1408,16 @@
 		border-color: var(--kmwc-border-color-strong);
 		box-shadow: 0 2px 8px var(--kmwc-shadow-color);
 	}
-	.hz-token[draggable='true'],
-	.dg-label[draggable='true'],
-	.vdg-label[draggable='true'] {
+	.hz-token,
+	.dg-label,
+	.vdg-label {
 		cursor: grab;
+		touch-action: none;
+		user-select: none;
 	}
-	.hz-token[draggable='true']:active,
-	.dg-label[draggable='true']:active,
-	.vdg-label[draggable='true']:active {
+	.hz-token:active,
+	.dg-label:active,
+	.vdg-label:active {
 		cursor: grabbing;
 	}
 	.hz-dragging,

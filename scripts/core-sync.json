@@ -46,6 +46,17 @@
 			]
 		},
 		{
+			"name": "pointer-drag",
+			"description": "Drag and drop (SPEC §12.28): core createPointerDrag drives the tree's ONE pointer drag (mouse / pen / touch — threshold, long press, scroll lock, hit test through shadow roots, auto-scroll, Escape, the swallowed trailing click) via TreeController.attachPointerDrag; same as web-treeview's renderer. scroll-container + ghost-click are its imports.",
+			"mode": "identical",
+			"baseline": "91e9f99",
+			"files": [
+				["src/dom/pointer-drag.ts", "src/lib/vendor/core/dom/pointer-drag.ts"],
+				["src/dom/scroll-container.ts", "src/lib/vendor/core/dom/scroll-container.ts"],
+				["src/overlay/ghost-click.ts", "src/lib/vendor/core/overlay/ghost-click.ts"]
+			]
+		},
+		{
 			"name": "locale",
 			"description": "Labels + page-wide locale (SPEC §12.24): flat <elementType>.<name> keys; createLabels = labels prop → the tree's translateCallback → window.components.locale.translateCallback → the flat page dictionary labels['svelte-treeview.<key>'] → English. src/lib/core/labels.ts is the seam.",
 			"mode": "identical",

@@ -908,6 +908,14 @@
 		}
 	});
 
+	// Drag and drop: core createPointerDrag on the container (one listener for every row; mouse /
+	// pen / touch). A row's .stv__node-content is the grab handle.
+	$effect(() => {
+		if (!treeContainerRef) return;
+		const el = treeContainerRef;
+		return untrack(() => controller._attachPointerDrag(el, true));
+	});
+
 	// ── Theme context (core SPEC §12.10, vendored) ─────────────────────────
 	// The page's (or `themeSource`'s) dark/light signal, detected once per watched
 	// element and shared with every Keenmate component on the page, mirrored onto
@@ -1420,7 +1428,10 @@
 
 	// Bidirectional: parent can also SET these
 	$effect(() => {
-		controller.focusedNode = focusedNode;
+		// Through the focus writer: a raw write left the old row's focus visual behind and
+		// never set the new row's. The controller→prop echo is a no-op (same path).
+		const fn = focusedNode;
+		untrack(() => controller._replaceFocusedNode(fn));
 	});
 	$effect(() => {
 		// Compare by size + content to avoid proxy identity loops

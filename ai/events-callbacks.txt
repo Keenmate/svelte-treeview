@@ -41,7 +41,7 @@ each fire ONCE even for a multi-selection; ctx.dragged carries the full top-leve
     // ctx = NodeRef + { event, dragged }; ctx.node is the grabbed node
     console.log('Started dragging:', ctx.node.data.name);
     console.log('In flight:', ctx.dragged.length);  // NodeRef[]
-    // Can modify ctx.event.dataTransfer here
+    // ctx.event is the PointerEvent (mouse / pen / touch — there is no HTML5 drag session)
   }}
 
   onNodeDragOver={(ctx) => {
@@ -317,7 +317,7 @@ onNodeClick / onNodeDoubleClick:
 
 onNodeDragStart / onNodeDragOver:
 (ctx: NodeDragContext<T>) => void
-  // NodeDragContext = NodeRef<T> & { event: DragEvent, dragged: NodeRef<T>[] }
+  // NodeDragContext = NodeRef<T> & { event: PointerEvent, dragged: NodeRef<T>[] }
 
 onNodeDrop:
 (ctx: NodeDropContext<T>) => void
@@ -328,7 +328,7 @@ onNodeDrop:
   //   dropped: NodeRef<T>[] | null, // library-placed nodes; null cross-tree / auto-handle off
   //   position: 'before' | 'after' | 'child',
   //   operation: 'move' | 'copy',
-  //   event: DragEvent | TouchEvent
+  //   event: PointerEvent
   // }
 
 onSelectionChange / onCheckedChange:
@@ -368,7 +368,7 @@ beforeDropCallback (deliberately still 5-arg positional):
   dropNode: LTreeNode<T> | null,
   draggedNode: LTreeNode<T>,
   position: 'before' | 'after' | 'child',
-  event: DragEvent,
+  event: PointerEvent,
   operation: 'move' | 'copy'
 ) => boolean | { position?, operation? } | Promise<...>
 

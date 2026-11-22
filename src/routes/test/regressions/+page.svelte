@@ -22,6 +22,10 @@
 	let deleted = $state('');
 	let shortcutHits = $state('');
 	let nextId = 100;
+	// B21: paths the beforeCheckboxToggleCallback ADDS to every toggle ([] = leave it alone).
+	let toggleExtra: string[] = [];
+	// B5: the parent-owned bindable focus.
+	let focusedNode = $state<LTreeNode<Item> | null | undefined>(null);
 
 	let main = $state<any>();
 	let snippetTree = $state<any>();
@@ -44,6 +48,9 @@
 		w.__setExpanded = (v: string[]) => (expandedPaths = new Set(v));
 		w.__nodes = () => nodes;
 		w.__holeNodes = () => holeNodes;
+		w.__setToggleExtra = (v: string[]) => (toggleExtra = v);
+		w.__setFocused = (path: string | null) => (focusedNode = path ? main.getNodeByPath(path) : null);
+		w.__focusedPath = () => focusedNode?.path ?? null;
 	});
 </script>
 
@@ -57,6 +64,7 @@
 				bind:nodes
 				bind:searchTerm
 				bind:expandedPaths
+				bind:focusedNode
 				treeId="main"
 				dragDropMode="both"
 				getIsDraggableCallback={() => true}
@@ -70,6 +78,8 @@
 				isCheckboxesShown={true}
 				checkboxMode="cascade"
 				cascadeCheckPolicy="all"
+				beforeCheckboxToggleCallback={(ctx: any) =>
+					toggleExtra.length ? [...ctx.affectedPaths, ...toggleExtra] : undefined}
 				nodeInputTransformationCallback={(ctx: any) => ({ ...ctx.data, id: nextId++ })}
 				onNodeDelete={(ctx: any) => (deleted = ctx.paths.join(','))}
 				getContextMenuItemsCallback={() => [

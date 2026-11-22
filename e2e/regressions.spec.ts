@@ -35,6 +35,38 @@ test.describe('checkbox state', () => {
 	});
 });
 
+test.describe('checkbox state (2)', () => {
+	test('B21: a path beforeCheckboxToggleCallback ADDS also re-derives its parents', async ({ page }) => {
+		// Clicking Gamma also checks Zeta (2.1) — Epsilon's only child, so Epsilon must follow.
+		await page.evaluate(() => (window as any).__setToggleExtra(['2.1']));
+		await box(page, '1.1.1').click();
+		await expect(box(page, '2.1')).toBeChecked();
+		await expect(box(page, '2')).toBeChecked();
+		await expect(box(page, '1.1')).toHaveClass(/stv__checkbox--indeterminate/);
+		const checked = await page.evaluate(() => [...(window as any).__main.getCheckedNodes()].map((n: any) => n.path).sort());
+		expect(checked).toEqual(['1.1.1', '2', '2.1']);
+	});
+
+	test('checkNodes on many paths re-derives every branch (one projection)', async ({ page }) => {
+		await call(page, '__main', 'checkNodes', ['1.1.1', '1.1.2', '2.1']);
+		for (const p of ['1.1', '2']) await expect(box(page, p), p).toBeChecked();
+		await expect(box(page, '1')).toHaveClass(/stv__checkbox--indeterminate/);
+		await call(page, '__main', 'uncheckNodes', ['1.1.2']);
+		await expect(box(page, '1.1')).toHaveClass(/stv__checkbox--indeterminate/);
+		await expect(box(page, '2')).toBeChecked();
+	});
+});
+
+test('B5: assigning bind:focusedNode moves the focus visual to the new row', async ({ page }) => {
+	const focused = (path: string) => row(page, path).locator('.stv__node-content').first();
+	await label(page, '1.1.1').click();
+	await expect(focused('1.1.1')).toHaveClass(/stv__node-content--focused/);
+	await page.evaluate(() => (window as any).__setFocused('2'));
+	await expect(focused('2')).toHaveClass(/stv__node-content--focused/);
+	await expect(focused('1.1.1')).not.toHaveClass(/stv__node-content--focused/);
+	expect(await page.evaluate(() => (window as any).__focusedPath())).toBe('2');
+});
+
 test.describe('clipboard', () => {
 	test('R2: pasting a 3-level subtree with an id-minting transform keeps the grandchildren', async ({ page }) => {
 		await call(page, '__main', 'copyNodes', ['1']);
