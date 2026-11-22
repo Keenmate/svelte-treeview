@@ -795,6 +795,10 @@
 		to copy" then hold Ctrl while dragging to copy nodes. With <code>selectionMode="multiple"</code>
 		(default below), Ctrl/Shift+click multiple nodes and drag any one of them — the whole
 		highlight set moves together (top-level subtrees only; descendants ride along inside).
+		Folders accept drops, files don't: <code>getIsDropAllowedCallback</code> reads an
+		<code>isFolder</code> flag on the data (not <code>hasChildren</code> — the callback runs while
+		the data is inserted, before children are linked), so a file never lights up and releasing over
+		one shows the 🚫.
 		<strong>Target tree (right):</strong> Drag from source to add nodes. Starts empty to demo drop
 		placeholder. Once it has nodes, multi-drag works inside the target tree the same way.
 	</p>
