@@ -4,40 +4,17 @@ import { type LTreeNode, createLTreeNode } from './ltree-node.svelte.js';
 
 describe('LTree Sorting', () => {
 	function createTestLTree() {
-		return createLTree<any>(
-			'id',
-			'path',
-			undefined, // parentPathMember
-			undefined, // levelMember
-			undefined, // hasChildrenMember
-			undefined, // isExpandedMember
-			undefined, // getIsExpandedCallback
-			undefined, // isSelectableMember
-			undefined, // getIsSelectableCallback
-			undefined, // isCheckedMember
-			undefined, // getIsCheckedCallback
-			undefined, // isDraggableMember
-			undefined, // getIsDraggableCallback
-			undefined, // isDropAllowedMember
-			undefined, // getIsDropAllowedCallback
-			undefined, // allowedDropPositionsMember
-			'name', // displayValueMember
-			undefined, // getDisplayValueCallback
-			undefined, // searchValueMember
-			undefined, // getSearchValueCallback
-			undefined, // getAllowedDropPositionsCallback
-			undefined, // isCollapsibleMember
-			undefined, // getIsCollapsibleCallback
-			undefined, // orderMember
-			'test-tree',
-			'.', // treePathSeparator
-			2, // expandLevel
-			false, // shouldUseInternalSearchIndex
-			undefined, // initializeIndexCallback
-			25, // indexerBatchSize
-			50, // indexerTimeout
-			{}
-		);
+		return createLTree<any>({
+			idMember: 'id',
+			pathMember: 'path',
+			displayValueMember: 'name',
+			treeId: 'test-tree',
+			treePathSeparator: '.',
+			expandLevel: 2,
+			shouldUseInternalSearchIndex: false,
+			indexerBatchSize: 25,
+			indexerTimeout: 50
+		});
 	}
 
 	describe('_defaultSort', () => {

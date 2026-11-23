@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.0.0-rc18] - 2026-11-22
 
+### Fixed — a node moved between two adjacent order values no longer duplicates one (2026-11-23)
+
+- With `orderMember`, `moveNode` (and a drag-move before / after a node) gave the moved node `floor((prev + target) / 2)`: between siblings ordered 3 and 4 that is 3 again, so the next re-sort could put it on the wrong side. It now uses the same rule as `insertNode` / `insertBranch` / paste: whole numbers while the gap allows, else a fraction (3.5). (REVIEW-2026-11-19 §3.7.)
+
+### Fixed — the search index falls back to `getSearchValueCallback` (2026-11-23)
+
+- With a `searchValueMember` set, the indexer read only that field, so a row without it was never searchable even when a `getSearchValueCallback` was given; with the member unset it read only the callback. It now resolves like `getNodeSearchValue`: the member when the row has it, else the callback. (REVIEW-2026-11-19 §3.7.)
+
+### Internal — one drop manifest, one mode rule, one allowed-position rule (2026-11-23)
+
+- A same-tree move and copy-drop build what they place in one `_dropManifest` (the `beforeDragStartCallback` override as-is, else the multi-selection or the lead, completed to whole subtrees) instead of two copies — a copy-drop with an override now also leaves out the drop target itself and vanished paths, like the move always did. The `dragDropMode` check is one rule asked of the target tree (`isDropAllowedByMode`) instead of a separate cross-tree copy; "is this drop position allowed on this node" is one ltree `isDropPositionAllowed` (floating zones, glow, drop pads, leaf-aware paste) instead of four hand-written checks. (REVIEW-2026-11-19 §3.5.)
+
+### Internal — one node builder in the ltree (2026-11-23)
+
+- `createLTree` takes one `LTreeConfig` object (+ `treeId`) instead of 33 positional parameters, and `reconfigure` swaps that object instead of re-assigning each field. Rows become nodes in one `rowToNode` (with `seedNodeFlags`, also used by `addNode`) instead of three copies in `insertArray` / `addBranch` / `addNode`; `removeNode` / `removeBranch` / `replaceBranch` share `detachNode` / `clearChildren`; the pre-insert sort, the `orderMember` value rule and the search-value lookup each exist once. About 350 lines less. (REVIEW-2026-11-19 §3.7.)
+
 ### Changed — `ctx.controller` is the public `TreeController` facade; the engine is `TreeEngine` (2026-11-23)
 - Every callback and event ctx carries `controller`. Until now that was the engine itself, with its `$state` fields, Node wiring and `_private` methods. It is now a frozen facade built with core `createControllerFacade` (SPEC §12.34), the same model as web-treeview's `TreeViewController`. It has the public methods (`<Tree>`'s exports minus `update`, listed in `TREE_CONTROLLER_METHODS`) and read-only state: `treeId`, `nodes`, `focusedNode`, `selectedPaths`, `checkedPaths`, `expandedPaths`, `cutPaths`, `insertResult`, `searchTerm`, `searchStatus`, `indexProgress` and `isRendering`. `selectionAnchor` is writable. Props are not on it: change them on `<Tree>` (props or `update()`).
 - `window.components['svelte-treeview'].getInstances()` lists the same facades.
@@ -30,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Internal — one prop table (2026-11-23)
 
 - `core/tree-props.ts` lists every controller prop with its default, which ones are built into the ltree, which are init-only and which controller field each is stored in. The controller constructor and `updateProps` iterate it; `<Tree>` keeps only bindables, snippets and its own view props and syncs the rest with one effect per key; `update()` routes through `controller.updateProps`. Replaces four hand-written prop lists in `Tree.svelte` (~85 sync effects, the 130-branch `update()`) and three in the controller — about 800 lines less. Defaults now agree everywhere (`shouldAlignNodeIcons`; the docs' `expandLevel` 2 / `shouldHandleKeyboardShortcuts` false were stale — the defaults are 0 and true). (REVIEW-2026-11-19 §3.1.)
+- `<Tree>`'s `Props` type extends `TreeEngineProps` and declares only the component's own props (snippets, `insertResult` / `isRendering` / `containerSize`, theme, motion, menu presentation); the doc comments of every engine option now live on `TreeEngineProps`, so the component and a custom renderer show the same hover docs.
 
 ### Removed — the HTML5 drag API: `startDrag` / `dragOver` / `dragLeave` / `drop` / `dropAt` (2026-11-22)
 

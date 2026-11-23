@@ -4,40 +4,18 @@ import { createLTree } from './ltree.svelte.js';
 /** insertNode / positioned insertBranch / applyChanges add|insert|update|remove. */
 
 function createTree(orderMember?: string) {
-	return createLTree<any>(
-		'id',
-		'path',
-		undefined, // parentPathMember
-		undefined, // levelMember
-		undefined, // hasChildrenMember
-		undefined, // isExpandedMember
-		undefined, // getIsExpandedCallback
-		undefined, // isSelectableMember
-		undefined, // getIsSelectableCallback
-		undefined, // isCheckedMember
-		undefined, // getIsCheckedCallback
-		undefined, // isDraggableMember
-		undefined, // getIsDraggableCallback
-		undefined, // isDropAllowedMember
-		undefined, // getIsDropAllowedCallback
-		undefined, // allowedDropPositionsMember
-		'name', // displayValueMember
-		undefined, // getDisplayValueCallback
-		undefined, // searchValueMember
-		undefined, // getSearchValueCallback
-		undefined, // getAllowedDropPositionsCallback
-		undefined, // isCollapsibleMember
-		undefined, // getIsCollapsibleCallback
+	return createLTree<any>({
+		idMember: 'id',
+		pathMember: 'path',
+		displayValueMember: 'name',
 		orderMember,
-		'test-tree',
-		'.',
-		3, // expandLevel
-		false, // shouldUseInternalSearchIndex
-		undefined, // initializeIndexCallback
-		25,
-		50,
-		{}
-	);
+		treeId: 'test-tree',
+		treePathSeparator: '.',
+		expandLevel: 3,
+		shouldUseInternalSearchIndex: false,
+		indexerBatchSize: 25,
+		indexerTimeout: 50
+	});
 }
 
 const names = (tree: any, parentPath = '') => {
@@ -185,5 +163,31 @@ describe('edits while a filter is active (review 2026-11-19 R3)', () => {
 		expect(tree.getNodeByPath('1.1', tree.root)).toBeNull();
 		tree.filterNodes('');
 		expect(names(tree, '1')).toEqual(['other']);
+	});
+});
+
+describe('moveNode order values (§3.7: the same rule as insertNode / _placeNextTo)', () => {
+	it('adjacent whole numbers get a fraction, never a duplicate', () => {
+		const tree = createTree('order');
+		tree.insertArray([
+			{ id: 1, path: '1', name: 'A', order: 3 },
+			{ id: 2, path: '2', name: 'B', order: 4 },
+			{ id: 3, path: '3', name: 'C', order: 10 }
+		]);
+		expect(tree.moveNode('3', '2', 'before').success).toBe(true);
+		expect(tree.getNodeByPath('3')!.data.order).toBe(3.5);
+		expect(names(tree)).toEqual(['A', 'C', 'B']);
+	});
+
+	it('a wide gap still gets a whole number', () => {
+		const tree = createTree('order');
+		tree.insertArray([
+			{ id: 1, path: '1', name: 'A', order: 10 },
+			{ id: 2, path: '2', name: 'B', order: 20 },
+			{ id: 3, path: '3', name: 'C', order: 30 }
+		]);
+		tree.moveNode('3', '1', 'after');
+		expect(tree.getNodeByPath('3')!.data.order).toBe(15);
+		expect(names(tree)).toEqual(['A', 'C', 'B']);
 	});
 });

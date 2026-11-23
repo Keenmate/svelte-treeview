@@ -11,10 +11,11 @@ import {
 	getAncestorPaths,
 	getPathChain,
 	isSelfOrDescendant,
-	bumpRev
+	bumpRev,
+	getDescendantPaths
 } from '../helpers/ltree-helpers.js';
 
-import type { Ltree, LTreeConfig, InsertArrayResult, InsertBranchResult, ReplaceBranchResult, RemoveBranchResult, NodeContext, SortContext, ExpandOptions, InsertPosition, SortOptions, NodesReorderContext } from './types.js';
+import type { Ltree, LTreeConfig, InsertArrayResult, InsertBranchResult, ReplaceBranchResult, RemoveBranchResult, NodeContext, SortContext, ExpandOptions, InsertPosition, SortOptions, NodesReorderContext, DropPosition } from './types.js';
 import { createSearchIndex } from './flex.js';
 import { Indexer, DEFAULT_INDEXER_BATCH_SIZE } from './indexer.js';
 
@@ -29,49 +30,18 @@ function getField(item: unknown, member: string): any {
 	return (item as Record<string, unknown>)[member];
 }
 
+/**
+ * Build an ltree from `initialConfig` (members, callbacks, sort, separator, expand level, search
+ * index — `reconfigure(config)` swaps it later) plus `treeId`, which only names it in logs.
+ * `opts` = initial values of other Ltree fields (e.g. `displayValueFallback`, `isSortingEnabled`).
+ */
 export function createLTree<T>(
-	_idMember: string,
-	_pathMember: string,
-	_parentPathMember?: string | null | undefined,
-	_levelMember?: string | null | undefined,
-	_hasChildrenMember?: string | null | undefined,
-	_isExpandedMember?: string | null | undefined,
-	_getIsExpandedCallback?: (ctx: NodeContext<T>) => boolean,
-	_isSelectableMember?: string | null | undefined,
-	_getIsSelectableCallback?: (ctx: NodeContext<T>) => boolean,
-	_isCheckedMember?: string | null | undefined,
-	_getIsCheckedCallback?: (ctx: NodeContext<T>) => boolean,
-	_isDraggableMember?: string | null | undefined,
-	_getIsDraggableCallback?: (ctx: NodeContext<T>) => boolean,
-	_isDropAllowedMember?: string | null | undefined,
-	_getIsDropAllowedCallback?: (ctx: NodeContext<T>) => boolean,
-	_allowedDropPositionsMember?: string | null | undefined,
-	_displayValueMember?: string | null | undefined,
-	_getDisplayValueCallback?: (ctx: NodeContext<T>) => string,
-
-	_searchValueMember?: string | null | undefined,
-	_getSearchValueCallback?: (ctx: NodeContext<T>) => string,
-
-	_getAllowedDropPositionsCallback?: (
-		ctx: NodeContext<T>
-	) => import('./types.js').DropPosition[] | null | undefined,
-
-	_isCollapsibleMember?: string | null | undefined,
-	_getIsCollapsibleCallback?: (ctx: NodeContext<T>) => boolean,
-
-	_orderMember?: string | null | undefined,
-
-	_treeId?: string,
-	_treePathSeparator?: string | null | undefined,
-
-	_expandLevel?: number | null | undefined,
-	_shouldUseInternalSearchIndex?: boolean | null | undefined,
-	_initializeIndexCallback?: () => Index,
-	_indexerBatchSize?: number | null | undefined,
-	_indexerTimeout?: number | null | undefined,
-
+	initialConfig: LTreeConfig<T> & { treeId?: string },
 	opts?: Partial<Ltree<T>>
 ): Ltree<T> {
+	const { treeId: _treeId, ...firstConfig } = initialConfig;
+	let config: LTreeConfig<T> = firstConfig;
+
 	// Which node fields come from the data (a member is set) and which are calculated.
 	// Re-derived by reconfigure().
 	let shouldCalculateParentPath = false;
@@ -87,18 +57,18 @@ export function createLTree<T>(
 	let shouldCalculateDisplayValue = false;
 	let shouldCalculateSearchValue = false;
 	function deriveCalculatedFields() {
-		shouldCalculateParentPath = isEmptyString(_parentPathMember);
-		shouldCalculateLevel = isEmptyString(_levelMember);
-		shouldCalculateHasChildren = isEmptyString(_hasChildrenMember);
-		shouldCalculateIsExpanded = isEmptyString(_isExpandedMember);
-		shouldCalculateIsSelectable = isEmptyString(_isSelectableMember);
-		shouldCalculateIsChecked = isEmptyString(_isCheckedMember);
-		shouldCalculateIsDraggable = isEmptyString(_isDraggableMember);
-		shouldCalculateIsDropAllowed = isEmptyString(_isDropAllowedMember);
-		shouldCalculateAllowedDropPositions = isEmptyString(_allowedDropPositionsMember);
-		shouldCalculateIsCollapsible = isEmptyString(_isCollapsibleMember);
-		shouldCalculateDisplayValue = isEmptyString(_displayValueMember);
-		shouldCalculateSearchValue = isEmptyString(_searchValueMember);
+		shouldCalculateParentPath = isEmptyString(config.parentPathMember);
+		shouldCalculateLevel = isEmptyString(config.levelMember);
+		shouldCalculateHasChildren = isEmptyString(config.hasChildrenMember);
+		shouldCalculateIsExpanded = isEmptyString(config.isExpandedMember);
+		shouldCalculateIsSelectable = isEmptyString(config.isSelectableMember);
+		shouldCalculateIsChecked = isEmptyString(config.isCheckedMember);
+		shouldCalculateIsDraggable = isEmptyString(config.isDraggableMember);
+		shouldCalculateIsDropAllowed = isEmptyString(config.isDropAllowedMember);
+		shouldCalculateAllowedDropPositions = isEmptyString(config.allowedDropPositionsMember);
+		shouldCalculateIsCollapsible = isEmptyString(config.isCollapsibleMember);
+		shouldCalculateDisplayValue = isEmptyString(config.displayValueMember);
+		shouldCalculateSearchValue = isEmptyString(config.searchValueMember);
 	}
 	deriveCalculatedFields();
 
@@ -139,6 +109,113 @@ export function createLTree<T>(
 			const ancestor = walkPath(root, a, separator);
 			if (ancestor) bumpRev(ancestor);
 		}
+	}
+
+	/**
+	 * Seed a node's per-node flags from its row — callback > member (isExpanded: > expandLevel).
+	 * `node.data` must already be the row so callbacks reading `node.data?.x` see it.
+	 */
+	function seedNodeFlags(node: LTreeNode<T>, row: T): void {
+		if (config.getIsExpandedCallback) node.isExpanded = config.getIsExpandedCallback({ node });
+		else if (!shouldCalculateIsExpanded) node.isExpanded = getField(row, config.isExpandedMember!);
+		else node.isExpanded = !!config.expandLevel && (node.level ?? 0) <= config.expandLevel;
+
+		// isSelectable: stored on the node so renderers can read it directly
+		if (config.getIsSelectableCallback) node.isSelectable = config.getIsSelectableCallback({ node });
+		else if (!shouldCalculateIsSelectable) node.isSelectable = getField(row, config.isSelectableMember!);
+
+		if (config.getIsCheckedCallback) node.isChecked = config.getIsCheckedCallback({ node });
+		else if (!shouldCalculateIsChecked) node.isChecked = getField(row, config.isCheckedMember!);
+
+		if (config.getIsDraggableCallback) node.isDraggable = config.getIsDraggableCallback({ node });
+		else if (!shouldCalculateIsDraggable) node.isDraggable = getField(row, config.isDraggableMember!);
+
+		if (!shouldCalculateIsCollapsible) node.isCollapsible = getField(row, config.isCollapsibleMember!);
+
+		if (config.getIsDropAllowedCallback) node.isDropAllowed = config.getIsDropAllowedCallback({ node });
+		else if (!shouldCalculateIsDropAllowed) node.isDropAllowed = getField(row, config.isDropAllowedMember!);
+
+		if (!shouldCalculateAllowedDropPositions)
+			node.allowedDropPositions = getField(row, config.allowedDropPositionsMember!);
+
+		if (config.getIsDraggableCallback || !shouldCalculateIsDraggable) {
+			dataLogger.debug(`[seedNodeFlags] isDraggable resolved for ${node.path}`, {
+				path: node.path,
+				isDraggable: node.isDraggable,
+				hadCallback: !!config.getIsDraggableCallback,
+				hadMember: !shouldCalculateIsDraggable,
+				rowIsDraggable: config.isDraggableMember ? (row as any)?.[config.isDraggableMember] : '(no member)',
+				nodeDataIsDraggable: (row as any)?.isDraggable
+			});
+		}
+	}
+
+	/**
+	 * A data row → a detached node (path, parent path, segment, level, data, flags, hasChildren);
+	 * `error` instead when the row has no usable path (`insertArray` / `addBranch`).
+	 */
+	function rowToNode(row: T, index: number, separator: string): { node: LTreeNode<T>; error?: string } {
+		const node = createLTreeNode<T>();
+		node.treeId = _treeId || '';
+		node.id = config.idMember ? getField(row, config.idMember) : undefined;
+		node.data = row;
+		const rawPath = config.pathMember ? getField(row, config.pathMember) : undefined;
+
+		// Validate path - must be a non-empty string
+		if (rawPath == null || rawPath === '' || typeof rawPath !== 'string') {
+			node.path = '';
+			const pathDesc =
+				rawPath === '' ? 'empty string' : rawPath == null ? 'undefined/null' : `non-string (${typeof rawPath})`;
+			return {
+				node,
+				error: `Item at index ${index} has invalid path (${pathDesc}). Check that pathMember="${config.pathMember}" matches your data. First item keys: ${index === 0 ? JSON.stringify(Object.keys(row as any)) : '(see index 0)'}`
+			};
+		}
+		node.path = rawPath;
+		node.parentPath = shouldCalculateParentPath
+			? getParentPath(node.path, separator)
+			: getField(row, config.parentPathMember!);
+		node.pathSegment = getPathSegments(getRelativePath(node.path, node.parentPath ?? '', separator), 0, 1, separator);
+		node.level = shouldCalculateLevel ? getLevel(node.path, separator) : getField(row, config.levelMember!);
+
+		seedNodeFlags(node, row);
+		if (!shouldCalculateHasChildren) node.hasChildren = getField(row, config.hasChildrenMember!);
+		return { node };
+	}
+
+	/** The search text of a node: member (when set and present) → `getSearchValueCallback`; else none. */
+	function resolveSearchValue(node: LTreeNode<T>): string | null | undefined {
+		if (!shouldCalculateSearchValue && node.data) {
+			const value = getField(node.data, config.searchValueMember!);
+			if (value != null) return String(value);
+		}
+		return config.getSearchValueCallback?.({ node });
+	}
+
+	/** Set `hasChildren` on `node` from its children (and the data's `hasChildrenMember`). */
+	function syncHasChildren(node: LTreeNode<T>): void {
+		node.hasChildren = Object.keys(node.children).length > 0;
+		if (config.hasChildrenMember && node.data) (node.data as any)[config.hasChildrenMember] = node.hasChildren;
+	}
+
+	/** Remove every descendant of `node` (search index, count); returns how many left. */
+	function clearChildren(node: LTreeNode<T>): number {
+		const removed = new Set(getDescendantPaths(node));
+		dropFromSearch(removed);
+		node.children = {};
+		syncHasChildren(node);
+		nodeCount -= removed.size;
+		return removed.size;
+	}
+
+	/** Remove `node` with its subtree from `parent` (search index, count, parent's hasChildren). */
+	function detachNode(node: LTreeNode<T>, parent: LTreeNode<T>): number {
+		const removed = new Set([node.path, ...getDescendantPaths(node)]);
+		dropFromSearch(removed);
+		delete parent.children[segmentPrefix + node.pathSegment];
+		if (Object.keys(parent.children).length === 0) syncHasChildren(parent);
+		nodeCount -= removed.size;
+		return removed.size;
 	}
 
 	// Display-value comparison of the default sibling rule (numeric-aware: 'Item 2' < 'Item 10').
@@ -195,47 +272,45 @@ export function createLTree<T>(
 		indexer?.clearQueue();
 		indexer = null;
 		searchIndex = null;
-		if (!_shouldUseInternalSearchIndex) return;
-		searchIndex = _initializeIndexCallback ? _initializeIndexCallback() : createSearchIndex();
+		if (!config.shouldUseInternalSearchIndex) return;
+		searchIndex = config.initializeIndexCallback ? config.initializeIndexCallback() : createSearchIndex();
 		if (!searchIndex) return;
 		indexer = new Indexer<T>(
 			_treeId || 'unknown',
 			searchIndex,
-			shouldCalculateSearchValue,
-			_searchValueMember,
-			_getSearchValueCallback,
-			_indexerBatchSize || DEFAULT_INDEXER_BATCH_SIZE, // batch size with fallback
-			_indexerTimeout || 50 // timeout with fallback
+			resolveSearchValue,
+			config.indexerBatchSize || DEFAULT_INDEXER_BATCH_SIZE, // batch size with fallback
+			config.indexerTimeout || 50 // timeout with fallback
 		);
 	}
 	setUpSearch();
 
 	return {
 		// Properties
-		treePathSeparator: _treePathSeparator || '.',
+		treePathSeparator: config.treePathSeparator || '.',
 		root,
 		filteredRoot,
 		get changeTracker() {
 			return changeTracker;
 		},
-		idMember: _idMember,
-		pathMember: _pathMember,
-		parentPathMember: _parentPathMember,
-		levelMember: _levelMember,
-		isExpandedMember: _isExpandedMember,
-		getIsExpandedCallback: _getIsExpandedCallback,
-		isSelectableMember: _isSelectableMember,
-		getIsSelectableCallback: _getIsSelectableCallback,
-		isCheckedMember: _isCheckedMember,
-		getIsCheckedCallback: _getIsCheckedCallback,
-		isDraggableMember: _isDraggableMember,
-		getIsDraggableCallback: _getIsDraggableCallback,
-		isDropAllowedMember: _isDropAllowedMember,
-		getIsDropAllowedCallback: _getIsDropAllowedCallback,
-		allowedDropPositionsMember: _allowedDropPositionsMember,
-		hasChildrenMember: _hasChildrenMember,
-		displayValueMember: _displayValueMember,
-		getDisplayValueCallback: _getDisplayValueCallback,
+		idMember: config.idMember ?? '',
+		pathMember: config.pathMember ?? '',
+		parentPathMember: config.parentPathMember,
+		levelMember: config.levelMember,
+		isExpandedMember: config.isExpandedMember,
+		getIsExpandedCallback: config.getIsExpandedCallback,
+		isSelectableMember: config.isSelectableMember,
+		getIsSelectableCallback: config.getIsSelectableCallback,
+		isCheckedMember: config.isCheckedMember,
+		getIsCheckedCallback: config.getIsCheckedCallback,
+		isDraggableMember: config.isDraggableMember,
+		getIsDraggableCallback: config.getIsDraggableCallback,
+		isDropAllowedMember: config.isDropAllowedMember,
+		getIsDropAllowedCallback: config.getIsDropAllowedCallback,
+		allowedDropPositionsMember: config.allowedDropPositionsMember,
+		hasChildrenMember: config.hasChildrenMember,
+		displayValueMember: config.displayValueMember,
+		getDisplayValueCallback: config.getDisplayValueCallback,
 		get displayValueFallback(): string {
 			return displayValueFallbackState;
 		},
@@ -243,82 +318,54 @@ export function createLTree<T>(
 			displayValueFallbackState = v ?? '[N/A]';
 		},
 
-		searchValueMember: _searchValueMember,
-		getSearchValueCallback: _getSearchValueCallback,
-		getAllowedDropPositionsCallback: _getAllowedDropPositionsCallback,
-		isCollapsibleMember: _isCollapsibleMember,
-		getIsCollapsibleCallback: _getIsCollapsibleCallback,
-		orderMember: _orderMember,
-		isSorted: false,
+		searchValueMember: config.searchValueMember,
+		getSearchValueCallback: config.getSearchValueCallback,
+		getAllowedDropPositionsCallback: config.getAllowedDropPositionsCallback,
+		isCollapsibleMember: config.isCollapsibleMember,
+		getIsCollapsibleCallback: config.getIsCollapsibleCallback,
+		orderMember: config.orderMember,
+		isSorted: config.isSorted ?? false,
+		sortCallback: config.sortCallback,
 		isSortingEnabled: true,
 
-		reconfigure(config: LTreeConfig<T>) {
-			_idMember = config.idMember ?? '';
-			_pathMember = config.pathMember ?? '';
-			_parentPathMember = config.parentPathMember;
-			_levelMember = config.levelMember;
-			_hasChildrenMember = config.hasChildrenMember;
-			_isExpandedMember = config.isExpandedMember;
-			_getIsExpandedCallback = config.getIsExpandedCallback;
-			_isSelectableMember = config.isSelectableMember;
-			_getIsSelectableCallback = config.getIsSelectableCallback;
-			_isCheckedMember = config.isCheckedMember;
-			_getIsCheckedCallback = config.getIsCheckedCallback;
-			_isDraggableMember = config.isDraggableMember;
-			_getIsDraggableCallback = config.getIsDraggableCallback;
-			_isDropAllowedMember = config.isDropAllowedMember;
-			_getIsDropAllowedCallback = config.getIsDropAllowedCallback;
-			_allowedDropPositionsMember = config.allowedDropPositionsMember;
-			_getAllowedDropPositionsCallback = config.getAllowedDropPositionsCallback;
-			_isCollapsibleMember = config.isCollapsibleMember;
-			_getIsCollapsibleCallback = config.getIsCollapsibleCallback;
-			_displayValueMember = config.displayValueMember;
-			_getDisplayValueCallback = config.getDisplayValueCallback;
-			_searchValueMember = config.searchValueMember;
-			_getSearchValueCallback = config.getSearchValueCallback;
-			_orderMember = config.orderMember;
-			_treePathSeparator = config.treePathSeparator;
-			_expandLevel = config.expandLevel;
-			_shouldUseInternalSearchIndex = config.shouldUseInternalSearchIndex;
-			_initializeIndexCallback = config.initializeIndexCallback;
-			_indexerBatchSize = config.indexerBatchSize;
-			_indexerTimeout = config.indexerTimeout;
+		reconfigure(newConfig: LTreeConfig<T>) {
+			config = newConfig;
 			deriveCalculatedFields();
 
 			// The same settings the methods read off the object.
-			this.treePathSeparator = _treePathSeparator || '.';
-			this.idMember = _idMember;
-			this.pathMember = _pathMember;
-			this.parentPathMember = _parentPathMember;
-			this.levelMember = _levelMember;
-			this.hasChildrenMember = _hasChildrenMember;
-			this.isExpandedMember = _isExpandedMember;
-			this.getIsExpandedCallback = _getIsExpandedCallback;
-			this.isSelectableMember = _isSelectableMember;
-			this.getIsSelectableCallback = _getIsSelectableCallback;
-			this.isCheckedMember = _isCheckedMember;
-			this.getIsCheckedCallback = _getIsCheckedCallback;
-			this.isDraggableMember = _isDraggableMember;
-			this.getIsDraggableCallback = _getIsDraggableCallback;
-			this.isDropAllowedMember = _isDropAllowedMember;
-			this.getIsDropAllowedCallback = _getIsDropAllowedCallback;
-			this.allowedDropPositionsMember = _allowedDropPositionsMember;
-			this.getAllowedDropPositionsCallback = _getAllowedDropPositionsCallback;
-			this.isCollapsibleMember = _isCollapsibleMember;
-			this.getIsCollapsibleCallback = _getIsCollapsibleCallback;
-			this.displayValueMember = _displayValueMember;
-			this.getDisplayValueCallback = _getDisplayValueCallback;
-			this.searchValueMember = _searchValueMember;
-			this.getSearchValueCallback = _getSearchValueCallback;
-			this.orderMember = _orderMember;
-			this.isSorted = config.isSorted;
+			this.treePathSeparator = config.treePathSeparator || '.';
+			this.idMember = config.idMember ?? '';
+			this.pathMember = config.pathMember ?? '';
+			this.parentPathMember = config.parentPathMember;
+			this.levelMember = config.levelMember;
+			this.hasChildrenMember = config.hasChildrenMember;
+			this.isExpandedMember = config.isExpandedMember;
+			this.getIsExpandedCallback = config.getIsExpandedCallback;
+			this.isSelectableMember = config.isSelectableMember;
+			this.getIsSelectableCallback = config.getIsSelectableCallback;
+			this.isCheckedMember = config.isCheckedMember;
+			this.getIsCheckedCallback = config.getIsCheckedCallback;
+			this.isDraggableMember = config.isDraggableMember;
+			this.getIsDraggableCallback = config.getIsDraggableCallback;
+			this.isDropAllowedMember = config.isDropAllowedMember;
+			this.getIsDropAllowedCallback = config.getIsDropAllowedCallback;
+			this.allowedDropPositionsMember = config.allowedDropPositionsMember;
+			this.getAllowedDropPositionsCallback = config.getAllowedDropPositionsCallback;
+			this.isCollapsibleMember = config.isCollapsibleMember;
+			this.getIsCollapsibleCallback = config.getIsCollapsibleCallback;
+			this.displayValueMember = config.displayValueMember;
+			this.getDisplayValueCallback = config.getDisplayValueCallback;
+			this.searchValueMember = config.searchValueMember;
+			this.getSearchValueCallback = config.getSearchValueCallback;
+			this.orderMember = config.orderMember;
+			this.isSorted = config.isSorted ?? false;
 			this.sortCallback = config.sortCallback;
 			setUpSearch();
 			dataLogger.debug(`[${_treeId}] ltree reconfigured`, {
-				idMember: _idMember,
-				pathMember: _pathMember,
+				idMember: config.idMember,
+				pathMember: config.pathMember,
 				treePathSeparator: this.treePathSeparator,
-				expandLevel: _expandLevel,
+				expandLevel: config.expandLevel,
 				hasSearchIndex: !!searchIndex
 			});
 		},
@@ -435,101 +482,16 @@ export function createLTree<T>(
 
 			const conversionFailures: Array<{ node: LTreeNode<T>; originalData: T; error: string }> = [];
 
-			let mappedData = data
-				.map((row, index) => {
-					const node = createLTreeNode<T>();
-					node.treeId = _treeId || '';
-					node.id = _idMember ? getField(row, _idMember) : undefined;
-					const rawPath = _pathMember ? getField(row, _pathMember) : undefined;
-
-					// Validate path - must be a non-empty string
-					if (rawPath == null || rawPath === '' || typeof rawPath !== 'string') {
-						node.path = '';
-						node.data = row;
-						const pathDesc =
-							rawPath === ''
-								? 'empty string'
-								: rawPath == null
-									? 'undefined/null'
-									: `non-string (${typeof rawPath})`;
-						conversionFailures.push({
-							node,
-							originalData: row,
-							error: `Item at index ${index} has invalid path (${pathDesc}). Check that pathMember="${_pathMember}" matches your data. First item keys: ${index === 0 ? JSON.stringify(Object.keys(row as any)) : '(see index 0)'}`
-						});
-						return null;
-					}
-					node.path = rawPath;
-
-					if (shouldCalculateParentPath) {
-						node.parentPath = getParentPath(node.path, this.treePathSeparator);
-					} else node.parentPath = getField(row, _parentPathMember!);
-
-					node.pathSegment = getPathSegments(
-						getRelativePath(node.path, node.parentPath ?? '', this.treePathSeparator),
-						0,
-						1,
-						this.treePathSeparator
-					);
-
-					if (!shouldCalculateLevel) node.level = getField(row, _levelMember!);
-					else node.level = getLevel(node.path, this.treePathSeparator);
-
-					// Assign data BEFORE the get*Callback evaluations so consumer
-					// callbacks reading node.data?.X see the real row, not undefined.
-					node.data = row;
-
-					// isExpanded: callback > member > expandLevel
-					if (_getIsExpandedCallback) node.isExpanded = _getIsExpandedCallback({ node });
-					else if (!shouldCalculateIsExpanded) node.isExpanded = getField(row, _isExpandedMember!);
-					else if (_expandLevel) node.isExpanded = (node.level ?? 0) <= _expandLevel;
-
-					// isSelectable: callback > member (stored on node so renderers can read directly)
-					if (_getIsSelectableCallback) node.isSelectable = _getIsSelectableCallback({ node });
-					else if (!shouldCalculateIsSelectable)
-						node.isSelectable = getField(row, _isSelectableMember!);
-
-					// isChecked: callback > member
-					if (_getIsCheckedCallback) node.isChecked = _getIsCheckedCallback({ node });
-					else if (!shouldCalculateIsChecked) node.isChecked = getField(row, _isCheckedMember!);
-
-					if (_getIsDraggableCallback) node.isDraggable = _getIsDraggableCallback({ node });
-					else if (!shouldCalculateIsDraggable)
-						node.isDraggable = getField(row, _isDraggableMember!);
-					if (!shouldCalculateIsCollapsible)
-						node.isCollapsible = getField(row, _isCollapsibleMember!);
-					if (_getIsDropAllowedCallback) node.isDropAllowed = _getIsDropAllowedCallback({ node });
-					else if (!shouldCalculateIsDropAllowed)
-						node.isDropAllowed = getField(row, _isDropAllowedMember!);
-					if (!shouldCalculateAllowedDropPositions)
-						node.allowedDropPositions = getField(row, _allowedDropPositionsMember!);
-
-					if (!shouldCalculateHasChildren) node.hasChildren = getField(row, _hasChildrenMember!);
-
-					if (_getIsDraggableCallback || !shouldCalculateIsDraggable) {
-						dataLogger.debug(`[insertArray] isDraggable resolved for ${node.path}`, {
-							path: node.path,
-							isDraggable: node.isDraggable,
-							hadCallback: !!_getIsDraggableCallback,
-							hadMember: !shouldCalculateIsDraggable,
-							rowIsDraggable: _isDraggableMember
-								? (row as any)?.[_isDraggableMember]
-								: '(no member)',
-							nodeDataIsDraggable: (row as any)?.isDraggable
-						});
-					}
-
-					return node;
-				})
-				.filter((node): node is LTreeNode<T> => node !== null);
+			let mappedData: LTreeNode<T>[] = [];
+			data.forEach((row, index) => {
+				const { node, error } = rowToNode(row, index, this.treePathSeparator);
+				if (error) conversionFailures.push({ node, originalData: row, error });
+				else mappedData.push(node);
+			});
 			const conversionTime = perfEnd(`[${_treeId}] insertArray:conversion`, data.length);
 
 			perfStart(`[${_treeId}] insertArray:sort`);
-			if (!this.isSorted) {
-				if (!this.isSortingEnabled) mappedData = this._sortByLevel(mappedData);
-				else if (this.sortCallback) mappedData = this.sortCallback({ nodes: mappedData });
-				else mappedData = this._defaultSort(this, mappedData);
-			}
+			mappedData = this._sortForInsert(mappedData);
 
 			const sortTime = perfEnd(`[${_treeId}] insertArray:sort`, data.length);
 
@@ -542,7 +504,7 @@ export function createLTree<T>(
 			// Warn early about data mapping issues (most common user error)
 			if (conversionFailures.length > 0) {
 				console.warn(
-					`[Tree ${_treeId}] ${conversionFailures.length} of ${data.length} items have invalid paths (pathMember="${_pathMember}"). These items will be skipped.\n` +
+					`[Tree ${_treeId}] ${conversionFailures.length} of ${data.length} items have invalid paths (pathMember="${config.pathMember}"). These items will be skipped.\n` +
 						`First failure: ${conversionFailures[0].error}`
 				);
 			}
@@ -554,11 +516,11 @@ export function createLTree<T>(
 
 			// Pre-compute the last index at expandLevel to avoid O(n²) lookup
 			let lastExpandLevelIndex = -1;
-			if (_expandLevel && !noEmitChanges) {
+			if (config.expandLevel && !noEmitChanges) {
 				for (let i = mappedData.length - 1; i >= 0; i--) {
 					const nodeLevel =
 						mappedData[i].level || getLevel(mappedData[i].path, this.treePathSeparator);
-					if (nodeLevel <= _expandLevel) {
+					if (nodeLevel <= config.expandLevel) {
 						lastExpandLevelIndex = i;
 						break;
 					}
@@ -578,7 +540,7 @@ export function createLTree<T>(
 				} else {
 					successfulCount++;
 					// Collect items for batch indexing
-					if (_shouldUseInternalSearchIndex && indexer) {
+					if (config.shouldUseInternalSearchIndex && indexer) {
 						flatTreeNodes.push(node);
 						itemsToIndex.push({ node, index: realIndex });
 						realIndex++;
@@ -588,7 +550,7 @@ export function createLTree<T>(
 					if (
 						!noEmitChanges &&
 						!hasRenderedExpandLevel &&
-						_expandLevel &&
+						config.expandLevel &&
 						index === lastExpandLevelIndex
 					) {
 						// We've processed all nodes up to expandLevel - render now!
@@ -725,7 +687,7 @@ export function createLTree<T>(
 				return;
 			}
 
-			if (!_shouldUseInternalSearchIndex) {
+			if (!config.shouldUseInternalSearchIndex) {
 				return;
 			}
 
@@ -775,7 +737,7 @@ export function createLTree<T>(
 				return [];
 			}
 
-			if (!_shouldUseInternalSearchIndex) {
+			if (!config.shouldUseInternalSearchIndex) {
 				return [];
 			}
 
@@ -1129,7 +1091,7 @@ export function createLTree<T>(
 			// Resolution order: member → callback → fallback. A configured member absent on this
 			// node (undefined / null) falls through, so labels.noDisplayValue shows (as in web-treeview).
 			if (!shouldCalculateDisplayValue && node.data) {
-				const value = getField(node.data, _displayValueMember!);
+				const value = getField(node.data, config.displayValueMember!);
 				if (value != null) return value as string;
 			}
 
@@ -1139,15 +1101,8 @@ export function createLTree<T>(
 		},
 
 		getNodeSearchValue(node: LTreeNode<T>): string {
-			// Same member → callback → fallback guard; a missing member must not feed undefined to the indexer.
-			if (!shouldCalculateSearchValue && node.data) {
-				const value = getField(node.data, _searchValueMember!);
-				if (value != null) return value as string;
-			}
-
-			if (this.getSearchValueCallback) return this.getSearchValueCallback({ node });
-
-			return '[N/A]';
+			// The indexer uses the same resolver (member → callback); '[N/A]' only here.
+			return resolveSearchValue(node) ?? '[N/A]';
 		},
 
 		getNodeAllowedDropPositions(
@@ -1159,29 +1114,34 @@ export function createLTree<T>(
 			}
 
 			if (!shouldCalculateAllowedDropPositions && node.data) {
-				return getField(node.data, _allowedDropPositionsMember!);
+				return getField(node.data, config.allowedDropPositionsMember!);
 			}
 
 			return node.allowedDropPositions;
 		},
 
+		isDropPositionAllowed(node: LTreeNode<T>, position: DropPosition): boolean {
+			const allowed = this.getNodeAllowedDropPositions(node);
+			return !allowed || allowed.length === 0 || allowed.includes(position);
+		},
+
 		getNodeIsDraggable(node: LTreeNode<T>): boolean {
 			if (this.getIsDraggableCallback) return this.getIsDraggableCallback({ node });
-			if (!shouldCalculateIsDraggable && node.data) return getField(node.data, _isDraggableMember!);
+			if (!shouldCalculateIsDraggable && node.data) return getField(node.data, config.isDraggableMember!);
 			return node.isDraggable;
 		},
 
 		getNodeIsDropAllowed(node: LTreeNode<T>): boolean {
 			if (this.getIsDropAllowedCallback) return this.getIsDropAllowedCallback({ node });
 			if (!shouldCalculateIsDropAllowed && node.data)
-				return getField(node.data, _isDropAllowedMember!);
+				return getField(node.data, config.isDropAllowedMember!);
 			return node.isDropAllowed;
 		},
 
 		getNodeIsCollapsible(node: LTreeNode<T>): boolean {
 			if (this.getIsCollapsibleCallback) return this.getIsCollapsibleCallback({ node });
 			if (!shouldCalculateIsCollapsible && node.data)
-				return getField(node.data, _isCollapsibleMember!);
+				return getField(node.data, config.isCollapsibleMember!);
 			return node.isCollapsible;
 		},
 
@@ -1300,8 +1260,8 @@ export function createLTree<T>(
 			// Update source parent's hasChildren
 			if (Object.keys(sourceParent.children).length === 0) {
 				sourceParent.hasChildren = false;
-				if (_hasChildrenMember && sourceParent.data) {
-					(sourceParent.data as any)[_hasChildrenMember] = false;
+				if (config.hasChildrenMember && sourceParent.data) {
+					(sourceParent.data as any)[config.hasChildrenMember] = false;
 				}
 			}
 
@@ -1350,9 +1310,9 @@ export function createLTree<T>(
 
 			// Sync data object fields to match new tree position
 			if (sourceNode.data) {
-				if (_pathMember) (sourceNode.data as any)[_pathMember] = newPath;
-				if (_parentPathMember) (sourceNode.data as any)[_parentPathMember] = newParentPath;
-				if (_levelMember) (sourceNode.data as any)[_levelMember] = sourceNode.level;
+				if (config.pathMember) (sourceNode.data as any)[config.pathMember] = newPath;
+				if (config.parentPathMember) (sourceNode.data as any)[config.parentPathMember] = newParentPath;
+				if (config.levelMember) (sourceNode.data as any)[config.levelMember] = sourceNode.level;
 			}
 
 			// Update all descendants' paths recursively
@@ -1361,8 +1321,8 @@ export function createLTree<T>(
 			// Insert into new parent
 			newParent.children[segmentPrefix + newSegment] = sourceNode;
 			newParent.hasChildren = true;
-			if (_hasChildrenMember && newParent.data) {
-				(newParent.data as any)[_hasChildrenMember] = true;
+			if (config.hasChildrenMember && newParent.data) {
+				(newParent.data as any)[config.hasChildrenMember] = true;
 			}
 
 			// Sorting disabled: keep the exact position (order values still computed for persistence).
@@ -1372,32 +1332,9 @@ export function createLTree<T>(
 				return { success: true };
 			}
 
-			// If orderMember is defined and position is before/after, calculate order
-			if (this.orderMember && position !== 'child' && sourceNode.data) {
-				const om = this.orderMember;
-				const siblings = Object.values(newParent.children) as LTreeNode<T>[];
-				const targetOrder = (targetNode.data ? getField(targetNode.data, om) : 0) ?? 0;
-
-				if (position === 'before') {
-					// Find order value just before target
-					const siblingOrders = siblings
-						.filter((s) => s !== sourceNode && s.data && getField(s.data, om) !== undefined)
-						.map((s) => getField(s.data!, om) as number)
-						.filter((o) => o < targetOrder)
-						.sort((a, b) => b - a);
-					const prevOrder = siblingOrders[0] ?? targetOrder - 20;
-					(sourceNode.data as any)[om] = Math.floor((prevOrder + targetOrder) / 2);
-				} else {
-					// Find order value just after target
-					const siblingOrders = siblings
-						.filter((s) => s !== sourceNode && s.data && getField(s.data, om) !== undefined)
-						.map((s) => getField(s.data!, om) as number)
-						.filter((o) => o > targetOrder)
-						.sort((a, b) => a - b);
-					const nextOrder = siblingOrders[0] ?? targetOrder + 20;
-					(sourceNode.data as any)[om] = Math.floor((targetOrder + nextOrder) / 2);
-				}
-			}
+			// orderMember + before/after: an order value between the target and its neighbour
+			if (this.orderMember && position !== 'child' && sourceNode.data)
+				this._assignOrderValues([sourceNode], targetNode, newParent, position);
 
 			// Re-sort siblings if needed (sorting disabled: a 'child' move appends at the end)
 			if (this.isSortingEnabled) this.refreshSiblings(newParentPath);
@@ -1424,9 +1361,9 @@ export function createLTree<T>(
 
 				// Sync data object fields
 				if (child.data) {
-					if (_pathMember) (child.data as any)[_pathMember] = newChildPath;
-					if (_parentPathMember) (child.data as any)[_parentPathMember] = node.path;
-					if (_levelMember) (child.data as any)[_levelMember] = child.level;
+					if (config.pathMember) (child.data as any)[config.pathMember] = newChildPath;
+					if (config.parentPathMember) (child.data as any)[config.parentPathMember] = node.path;
+					if (config.levelMember) (child.data as any)[config.levelMember] = child.level;
 				}
 
 				// Recurse into children using the OLD child path as base
@@ -1457,33 +1394,8 @@ export function createLTree<T>(
 				return { success: false, error: `Parent not found: ${parentPath}` };
 			}
 
-			// Leave the search index too (node + subtree), else it stays findable
-			const removedPaths = new Set<string>([node.path]);
-			const collectRemoved = (n: LTreeNode<T>) => {
-				for (const child of Object.values(n.children)) {
-					removedPaths.add(child.path);
-					collectRemoved(child);
-				}
-			};
-			collectRemoved(node);
-			dropFromSearch(removedPaths);
-
-			// Remove from parent
-			const segment = segmentPrefix + node.pathSegment;
-			delete parent.children[segment];
-
-			// Update parent's hasChildren
-			if (Object.keys(parent.children).length === 0) {
-				parent.hasChildren = false;
-				// Sync data object's hasChildren field
-				if (_hasChildrenMember && parent.data) {
-					(parent.data as any)[_hasChildrenMember] = false;
-				}
-			}
-
-			// The whole subtree leaves the tree either way (the node keeps its children), so the
-			// count drops by all of it — `includeDescendants=false` used to subtract just 1.
-			nodeCount -= removedPaths.size;
+			// The whole subtree leaves (search index + count too — the node keeps its children)
+			detachNode(node, parent);
 
 			this._emitTreeChanged();
 			return { success: true, node };
@@ -1510,7 +1422,7 @@ export function createLTree<T>(
 			// Generate path segment if not provided
 			if (!pathSegment) {
 				// Use ID from data if available, otherwise generate a unique one
-				const id = _idMember && data ? (data as any)[_idMember] : undefined;
+				const id = config.idMember && data ? (data as any)[config.idMember] : undefined;
 				pathSegment =
 					id?.toString() || `new_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 			}
@@ -1531,60 +1443,28 @@ export function createLTree<T>(
 			// Create the node
 			const newNode = createLTreeNode<T>();
 			newNode.treeId = _treeId || '';
-			newNode.id = _idMember && data ? (data as any)[_idMember] : undefined;
+			newNode.id = config.idMember && data ? (data as any)[config.idMember] : undefined;
 			newNode.path = newPath;
 			newNode.pathSegment = segment;
 			// Keep '' for root nodes (matching insertArray's getParentPath convention)
 			newNode.parentPath = parentPath;
 			newNode.level = getLevel(newPath, this.treePathSeparator);
 			newNode.data = data;
-			newNode.isExpanded = _expandLevel ? newNode.level! <= _expandLevel : false;
 			newNode.hasChildren = false;
 
-			// Seed the resolved per-node flags exactly as insertArray does. Nodes
-			// added here (addNode, and therefore duplicateNode and
-			// applyChanges 'add') otherwise keep createLTreeNode's defaults —
-			// notably isDraggable=false and isDropAllowed=false — which the DOM
-			// `draggable` attribute and the drag-over / drop gates read directly
-			// (not via the dynamic getNodeIs* resolvers). Without this, a copied or
-			// programmatically-added node renders non-draggable and rejects drops
-			// even when the tree has a getIsDraggableCallback / getIsDropAllowedCallback
-			// (or the equivalent *Member). `data` is already assigned above, so the
-			// callbacks see a populated node.
-			if (data) {
-				if (_getIsSelectableCallback) newNode.isSelectable = _getIsSelectableCallback({ node: newNode });
-				else if (!shouldCalculateIsSelectable)
-					newNode.isSelectable = getField(data, _isSelectableMember!);
-
-				if (_getIsCheckedCallback) newNode.isChecked = _getIsCheckedCallback({ node: newNode });
-				else if (!shouldCalculateIsChecked)
-					newNode.isChecked = getField(data, _isCheckedMember!);
-
-				if (_getIsExpandedCallback) newNode.isExpanded = _getIsExpandedCallback({ node: newNode });
-				else if (!shouldCalculateIsExpanded)
-					newNode.isExpanded = getField(data, _isExpandedMember!);
-
-				if (_getIsDraggableCallback) newNode.isDraggable = _getIsDraggableCallback({ node: newNode });
-				else if (!shouldCalculateIsDraggable)
-					newNode.isDraggable = getField(data, _isDraggableMember!);
-
-				if (!shouldCalculateIsCollapsible)
-					newNode.isCollapsible = getField(data, _isCollapsibleMember!);
-
-				if (_getIsDropAllowedCallback) newNode.isDropAllowed = _getIsDropAllowedCallback({ node: newNode });
-				else if (!shouldCalculateIsDropAllowed)
-					newNode.isDropAllowed = getField(data, _isDropAllowedMember!);
-
-				if (!shouldCalculateAllowedDropPositions)
-					newNode.allowedDropPositions = getField(data, _allowedDropPositionsMember!);
-			}
+			// Seed the resolved per-node flags exactly as insertArray does (rowToNode). Nodes added
+			// here (addNode, and therefore duplicateNode and applyChanges 'add') otherwise keep
+			// createLTreeNode's defaults — notably isDraggable=false and isDropAllowed=false —
+			// which the DOM `draggable` attribute and the drag-over / drop gates read directly.
+			if (data) seedNodeFlags(newNode, data);
+			else newNode.isExpanded = !!config.expandLevel && newNode.level! <= config.expandLevel;
 
 			// Sync data object fields to match new tree position
 			if (data) {
-				if (_pathMember) (data as any)[_pathMember] = newPath;
-				if (_parentPathMember) (data as any)[_parentPathMember] = parentPath;
-				if (_levelMember) (data as any)[_levelMember] = newNode.level;
-				if (_hasChildrenMember) (data as any)[_hasChildrenMember] = false;
+				if (config.pathMember) (data as any)[config.pathMember] = newPath;
+				if (config.parentPathMember) (data as any)[config.parentPathMember] = parentPath;
+				if (config.levelMember) (data as any)[config.levelMember] = newNode.level;
+				if (config.hasChildrenMember) (data as any)[config.hasChildrenMember] = false;
 			}
 
 			// Add to parent
@@ -1592,8 +1472,8 @@ export function createLTree<T>(
 			targetParent.children[segmentPrefix + pathSegment] = newNode;
 			targetParent.hasChildren = true;
 			// Sync data object's hasChildren field
-			if (_hasChildrenMember && targetParent.data) {
-				(targetParent.data as any)[_hasChildrenMember] = true;
+			if (config.hasChildrenMember && targetParent.data) {
+				(targetParent.data as any)[config.hasChildrenMember] = true;
 			}
 
 			// Update statistics
@@ -1602,7 +1482,7 @@ export function createLTree<T>(
 
 			// Add to flat tree for search indexing (slot number = index id)
 			flatTreeNodes.push(newNode);
-			if (indexer && _shouldUseInternalSearchIndex) {
+			if (indexer && config.shouldUseInternalSearchIndex) {
 				indexer.addItem({ node: newNode, index: flatTreeNodes.length - 1 });
 			}
 
@@ -1640,7 +1520,7 @@ export function createLTree<T>(
 			bumpRev(node);
 
 			// Re-index for search if needed
-			if (indexer && _shouldUseInternalSearchIndex) {
+			if (indexer && config.shouldUseInternalSearchIndex) {
 				const flatIndex = flatTreeNodes.indexOf(node);
 				if (flatIndex !== -1) {
 					indexer.addItem({ node, index: flatIndex });
@@ -1916,7 +1796,7 @@ export function createLTree<T>(
 			const result = this.addBranch(parentPath, data);
 			const blockRoots: LTreeNode<T>[] = [];
 			for (const row of data) {
-				const p = _pathMember ? getField(row, _pathMember) : undefined;
+				const p = config.pathMember ? getField(row, config.pathMember) : undefined;
 				const node = typeof p === 'string' ? this.getNodeByPath(p, root) : null;
 				if (node && node.data === row && (node.parentPath || '') === parentPath) blockRoots.push(node);
 			}
@@ -1927,36 +1807,51 @@ export function createLTree<T>(
 			return result;
 		},
 
+		/**
+		 * Give `nodes` (in order) `orderMember` values between `target` and its neighbour on the
+		 * `position` side among `parent`'s children — whole numbers while the gap allows, else
+		 * fractions (no two siblings end up with the same value). moveNode + _placeNextTo.
+		 */
+		_assignOrderValues(
+			nodes: LTreeNode<T>[],
+			target: LTreeNode<T>,
+			parent: LTreeNode<T>,
+			position: 'before' | 'after'
+		): void {
+			const om = this.orderMember;
+			if (!om) return;
+			const block = new Set(nodes);
+			const targetOrder = (target.data ? (getField(target.data, om) as number) : 0) ?? 0;
+			const others = (Object.values(parent.children) as LTreeNode<T>[])
+				.filter((s) => !block.has(s) && s !== target && s.data && getField(s.data, om) !== undefined)
+				.map((s) => getField(s.data!, om) as number);
+			const n = nodes.length;
+			let lo: number;
+			let hi: number;
+			if (position === 'before') {
+				hi = targetOrder;
+				const prev = others.filter((o) => o < targetOrder).sort((a, b) => b - a)[0];
+				lo = prev ?? targetOrder - 20 * n;
+			} else {
+				lo = targetOrder;
+				const next = others.filter((o) => o > targetOrder).sort((a, b) => a - b)[0];
+				hi = next ?? targetOrder + 20 * n;
+			}
+			const isWholeStep = Number.isInteger(lo) && Number.isInteger(hi) && hi - lo > n;
+			nodes.forEach((node, i) => {
+				const v = lo + ((hi - lo) * (i + 1)) / (n + 1);
+				(node.data as any)[om] = isWholeStep ? Math.floor(v) : v;
+			});
+		},
+
 		/** Position `nodes` (already children of the target's parent) right before / after `target`. */
 		_placeNextTo(nodes: LTreeNode<T>[], target: LTreeNode<T>, position: 'before' | 'after'): void {
 			const parentPath = target.parentPath || '';
 			const parent = parentPath ? this.getNodeByPath(parentPath, root) : root;
 			if (!parent || nodes.length === 0) return;
 			const block = new Set(nodes);
-			const om = this.orderMember;
-			if (om && nodes.every((n) => n.data)) {
-				// Order values between the target and its neighbour (same rule as moveNode).
-				const targetOrder = (target.data ? (getField(target.data, om) as number) : 0) ?? 0;
-				const others = (Object.values(parent.children) as LTreeNode<T>[])
-					.filter((s) => !block.has(s) && s !== target && s.data && getField(s.data, om) !== undefined)
-					.map((s) => getField(s.data!, om) as number);
-				const n = nodes.length;
-				let lo: number;
-				let hi: number;
-				if (position === 'before') {
-					hi = targetOrder;
-					const prev = others.filter((o) => o < targetOrder).sort((a, b) => b - a)[0];
-					lo = prev ?? targetOrder - 20 * n;
-				} else {
-					lo = targetOrder;
-					const next = others.filter((o) => o > targetOrder).sort((a, b) => a - b)[0];
-					hi = next ?? targetOrder + 20 * n;
-				}
-				const isWholeStep = Number.isInteger(lo) && Number.isInteger(hi) && hi - lo > n;
-				nodes.forEach((node, i) => {
-					const v = lo + ((hi - lo) * (i + 1)) / (n + 1);
-					(node.data as any)[om] = isWholeStep ? Math.floor(v) : v;
-				});
+			if (this.orderMember && nodes.every((n) => n.data)) {
+				this._assignOrderValues(nodes, target, parent, position);
 				if (this.isSortingEnabled) {
 					this.refreshSiblings(parentPath);
 					return;
@@ -1991,84 +1886,16 @@ export function createLTree<T>(
 
 			const failed: Array<{ data: T; error: string }> = [];
 
-			// Convert raw data → LTreeNode (same logic as insertArray lines 244-288)
-			let mappedData = data
-				.map((row, index) => {
-					const node = createLTreeNode<T>();
-					node.treeId = _treeId || '';
-					node.id = _idMember ? getField(row, _idMember) : undefined;
-					const rawPath = _pathMember ? getField(row, _pathMember) : undefined;
-
-					if (rawPath == null || rawPath === '' || typeof rawPath !== 'string') {
-						const pathDesc =
-							rawPath === ''
-								? 'empty string'
-								: rawPath == null
-									? 'undefined/null'
-									: `non-string (${typeof rawPath})`;
-						failed.push({
-							data: row,
-							error: `Item at index ${index} has invalid path (${pathDesc})`
-						});
-						return null;
-					}
-					node.path = rawPath;
-
-					if (shouldCalculateParentPath) {
-						node.parentPath = getParentPath(node.path, this.treePathSeparator);
-					} else node.parentPath = getField(row, _parentPathMember!);
-
-					node.pathSegment = getPathSegments(
-						getRelativePath(node.path, node.parentPath ?? '', this.treePathSeparator),
-						0,
-						1,
-						this.treePathSeparator
-					);
-
-					if (!shouldCalculateLevel) node.level = getField(row, _levelMember!);
-					else node.level = getLevel(node.path, this.treePathSeparator);
-
-					// Assign data BEFORE the get*Callback evaluations so consumer
-					// callbacks reading node.data?.X see the real row, not undefined.
-					node.data = row;
-
-					// isExpanded: callback > member > expandLevel
-					if (_getIsExpandedCallback) node.isExpanded = _getIsExpandedCallback({ node });
-					else if (!shouldCalculateIsExpanded) node.isExpanded = getField(row, _isExpandedMember!);
-					else if (_expandLevel) node.isExpanded = (node.level ?? 0) <= _expandLevel;
-
-					// isSelectable: callback > member (stored on node so renderers can read directly)
-					if (_getIsSelectableCallback) node.isSelectable = _getIsSelectableCallback({ node });
-					else if (!shouldCalculateIsSelectable)
-						node.isSelectable = getField(row, _isSelectableMember!);
-
-					// isChecked: callback > member
-					if (_getIsCheckedCallback) node.isChecked = _getIsCheckedCallback({ node });
-					else if (!shouldCalculateIsChecked) node.isChecked = getField(row, _isCheckedMember!);
-
-					if (_getIsDraggableCallback) node.isDraggable = _getIsDraggableCallback({ node });
-					else if (!shouldCalculateIsDraggable)
-						node.isDraggable = getField(row, _isDraggableMember!);
-					if (!shouldCalculateIsCollapsible)
-						node.isCollapsible = getField(row, _isCollapsibleMember!);
-					if (_getIsDropAllowedCallback) node.isDropAllowed = _getIsDropAllowedCallback({ node });
-					else if (!shouldCalculateIsDropAllowed)
-						node.isDropAllowed = getField(row, _isDropAllowedMember!);
-					if (!shouldCalculateAllowedDropPositions)
-						node.allowedDropPositions = getField(row, _allowedDropPositionsMember!);
-
-					if (!shouldCalculateHasChildren) node.hasChildren = getField(row, _hasChildrenMember!);
-
-					return node;
-				})
-				.filter((node): node is LTreeNode<T> => node !== null);
+			// Convert raw data → LTreeNode (the same rowToNode as insertArray)
+			let mappedData: LTreeNode<T>[] = [];
+			data.forEach((row, index) => {
+				const { node, error } = rowToNode(row, index, this.treePathSeparator);
+				if (error) failed.push({ data: row, error });
+				else mappedData.push(node);
+			});
 
 			// Sort to ensure parents come before children
-			if (!this.isSorted) {
-				if (!this.isSortingEnabled) mappedData = this._sortByLevel(mappedData);
-				else if (this.sortCallback) mappedData = this.sortCallback({ nodes: mappedData });
-				else mappedData = this._defaultSort(this, mappedData);
-			}
+			mappedData = this._sortForInsert(mappedData);
 
 			// Insert all nodes silently (no emission per node)
 			const affectedParents = new Set<string>();
@@ -2083,7 +1910,7 @@ export function createLTree<T>(
 					affectedParents.add(node.parentPath ?? '');
 
 					// Add to flat tree for search indexing
-					if (_shouldUseInternalSearchIndex) {
+					if (config.shouldUseInternalSearchIndex) {
 						flatTreeNodes.push(node);
 					}
 				}
@@ -2105,14 +1932,10 @@ export function createLTree<T>(
 			}
 
 			// ── Pipeline: directly update all affected parents ──────────
-			// Update hasChildren + _hasChildrenMember on EVERY parent that received children
+			// Update hasChildren + config.hasChildrenMember on EVERY parent that received children
 			for (const pp of affectedParents) {
 				const parent = pp ? this.getNodeByPath(pp, root) : root;
-				if (!parent) continue;
-				parent.hasChildren = Object.keys(parent.children).length > 0;
-				if (_hasChildrenMember && parent.data) {
-					(parent.data as any)[_hasChildrenMember] = parent.hasChildren;
-				}
+				if (parent) syncHasChildren(parent);
 			}
 
 			// Bump _rev on all affected parents AND their ancestors up to root
@@ -2128,7 +1951,7 @@ export function createLTree<T>(
 			}
 
 			// Batch add to indexer
-			if (_shouldUseInternalSearchIndex && indexer) {
+			if (config.shouldUseInternalSearchIndex && indexer) {
 				const startIdx = flatTreeNodes.length - insertedCount;
 				const itemsToIndex: { node: LTreeNode<T>; index: number }[] = [];
 				for (let i = startIdx; i < flatTreeNodes.length; i++) {
@@ -2154,36 +1977,7 @@ export function createLTree<T>(
 			}
 			const parentNode = targetParent || root;
 
-			// Count and collect all descendant paths for removal
-			const countDescendants = (n: LTreeNode<T>): number => {
-				let count = 0;
-				for (const child of Object.values(n.children)) {
-					count += 1 + countDescendants(child);
-				}
-				return count;
-			};
-			const removedCount = countDescendants(parentNode);
-
-			// Remove descendants from flatTreeNodes (for search index consistency)
-			if (removedCount > 0) {
-				const collectPaths = (n: LTreeNode<T>, paths: Set<string>) => {
-					for (const child of Object.values(n.children)) {
-						paths.add(child.path);
-						collectPaths(child, paths);
-					}
-				};
-				const pathsToRemove = new Set<string>();
-				collectPaths(parentNode, pathsToRemove);
-				dropFromSearch(pathsToRemove);
-			}
-
-			// Clear children
-			parentNode.children = {};
-			parentNode.hasChildren = false;
-			if (_hasChildrenMember && parentNode.data) {
-				(parentNode.data as any)[_hasChildrenMember] = false;
-			}
-			nodeCount -= removedCount;
+			const removedCount = clearChildren(parentNode);
 
 			// Delegate to addBranch for the new data
 			const result = this.addBranch(parentPath, data);
@@ -2192,96 +1986,40 @@ export function createLTree<T>(
 
 		removeBranch(path: string, keepParent: boolean = false): RemoveBranchResult<T> {
 			this._scheduleRefilter();
-			const countDescendants = (n: LTreeNode<T>): number => {
-				let count = 0;
-				for (const child of Object.values(n.children)) {
-					count += 1 + countDescendants(child);
-				}
-				return count;
-			};
-
-			const collectPaths = (n: LTreeNode<T>, paths: Set<string>) => {
-				for (const child of Object.values(n.children)) {
-					paths.add(child.path);
-					collectPaths(child, paths);
-				}
-			};
-
 			if (keepParent) {
 				// Keep the node, clear its children
 				const node = path ? this.getNodeByPath(path, root) : root;
-				if (!node && path) {
-					return { success: false, count: 0, error: `Node not found: ${path}` };
-				}
-				const targetNode = node || root;
-
-				const removedCount = countDescendants(targetNode);
-				if (removedCount === 0) {
-					return { success: true, count: 0 };
-				}
-
-				// Remove from flatTreeNodes
-				const pathsToRemove = new Set<string>();
-				collectPaths(targetNode, pathsToRemove);
-				dropFromSearch(pathsToRemove);
-
-				targetNode.children = {};
-				targetNode.hasChildren = false;
-				if (_hasChildrenMember && targetNode.data) {
-					(targetNode.data as any)[_hasChildrenMember] = false;
-				}
-				nodeCount -= removedCount;
-
+				if (!node) return { success: false, count: 0, error: `Node not found: ${path}` };
+				if (Object.keys(node.children).length === 0) return { success: true, count: 0 };
+				const removedCount = clearChildren(node);
 				// Bump _rev on node itself + ancestors
-				bumpRev(targetNode);
+				bumpRev(node);
 				bumpAncestors(path, this.treePathSeparator);
-
-				this._emitTreeChanged();
-				return { success: true, count: removedCount };
-			} else {
-				// Remove the node itself + all descendants
-				if (path === '') {
-					return { success: false, count: 0, error: 'Cannot delete root node' };
-				}
-
-				const node = this.getNodeByPath(path, root);
-				if (!node) {
-					return { success: false, count: 0, error: `Node not found: ${path}` };
-				}
-
-				const parentPath = node.parentPath || '';
-				const parent = parentPath ? this.getNodeByPath(parentPath, root) : root;
-				if (!parent) {
-					return { success: false, count: 0, error: `Parent not found: ${parentPath}` };
-				}
-
-				const removedCount = 1 + countDescendants(node);
-
-				// Remove from flatTreeNodes
-				const pathsToRemove = new Set<string>();
-				pathsToRemove.add(node.path);
-				collectPaths(node, pathsToRemove);
-				dropFromSearch(pathsToRemove);
-
-				// Remove from parent
-				const segment = segmentPrefix + node.pathSegment;
-				delete parent.children[segment];
-
-				if (Object.keys(parent.children).length === 0) {
-					parent.hasChildren = false;
-					if (_hasChildrenMember && parent.data) {
-						(parent.data as any)[_hasChildrenMember] = false;
-					}
-				}
-
-				nodeCount -= removedCount;
-
-				// Bump _rev on ancestors
-				bumpAncestors(node.path, this.treePathSeparator);
-
 				this._emitTreeChanged();
 				return { success: true, count: removedCount };
 			}
+
+			// Remove the node itself + all descendants
+			if (path === '') return { success: false, count: 0, error: 'Cannot delete root node' };
+			const node = this.getNodeByPath(path, root);
+			if (!node) return { success: false, count: 0, error: `Node not found: ${path}` };
+			const parentPath = node.parentPath || '';
+			const parent = parentPath ? this.getNodeByPath(parentPath, root) : root;
+			if (!parent) return { success: false, count: 0, error: `Parent not found: ${parentPath}` };
+			const removedCount = detachNode(node, parent);
+			// Bump _rev on ancestors
+			bumpAncestors(node.path, this.treePathSeparator);
+			this._emitTreeChanged();
+			return { success: true, count: removedCount };
+		},
+
+		/** Order freshly converted rows for insertion (parents before children): as given when the
+		 *  input is pre-sorted (`isSorted`), by level only when sorting is disabled, else the sibling rule. */
+		_sortForInsert(nodes: LTreeNode<T>[]): LTreeNode<T>[] {
+			if (this.isSorted) return nodes;
+			if (!this.isSortingEnabled) return this._sortByLevel(nodes);
+			if (this.sortCallback) return this.sortCallback({ nodes });
+			return this._defaultSort(this, nodes);
 		},
 
 		/** Stable sort by level only (parents before children, input order kept among siblings). */

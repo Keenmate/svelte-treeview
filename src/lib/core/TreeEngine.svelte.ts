@@ -533,9 +533,24 @@ export interface TreeEngineProps<T> {
 
 	displayValueMember?: string | null | undefined;
 	getDisplayValueCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string;
-	/** UI strings — partial, flat `<elementType>.<name>` keys over the English defaults ('' = render nothing). */
+	/** UI strings — a partial object of flat `<elementType>.<name>` keys (short `messages.noData`
+	 *  or full `svelte-treeview.messages.noData`), resolved per key by core `/locale`: this
+	 *  `labels` → `translateCallback` → the page-wide `window.components.locale.translateCallback`
+	 *  → the page-wide flat dictionary `window.components.locale.labels['svelte-treeview.<key>']`
+	 *  → English (`''` = render nothing): `messages.noData` ("No data" — no nodes),
+	 *  `messages.noResults` ("No results found" — the search filter left nothing),
+	 *  `messages.dropHere` ("Drop here" — default drop placeholder), `labels.noDisplayValue`
+	 *  ("[N/A]" — node without a display value; also the touch-drag ghost), `labels.dropBefore` /
+	 *  `labels.dropAfter` / `labels.dropChild` ("Before" / "After" / "Child" — the floating drop
+	 *  pads), `ariaLabels.loading` ("Loading…" — `isLoading` overlay aria-label),
+	 *  `ariaLabels.showFullLabel` ("Show full label" — `nodeTitleOverflow: 'info'` button),
+	 *  `menuItems.copy` … `menuItems.sortAll` (built-in context-menu items). `{name}` placeholders.
+	 *  The `noData` / `dropPlaceholder` snippets still replace the markup. */
 	labels?: TreeLabelsInput;
-	/** This tree's own translation seam (asked before the page-wide one; `null` = not mine). */
+	/** This tree's own translation seam (i18next / ICU / the app's lookup): gets
+	 *  `{ component, key (full), template, params, locale }` for every key `labels` did NOT set and
+	 *  returns the finished text, or `null` / `undefined` = not mine → the page-wide
+	 *  `window.components.locale.translateCallback` → the page dictionary → English. */
 	translateCallback?: TranslateCallback | null;
 
 	searchValueMember?: string | null | undefined;
@@ -548,13 +563,16 @@ export interface TreeEngineProps<T> {
 	sortCallback?: (ctx: SortContext<T> & TreeCallbackContext<T>) => LTreeNode<T>[];
 
 	// DATA
-	/** The tree's nodes (flat `T[]`, ltree paths). Input; reading `controller.nodes` returns
-	 *  the CURRENT state (mutations included). */
+	/** The tree's nodes (flat `T[]` with ltree paths). Input AND current state: after a
+	 *  mutation (move / add / remove / paste / applyChanges…) `bind:nodes` receives the
+	 *  tree's current data. */
 	nodes: T[];
 	focusedNode?: LTreeNode<T> | null | undefined;
 	selectedPaths?: Set<string>;
 	checkedPaths?: Set<string>;
-	/** Paths of the expanded nodes. Assigning replaces the expanded state (silently). */
+	/** Paths of the expanded nodes (bindable). Assigning replaces the expanded state
+	 *  (silently — no onExpandedChange); given before the data, it applies after the
+	 *  first non-empty load (overriding expandLevel / isExpandedMember). */
 	expandedPaths?: Set<string>;
 
 	// BEHAVIOUR
@@ -569,9 +587,10 @@ export interface TreeEngineProps<T> {
 	isCheckboxesShown?: boolean | null | undefined;
 	checkboxMode?: CheckboxMode | null | undefined;
 	/**
-	 * Which paths `checkedPaths` / `onCheckedChange` EMIT in cascade mode
-	 * (rolled-up | leaves | all). Orthogonal to `checkboxMode`. Ignored in
-	 * `'independent'` mode. Default `'rolled-up'`.
+	 * Which paths `checkedPaths` / `onCheckedChange` EMIT in cascade mode:
+	 * `'rolled-up'` (default) collapses a fully-checked subtree to its root,
+	 * `'leaves'` emits only checked leaves, `'all'` emits every fully-checked node.
+	 * Orthogonal to `checkboxMode`; ignored in `'independent'` mode.
 	 */
 	cascadeCheckPolicy?: CascadeCheckPolicy | null | undefined;
 	/**
@@ -597,9 +616,14 @@ export interface TreeEngineProps<T> {
 	rangeSelectionMode?: 'visual' | 'logical';
 	initializeIndexCallback?: () => Index;
 	searchTerm?: string | null | undefined;
+	/** Which descendants of a filter match stay visible. See {@link FilterScope}. */
 	filterScope?: FilterScope | null | undefined;
+	/** The `x` for the depth-limited filterScopes (default 1). */
 	filterDescendantDepth?: number | null | undefined;
+	/** Expand the descendants a filterScope adds (default true). */
 	shouldExpandFilterDescendants?: boolean | null | undefined;
+	/** Max matches a search/filter returns (default 1000). FlexSearch's own silent
+	 *  default was 100; check `isLimited` in onSearchStatusChange to surface truncation. */
 	searchResultLimit?: number | null | undefined;
 	shouldUseInternalSearchIndex?: boolean | null | undefined;
 	indexerBatchSize?: number | null | undefined;
@@ -611,13 +635,19 @@ export interface TreeEngineProps<T> {
 	initialBatchSize?: number;
 	maxBatchSize?: number;
 	// Row animation (opt-in; docs/PLAN-row-animation.md)
+	/** Rows an expand reveals animate in (part of `motion` — `motion="none"`, reduced motion or
+	 *  `--stv-row-animation-duration: 0s` make it instant). At most this many rows animate per
+	 *  expand; the rest appear at once. Default 50; 0 = none. */
 	rowAnimationLimit?: number;
 	onRenderStart?: (ctx: TreeCallbackContext<T>) => void;
 	onRenderProgress?: (stats: RenderStats & TreeCallbackContext<T>) => void;
 	onRenderComplete?: (stats: RenderStats & TreeCallbackContext<T>) => void;
-	/** Search-index fill progress (per idle batch + once on completion). */
+	/** Search-index fill progress: fires per idle batch and once with `isComplete: true`.
+	 *  Search/filter results are partial until then. */
 	onIndexProgress?: (ctx: IndexProgress & TreeCallbackContext<T>) => void;
-	/** State of the applied filter: match count, truncation, whether indexing was still running. */
+	/** Fires whenever a filter is applied/cleared (incl. the automatic re-filter when
+	 *  indexing completes): `{ searchTerm, matchCount, isLimited, limit, isIndexing }`.
+	 *  Use it to tell users the result is truncated or still incomplete. */
 	onSearchStatusChange?: (ctx: SearchStatus & TreeCallbackContext<T>) => void;
 
 	// Virtual scrolling (flat mode only)
@@ -632,16 +662,30 @@ export interface TreeEngineProps<T> {
 
 	// DRAG AND DROP
 	dragDropMode?: DragDropMode;
+	/** 'floating' = original floating zones, 'glow' = border glow indicators */
 	dropZoneMode?: 'floating' | 'glow';
 	dropZoneLayout?: 'around' | 'before' | 'after' | 'wave' | 'wave2';
+	/** number = percentage (0-100), string = any CSS value ("33%", "50px", "3rem") */
 	dropZoneStart?: number | string;
+	/** max width in pixels for wave layouts */
 	dropZoneMaxWidth?: number;
+	/** Enable Ctrl+drag to copy instead of move (default: false) */
 	isCopyAllowed?: boolean;
+	/** Auto-handle same-tree copy operations (default: true). Set to false for external DB/API handling. */
 	shouldAutoHandleCopy?: boolean;
+	/** Auto-handle same-tree move operations (default: true). Set to false for database-first workflow. */
 	shouldAutoHandleMove?: boolean;
+	/** Auto-handle paste operations (default: true). Set to false for database-first workflow. */
 	shouldAutoHandlePaste?: boolean;
+	/** Expanding a node auto-collapses its siblings (default: false) */
 	shouldExpandAsAccordion?: boolean;
-	/** The whole populated tree is one drop target (a drop anywhere lands with target null). */
+	/**
+	 * Render a single drop zone covering the WHOLE populated tree (default false). While a drag
+	 * is in progress an overlay accepts a drop anywhere over the tree — the drop lands with
+	 * `target = null` regardless of per-node `getIsDropAllowedCallback`, so you route each item
+	 * from `beforeDropCallback` (return a `DropGroup[]`) instead of by where it was dropped. Use
+	 * for "drop a basket, auto-sort into category nodes" flows.
+	 */
 	isTreeDropZoneEnabled?: boolean;
 
 	// EVENTS (on* = fire-and-forget notifications). Each carries a context object mirroring
@@ -757,8 +801,12 @@ export interface TreeEngineProps<T> {
 	nodeInputTransformationCallback?: NodeTransformCallback<T>;
 
 	// DATA PROVIDERS (get*Callback = returns data the system uses)
-	/** The context menu's entries for the node it opened on: action items, `createMenuDivider()`s and
-	 *  built-in action names (`'copy'`, `'expand-subtree'`, …). No menu when unset (or empty). */
+	/** The context menu's entries for the node it opened on: action items (`{ id, text, icon,
+	 *  isDisabled, isDanger, isToggled, isVisible, children, onClick(detail) }`), `createMenuDivider()`s
+	 *  and built-in action names (`'copy'`, `'cut'`, `'paste'`, `'delete'`, `'expand'`,
+	 *  `'collapse'`, `'expand-subtree'`, `'collapse-subtree'`, `'expand-all'`,
+	 *  `'collapse-all'`, `'sort'`, `'sort-subtree'`, `'sort-all'`). `ctx = { node, path, parent,
+	 *  siblings, controller }`. No menu when unset. */
 	getContextMenuItemsCallback?: (ctx: TreeMenuContext<T>) => TreeMenuEntry<T>[];
 	/** Runs before a menu item activates (`false` cancels — no `onClick`, built-in or `onAction`;
 	 *  async OK). `detail` = the menu ctx + `{ action, id, item, source, sourceEvent, … }`. */
@@ -766,43 +814,78 @@ export interface TreeEngineProps<T> {
 	/** A menu item ran (after its `onClick` and the built-in) — a notification after the fact. */
 	onAction?: (detail: TreeActionEventDetail<T>) => void;
 
-	// Tells the controller whether a context menu snippet exists (set by Tree.svelte)
+	/** @internal Whether a `contextMenu` snippet exists (set by `<Tree>`). */
 	hasContextMenuSnippet?: boolean;
-	/** Replace individual keyboard-navigation methods (merged over the defaults). */
+	/** Override individual navigation methods (e.g. for custom ArrowDown/Up behavior) */
 	navigationOverrides?: TreeNavigationOverrides<T>;
 
 	// VISUALS
 	bodyClass?: string | null | undefined;
 	selectedNodeClass?: string | null | undefined;
 	focusedNodeClass?: string | null | undefined;
+	/** CSS class applied to every checked (isChecked) node — opt-in extra styling;
+	 *  the checkbox is the default signal. */
 	checkedNodeClass?: string | null | undefined;
+	/** Data-driven per-row class hook. Return extra class(es) for `.stv__node`. */
 	getNodeClassCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
+	/** Data-driven per-row class hook. Return extra class(es) for `.stv__node-content`. */
 	getNodeContentClassCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
 	dragOverNodeClass?: string | null | undefined;
+	/** Class for the dragged source row (the dimmed node left in place while its ghost
+	 *  follows the pointer). When set, REPLACES the built-in `.stv__node-content--dragged`
+	 *  visual (opacity + left-anchored scale) so you own the drag feedback — mirrors
+	 *  `selectedNodeClass` / `scrollHighlightClass`. Tune the default via
+	 *  `--stv-dragged-opacity` / `--stv-dragged-scale` instead of replacing it. */
 	draggedNodeClass?: string | null | undefined;
 	leafIconClass?: string | null | undefined;
 	toggleIconMode?: ToggleIconMode;
+	/** How the built-in node label behaves when wider than the row: `wrap` (multi-line),
+	 *  `ellipsis` (default — single-line clip; fixed row heights for virtual scroll), or `info` (ellipsis + a trailing ⓘ
+	 *  on clipped rows that reveals the full label on click). See NodeTitleOverflow. */
 	nodeTitleOverflow?: NodeTitleOverflow;
 	/** Indent per level in flat rendering (a CSS length). Default `var(--stv-indent-size)`. */
 	flatIndentSize?: string | null;
+	/** Enable hover/focus tooltips on node rows. Content comes from the `tooltip`
+	 *  snippet (preferred) or `getNodeTooltipCallback`; no content ⇒ no tooltip. */
 	isNodeTooltipsShown?: boolean;
+	/** Plain-text tooltip for a node (fallback when no `tooltip` snippet is given). */
 	getNodeTooltipCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
+	/** Tooltip placement relative to the row. Default `'top-start'`. */
 	tooltipPlacement?: TooltipPlacement;
+	/** Show/hide delay(s), ms. Default `{ show: 400, hide: 100 }`. */
 	tooltipDelay?: TooltipDelay;
+	/** Gap from the row (or cursor), px. Default `8`. */
 	tooltipOffset?: number;
+	/** Anchor the tooltip to the pointer instead of the row. Default `false`. */
 	shouldTooltipFollowCursor?: boolean;
+	/** Per-node icon VALUE from a data key — rendered into a dedicated `.stv__node-icon` wrapper
+	 *  on every node by core renderIcon: markup (`<svg…>`) as is → a core built-in name (`close`, `check`, `user`… see
+	 *  BUILT_IN_ICON_NAMES; masked from `--base-icon-<name>`) → `renderIconCallback` → the page-wide
+	 *  `window.components.renderIconCallback` → CSS class names as an icon font
+	 *  (`<i class="stv__icon fa-solid fa-folder">`) → anything else as text (an emoji). */
 	iconMember?: string | null | undefined;
+	/** Per-node icon VALUE from a callback (overrides iconMember); may return markup. */
 	getIconCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
-	/** This tree's icon hook (core renderIcon), asked before `window.components.renderIconCallback`. */
+	/** This tree's icon hook `(name, ctx) => markup | null`: asked for every icon value that is
+	 *  neither markup nor a core built-in name, before the page-wide
+	 *  `window.components.renderIconCallback`; `null` / `undefined` = not mine. `ctx` = `{ component,
+	 *  element, prefix, node, controller, …render state }`. The `icon` snippet still wins. */
 	renderIconCallback?: TreeRenderIconCallback<T> | null;
+	/** Per-node icon COLOR from a data key (applied to the icon element). */
 	iconColorMember?: string | null | undefined;
+	/** Per-node icon COLOR from a callback (overrides iconColorMember). */
 	getIconColorCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
+	/** Reserve the icon column so labels align even on rows with no icon. Default `true`. */
 	shouldAlignNodeIcons?: boolean;
 	scrollHighlightTimeout?: number | null | undefined;
 	scrollHighlightClass?: string | null | undefined;
 	contextMenuXOffset?: number | null | undefined;
 	contextMenuYOffset?: number | null | undefined;
+	/** Milliseconds to hold a touch before a touch-drag engages (long-press). Default 300. */
 	touchDragDelay?: number | null | undefined;
+	/** Show the built-in blocked-action indicator (haptic buzz + no-entry icon) — held while a
+	 *  locked node is long-pressed, and flashed on a target that refuses a drop. Default true.
+	 *  The onNodeDragReject / onNodeDropReject events fire regardless. */
 	shouldIndicateUndraggable?: boolean;
 }
 
@@ -1471,42 +1554,8 @@ export class TreeEngine<T> {
 		const config = this._ltreeConfig();
 		// svelte-ignore non_reactive_update
 		this.tree = createLTree<T>(
-			config.idMember ?? '',
-			config.pathMember ?? '',
-			config.parentPathMember,
-			config.levelMember,
-			config.hasChildrenMember,
-			config.isExpandedMember,
-			config.getIsExpandedCallback,
-			config.isSelectableMember,
-			config.getIsSelectableCallback,
-			config.isCheckedMember,
-			config.getIsCheckedCallback,
-			config.isDraggableMember,
-			config.getIsDraggableCallback,
-			config.isDropAllowedMember,
-			config.getIsDropAllowedCallback,
-			config.allowedDropPositionsMember,
-			config.displayValueMember,
-			config.getDisplayValueCallback,
-			config.searchValueMember,
-			config.getSearchValueCallback,
-			config.getAllowedDropPositionsCallback,
-			config.isCollapsibleMember,
-			config.getIsCollapsibleCallback,
-			config.orderMember,
-			this.treeId,
-			config.treePathSeparator,
-			config.expandLevel,
-			config.shouldUseInternalSearchIndex,
-			config.initializeIndexCallback,
-			config.indexerBatchSize,
-			config.indexerTimeout,
-			{
-				isSorted: config.isSorted,
-				sortCallback: config.sortCallback,
-				displayValueFallback: resolveLabel(props.labels, 'labels.noDisplayValue')
-			}
+			{ ...config, treeId: this.treeId },
+			{ displayValueFallback: resolveLabel(props.labels, 'labels.noDisplayValue') }
 		);
 
 		// Every live option (after the tree: isSortingEnabled lives on it).
@@ -2840,10 +2889,7 @@ export class TreeEngine<T> {
 		if (position !== 'child' || targetPath === '') return targetPath;
 		const target = this.tree?.getNodeByPath(targetPath);
 		if (!target) return targetPath;
-		const allowed = this.getNodeAllowedDropPositions(target);
-		return allowed && allowed.length > 0 && !allowed.includes('child')
-			? (target.parentPath ?? '')
-			: targetPath;
+		return this.tree.isDropPositionAllowed(target, 'child') ? targetPath : (target.parentPath ?? '');
 	}
 
 	/**
@@ -5147,12 +5193,32 @@ export class TreeEngine<T> {
 
 	// ── Drag and drop ───────────────────────────────────────────────────
 
+	/** `dragDropMode` lets a node from tree `draggedNodeTreeId` drop here (asked of the TARGET tree). */
 	private isDropAllowedByMode(draggedNodeTreeId: string | undefined): boolean {
 		if (this.dragDropMode === 'none') return false;
 		const isSameTree = draggedNodeTreeId === this.treeId;
 		if (this.dragDropMode === 'self' && !isSameTree) return false;
 		if (this.dragDropMode === 'cross' && isSameTree) return false;
 		return true;
+	}
+
+	/**
+	 * What a same-tree drop places (move AND copy). A beforeDragStartCallback override IS the
+	 * manifest — its omitted descendants are deliberate holes; it skips the draggability gate (the
+	 * consumer forced those paths in) and ALWAYS counts as a set: ['folder'] without its only child
+	 * is a manifest with a hole, which the single-node moveNode would carry along. Else the
+	 * draggable top-level selection when the lead is part of a multi-selection (Decision 6 in
+	 * selection-highlight-model.md), else just the lead — both completed to whole subtrees. The
+	 * drop target never moves onto itself. `isSet` = more than the plain lead.
+	 */
+	private _dropManifest(lead: LTreeNode<T>, dropPath: string): { paths: string[]; isSet: boolean } {
+		if (this._dragSetOverride) {
+			const paths = this._dragSetOverride.filter((p) => p !== dropPath && !!this.tree.getNodeByPath(p));
+			return { paths, isSet: paths.length > 0 };
+		}
+		if (this.selectedPaths.has(lead.path) && this.selectedPaths.size > 1)
+			return { paths: this._completeManifest(this._getDraggableTopLevelSelection(dropPath)), isSet: true };
+		return { paths: this._completeManifest([lead.path]), isSet: false };
 	}
 
 	private async _handleDrop(
@@ -5226,68 +5292,40 @@ export class TreeEngine<T> {
 		// child omitted is a manifest with a hole, and the single-node moveNode below would
 		// carry that child along. (It also turns a single grab into a multi-move when the
 		// callback force-adds companions.)
-		const isMultiDrag =
-			isSameTreeDrag &&
-			operation === 'move' &&
-			dropNode &&
-			this.shouldAutoHandleMove &&
-			(this._dragSetOverride
-				? this._dragSetOverride.length > 0
-				: this.selectedPaths.has(draggedNodeRef.path) && this.selectedPaths.size > 1);
-
-		if (isMultiDrag) {
-			// drop target can't be moved onto itself. An explicit override skips the draggability
-			// gate — the consumer forced these in on purpose.
-			const topLevelPaths = this._dragSetOverride
-				? this._dragSetOverride.filter((p) => p !== dropNode!.path && !!this.tree.getNodeByPath(p))
-				: this._getDraggableTopLevelSelection(dropNode!.path);
-			dragLogger.info(`Multi-drag: moving ${topLevelPaths.length} top-level subtree(s)`, {
-				topLevelPaths,
-				totalSelected: this.selectedPaths.size,
-				dropTarget: dropNode!.path,
-				position
-			});
-			// A curated override (from beforeDragStartCallback) IS the manifest as-is — it may omit
-			// descendants on purpose, and those omissions are holes moveNodes leaves behind. A plain
-			// highlight set carries no holes, so complete it (add every descendant) → whole subtrees
-			// move. Either way moveNodes resolves refs up front (no stale paths — the old hand-rolled
-			// loop needed dedup to avoid that), picks the roots, and chains them in source order under
-			// dropNode: 'after D' → [D, A, B, C], 'before D' → [A, B, C, D], 'child of D' → [A, B, C].
-			const manifest = this._dragSetOverride
-				? topLevelPaths
-				: this._completeManifest(topLevelPaths);
-			const result = this.moveNodes(manifest, dropNode!.path, position);
-			fireDrop(result.movedNodes);
-			return result.success;
-		}
-
 		if (isSameTreeDrag && operation === 'move' && dropNode) {
-			if (this.shouldAutoHandleMove) {
+			// shouldAutoHandleMove=false: library placed nothing → dropped is null.
+			if (!this.shouldAutoHandleMove) {
+				fireDrop(null);
+				return true;
+			}
+			const { paths, isSet } = this._dropManifest(draggedNodeRef, dropNode.path);
+			if (!isSet) {
 				const result = this.moveNode(draggedNodeRef.path, dropNode.path, position);
 				// moveNode mutates in place, so draggedNodeRef IS the landed node.
 				fireDrop([draggedNodeRef]);
 				return result.success;
 			}
-			// shouldAutoHandleMove=false: library placed nothing → dropped is null.
-			fireDrop(null);
-			return true;
+			// moveNodes resolves refs up front (no stale paths), picks the roots and chains them in
+			// source order under dropNode: 'after D' → [D, A, B, C], 'before D' → [A, B, C, D],
+			// 'child of D' → [A, B, C]; descendants a curated manifest omits are holes left behind.
+			dragLogger.info(`Multi-drag: moving ${paths.length} path(s)`, {
+				paths,
+				totalSelected: this.selectedPaths.size,
+				dropTarget: dropNode.path,
+				position
+			});
+			const result = this.moveNodes(paths, dropNode.path, position);
+			fireDrop(result.movedNodes);
+			return result.success;
 		}
 
 		if (isSameTreeDrag && operation === 'copy' && dropNode && this.shouldAutoHandleCopy) {
-			// Copy twin of the move branches: build the same manifest (curated override with
-			// holes, or the completed highlight/lead set = whole subtrees), then duplicateNodes
-			// runs the INPUT transform per node — the consumer's nodeInputTransformationCallback,
-			// else a default id-uniquifier. Multi-drag copies every root, exactly like move.
+			// Copy twin of the move branch: the same manifest, then duplicateNodes runs the INPUT
+			// transform per node — the consumer's nodeInputTransformationCallback, else a default
+			// id-uniquifier. Omitted descendants of a curated manifest are simply not copied.
 			const transform = this.inputTransformHandler ?? this._defaultCopyTransform;
-			const isMulti = this._dragSetOverride
-				? this._dragSetOverride.length > 1
-				: this.selectedPaths.has(draggedNodeRef.path) && this.selectedPaths.size > 1;
-			const manifest = this._dragSetOverride
-				? this._dragSetOverride
-				: isMulti
-					? this._completeManifest(this._getDraggableTopLevelSelection(dropNode.path))
-					: this._completeManifest([draggedNodeRef.path]);
-			const result = this.duplicateNodes(manifest, dropNode.path, position, transform);
+			const { paths } = this._dropManifest(draggedNodeRef, dropNode.path);
+			const result = this.duplicateNodes(paths, dropNode.path, position, transform);
 			fireDrop(result.copiedNodes);
 			return result.success;
 		}
@@ -5336,10 +5374,7 @@ export class TreeEngine<T> {
 	// gates which buttons render for the hovered node.
 	/** @internal Whether the floating drop zone may offer `position` for the hovered target. */
 	_isFloatingPositionAllowed(position: DropPosition): boolean {
-		if (!this.hoveredNodeForDrop) return false;
-		const allowed = this.tree.getNodeAllowedDropPositions(this.hoveredNodeForDrop);
-		if (!allowed || allowed.length === 0) return true; // All positions allowed by default
-		return allowed.includes(position);
+		return !!this.hoveredNodeForDrop && this.tree.isDropPositionAllowed(this.hoveredNodeForDrop, position);
 	}
 
 	// ── Pointer drag (mouse / pen / touch) — core createPointerDrag ──────
@@ -5524,10 +5559,7 @@ export class TreeEngine<T> {
 		}
 		if (this._hoverCtrl) this._hoverCtrl.floatingHoveredZone = null;
 
-		const modeOk =
-			targetCtrl === this
-				? this.isDropAllowedByMode(this.draggedNode?.treeId)
-				: targetCtrl.dragDropMode === 'both' || targetCtrl.dragDropMode === 'cross';
+		const modeOk = targetCtrl.isDropAllowedByMode(this.draggedNode?.treeId);
 
 		const position =
 			ctx?.node && ctx.node !== this.draggedNode && ctx.node.isDropAllowed && modeOk
@@ -5612,10 +5644,7 @@ export class TreeEngine<T> {
 			// and the button's position class.
 			const floatingZone = dropEl?.closest('.stv__drop-zone') as HTMLElement | null;
 
-			const modeOk =
-				targetCtrl === this
-					? this.isDropAllowedByMode(dragged.treeId)
-					: targetCtrl.dragDropMode === 'both' || targetCtrl.dragDropMode === 'cross';
+			const modeOk = targetCtrl.isDropAllowedByMode(dragged.treeId);
 
 			if (floatingZone && targetCtrl.hoveredNodeForDrop && modeOk) {
 				const pos: DropPosition = floatingZone.classList.contains('stv__drop-zone--before')
@@ -5696,10 +5725,8 @@ export class TreeEngine<T> {
 		el: Element,
 		event: PointerEvent
 	): DropPosition | null {
+		if (ctx.position) return ctx.controller.tree.isDropPositionAllowed(ctx.node!, ctx.position) ? ctx.position : null;
 		const positions = ctx.controller.getNodeAllowedDropPositions(ctx.node!);
-		if (ctx.position) {
-			return !positions || positions.length === 0 || positions.includes(ctx.position) ? ctx.position : null;
-		}
 		const rowEl = (el.closest('.stv__node-content') as HTMLElement | null) ?? ctx.nodeEl;
 		return rowEl ? ctx.controller.calculateDropPositionFromEvent(event, rowEl, positions) : 'child';
 	}

@@ -11,40 +11,17 @@ import { createLTree } from './ltree.svelte.js';
  */
 
 function createTree() {
-	return createLTree<any>(
-		'id',
-		'path',
-		undefined, // parentPathMember
-		undefined, // levelMember
-		undefined, // hasChildrenMember
-		undefined, // isExpandedMember
-		undefined, // getIsExpandedCallback
-		undefined, // isSelectableMember
-		undefined, // getIsSelectableCallback
-		undefined, // isCheckedMember
-		undefined, // getIsCheckedCallback
-		undefined, // isDraggableMember
-		undefined, // getIsDraggableCallback
-		undefined, // isDropAllowedMember
-		undefined, // getIsDropAllowedCallback
-		undefined, // allowedDropPositionsMember
-		'name',     // displayValueMember
-		undefined, // getDisplayValueCallback
-		undefined, // searchValueMember
-		undefined, // getSearchValueCallback
-		undefined, // getAllowedDropPositionsCallback
-		undefined, // isCollapsibleMember
-		undefined, // getIsCollapsibleCallback
-		undefined, // orderMember
-		'test-tree',
-		'.',
-		3, // expandLevel
-		false, // shouldUseInternalSearchIndex
-		undefined, // initializeIndexCallback
-		25,
-		50,
-		{}
-	);
+	return createLTree<any>({
+		idMember: 'id',
+		pathMember: 'path',
+		displayValueMember: 'name',
+		treeId: 'test-tree',
+		treePathSeparator: '.',
+		expandLevel: 3,
+		shouldUseInternalSearchIndex: false,
+		indexerBatchSize: 25,
+		indexerTimeout: 50
+	});
 }
 
 const seed = [

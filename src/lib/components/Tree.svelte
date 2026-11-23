@@ -1,5 +1,5 @@
 <script lang="ts" generics="T">
-	import type { Index, SearchOptions } from 'flexsearch';
+	import type { SearchOptions } from 'flexsearch';
 	import Node from './Node.svelte';
 	import { openMenu } from '../vendor/core/menu/open-menu.js';
 	import type { MenuDrawerSide, MenuHandle, MenuPresentation } from '../vendor/core/menu/types.js';
@@ -11,61 +11,30 @@
 		type InsertBranchResult,
 		type RemoveBranchResult,
 		type ReplaceBranchResult,
-		type DropPosition,
-		type DragDropMode,
-		type DropOperation,
-		type ClickBehavior,
-		type NodeTitleOverflow,
-		type TooltipPlacement,
-		type TooltipDelay,
 		type NodeRenderContext,
-		type CheckboxMode,
-		type CascadeCheckPolicy,
-		type FilterScope,
-		type IndexProgress,
-		type SearchStatus,
-		type SelectionMode,
 		type SelectMode,
 		type TreeMutationOptions,
 		type ExpandOptions,
 		type InsertPosition,
-		type NodeContext,
-		type SortContext,
 		type SortOptions,
-		type NodesReorderContext,
 		type TreeChange,
 		type ApplyChangesResult
 	} from '../ltree/types.js';
 	import { setContext, onDestroy, untrack, type Snippet } from 'svelte';
-	import type { RenderStats } from '../ltree/types.js';
-	import { TreeEngine, type TreeEngineProps } from '../core/TreeEngine.svelte.js';
+	import type { TreeEngineProps } from '../core/TreeEngine.svelte.js';
 	import { TREE_OPTION_KEYS } from '../core/tree-props.js';
-	import type { TranslateCallback, TreeLabelsInput } from '../core/labels.js';
 	import type {
-		NodeEventContext,
-		NodeDragContext,
-		NodeDropContext,
-		ClipboardEventContext,
-		SelectionChangeContext,
-		ExpandedChangeContext,
-		BeforeExpandContext,
-		FocusChangeContext,
-		TreeChangeContext,
-		BeforeCheckboxToggleContext,
-		NodeTransformCallbackContext,
 		NodeTransformCallback,
 		KeydownContext,
 		NodeRef,
 		PasteResult,
 		TreeCallbackContext,
-		TreeRenderIconCallback,
 		ScrollToPathOptions
 	} from '../core/TreeEngine.svelte.js';
 	import { uiLogger } from '../logger.js';
 	import { getPageLoaderCallback, pageLoader } from '../core/loader.js';
 	import { createTreeEngine } from '../core/createTreeEngine.js';
-	import type { TreeNavigationOverrides } from '../core/navigation.js';
-	import type { TreeMenuContext, TreeMenuEntry, TreeAction, TreeActionEventDetail } from '../core/menu.js';
+	import type { TreeMenuContext, TreeAction } from '../core/menu.js';
 	import { containerSize as trackContainerSize, environmentState } from '../core/responsive.svelte.js';
 	import { classifyDevice, getEnvironment } from '../vendor/core/environment/environment.js';
 	import type { ElementSize } from '../vendor/core/environment/element-size.js';
@@ -76,62 +45,20 @@
 	// NodeCallbacks and NodeConfig are now defined in ../core/TreeEngine.svelte.ts
 	// and re-exported from index.ts for public consumption.
 
-	interface Props {
-		// MAPPINGS
-		idMember: string;
-		pathMember: string;
-		parentPathMember?: string | null | undefined;
-		levelMember?: string | null | undefined;
-		isExpandedMember?: string | null | undefined;
-		getIsExpandedCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => boolean;
-		isSelectableMember?: string | null | undefined;
-		getIsSelectableCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => boolean;
-		isCheckedMember?: string | null | undefined;
-		getIsCheckedCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => boolean;
-		isDraggableMember?: string | null | undefined;
-		getIsDraggableCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => boolean;
-		isDropAllowedMember?: string | null | undefined;
-		getIsDropAllowedCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => boolean;
-		allowedDropPositionsMember?: string | null | undefined;
-		getAllowedDropPositionsCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => DropPosition[] | null | undefined;
-		isCollapsibleMember?: string | null | undefined;
-		getIsCollapsibleCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => boolean;
-		hasChildrenMember?: string | null | undefined;
-		isSorted?: boolean | null | undefined;
-		/** `false` = never auto-sort: input order kept, `addNode` appends, `insertNode` /
-		 *  `insertBranch` / `moveNode` / drop keep the exact position (with `orderMember` the order
-		 *  values are still computed between the neighbours). `sortNodes` / `sortAll` still sort.
-		 *  Default `true`. */
-		isSortingEnabled?: boolean;
-
-		displayValueMember?: string | null | undefined;
-		getDisplayValueCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string;
-
-		searchValueMember?: string | null | undefined;
-		getSearchValueCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string;
-
-		// For sibling ordering in drag-drop (before/after positioning)
-		orderMember?: string | null | undefined;
-
-		treeId?: string | null | undefined;
-		treePathSeparator?: string | null | undefined;
-		sortCallback?: (ctx: SortContext<T> & TreeCallbackContext<T>) => LTreeNode<T>[];
-
-		// DATA
-		/** The tree's nodes (flat `T[]` with ltree paths). Input AND current state: after a
-		 *  mutation (move / add / remove / paste / applyChanges…) `bind:nodes` receives the
-		 *  tree's current data. */
-		nodes: T[];
-		focusedNode?: LTreeNode<T> | null | undefined;
-		selectedPaths?: Set<string>;
-		checkedPaths?: Set<string>;
-		/** Paths of the expanded nodes (bindable). Assigning replaces the expanded state
-		 *  (silently — no onExpandedChange); given before the data, it applies after the
-		 *  first non-empty load (overriding expandLevel / isExpandedMember). */
-		expandedPaths?: Set<string>;
+	/** `<Tree>`'s props: every engine option ({@link TreeEngineProps} — mappings, behaviour, events,
+	 *  interceptors, visuals) plus what only the component has (snippets, view-only bindables, theme,
+	 *  motion, menu presentation). */
+	interface Props extends Omit<TreeEngineProps<T>, 'hasContextMenuSnippet'> {
+		// STATE (bindable, the component's own)
+		/** Bindable: the last `nodes` load's result (inserted / failed nodes with reasons). */
 		insertResult?: InsertArrayResult<T> | null | undefined;
+		/** Bindable: true while a progressive render pass is running. */
+		isRendering?: boolean;
+		/** Bindable: the tree's live border-box size in CSS px. Read it in your own `$derived`
+		 *  to switch settings by space. Updated from the same signal as `onContainerResize`. */
+		containerSize?: ElementSize;
 
-		// SLOTS
+		// SNIPPETS
 		/** Custom row content. Receives (node, ctx) — ctx is the NodeRenderContext
 		 *  (device + container + live node state) so the template can adapt to device. */
 		nodeTemplate?: Snippet<[LTreeNode<T>, NodeRenderContext]>;
@@ -158,248 +85,7 @@
 		 *  (`--stv-loader-*` tokens → `--base-loader-*`). */
 		loadingPlaceholder?: Snippet;
 
-		/** UI strings — a partial object of flat `<elementType>.<name>` keys (short `messages.noData`
-		 *  or full `svelte-treeview.messages.noData`), resolved per key by core `/locale`: this
-		 *  `labels` → `translateCallback` → the page-wide `window.components.locale.translateCallback`
-		 *  → the page-wide flat dictionary `window.components.locale.labels['svelte-treeview.<key>']`
-		 *  → English (`''` = render nothing): `messages.noData` ("No data" — no nodes),
-		 *  `messages.noResults` ("No results found" — the search filter left nothing),
-		 *  `messages.dropHere` ("Drop here" — default drop placeholder), `labels.noDisplayValue`
-		 *  ("[N/A]" — node without a display value; also the touch-drag ghost), `labels.dropBefore` /
-		 *  `labels.dropAfter` / `labels.dropChild` ("Before" / "After" / "Child" — the floating drop
-		 *  pads), `ariaLabels.loading` ("Loading…" — `isLoading` overlay aria-label),
-		 *  `ariaLabels.showFullLabel` ("Show full label" — `nodeTitleOverflow: 'info'` button),
-		 *  `menuItems.copy` … `menuItems.sortAll` (built-in context-menu items). `{name}` placeholders.
-		 *  The `noData` / `dropPlaceholder` snippets still replace the markup. */
-		labels?: TreeLabelsInput;
-		/** This tree's own translation seam (i18next / ICU / the app's lookup): gets
-		 *  `{ component, key (full), template, params, locale }` for every key `labels` did NOT set and
-		 *  returns the finished text, or `null` / `undefined` = not mine → the page-wide
-		 *  `window.components.locale.translateCallback` → the page dictionary → English. */
-		translateCallback?: TranslateCallback | null;
-
-		// BEHAVIOUR
-		expandLevel?: number | null | undefined;
-		clickBehavior?: ClickBehavior | null | undefined;
-		/**
-		 * `'single'` (default): plain click selects one node; Ctrl/Shift+click
-		 * degrade to plain click; Shift+Arrow is a no-op.
-		 * `'multiple'`: Ctrl-toggle, Shift-range, Shift+Arrow extend, Space toggles
-		 * selection on the focused node.
-		 */
-		selectionMode?: SelectionMode | null | undefined;
-		isCheckboxesShown?: boolean | null | undefined;
-		checkboxMode?: CheckboxMode | null | undefined;
-		/**
-		 * Which paths `checkedPaths` / `onCheckedChange` EMIT in cascade mode:
-		 * `'rolled-up'` (default) collapses a fully-checked subtree to its root,
-		 * `'leaves'` emits only checked leaves, `'all'` emits every fully-checked node.
-		 * Orthogonal to `checkboxMode`; ignored in `'independent'` mode.
-		 */
-		cascadeCheckPolicy?: CascadeCheckPolicy | null | undefined;
-		/** Which descendants of a filter match stay visible. See {@link FilterScope}. */
-		filterScope?: FilterScope | null | undefined;
-		/** The `x` for the depth-limited filterScopes (default 1). */
-		filterDescendantDepth?: number | null | undefined;
-		/** Expand the descendants a filterScope adds (default true). */
-		shouldExpandFilterDescendants?: boolean | null | undefined;
-		shouldClickToggleCheckbox?: boolean | null | undefined;
-		beforeCheckboxToggleCallback?: (ctx: BeforeCheckboxToggleContext<T>) => string[] | false | void;
-		rangeSelectionMode?: 'visual' | 'logical';
-		initializeIndexCallback?: () => Index;
-		searchTerm?: string | null | undefined;
-		shouldUseInternalSearchIndex?: boolean | null | undefined;
-		indexerBatchSize?: number | null | undefined;
-		indexerTimeout?: number | null | undefined;
-		isLoading?: boolean;
-
-		// Progressive rendering (exponential batching: 20 → 40 → 80 → 160...)
-		isProgressiveRenderEnabled?: boolean;
-		initialBatchSize?: number;
-		maxBatchSize?: number;
-		isRendering?: boolean; // Bindable: true while progressive rendering is active
-		/** Rows an expand reveals animate in (part of `motion` — `motion="none"`, reduced motion or
-		 *  `--stv-row-animation-duration: 0s` make it instant). At most this many rows animate per
-		 *  expand; the rest appear at once. Default 50; 0 = none. */
-		rowAnimationLimit?: number;
-		onRenderStart?: (ctx: TreeCallbackContext<T>) => void;
-		onRenderProgress?: (stats: RenderStats & TreeCallbackContext<T>) => void;
-		onRenderComplete?: (stats: RenderStats & TreeCallbackContext<T>) => void;
-		/** Search-index fill progress: fires per idle batch and once with `isComplete: true`.
-		 *  Search/filter results are partial until then. */
-		onIndexProgress?: (ctx: IndexProgress & TreeCallbackContext<T>) => void;
-		/** Fires whenever a filter is applied/cleared (incl. the automatic re-filter when
-		 *  indexing completes): `{ searchTerm, matchCount, isLimited, limit, isIndexing }`.
-		 *  Use it to tell users the result is truncated or still incomplete. */
-		onSearchStatusChange?: (ctx: SearchStatus & TreeCallbackContext<T>) => void;
-		/** Max matches a search/filter returns (default 1000). FlexSearch's own silent
-		 *  default was 100; check `isLimited` in onSearchStatusChange to surface truncation. */
-		searchResultLimit?: number | null | undefined;
-
-
-		// VIRTUAL SCROLLING (flat mode only)
-		/** Enable virtual scrolling in flat mode. Only visible nodes + overscan are rendered. */
-		isVirtualScrollEnabled?: boolean;
-		/** Explicit row height in px. Auto-measured from first row if not set. */
-		virtualScrollItemHeight?: number;
-		/** Extra rows above/below viewport (default: 5) */
-		virtualScrollOverscan?: number;
-		/** CSS height for scroll container. Auto-detected from parent if not set, fallback 400px. */
-		virtualScrollContainerHeight?: string;
-
-		// DRAG AND DROP
-		dragDropMode?: DragDropMode;
-		dropZoneMode?: 'floating' | 'glow'; // 'floating' = original floating zones, 'glow' = border glow indicators
-		dropZoneLayout?: 'around' | 'before' | 'after' | 'wave' | 'wave2';
-		dropZoneStart?: number | string; // number = percentage (0-100), string = any CSS value ("33%", "50px", "3rem")
-		dropZoneMaxWidth?: number; // max width in pixels for wave layouts
-		/**
-		 * Keep the `dropPlaceholder` (or `labels.dropHere`, default "Drop here") visible whenever the tree
-		 * is empty — not just mid-drag. Also makes the empty drop zone grab keyboard
-		 * focus on hover, so a clipboard paste (Ctrl/Cmd+V routed through `beforeKeydownCallback`)
-		 * lands on this tree without needing a node to click first. Default: false.
-		 */
-		isEmptyDropPlaceholderShown?: boolean;
-		/**
-		 * Render a single drop zone covering the WHOLE populated tree (default false). While a drag
-		 * is in progress an overlay accepts a drop anywhere over the tree — the drop lands with
-		 * `target = null` regardless of per-node `getIsDropAllowedCallback`, so you route each item
-		 * from `beforeDropCallback` (return a `DropGroup[]`) instead of by where it was dropped. Use
-		 * for "drop a basket, auto-sort into category nodes" flows.
-		 */
-		isTreeDropZoneEnabled?: boolean;
-		isCopyAllowed?: boolean; // Enable Ctrl+drag to copy instead of move (default: false)
-		shouldAutoHandleCopy?: boolean; // Auto-handle same-tree copy operations (default: true). Set to false for external DB/API handling.
-		shouldAutoHandleMove?: boolean; // Auto-handle same-tree move operations (default: true). Set to false for database-first workflow.
-		shouldAutoHandlePaste?: boolean; // Auto-handle paste operations (default: true). Set to false for database-first workflow.
-		/** Built-in keyboard shortcuts (default true; false = opt out): Ctrl/Cmd+C/X/V (copy/cut/paste),
-		 *  Delete (remove selection), Escape (cancel cut), plus classic CUA aliases Ctrl+Insert
-		 *  (copy) / Shift+Insert (paste) / Shift+Delete (cut). A consumer `beforeKeydownCallback` still runs
-		 *  first and can override or suppress any of these. Paste targets the focused node (root
-		 *  when none) and uses `nodeInputTransformationCallback`. */
-		shouldHandleKeyboardShortcuts?: boolean;
-		shouldExpandAsAccordion?: boolean; // Expanding a node auto-collapses its siblings (default: false)
-
-		// EVENTS (on* = fire-and-forget notifications). Each carries a context object mirroring
-		// the clipboard callbacks: single-node events get a NodeRef (node + live parent/siblings),
-		// onNodeDrop gets symmetric source/target NodeRefs, the set events carry paths + nodes.
-		onNodeClick?: (ctx: NodeEventContext<T>) => void;
-		onNodeDoubleClick?: (ctx: NodeEventContext<T>) => void;
-		onSelectionChange?: (ctx: SelectionChangeContext<T>) => void;
-		onCheckedChange?: (ctx: SelectionChangeContext<T>) => void;
-		/** A node expanded (toggle, keyboard, `expandNodes`, after any `beforeExpandCallback`
-		 *  load; NOT `expandAll` / expand-level seeding). Skipped with `isSilent`. */
-		onNodeExpand?: (ctx: NodeEventContext<T>) => void;
-		/** A node collapsed (toggle, keyboard, `collapseNodes`, an accordion sibling; NOT
-		 *  `collapseAll`). Skipped with `isSilent`. */
-		onNodeCollapse?: (ctx: NodeEventContext<T>) => void;
-		/** The expanded set changed (any cause) — `paths` = the whole new set (same as
-		 *  `expandedPaths`). Not fired for `isSilent` operations nor for assigning `expandedPaths`. */
-		onExpandedChange?: (ctx: ExpandedChangeContext<T>) => void;
-		/** Runs before a node expands (toggle, keyboard, `expandNodes` — not `expandAll` /
-		 *  seeding / accordion): `false` keeps it collapsed; a Promise defers the expand and
-		 *  shows the node's loading state (lazy loading). A throw / rejection keeps it collapsed. */
-		beforeExpandCallback?: (ctx: BeforeExpandContext<T>) => boolean | void | Promise<boolean | void>;
-		/** The focused node changed (click, keyboard, `focusNode` / `clearFocus`). `ctx =
-		 *  { focusedNode, controller }`. Not for `isSilent` nor for assigning `focusedNode`. */
-		onFocusChange?: (ctx: FocusChangeContext<T>) => void;
-		/** The tree's data / structure changed through a mutation (add / insert / move / remove /
-		 *  update / applyChanges / paste / drop / sort) — once per batch. Not for loading `nodes`. */
-		onTreeChange?: (ctx: TreeChangeContext<T>) => void;
-		/** `sortNodes` / `sortAll` rewrote one parent's `orderMember` values (custom compare /
-		 *  `direction: 'desc'`) — persist `changes`. Skipped with `isSilent`. */
-		onNodesReorder?: (ctx: NodesReorderContext<T> & TreeCallbackContext<T>) => void;
-		onNodeDragStart?: (ctx: NodeDragContext<T>) => void;
-		onNodeDragOver?: (ctx: NodeDragContext<T>) => void;
-		onNodeDrop?: (ctx: NodeDropContext<T>) => void;
-		/** Fired when a long-press engages on a non-draggable node (touch). Fire-and-forget. */
-		onNodeDragReject?: (ctx: NodeEventContext<T>) => void;
-		/** Fired when a drop is rejected because the target node refuses it. Fire-and-forget. */
-		onNodeDropReject?: (ctx: NodeEventContext<T>) => void;
-		// Post-operation clipboard notifications (fired AFTER the op). onNodeCopy/onNodeCut/onNodeDelete
-		// carry paths + resolved nodes (pre-removal snapshots for delete); onNodePaste the PasteResult.
-		onNodeCopy?: (ctx: ClipboardEventContext<T>) => void;
-		onNodeCut?: (ctx: ClipboardEventContext<T>) => void;
-		onNodePaste?: (result: import('../core/TreeEngine.svelte.js').PasteResult<T>) => void;
-		/** Fired after the built-in Delete (or `runDeleteCommand`) removes nodes, with the removed
-		 *  top-level paths plus their pre-removal nodes. */
-		onNodeDelete?: (ctx: ClipboardEventContext<T>) => void;
-
-		// RESPONSIVE (signal only — the tree renders inline, it does not change its own
-		// behaviour; these surface the container-box signal so a consumer adapts settings
-		// to the space, AB10-style). Backed by the shared ResizeObserver in
-		// vendor/core/environment; see core/responsive.svelte.ts.
-		/** Fire-and-forget: the tree's own border-box changed (immediate on mount, then on
-		 *  resize, throttled ~30ms). `deviceClass` is the capability+size class of the WINDOW
-		 *  (`classifyDevice`), handy alongside the box for AB10-style adaptation. */
-		onContainerResize?: (ctx: { size: ElementSize; deviceClass: DeviceClass } & TreeCallbackContext<T>) => void;
-		/** Bindable: the tree's live border-box size in CSS px. Read it in your own `$derived`
-		 *  to switch settings by space. Updated from the same signal as `onContainerResize`. */
-		containerSize?: ElementSize;
-
-		// INTERCEPTORS (before*Callback = can modify/block)
-		/**
-		 * Called before a drop is processed with a BeforeDropContext ({ target, dragged, position,
-		 * operation, event }). Return `false` to cancel the drop, `{ position, operation }` to
-		 * redirect it, or a `DropGroup[]` ({ targetPath, position?, paths }) to fan the drop out to
-		 * several destinations (content-addressed routing — same-tree nodes are auto-moved,
-		 * cross-tree nodes are left for onNodeDrop). Return `void` to proceed. Async-capable.
-		 */
-		beforeDropCallback?: (
-			ctx: import('../core/TreeEngine.svelte.js').BeforeDropContext<T>
-		) =>
-			| boolean
-			| { position?: DropPosition; operation?: DropOperation }
-			| import('../core/TreeEngine.svelte.js').DropGroup[]
-			| void
-			| Promise<
-					| boolean
-					| { position?: DropPosition; operation?: DropOperation }
-					| import('../core/TreeEngine.svelte.js').DropGroup[]
-					| void
-			  >;
-		/** Set-level pre-drag interceptor. Return a `string[]` of top-level paths to REPLACE the
-		 *  dragged set (prune and/or force-add nodes that can't be omitted), `false` to cancel the
-		 *  drag, or `void` to keep the default. Synchronous. See DragStartContext. */
-		beforeDragStartCallback?: (
-			ctx: import('../core/TreeEngine.svelte.js').DragStartContext<T>
-		) => string[] | false | void;
-		beforeCopyCallback?: (
-			ctx: import('../core/TreeEngine.svelte.js').BeforeCopyContext<T>
-		) => string[] | false | void;
-		beforeCutCallback?: (
-			ctx: import('../core/TreeEngine.svelte.js').BeforeCopyContext<T>
-		) => string[] | false | void;
-		beforePasteCallback?: (
-			ctx: import('../core/TreeEngine.svelte.js').BeforePasteContext<T>
-		) => { targetPath?: string; position?: 'child' | 'before' | 'after' } | false | void;
-		/** Runs before the built-in Delete removes anything. Return a narrowed path[] to restrict, or false to block. */
-		beforeDeleteCallback?: (
-			ctx: import('../core/TreeEngine.svelte.js').BeforeDeleteContext<T>
-		) => string[] | false | void;
-		/** OUTPUT transform (egress) — per node as it LEAVES the source: Ctrl+C/X, or the capture
-		 *  side of a copy-drop. Strip transient/sensitive fields. Fires for copy, never a move. */
-		nodeOutputTransformationCallback?: (ctx: NodeTransformCallbackContext<T>) => T;
-		/** INPUT transform (ingress) — per node as a DUPLICATE LANDS in a destination: Ctrl+V
-		 *  paste, or the insert side of a copy-drop (same- or cross-tree). Return new data
-		 *  (fresh ids/names) or null to skip the node. Fires for copy, never a move. */
-		nodeInputTransformationCallback?: NodeTransformCallback<T>;
-
-		// DATA PROVIDERS (get*Callback = returns data the system uses)
-		/** The context menu's entries for the node it opened on: action items (`{ id, text, icon,
-		 *  isDisabled, isDanger, isToggled, isVisible, children, onClick(detail) }`), `createMenuDivider()`s
-		 *  and built-in action names (`'copy'`, `'cut'`, `'paste'`, `'delete'`, `'expand'`,
-		 *  `'collapse'`, `'expand-subtree'`, `'collapse-subtree'`, `'expand-all'`,
-		 *  `'collapse-all'`, `'sort'`, `'sort-subtree'`, `'sort-all'`). `ctx = { node, path, parent,
-		 *  siblings, controller }`. No menu when unset. */
-		getContextMenuItemsCallback?: (ctx: TreeMenuContext<T>) => TreeMenuEntry<T>[];
-		/** Runs before a menu item activates — `false` cancels (no `onClick`, built-in or
-		 *  `onAction`); async OK. */
-		beforeActionCallback?: (detail: TreeActionEventDetail<T>) => boolean | void | Promise<boolean | void>;
-		/** A menu item ran (after its `onClick` and the built-in). */
-		onAction?: (detail: TreeActionEventDetail<T>) => void;
-
-		// VISUALS
+		// VIEW (the component's own — not engine options)
 		/** Per-instance theme override. Forwarded to the root `.stv__container`
 		 *  as `data-theme="dark"|"light"`, which the stylesheet uses to flip the
 		 *  tree's colors independently of the surrounding page. Wins over every
@@ -422,88 +108,29 @@
 		 *  `--base-scroll-behavior` tokens the `--stv-transition-*` vars read. The OS
 		 *  `prefers-reduced-motion: reduce` always wins. */
 		motion?: Motion;
-		bodyClass?: string | null | undefined;
-		selectedNodeClass?: string | null | undefined;
-		focusedNodeClass?: string | null | undefined;
-		/** CSS class applied to every checked (isChecked) node — opt-in extra styling;
-		 *  the checkbox is the default signal. */
-		checkedNodeClass?: string | null | undefined;
-		/** Data-driven per-row class hook. Return extra class(es) for `.stv__node`. */
-		getNodeClassCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
-		/** Data-driven per-row class hook. Return extra class(es) for `.stv__node-content`. */
-		getNodeContentClassCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
-		dragOverNodeClass?: string | null | undefined;
-		/** Class for the dragged source row (the dimmed node left in place while its ghost
-		 *  follows the pointer). When set, REPLACES the built-in `.stv__node-content--dragged`
-		 *  visual (opacity + left-anchored scale) so you own the drag feedback — mirrors
-		 *  `selectedNodeClass` / `scrollHighlightClass`. Tune the default via
-		 *  `--stv-dragged-opacity` / `--stv-dragged-scale` instead of replacing it. */
-		draggedNodeClass?: string | null | undefined;
 		/** Pick the disclosure glyph as a single knob (default `'chevron'`). Re-points
 		 *  the ONE `--stv-icon-*` variable set via `data-icon-set` on `.stv__container`
 		 *  — it does not switch between separate CSS classes. `'plus-minus'` is a swap
 		 *  set (glyph-swaps regardless of `toggleIconMode`). Each set chains to a shared
 		 *  `--base-icon-*` token, so a theme reskins every Keenmate component at once. */
 		iconSet?: 'chevron' | 'triangle' | 'plus-minus' | 'arrow';
-		leafIconClass?: string | null | undefined;
-		toggleIconMode?: 'rotate' | 'swap';
-		/** How the built-in node label behaves when wider than the row: `wrap` (multi-line),
-		 *  `ellipsis` (default — single-line clip; fixed row heights for virtual scroll), or `info` (ellipsis + a trailing ⓘ
-		 *  on clipped rows that reveals the full label on click). See NodeTitleOverflow. */
-		nodeTitleOverflow?: NodeTitleOverflow;
-		/** Indent per level in flat rendering (a CSS length). Default `var(--stv-indent-size)`. */
-		flatIndentSize?: string | null;
-		/** Enable hover/focus tooltips on node rows. Content comes from the `tooltip`
-		 *  snippet (preferred) or `getNodeTooltipCallback`; no content ⇒ no tooltip. */
-		isNodeTooltipsShown?: boolean;
-		/** Plain-text tooltip for a node (fallback when no `tooltip` snippet is given). */
-		getNodeTooltipCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
-		/** Tooltip placement relative to the row. Default `'top-start'`. */
-		tooltipPlacement?: TooltipPlacement;
-		/** Show/hide delay(s), ms. Default `{ show: 400, hide: 100 }`. */
-		tooltipDelay?: TooltipDelay;
-		/** Gap from the row (or cursor), px. Default `8`. */
-		tooltipOffset?: number;
-		/** Anchor the tooltip to the pointer instead of the row. Default `false`. */
-		shouldTooltipFollowCursor?: boolean;
-		/** Per-node icon VALUE from a data key — rendered into a dedicated `.stv__node-icon` wrapper
-		 *  on every node by core renderIcon: markup (`<svg…>`) as is → a core built-in name (`close`, `check`, `user`… see
-		 *  BUILT_IN_ICON_NAMES; masked from `--base-icon-<name>`) → `renderIconCallback` → the page-wide
-		 *  `window.components.renderIconCallback` → CSS class names as an icon font
-		 *  (`<i class="stv__icon fa-solid fa-folder">`) → anything else as text (an emoji). */
-		iconMember?: string | null | undefined;
-		/** Per-node icon VALUE from a callback (overrides iconMember); may return markup. */
-		getIconCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
-		/** This tree's icon hook `(name, ctx) => markup | null`: asked for every icon value that is
-		 *  neither markup nor a core built-in name, before the page-wide
-		 *  `window.components.renderIconCallback`; `null` / `undefined` = not mine. `ctx` = `{ component,
-		 *  element, prefix, node, controller, …render state }`. The `icon` snippet still wins. */
-		renderIconCallback?: TreeRenderIconCallback<T> | null;
-		/** Per-node icon COLOR from a data key (applied to the icon element). */
-		iconColorMember?: string | null | undefined;
-		/** Per-node icon COLOR from a callback (overrides iconColorMember). */
-		getIconColorCallback?: (ctx: NodeContext<T> & TreeCallbackContext<T>) => string | null | undefined;
-		/** Reserve the icon column so labels align even on rows with no icon. Default `true`. */
-		shouldAlignNodeIcons?: boolean;
-		scrollHighlightTimeout?: number | null | undefined;
-		scrollHighlightClass?: string | null | undefined;
-		contextMenuXOffset?: number | null | undefined;
-		contextMenuYOffset?: number | null | undefined;
+		/**
+		 * Keep the `dropPlaceholder` (or `labels.dropHere`, default "Drop here") visible whenever the tree
+		 * is empty — not just mid-drag. Also makes the empty drop zone grab keyboard
+		 * focus on hover, so a clipboard paste (Ctrl/Cmd+V routed through `beforeKeydownCallback`)
+		 * lands on this tree without needing a node to click first. Default: false.
+		 */
+		isEmptyDropPlaceholderShown?: boolean;
 		/** How the context menu opens (core `menuPresentation`, same as web-treeview): `'auto'`
 		 *  (default — a bottom sheet on a phone, else floating), `'floating'`, `'sheet'` or
 		 *  `'drawer'`. Read when the menu opens. */
 		menuPresentation?: MenuPresentation | null | undefined;
 		/** The edge a `'drawer'` context menu slides in from (core `menuSide`): `'start'` (default) or `'end'`. */
 		menuSide?: MenuDrawerSide | null | undefined;
-
-		/** Milliseconds to hold a touch before a touch-drag engages (long-press). Default 300. */
-		touchDragDelay?: number | null | undefined;
-
-		/** Show the built-in blocked-action indicator (haptic buzz + no-entry icon) — held while a
-		 *  locked node is long-pressed, and flashed on a target that refuses a drop. Default true.
-		 *  The onNodeDragReject / onNodeDropReject events fire regardless. */
-		shouldIndicateUndraggable?: boolean;
-
+		/** Fire-and-forget: the tree's own border-box changed (immediate on mount, then on
+		 *  resize, throttled ~30ms). `deviceClass` is the capability+size class of the WINDOW
+		 *  (`classifyDevice`), handy alongside the box for AB10-style adaptation. */
+		onContainerResize?: (ctx: { size: ElementSize; deviceClass: DeviceClass } & TreeCallbackContext<T>) => void;
 		/** Keydown interceptor (SYNCHRONOUS — a key's default can only be prevented in the
 		 *  handler). Return `false` to suppress the tree's keyboard handling (navigation and the
 		 *  built-in shortcuts) and preventDefault the key; return nothing to continue. Gets a context object mirroring the other
@@ -512,9 +139,6 @@
 		 *  remains for imperative actions (addNode, copyNodes, …). A keydown is a tree-level
 		 *  event, so there's no single "the node" — that's why it carries both selections. */
 		beforeKeydownCallback?: (ctx: KeydownContext<T>) => false | void;
-
-		/** Override individual navigation methods (e.g. for custom ArrowDown/Up behavior) */
-		navigationOverrides?: TreeNavigationOverrides<T>;
 	}
 
 	/** What `update()` takes: every prop but the snippets. */
@@ -565,7 +189,7 @@
 	// "Sync props → engine"); the svelte-ignore covers reading the props here.
 	// svelte-ignore state_referenced_locally
 	const engine = createTreeEngine<T>({
-		...(options as Partial<TreeEngineProps<T>>),
+		...options,
 		nodes,
 		focusedNode,
 		selectedPaths,
@@ -573,7 +197,7 @@
 		expandedPaths,
 		searchTerm,
 		hasContextMenuSnippet: !!contextMenu
-	} as TreeEngineProps<T>);
+	});
 
 	// Reactive render environment shared with every Node — device class + the tree's
 	// container box. Mutated (not replaced) in an $effect below so the context reference

@@ -23,40 +23,19 @@ function sortByPath({ nodes }: { nodes: LTreeNode<Row>[] }) {
 }
 
 function build() {
-	return createLTree<Row>(
-		'id', // _idMember
-		'path', // _pathMember
-		undefined, // _parentPathMember
-		undefined, // _levelMember
-		undefined, // _hasChildrenMember
-		undefined, // _isExpandedMember
-		undefined, // _getIsExpandedCallback
-		undefined, // _isSelectableMember
-		undefined, // _getIsSelectableCallback
-		undefined, // _isCheckedMember
-		undefined, // _getIsCheckedCallback
-		undefined, // _isDraggableMember
-		undefined, // _getIsDraggableCallback
-		undefined, // _isDropAllowedMember
-		undefined, // _getIsDropAllowedCallback
-		undefined, // _allowedDropPositionsMember
-		'name', // _displayValueMember
-		undefined, // _getDisplayValueCallback
-		'name', // _searchValueMember
-		undefined, // _getSearchValueCallback
-		undefined, // _getAllowedDropPositionsCallback
-		undefined, // _isCollapsibleMember
-		undefined, // _getIsCollapsibleCallback
-		undefined, // _orderMember
-		'search-removal-tree',
-		'.',
-		5, // expandLevel
-		true, // _shouldUseInternalSearchIndex
-		undefined,
-		100,
-		50,
-		{ sortCallback: sortByPath }
-	);
+	return createLTree<Row>({
+		idMember: 'id',
+		pathMember: 'path',
+		displayValueMember: 'name',
+		searchValueMember: 'name',
+		treeId: 'search-removal-tree',
+		treePathSeparator: '.',
+		expandLevel: 5,
+		shouldUseInternalSearchIndex: true,
+		indexerBatchSize: 100,
+		indexerTimeout: 50,
+		sortCallback: sortByPath
+	});
 }
 
 const names = (nodes: LTreeNode<Row>[]) => nodes.map((n) => n.data?.name).sort();
@@ -112,5 +91,24 @@ describe('search index stays correct across removals', () => {
 		ltree.addNode('3', { id: 'g', path: '', name: 'golf' });
 		await waitFor(() => ltree.searchNodes('golf').length > 0);
 		expect(names(ltree.searchNodes('golf'))).toEqual(['golf']);
+	});
+
+	it('a row without the searchValueMember field is indexed through getSearchValueCallback (§3.7)', async () => {
+		const ltree = createLTree<Row>({
+			idMember: 'id',
+			pathMember: 'path',
+			displayValueMember: 'name',
+			searchValueMember: 'keywords',
+			getSearchValueCallback: ({ node }) => `${node.data?.name} callback`,
+			treeId: 'search-fallback-tree',
+			shouldUseInternalSearchIndex: true,
+			sortCallback: sortByPath
+		});
+		ltree.insertArray([...fixture.slice(0, 2), { ...fixture[3], keywords: 'kilo' } as Row]);
+		await waitFor(() => ltree.searchNodes('kilo').length > 0);
+		// the member wins when present; the indexer used to skip the callback entirely
+		expect(names(ltree.searchNodes('kilo'))).toEqual(['delta']);
+		expect(names(ltree.searchNodes('callback'))).toEqual(['alpha', 'bravo']);
+		expect(ltree.getNodeSearchValue(ltree.getNodeByPath('1')!)).toBe('alpha callback');
 	});
 });

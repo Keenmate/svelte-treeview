@@ -231,16 +231,9 @@
 	// Glow/drop position is owned by the controller now (pointer-driven drag) and arrives
 	// via the `activeDropPosition` prop — no per-node local calculation on dragover.
 
-	// Get allowed drop positions for this node (empty/undefined = all allowed)
-	// Uses tree.getNodeAllowedDropPositions which checks callback > member > node property
-	const allowedPositions = $derived(tree.getNodeAllowedDropPositions(node));
-
-	// Check if a position is allowed for this node
+	// Whether this node takes a drop at `position` (callback > member > node property; none = all)
 	function isPositionAllowed(position: DropPosition): boolean {
-		if (!allowedPositions || allowedPositions.length === 0) {
-			return true; // All positions allowed by default
-		}
-		return allowedPositions.includes(position);
+		return tree.isDropPositionAllowed(node, position);
 	}
 
 

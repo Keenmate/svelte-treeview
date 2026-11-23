@@ -44,40 +44,23 @@ function buildTree(opts: {
 	withCallbacks: boolean;
 }) {
 	const cb = opts.withCallbacks;
-	return createLTree<Row>(
-		'id',          // _idMember
-		'path',        // _pathMember
-		undefined,     // _parentPathMember
-		undefined,     // _levelMember
-		undefined,     // _hasChildrenMember
-		undefined,     // _isExpandedMember
-		cb ? ({ node: n }) => n.data?.isExpanded !== false : undefined,
-		undefined,     // _isSelectableMember
-		cb ? ({ node: n }) => n.data?.isSelectable !== false : undefined,
-		undefined,     // _isCheckedMember
-		cb ? ({ node: n }) => n.data?.isChecked === true : undefined,
-		undefined,     // _isDraggableMember
-		cb ? ({ node: n }) => n.data?.isDraggable !== false : undefined,
-		undefined,     // _isDropAllowedMember
-		cb ? ({ node: n }) => n.data?.isDropAllowed !== false : undefined,
-		undefined,     // _allowedDropPositionsMember
-		'name',        // _displayValueMember
-		undefined,     // _getDisplayValueCallback
-		undefined,     // _searchValueMember
-		undefined,     // _getSearchValueCallback
-		undefined,     // _getAllowedDropPositionsCallback
-		undefined,     // _isCollapsibleMember
-		undefined,     // _getIsCollapsibleCallback
-		undefined,     // _orderMember
-		'seed-cb-tree',
-		'.',
-		2,             // expandLevel — sets isExpanded for level<=2 unless callback overrides
-		false,
-		undefined,
-		25,
-		50,
-		{ sortCallback: sortByPath }
-	);
+	return createLTree<Row>({
+		idMember: 'id',
+		pathMember: 'path',
+		getIsExpandedCallback: cb ? ({ node: n }) => n.data?.isExpanded !== false : undefined,
+		getIsSelectableCallback: cb ? ({ node: n }) => n.data?.isSelectable !== false : undefined,
+		getIsCheckedCallback: cb ? ({ node: n }) => n.data?.isChecked === true : undefined,
+		getIsDraggableCallback: cb ? ({ node: n }) => n.data?.isDraggable !== false : undefined,
+		getIsDropAllowedCallback: cb ? ({ node: n }) => n.data?.isDropAllowed !== false : undefined,
+		displayValueMember: 'name',
+		treeId: 'seed-cb-tree',
+		treePathSeparator: '.',
+		expandLevel: 2,
+		shouldUseInternalSearchIndex: false,
+		indexerBatchSize: 25,
+		indexerTimeout: 50,
+		sortCallback: sortByPath
+	});
 }
 
 describe('insertArray seed-time get*Callback', () => {

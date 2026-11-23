@@ -1,5 +1,4 @@
 import type { Index } from 'flexsearch';
-import type { NodeContext } from './types.js';
 import type { LTreeNode } from './ltree-node.svelte.js';
 import { isNotEmptyString } from '../helpers/string-helpers.js';
 import { indexLogger } from '../logger.js';
@@ -24,10 +23,8 @@ export class Indexer<T> {
 	private batchSize: number;
 	private searchIndex: Index;
 	private isProcessing: boolean = false;
-	private shouldCalculateSearchValue: boolean;
-
-	private searchValueMember?: string | null | undefined;
-	private getSearchValueCallback?: (ctx: NodeContext<T>) => string;
+	/** The node's search text — the ltree's resolver (member → `getSearchValueCallback`). */
+	private getSearchValue: (node: LTreeNode<T>) => string | null | undefined;
 	private onProgressCallback?: (processed: number, total: number) => void;
 	private onCompleteCallback?: () => void;
 	private totalItemsAdded: number = 0;
@@ -36,18 +33,14 @@ export class Indexer<T> {
 	constructor(
 		treeId: string,
 		searchIndex: Index,
-		shouldCalculateSearchValue: boolean,
-		searchValueMember?: string | null | undefined,
-		getSearchValueCallback?: (ctx: NodeContext<T>) => string,
+		getSearchValue: (node: LTreeNode<T>) => string | null | undefined,
 		batchSize: number = DEFAULT_INDEXER_BATCH_SIZE,
 		private timeout: number = 50
 	) {
 		this.treeId = treeId;
 		this.searchIndex = searchIndex;
 		this.batchSize = batchSize;
-		this.shouldCalculateSearchValue = shouldCalculateSearchValue;
-		this.searchValueMember = searchValueMember;
-		this.getSearchValueCallback = getSearchValueCallback;
+		this.getSearchValue = getSearchValue;
 
 		indexLogger.debug(`[${this.treeId}] Initialized with batch size: ${batchSize}`);
 	}
@@ -181,11 +174,9 @@ export class Indexer<T> {
 	// Index a single item (customize this for your search index)
 	private indexItem(item: { node: LTreeNode<T>; index: number }): void {
 		// Type-safe indexing - customize based on your item structure
-		const searchValue = !this.shouldCalculateSearchValue
-			? this.searchValueMember && (item.node.data as any)?.[this.searchValueMember]?.toString()
-			: this.getSearchValueCallback && this.getSearchValueCallback({ node: item.node });
+		const searchValue = this.getSearchValue(item.node);
 
-		if (isNotEmptyString(searchValue)) {
+		if (searchValue && isNotEmptyString(searchValue)) {
 			const addStart = performance.now();
 			this.searchIndex!.add(item.index, searchValue);
 			const addTime = performance.now() - addStart;

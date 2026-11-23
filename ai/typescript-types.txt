@@ -257,6 +257,7 @@ interface Ltree<T> {
 
   // Callbacks
   getNodeAllowedDropPositions(node: LTreeNode<T>): DropPosition[] | null;
+  isDropPositionAllowed(node: LTreeNode<T>, position: DropPosition): boolean; // none configured = all
 }
 
 EVENT TYPES (on* — fire-and-forget, ONE context object)

@@ -306,6 +306,8 @@ export interface Ltree<T> {
 
 	// Method to get allowed drop positions (uses callback or member)
 	getNodeAllowedDropPositions(node: LTreeNode<T>): DropPosition[] | null | undefined;
+	/** Whether `node` takes a drop at `position` (no allowed-positions config = every position). */
+	isDropPositionAllowed(node: LTreeNode<T>, position: DropPosition): boolean;
 	getNodeIsDraggable(node: LTreeNode<T>): boolean;
 	getNodeIsDropAllowed(node: LTreeNode<T>): boolean;
 	getNodeIsCollapsible(node: LTreeNode<T>): boolean;
@@ -377,6 +379,8 @@ export interface Ltree<T> {
 	getNodeSearchValue(node: LTreeNode<T>): string;
 
 	_defaultSort(self: Ltree<T>, items: LTreeNode<T>[]): LTreeNode<T>[];
+	_sortForInsert(nodes: LTreeNode<T>[]): LTreeNode<T>[];
+	_assignOrderValues(nodes: LTreeNode<T>[], target: LTreeNode<T>, parent: LTreeNode<T>, position: 'before' | 'after'): void;
 	_sortByLevel(items: LTreeNode<T>[]): LTreeNode<T>[];
 	_sortSiblings(
 		children: LTreeNode<T>[],
