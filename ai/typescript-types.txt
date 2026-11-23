@@ -376,7 +376,7 @@ interface NodeTransformContext<T> {
   phase: 'output' | 'input';                     // egress (node leaves) vs. ingress (duplicate lands)
   isRoot: boolean;                               // top-level node vs. descendant riding along
   rootIndex: number;                               // index of the root entry in this batch
-  position: 'child' | 'before' | 'after' | null; // how roots land relative to target.node
+  position: 'child' | 'before' | 'after' | null; // a root: how it lands relative to target.node; a descendant: 'child' (target = its new parent)
   source: NodeRef<T>;                            // origin side (live same-tree, null/[] cross-tree/cut)
   target: NodeRef<T> | null;                     // destination side (null during output phase)
 }

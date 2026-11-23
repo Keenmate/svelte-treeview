@@ -2844,102 +2844,26 @@ export class TreeController<T> {
 		if (!roots.length)
 			return { success: false, copiedNodes: [], skipped: 0, error: 'No source roots resolved' };
 
-		// Leaf-aware landing: a 'child' copy onto a node that disallows 'child' lands beside it
-		// (inside its parent), mirroring pasteNodes + the drag-drop position rules.
-		let landTargetPath = targetPath;
-		if (position === 'child' && landTargetPath !== '') {
-			const t = tree.getNodeByPath(landTargetPath);
-			if (t) {
-				const allowed = this.getNodeAllowedDropPositions(t);
-				if (allowed && allowed.length > 0 && !allowed.includes('child')) {
-					landTargetPath = t.parentPath ?? '';
-				}
-			}
-		}
-		const parentPath =
-			position === 'child'
-				? landTargetPath
-				: (tree.getNodeByPath(landTargetPath)?.parentPath ?? '');
-
-		// Build the per-node context, symmetric with pasteNodes' ctxFor: `source` is the LIVE
-		// origin node (+ parent/siblings) read off the source tree; `target` is the destination
-		// anchor. Rebuilt per node so destination siblings are batch-aware.
-		const ctxFor = (
-			srcNode: LTreeNode<T>,
-			isRoot: boolean,
-			idx: number
-		): NodeTransformContext<T> => {
-			const srcParentPath = srcNode.parentPath ?? null;
-			const srcParent = srcParentPath ? (src.getNodeByPath(srcParentPath) ?? null) : null;
-			const anchorNode = landTargetPath ? (tree.getNodeByPath(landTargetPath) ?? null) : null;
-			const anchorParentPath = anchorNode?.parentPath ?? null;
-			return {
-				operation: 'copy',
-				phase: 'input',
-				isRoot,
-				rootIndex: idx,
+		const result = this._mutate(() =>
+			this._duplicateSubtrees(
+				roots.map((node, index) => ({ node, rootIndex: index })),
+				this._leafAwareTarget(targetPath, position),
 				position,
-				source: {
-					path: srcNode.path,
-					node: srcNode,
-					parent: srcParent,
-					siblings: srcParent ? (Object.values(srcParent.children) as LTreeNode<T>[]) : []
-				},
-				target: {
-					path: landTargetPath,
-					node: anchorNode,
-					parent: anchorParentPath ? (tree.getNodeByPath(anchorParentPath) ?? null) : null,
-					siblings: this.getChildren(anchorParentPath ?? '')
+				{
+					operation: 'copy',
+					// An absent descendant is a hole → NOT copied (node + subtree).
+					isIncluded: (n) => manifest.has(n.path),
+					sourceRef: (n) => this._nodeRefIn(src, n),
+					transform: transform ?? null
 				}
-			};
-		};
-
-		const copiedNodes: LTreeNode<T>[] = [];
-		let skipped = 0;
-		let lastError: string | undefined;
-		let prevRootPath: string | null = null;
-
-		this._mutate(() => {
-			for (let index = 0; index < roots.length; index++) {
-				const root = roots[index];
-
-				// First root lands at the drop anchor; the rest chain 'after' the previous copy.
-				const siblingPath =
-					prevRootPath !== null ? prevRootPath : position !== 'child' ? landTargetPath : undefined;
-				const rootPosition: 'before' | 'after' | undefined =
-					prevRootPath !== null ? 'after' : position !== 'child' ? position : undefined;
-
-				// Per-node wrapper: gate on the manifest (an absent descendant is a hole → NOT copied),
-				// then run the caller's input transform with a full context. `srcNode` is the live source
-				// node the ltree recursion passes as the 2nd arg.
-				const wrapped = ({ data, node: srcNode }: { data: T; node: LTreeNode<T> }): T | null => {
-					if (!manifest.has(srcNode.path)) return null; // hole → skip node + subtree
-					if (!transform) return data;
-					return transform(this._ctx({ ...ctxFor(srcNode, srcNode === root, index), data }));
-				};
-
-				const result = tree.duplicateNode(
-					root,
-					parentPath,
-					wrapped,
-					siblingPath,
-					rootPosition
-				);
-				if (result.success && result.rootNode) {
-					copiedNodes.push(result.rootNode);
-					prevRootPath = result.rootNode.path;
-				} else {
-					lastError = result.error;
-					skipped++;
-				}
-			}
-		});
-
+			)
+		);
+		const copiedNodes = result.copied.filter((n): n is LTreeNode<T> => !!n);
 		return {
 			success: copiedNodes.length > 0,
 			copiedNodes,
-			skipped,
-			error: copiedNodes.length === 0 ? (lastError ?? 'No nodes copied') : undefined
+			skipped: result.skipped,
+			error: copiedNodes.length === 0 ? (result.lastError ?? 'No nodes copied') : undefined
 		};
 	}
 
@@ -2951,6 +2875,122 @@ export class TreeController<T> {
 		const raw = data as Record<string, unknown>;
 		return { ...raw, [idKey]: `${raw[idKey]}_copy_${Date.now()}` } as T;
 	};
+
+	/** NodeRef of `node` read off `tree` (another tree for a cross-tree copy); `getNodeRef` for
+	 *  this one. A null node (not reachable — cross-tree paste, a cut source) = a path-only ref. */
+	private _nodeRefIn(tree: Ltree<T> | null | undefined, node: LTreeNode<T> | null, path?: string): NodeRef<T> {
+		if (!node || !tree) return { path: node?.path ?? path ?? '', node: null, parent: null, siblings: [] };
+		if (tree === this.tree) return this.getNodeRef(node);
+		const parentPath = node.parentPath;
+		return {
+			path: node.path,
+			node,
+			parent: parentPath ? (tree.getNodeByPath(parentPath) ?? null) : null,
+			siblings: tree.getChildren(parentPath ?? '')
+		};
+	}
+
+	/** NodeRef of a landing anchor in this tree; `''` = the tree root (node null, siblings = the
+	 *  top-level nodes). */
+	private _anchorRef(path: string): NodeRef<T> {
+		if (!path) return { path: '', node: null, parent: null, siblings: this.getChildren('') };
+		return this.getNodeRef(path);
+	}
+
+	/**
+	 * Leaf-aware landing: a 'child' landing on a node that does not allow 'child' drops
+	 * (getNodeAllowedDropPositions — e.g. a file) lands beside it, inside its parent. One
+	 * allowed-positions config governs drag-drop, copy-drop and paste. No restriction = child.
+	 */
+	private _leafAwareTarget(targetPath: string, position: DropPosition): string {
+		if (position !== 'child' || targetPath === '') return targetPath;
+		const target = this.tree?.getNodeByPath(targetPath);
+		if (!target) return targetPath;
+		const allowed = this.getNodeAllowedDropPositions(target);
+		return allowed && allowed.length > 0 && !allowed.includes('child')
+			? (target.parentPath ?? '')
+			: targetPath;
+	}
+
+	/**
+	 * THE subtree insert behind duplicateNodes and pasteNodes (call inside `_mutate`).
+	 * Duplicates each root with its descendants: the first lands at `targetPath` / `position`
+	 * ('child' = appended under it; 'before' / 'after' = next to it), the rest chain 'after'
+	 * the previous copy, so the source order is kept. Each node's data runs through the INPUT
+	 * transform with a NodeTransformContext: a root sees the anchor + `position`, a descendant
+	 * its new parent + 'child' (so `target` is always where THIS node lands — batch-aware, it
+	 * includes nodes added earlier in the same call). `isIncluded` false or a transform
+	 * returning null skips that node and its subtree.
+	 * `skipped` counts the nodes refused (transform null, add failed) — not the descendants
+	 * that go with them, nor a node `isIncluded` leaves out (a hole is not a failure).
+	 */
+	private _duplicateSubtrees(
+		roots: { node: LTreeNode<T>; rootIndex: number }[],
+		targetPath: string,
+		position: DropPosition,
+		options: {
+			operation: 'copy' | 'cut';
+			isIncluded?: (node: LTreeNode<T>) => boolean;
+			sourceRef: (node: LTreeNode<T>) => NodeRef<T>;
+			transform: NodeTransformCallback<T> | null;
+		}
+	): { copied: (LTreeNode<T> | null)[]; count: number; skipped: number; lastError?: string } {
+		const tree = this.tree;
+		const parentPath =
+			position === 'child' ? targetPath : (tree.getNodeByPath(targetPath)?.parentPath ?? '');
+		const copied: (LTreeNode<T> | null)[] = [];
+		let count = 0;
+		let skipped = 0;
+		let lastError: string | undefined;
+		let prevRootPath: string | null = null;
+
+		for (const { node: root, rootIndex } of roots) {
+			const siblingPath = prevRootPath ?? (position !== 'child' ? targetPath : undefined);
+			const rootPosition: 'before' | 'after' | undefined =
+				prevRootPath !== null ? 'after' : position !== 'child' ? position : undefined;
+			let accepted = 0;
+			const wrapped = ({
+				data,
+				node,
+				targetParentPath
+			}: {
+				data: T;
+				node: LTreeNode<T>;
+				targetParentPath: string;
+			}): T | null => {
+				const isRoot = node === root;
+				if (options.isIncluded && !options.isIncluded(node)) return null; // a hole: left out on purpose
+				const result = options.transform
+					? options.transform(
+							this._ctx({
+								data,
+								operation: options.operation,
+								phase: 'input',
+								isRoot,
+								rootIndex,
+								position: isRoot ? position : 'child',
+								source: options.sourceRef(node),
+								target: this._anchorRef(isRoot ? targetPath : targetParentPath)
+							})
+						)
+					: data;
+				if (result === null || result === undefined) skipped++;
+				else accepted++;
+				return result;
+			};
+			const result = tree.duplicateNode(root, parentPath, wrapped, siblingPath, rootPosition);
+			count += result.count;
+			skipped += accepted - result.count; // accepted by the transform, but the add failed
+			if (result.success && result.rootNode) {
+				copied.push(result.rootNode);
+				prevRootPath = result.rootNode.path;
+			} else {
+				copied.push(null);
+				lastError = result.error;
+			}
+		}
+		return { copied, count, skipped, lastError };
+	}
 
 	removeNode(
 		path: string,
@@ -3002,7 +3042,7 @@ export class TreeController<T> {
 	duplicateNode(
 		sourceNode: LTreeNode<T>,
 		targetParentPath: string,
-		transformData: (ctx: { data: T; node: LTreeNode<T> }) => T | null,
+		transformData: (ctx: { data: T; node: LTreeNode<T>; targetParentPath: string }) => T | null,
 		siblingPath?: string,
 		position?: 'before' | 'after'
 	): { success: boolean; rootNode?: LTreeNode<T>; count: number; error?: string } {
@@ -3146,47 +3186,29 @@ export class TreeController<T> {
 		};
 	}
 
+	/** A clipboard entry as a detached node tree for `_duplicateSubtrees` (paths = the original
+	 *  paths; children in snapshot order — parent-first, so every parent exists first). */
+	private _snapshotTree(entry: ClipboardEntry<T>): LTreeNode<T> {
+		const sep = this.treePathSeparator;
+		const make = (path: string, data: T) => ({ path, data, children: {} }) as unknown as LTreeNode<T>;
+		const root = make(entry.sourcePath, entry.data);
+		const byRel = new Map<string, LTreeNode<T>>([['', root]]);
+		entry.descendants.forEach((desc, i) => {
+			const parent = byRel.get(desc.relativePath.substring(0, desc.relativePath.lastIndexOf(sep)));
+			if (!parent) return; // malformed entry — no parent to hang it on
+			const node = make(entry.sourcePath + desc.relativePath, desc.data);
+			parent.children[`k${i}`] = node;
+			byRel.set(desc.relativePath, node);
+		});
+		return root;
+	}
+
 	/**
 	 * Copy nodes to the shared clipboard.
 	 * @param paths Specific paths to copy, or uses selectedPaths if omitted.
 	 */
 	copyNodes(paths?: string[]): void {
-		let pathsToUse = paths ?? [...this.selectedPaths];
-		if (pathsToUse.length === 0) return;
-
-		// Interceptor: can modify paths or block
-		if (this.beforeCopyHandler) {
-			const nodes = pathsToUse
-				.map((p) => this.tree.getNodeByPath(p))
-				.filter((n): n is LTreeNode<T> => n !== null);
-			const result = this.beforeCopyHandler(this._ctx({ operation: 'copy', paths: pathsToUse, nodes }));
-			if (result === false) return;
-			if (Array.isArray(result)) pathsToUse = result;
-		}
-
-		const entries: ClipboardEntry<T>[] = [];
-		for (let i = 0; i < pathsToUse.length; i++) {
-			const node = this.tree.getNodeByPath(pathsToUse[i]);
-			if (node) entries.push(this._collectClipboardEntry(node, 'copy', i));
-		}
-		if (entries.length === 0) return;
-
-		// Clear any previous cut state
-		this.cutPaths = new Set();
-
-		setClipboard<T>({
-			operation: 'copy',
-			entries,
-			sourceTreeId: this.treeId
-		});
-		uiLogger.debug(`[clipboard] Copied ${entries.length} node(s)`);
-		this.onNodeCopyHandler?.(this._ctx({
-			operation: 'copy',
-			paths: pathsToUse,
-			nodes: pathsToUse
-				.map((p) => this.tree.getNodeByPath(p))
-				.filter((n): n is LTreeNode<T> => n !== null)
-		}));
+		this._captureToClipboard('copy', paths);
 	}
 
 	/**
@@ -3194,54 +3216,45 @@ export class TreeController<T> {
 	 * @param paths Specific paths to cut, or uses selectedPaths if omitted.
 	 */
 	cutNodes(paths?: string[]): void {
+		this._captureToClipboard('cut', paths);
+	}
+
+	/** copyNodes / cutNodes: before-hook (rewrite the set or block) → snapshot onto the shared
+	 *  clipboard → the cut dims the nodes + their subtrees (a copy clears the dimming) → event. */
+	private _captureToClipboard(operation: 'copy' | 'cut', paths?: string[]): void {
 		let pathsToUse = paths ?? [...this.selectedPaths];
 		if (pathsToUse.length === 0) return;
+		const nodesOf = (list: string[]) =>
+			list.map((p) => this.tree.getNodeByPath(p)).filter((n): n is LTreeNode<T> => n !== null);
 
 		// Interceptor: can modify paths or block
-		if (this.beforeCutHandler) {
-			const nodes = pathsToUse
-				.map((p) => this.tree.getNodeByPath(p))
-				.filter((n): n is LTreeNode<T> => n !== null);
-			const result = this.beforeCutHandler(this._ctx({ operation: 'cut', paths: pathsToUse, nodes }));
+		const before = operation === 'copy' ? this.beforeCopyHandler : this.beforeCutHandler;
+		if (before) {
+			const result = before(this._ctx({ operation, paths: pathsToUse, nodes: nodesOf(pathsToUse) }));
 			if (result === false) return;
 			if (Array.isArray(result)) pathsToUse = result;
 		}
 
 		const entries: ClipboardEntry<T>[] = [];
 		const cutSet = new Set<string>();
-		for (let i = 0; i < pathsToUse.length; i++) {
-			const p = pathsToUse[i];
+		pathsToUse.forEach((p, i) => {
 			const node = this.tree.getNodeByPath(p);
-			if (node) {
-				entries.push(this._collectClipboardEntry(node, 'cut', i));
-				// Add the node itself and all its descendants to cutPaths for dimming
+			if (!node) return;
+			entries.push(this._collectClipboardEntry(node, operation, i));
+			if (operation === 'cut') {
 				cutSet.add(p);
-				const walkDim = (n: LTreeNode<T>) => {
-					for (const child of Object.values(n.children)) {
-						cutSet.add(child.path);
-						walkDim(child);
-					}
-				};
-				walkDim(node);
+				for (const dp of getDescendantPaths(node)) cutSet.add(dp);
 			}
-		}
+		});
 		if (entries.length === 0) return;
 
-		setClipboard<T>({
-			operation: 'cut',
-			entries,
-			sourceTreeId: this.treeId
-		});
+		setClipboard<T>({ operation, entries, sourceTreeId: this.treeId });
 		this.cutPaths = cutSet;
-		uiLogger.debug(`[clipboard] Cut ${entries.length} node(s), dimming ${cutSet.size} paths`);
+		if (operation === 'copy') uiLogger.debug(`[clipboard] Copied ${entries.length} node(s)`);
+		else uiLogger.debug(`[clipboard] Cut ${entries.length} node(s), dimming ${cutSet.size} paths`);
 		// Cut only dims — nodes aren't removed until paste — so they're still live here.
-		this.onNodeCutHandler?.(this._ctx({
-			operation: 'cut',
-			paths: pathsToUse,
-			nodes: pathsToUse
-				.map((p) => this.tree.getNodeByPath(p))
-				.filter((n): n is LTreeNode<T> => n !== null)
-		}));
+		const handler = operation === 'copy' ? this.onNodeCopyHandler : this.onNodeCutHandler;
+		handler?.(this._ctx({ operation, paths: pathsToUse, nodes: nodesOf(pathsToUse) }));
 	}
 
 	/**
@@ -3275,20 +3288,8 @@ export class TreeController<T> {
 			}))
 		}));
 
-		// Leaf-aware paste position: if asked to paste as a child of a node that does
-		// not allow 'child' drops (per getNodeAllowedDropPositions — e.g. a file/leaf),
-		// place the copies beside it instead, inside its parent. Mirrors the drag-drop
-		// position rules so a single allowed-positions config governs both gestures and
-		// consumers don't re-implement it. No restriction (null/empty) accepts children.
-		if (position === 'child' && targetPath !== '') {
-			const targetForChild = this.tree?.getNodeByPath(targetPath);
-			if (targetForChild) {
-				const allowed = this.getNodeAllowedDropPositions(targetForChild);
-				if (allowed && allowed.length > 0 && !allowed.includes('child')) {
-					targetPath = targetForChild.parentPath ?? '';
-				}
-			}
-		}
+		// Leaf-aware: a 'child' paste onto a node that disallows children lands beside it.
+		targetPath = this._leafAwareTarget(targetPath, position);
 
 		// Interceptor: batch policy only — redirect target/position or block. It gets the
 		// resolved target node + readonly entries (no per-node data rewriting; that's the
@@ -3340,8 +3341,6 @@ export class TreeController<T> {
 				: (targetNodeAfter!.parentPath ?? '');
 
 		const transform = transformData ?? this.inputTransformHandler ?? null;
-		const apply = (data: T, ctx: NodeTransformContext<T>): T | null =>
-			transform ? transform(this._ctx({ ...ctx, data })) : data;
 		const sameTree = clip.sourceTreeId === this.treeId;
 
 		// When shouldAutoHandlePaste=false, don't modify the tree — just forward the
@@ -3365,123 +3364,38 @@ export class TreeController<T> {
 			return result;
 		}
 
-		let totalCount = 0;
+		// The snapshot entries as detached node trees (path = the ORIGINAL path, so a same-tree
+		// paste's ctx.source resolves the live origin), then the one subtree insert duplicateNodes
+		// uses: roots land at target / position and chain in order (before / after used to be
+		// ignored — every root was appended to the parent).
+		const roots: { node: LTreeNode<T>; rootIndex: number }[] = [];
 		let skipped = 0;
-		let lastError: string | undefined;
-		const pastedSourcePaths: string[] = [];
-		let firstPasted: LTreeNode<T> | undefined;
-
-		// Build the per-node context with LIVE references, symmetric on both sides:
-		// `source` = the origin node (+ its parent/siblings), `target` = the node you aimed
-		// at (+ its parent/siblings), with `position` saying how the roots land relative to
-		// it. Nodes are re-resolved per call, so target.node.children / target.siblings
-		// already include nodes added earlier in THIS paste — batch-aware, no accumulator.
-		const ctxFor = (
-			anchorPath: string,
-			pos: 'child' | 'before' | 'after',
-			isRoot: boolean,
-			idx: number,
-			srcPath: string
-		): NodeTransformContext<T> => {
-			const srcNode = sameTree ? (this.tree.getNodeByPath(srcPath) ?? null) : null;
-			const srcParentPath = srcNode?.parentPath ?? null;
-			const tgtNode = anchorPath ? (this.tree.getNodeByPath(anchorPath) ?? null) : null;
-			const tgtParentPath = tgtNode?.parentPath ?? null;
-			return {
-				operation,
-				phase: 'input',
-				isRoot,
-				rootIndex: idx,
-				position: pos,
-				source: {
-					path: srcPath,
-					node: srcNode,
-					parent: srcParentPath ? (this.tree.getNodeByPath(srcParentPath) ?? null) : null,
-					siblings: srcNode ? this.getChildren(srcParentPath ?? '') : []
-				},
-				target: {
-					path: anchorPath,
-					node: tgtNode,
-					parent: tgtParentPath ? (this.tree.getNodeByPath(tgtParentPath) ?? null) : null,
-					siblings: this.getChildren(tgtParentPath ?? '')
-				}
-			};
-		};
-
-		this._mutate(() => {
-			for (let index = 0; index < workEntries.length; index++) {
-				const entry = workEntries[index];
-
-				// Per-entry self-paste guard: skip (don't abort the batch) an entry whose
-				// destination is itself or its own descendant. Skipping one no longer drops
-				// the rest — selecting a folder + its child still pastes the valid nodes.
-				if (
-					sameTree &&
-					!isRootPasteAfter &&
-					isSelfOrDescendant(destParentPath, entry.sourcePath, sep)
-				) {
-					skipped++;
-					continue;
-				}
-
-				const rootData = apply(
-					entry.data,
-					ctxFor(targetPath, position, true, index, entry.sourcePath)
-				);
-				if (rootData === null) {
-					skipped++;
-					continue;
-				} // transform vetoed this entry
-
-				const addResult =
-					isRootPasteAfter || position === 'child'
-						? this.tree.addNode(targetPath, rootData)
-						: this.tree.addNode(targetNodeAfter!.parentPath ?? '', rootData);
-
-				if (!addResult.success || !addResult.node) {
-					lastError = addResult.error;
-					skipped++;
-					continue;
-				}
-				totalCount++;
-				pastedSourcePaths.push(entry.sourcePath);
-				firstPasted ??= addResult.node;
-
-				// Descendants from the snapshot. A descendant the transform vetoes (null)
-				// takes its own subtree with it (parent-first order makes this a prefix skip).
-				// Each pasted node's NEW path by its old relative path: addNode names a new segment
-				// after the (possibly re-minted) id, so `<new root> + <old relative path>` didn't
-				// exist from the 3rd level down and every grandchild was skipped.
-				const skippedDescRel = new Set<string>();
-				const newPathByRel = new Map<string, string>([['', addResult.node.path]]);
-				for (const desc of entry.descendants) {
-					const parentRel = desc.relativePath.substring(0, desc.relativePath.lastIndexOf(sep));
-					if (parentRel && skippedDescRel.has(parentRel)) {
-						skippedDescRel.add(desc.relativePath);
-						skipped++;
-						continue;
-					}
-					const descParentPath = newPathByRel.get(parentRel) ?? addResult.node.path;
-					const descData = apply(
-						desc.data,
-						ctxFor(descParentPath, 'child', false, index, entry.sourcePath + desc.relativePath)
-					);
-					if (descData === null) {
-						skippedDescRel.add(desc.relativePath);
-						skipped++;
-						continue;
-					}
-					const descResult = this.tree.addNode(descParentPath, descData);
-					if (descResult.success && descResult.node) {
-						totalCount++;
-						newPathByRel.set(desc.relativePath, descResult.node.path);
-					} else {
-						// Its subtree has no parent to land in — skip it like a vetoed one.
-						skippedDescRel.add(desc.relativePath);
-						skipped++;
-					}
-				}
+		workEntries.forEach((entry, index) => {
+			// Per-entry self-paste guard: skip (don't abort the batch) an entry whose
+			// destination is itself or its own descendant. Skipping one no longer drops
+			// the rest — selecting a folder + its child still pastes the valid nodes.
+			if (sameTree && !isRootPasteAfter && isSelfOrDescendant(destParentPath, entry.sourcePath, sep)) {
+				skipped++;
+				return;
 			}
+			roots.push({ node: this._snapshotTree(entry), rootIndex: index });
+		});
+
+		const pastedSourcePaths: string[] = [];
+		let pasted: { copied: (LTreeNode<T> | null)[]; count: number; skipped: number; lastError?: string } = {
+			copied: [],
+			count: 0,
+			skipped: 0
+		};
+		this._mutate(() => {
+			pasted = this._duplicateSubtrees(roots, targetPath, position, {
+				operation,
+				sourceRef: (n) => this._nodeRefIn(sameTree ? this.tree : null, sameTree ? this.tree.getNodeByPath(n.path) : null, n.path),
+				transform
+			});
+			pasted.copied.forEach((n, i) => {
+				if (n) pastedSourcePaths.push(roots[i].node.path);
+			});
 
 			// Cut = move: remove only the sources we actually pasted (skipped cuts stay put).
 			// Same-tree removes directly; cross-tree reaches back to the source tree via the
@@ -3499,6 +3413,10 @@ export class TreeController<T> {
 				}
 			}
 		});
+		const totalCount = pasted.count;
+		skipped += pasted.skipped;
+		const lastError = pasted.lastError;
+		const firstPasted = pasted.copied.find((n): n is LTreeNode<T> => !!n);
 
 		// Clear cut-dimming. A CUT is a one-shot move, so clear the clipboard; a COPY
 		// stays on the clipboard so it can be pasted again (Finder / Explorer convention).

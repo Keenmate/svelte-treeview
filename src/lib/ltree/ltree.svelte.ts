@@ -1655,7 +1655,7 @@ export function createLTree<T>(
 		duplicateNode(
 			sourceNode: LTreeNode<T>,
 			targetParentPath: string,
-			transformData: (ctx: { data: T; node: LTreeNode<T> }) => T | null,
+			transformData: (ctx: { data: T; node: LTreeNode<T>; targetParentPath: string }) => T | null,
 			siblingPath?: string,
 			position?: 'before' | 'after'
 		): { success: boolean; rootNode?: LTreeNode<T>; count: number; error?: string } {
@@ -1673,8 +1673,9 @@ export function createLTree<T>(
 				// as the 2nd arg so batch callers (copyNodes) can gate on a manifest and build a
 				// per-node NodeTransformContext. A null/undefined return SKIPS this node AND its
 				// whole subtree (mirrors the input transform) — the way to "leave a descendant
-				// behind" when copying a subtree from a pruned manifest.
-				const transformedData = transformData({ data: node.data, node });
+				// behind" when copying a subtree from a pruned manifest. `targetParentPath` = where
+				// this node lands.
+				const transformedData = transformData({ data: node.data, node, targetParentPath: parentPath });
 				if (transformedData === null || transformedData === undefined) return null;
 
 				// Add the node

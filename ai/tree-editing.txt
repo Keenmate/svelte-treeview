@@ -289,7 +289,8 @@ duplicateNode signature:
 duplicateNode(
   sourceNode: LTreeNode<T>,
   targetParentPath: string,
-  transformData: (data: T) => T,
+  transformData: (ctx: { data: T; node: LTreeNode<T>; targetParentPath: string }) => T | null,
+    // node = the source node; targetParentPath = where this node lands; null skips it + its subtree
   siblingPath?: string,
   position?: 'before' | 'after'
 )
@@ -559,6 +560,11 @@ duplicateNodes(paths, targetPath, position, transform?, sourceTree?)
   pass another tree's Ltree to copy its live nodes in (cross-tree). Both drag-copy
   branches route through it; a cross-tree copy-drop with shouldAutoHandleCopy (default
   true) is placed BY THE LIBRARY via the clipboard registry — no consumer loop.
+  Placement: the first root lands at targetPath / position ('before' / 'after' = next to
+  it, with orderMember or isSortingEnabled=false; else the sort decides), the rest chain
+  'after' it in source order. In the transform a root's ctx.target is that anchor (+ the
+  position); a descendant's is its NEW parent with position 'child'. pasteNodes places
+  exactly the same way (it runs the same insert).
 
 BATCH OPERATIONS
 ----------------

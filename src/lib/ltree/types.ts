@@ -393,7 +393,7 @@ export interface Ltree<T> {
 	duplicateNode(
 		sourceNode: LTreeNode<T>,
 		targetParentPath: string,
-		transformData: (ctx: { data: T; node: LTreeNode<T> }) => T | null,
+		transformData: (ctx: { data: T; node: LTreeNode<T>; targetParentPath: string }) => T | null,
 		siblingPath?: string,
 		position?: 'before' | 'after'
 	): { success: boolean; rootNode?: LTreeNode<T>; count: number; error?: string };

@@ -132,6 +132,23 @@ test.describe('clipboard', () => {
 		);
 		expect(copies).toEqual(['Alpha', 'Beta', 'Delta', 'Eta match', 'Gamma']);
 	});
+
+	test('B12: a before / after paste lands next to the target, roots in source order', async ({ page }) => {
+		const childNames = (path: string) =>
+			page.evaluate((p) => (window as any).__main.getChildren(p).map((n: any) => n.data.name), path);
+		await call(page, '__main', 'update', { isSortingEnabled: false });
+		await call(page, '__main', 'copyNodes', ['1.1.1', '1.1.2']);
+		const before = await call(page, '__main', 'pasteNodes', '1.2', null, 'before');
+		expect(before).toMatchObject({ success: true, count: 2, skipped: 0 });
+		// Used to be appended to the parent: Beta, Eta match, Gamma, Delta.
+		expect(await childNames('1')).toEqual(['Beta', 'Gamma', 'Delta', 'Eta match']);
+
+		await call(page, '__main', 'pasteNodes', '2.1', null, 'after');
+		expect(await childNames('2')).toEqual(['Zeta match', 'Gamma', 'Delta']);
+		await call(page, '__main', 'copyNodes', ['1.2']);
+		await call(page, '__main', 'pasteNodes', '2.1', null, 'after');
+		expect(await childNames('2')).toEqual(['Zeta match', 'Eta match', 'Gamma', 'Delta']);
+	});
 });
 
 test.describe('while filtered', () => {
