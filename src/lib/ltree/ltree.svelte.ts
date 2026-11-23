@@ -1100,7 +1100,8 @@ export function createLTree<T>(
 
 			for (const p of paths) {
 				const node = walkPath(rootNode, p, this.treePathSeparator);
-				if (node && node.isExpanded) {
+				// A non-collapsible node stays open (as with the toggle and collapseAll).
+				if (node && node.isExpanded && this.getNodeIsCollapsible(node)) {
 					node.isExpanded = false;
 					// Bump _rev for the same reason as expandNodes — without it the
 					// keyed {#each} reuses the row and class:expanded stays stale.

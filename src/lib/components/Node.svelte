@@ -2,7 +2,7 @@
 	import {type LTreeNode} from "../ltree/ltree-node.svelte.js"
 	import {getContext, type Snippet} from "svelte"
 	import type {Ltree, DropPosition, DropOperation, NodeRenderContext} from "../ltree/types.js"
-	import type {NodeCallbacks, NodeConfig} from "../core/TreeController.svelte.js"
+	import type {NodeCallbacks, NodeConfig} from "../core/TreeEngine.svelte.js"
 	import { uiLogger } from "../logger.js"
 	import { observeElementSize } from "../vendor/core/environment/element-size.js"
 	import { computePosition, autoUpdate, offset, flip, shift } from "@floating-ui/dom"
@@ -73,7 +73,7 @@
 	const customNodeClass = $derived(config.getNodeClassCallback ? (config.getNodeClassCallback({ node }) ?? '') : '');
 	const customNodeContentClass = $derived(config.getNodeContentClassCallback ? (config.getNodeContentClassCallback({ node }) ?? '') : '');
 	// dragOverNodeClass is applied to the DOM directly by the controller
-	// (see hoveredNodeForDrop $effect in TreeController) — no per-Node binding.
+	// (see hoveredNodeForDrop $effect in TreeEngine) — no per-Node binding.
 	const clickBehavior = $derived(config.clickBehavior);
 	const isCheckboxesShown = $derived(config.isCheckboxesShown);
 	const checkboxMode = $derived(config.checkboxMode);
@@ -292,7 +292,7 @@
 	}
 
 	// Note: double-click in clickBehavior='select' is detected on the controller
-	// side (see _lastSelectClickPath in TreeController). The browser's native
+	// side (see _lastSelectClickPath in TreeEngine). The browser's native
 	// dblclick event isn't reliable here: the first click bumps node._rev for
 	// the focus update, which destroys+recreates the row in flat-mode rendering,
 	// so the browser sees the two clicks on different elements and skips the

@@ -143,7 +143,7 @@ rangeSelectionMode:
 - "logical": selects all nodes in depth-first order including collapsed
 
 TreeController API — three symmetric families (opts = { isSilent? }):
-Access via bind:this on <Tree> (treeRef) — every method below is on the controller.
+Access via bind:this on <Tree> (treeRef) or ctx.controller in any callback — every method below is on both.
 
 SELECTION (UI multi-select set = selectedPaths):
 - treeRef.selectNode(path, mode?, opts?)   // mode: 'replace' | 'toggle' | 'range'

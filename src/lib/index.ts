@@ -4,10 +4,12 @@ export {default as TreeProvider} from "./components/TreeProvider.svelte"
 export {default as ContextMenuItemC} from "./components/ContextMenuItem.svelte"
 export {default as ContextMenuDividerC} from "./components/ContextMenuDivider.svelte"
 
-// Core layer (headless controller)
-export { TreeController } from "./core/TreeController.svelte.js"
-export type { TreeControllerProps, PasteResult, NodeTransformContext, NodeTransformCallbackContext, NodeTransformCallback, BeforeCheckboxToggleContext, KeydownContext, BeforePasteContext, BeforeCopyContext, BeforeDeleteContext, NodeRef, NodeEventContext, NodeDragContext, DragStartContext, BeforeDropContext, DropGroup, NodeDropContext, ClipboardEventContext, SelectionChangeContext, ExpandedChangeContext, BeforeExpandContext, TreeCallbackContext, FocusChangeContext, TreeChangeContext, ScrollToPathOptions, NodeIconRenderContext, TreeRenderIconCallback } from "./core/TreeController.svelte.js"
-export { createTreeController } from "./core/createTreeController.js"
+// Core layer: the engine (for renderers) + the public controller every ctx carries
+export { TreeEngine } from "./core/TreeEngine.svelte.js"
+export type { TreeController } from "./core/tree-controller.js"
+export { TREE_CONTROLLER_METHODS } from "./core/tree-controller.js"
+export type { TreeEngineProps, PasteResult, NodeTransformContext, NodeTransformCallbackContext, NodeTransformCallback, BeforeCheckboxToggleContext, KeydownContext, BeforePasteContext, BeforeCopyContext, BeforeDeleteContext, NodeRef, NodeEventContext, NodeDragContext, DragStartContext, BeforeDropContext, DropGroup, NodeDropContext, ClipboardEventContext, SelectionChangeContext, ExpandedChangeContext, BeforeExpandContext, TreeCallbackContext, FocusChangeContext, TreeChangeContext, ScrollToPathOptions, NodeIconRenderContext, TreeRenderIconCallback } from "./core/TreeEngine.svelte.js"
+export { createTreeEngine } from "./core/createTreeEngine.js"
 
 // Export types
 export type { LTreeNode, NodeId, VisualState } from "./ltree/ltree-node.svelte.js"
@@ -38,7 +40,7 @@ export type { LoaderRenderContext, RenderLoaderCallback } from "./core/loader.js
 // Icons (vendored core SPEC §12.33): renderIcon + the reserved built-in names (masked from --base-icon-<name>)
 export { renderIcon, BUILT_IN_ICON_NAMES } from "./vendor/core/dom/render-icon.js"
 export type { IconRenderContext, RenderIconCallback, RenderIconOptions } from "./vendor/core/dom/render-icon.js"
-export type { NodeCallbacks, NodeConfig, SelectionModifiers } from "./core/TreeController.svelte.js"
+export type { NodeCallbacks, NodeConfig, SelectionModifiers } from "./core/TreeEngine.svelte.js"
 
 // Logging — a thin shim over the core logging module (vendored @keenmate/web-components-core,
 // SPEC §12.1; namespace STV). Page-wide switch: window.components.logging.

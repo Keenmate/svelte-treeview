@@ -10,7 +10,7 @@
 		DragStartContext,
 		BeforeDropContext,
 		DropGroup
-	} from '$lib/core/TreeController.svelte.js';
+	} from '$lib/core/TreeEngine.svelte.js';
 	import { uniqueName } from '$lib/core/clipboard.js';
 	import type { LTreeNode, DropPosition } from '$lib/ltree/types.js';
 	import RenderModeSwitch from '../RenderModeSwitch.svelte';
@@ -83,7 +83,7 @@
 	let selectionMode = $state<'single' | 'multiple'>('multiple');
 
 	// Bindable highlight sets so users can see what they're about to multi-drag
-	// in each tree. The drag/drop logic in TreeController reads the same set
+	// in each tree. The drag/drop logic in TreeEngine reads the same set
 	// internally to decide whether a single-node drag should become a multi-drag.
 	let sourceSelectedPaths = $state(new Set<string>());
 	let targetSelectedPaths = $state(new Set<string>());

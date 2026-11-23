@@ -1,6 +1,6 @@
 <script lang="ts">
 	// Custom menu renderer fixture: a menu rendered by the consumer (no <Tree> menu markup) over the
-	// public API — controller.menuContext / menuItemDefaults / activateMenuItem +
+	// engine API — engine.menuContext / menuItemDefaults / activateMenuItem +
 	// resolveMenuEntries / getMenuChildren. Activation must run the same path as the built-in
 	// menu (beforeActionCallback veto → onClick → built-in → onAction).
 	// Targeted by e2e/custom-menu.spec.ts.
@@ -9,7 +9,7 @@
 		resolveMenuEntries,
 		getMenuChildren,
 		createMenuDivider,
-		type TreeController,
+		type TreeEngine,
 		type TreeMenuContext,
 		type TreeMenuEntry,
 		type TreeMenuItem,
@@ -49,13 +49,13 @@
 		if (isBlocking) return false;
 	}
 
-	async function activate(controller: TreeController<Item>, item: TreeMenuItem<Item>, ctx: TreeMenuContext<Item>, el: HTMLElement, e: Event) {
+	async function activate(controller: TreeEngine<Item>, item: TreeMenuItem<Item>, ctx: TreeMenuContext<Item>, el: HTMLElement, e: Event) {
 		const ok = await controller.activateMenuItem(item, ctx, el, e);
 		log = [...log, `result:${ok}`];
 	}
 
 	// A menu over empty space: ctx without a node (controller.menuContext(null)).
-	type EmptyCtx = ReturnType<TreeController<Item>['menuContext']> & { node: null };
+	type EmptyCtx = ReturnType<TreeEngine<Item>['menuContext']> & { node: null };
 	function emptyEntries(): (MenuEntry<EmptyCtx, string> | string)[] {
 		return [
 			{ id: 'empty-custom', text: 'Empty custom', onClick: (d) => { log = [...log, `click:${d.id}:${d.node}`]; } },
@@ -64,7 +64,7 @@
 		];
 	}
 
-	async function activateEmpty(controller: TreeController<Item>, item: MenuItem<EmptyCtx, string>, ctx: EmptyCtx, el?: HTMLElement, e?: Event) {
+	async function activateEmpty(controller: TreeEngine<Item>, item: MenuItem<EmptyCtx, string>, ctx: EmptyCtx, el?: HTMLElement, e?: Event) {
 		const ok = await controller.activateMenuItem(item, ctx, el, e);
 		const a = controller.allFlatNodes.find((n) => n.path === '1');
 		log = [...log, `result:${ok}`, `expanded-1:${!!a?.isExpanded}`, `nodes:${controller.allFlatNodes.length}`]; // nodes = visible rows

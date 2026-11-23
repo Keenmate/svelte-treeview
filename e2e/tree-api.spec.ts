@@ -59,6 +59,13 @@ test('event ctxs carry a non-enumerable controller', async ({ page }) => {
 	await expect.poll(() => ctxLog(page)).toEqual(expect.arrayContaining(['onNodeClick:ctrl:hidden', 'onSelectionChange:ctrl:hidden']));
 });
 
+test('ctx.controller is the frozen public facade (no engine internals), the same object getInstances() lists (REVIEW #6)', async ({ page }) => {
+	await page.getByTestId('tree-host').getByText('C', { exact: true }).click();
+	await page.getByTestId('facade').click();
+	// frozen, no tree / _mutate / nodeConfig, methods forwarded, listed by getInstances, state read live
+	expect(JSON.parse((await page.getByTestId('out').textContent())!)).toEqual([true, false, false, false, 'function', true, 1, true, 'string']);
+});
+
 test('flatIndentSize sets the per-level indent in flat rendering', async ({ page }) => {
 	const ml = await page.locator('.stv__node[data-tree-path="1.1"]').evaluate((el) => getComputedStyle(el).marginLeft);
 	expect(ml).toBe('24px');

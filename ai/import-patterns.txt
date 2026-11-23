@@ -26,8 +26,8 @@ import {
   ContextMenuDividerC
 } from '@keenmate/svelte-treeview';
 
-// Core (headless controller)
-import { TreeController, createTreeController } from '@keenmate/svelte-treeview';
+// Core: the engine (for your own renderer) + the public controller type every ctx carries
+import { TreeEngine, createTreeEngine, type TreeController } from '@keenmate/svelte-treeview';
 
 // Types
 import type {

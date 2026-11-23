@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getContext, type Snippet } from 'svelte';
-	import type { TreeController } from '../core/TreeController.svelte.js';
+	import type { TreeEngine } from '../core/TreeEngine.svelte.js';
 	import { renderIcon } from '../vendor/core/dom/render-icon.js';
 	import { formatShortcut } from '../vendor/actions/shortcut.js';
 	import { computePosition, autoUpdate, offset, flip, shift } from '@floating-ui/dom';
@@ -42,7 +42,7 @@
 
 	// Icons go through core renderIcon like core's menu: the enclosing tree's renderIconCallback
 	// (ctx.item = this item's props) → the page-wide hook → icon font / text.
-	const controller = getContext<TreeController<unknown> | undefined>('TreeController');
+	const controller = getContext<TreeEngine<unknown> | undefined>('TreeEngine');
 	const iconHtml = $derived(
 		!icon
 			? ''

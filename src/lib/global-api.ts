@@ -1,8 +1,8 @@
 /**
  * `window.components['svelte-treeview']` — the same entry shape every Keenmate web
  * component publishes through core's `registerComponent()` (SPEC §12.3): `version()`,
- * `config`, `logging` (this tree's type-level controls) and `getInstances()` (the live
- * TreeControllers). svelte-treeview isn't a custom element, so the element bits
+ * `config`, `logging` (this tree's type-level controls) and `getInstances()` (each live
+ * tree's public controller). svelte-treeview isn't a custom element, so the element bits
  * (`register()`, per-tag responsive / custom-style hooks) are left out.
  *
  * The page-wide switch is the NON-enumerable `window.components.logging`, published by
@@ -12,11 +12,11 @@
  * window.components.logging.enableLogging('debug');                  // every component
  * window.components['svelte-treeview'].logging.enableLogging();      // just the tree(s)
  * window.components['svelte-treeview'].logging.setCategoryLevel('INDEX', 'debug');
- * window.components['svelte-treeview'].getInstances();               // TreeController[]
+ * window.components['svelte-treeview'].getInstances();               // TreeController[] (the public facades)
  * window.components.locale = { labels: { 'svelte-treeview': { noData: 'Žádná data' } } };
  * ```
  *
- * Imported by TreeController + index.ts so it runs whenever the tree is used.
+ * Imported by TreeEngine + index.ts so it runs whenever the tree is used.
  */
 import { logging } from './logger.js';
 import type { LogLevelDesc } from './vendor/core/logging/create-loggers.js';
@@ -96,7 +96,7 @@ if (typeof window !== 'undefined') {
 			setCategoryLevel: (category, level) => logging.setCategoryLevel(category as never, level),
 			getCategories: () => [...logging.LOGGING_CATEGORIES]
 		},
-		getInstances: () => getRegisteredTrees()
+		getInstances: () => getRegisteredTrees().map((tree) => (tree as unknown as { controller: unknown }).controller)
 	};
 	const components = (window.components ??= {});
 	// Adopt an entry the page created before this script ran (registerComponent does the same).

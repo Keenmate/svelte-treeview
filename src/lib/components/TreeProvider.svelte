@@ -1,26 +1,26 @@
 <script lang="ts" generics="T">
 	import { setContext, onDestroy, type Snippet } from 'svelte';
-	import { createTreeController } from '../core/createTreeController.js';
-	import { TreeController, type TreeControllerProps } from '../core/TreeController.svelte.js';
+	import { createTreeEngine } from '../core/createTreeEngine.js';
+	import { TreeEngine, type TreeEngineProps } from '../core/TreeEngine.svelte.js';
 
-	interface Props extends TreeControllerProps<T> {
-		children?: Snippet<[TreeController<T>]>;
+	interface Props extends TreeEngineProps<T> {
+		children?: Snippet<[TreeEngine<T>]>;
 	}
 
 	let {
 		children,
-		...controllerProps
+		...engineProps
 	}: Props = $props();
 
 	// svelte-ignore state_referenced_locally
-	const controller = createTreeController<T>(controllerProps as TreeControllerProps<T>);
+	const engine = createTreeEngine<T>(engineProps as TreeEngineProps<T>);
 
 	// Set contexts that Node.svelte expects
-	setContext('Ltree', controller.tree);
-	setContext('NodeCallbacks', controller.nodeCallbacks);
-	setContext('NodeConfig', controller.nodeConfig);
+	setContext('Ltree', engine.tree);
+	setContext('NodeCallbacks', engine.nodeCallbacks);
+	setContext('NodeConfig', engine.nodeConfig);
 
-	onDestroy(() => controller.destroy());
+	onDestroy(() => engine.destroy());
 </script>
 
-{@render children?.(controller)}
+{@render children?.(engine)}

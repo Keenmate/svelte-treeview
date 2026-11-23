@@ -3,10 +3,10 @@
  * Every relative import in the published dist/ must name a file that exists — with its extension.
  *
  * svelte-package copies module specifiers from src/lib unchanged, so `./logger` or
- * `./core/TreeController.svelte` (a .svelte.ts module) ends up in dist/*.d.ts as written. Bundlers
+ * `./core/TreeEngine.svelte` (a .svelte.ts module) ends up in dist/*.d.ts as written. Bundlers
  * cope; TypeScript with `moduleResolution: node16 / nodenext` (and Node itself) does not, and the
  * exports silently become `any` for the consumer (GitHub issue #30). Fix in src: `./logger.js`,
- * `./core/TreeController.svelte.js`; a component stays `./components/Tree.svelte`.
+ * `./core/TreeEngine.svelte.js`; a component stays `./components/Tree.svelte`.
  *
  * Run after svelte-package (chained into `prepack`): `node scripts/check-dist-imports.mjs [dir]`.
  */

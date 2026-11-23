@@ -25,6 +25,16 @@
 	let onData = $state.raw(make());
 	let noneData = $state.raw(make());
 	let plainData = $state.raw(make());
+	// B11: a root that never collapses (getIsCollapsibleCallback) — collapseAll / collapseNodes
+	// must animate (and hide) only what really collapses under it.
+	const pinnedData: Item[] = [
+		{ id: 1, path: '1', name: 'Pinned root' },
+		{ id: 11, path: '1.1', name: 'Folder' },
+		{ id: 111, path: '1.1.1', name: 'Leaf' },
+		{ id: 12, path: '1.2', name: 'Item' }
+	];
+	let pinnedTree: Tree<Item> | undefined = $state();
+	let pinnedLog = $state<string[]>([]);
 	let onTree: Tree<Item> | undefined = $state();
 	$effect(() => {
 		(window as any).__onTree = onTree;
@@ -61,6 +71,17 @@
 		<Tree bind:this={onTree} nodes={onData} idMember="id" pathMember="path" displayValueMember="name"
 			sortCallback={sortByPath} expandLevel={0} expandedPaths={new Set(['3'])}
 			rowAnimationLimit={3} onNodeCollapse={({ path }) => (collapseLog = [...collapseLog, path])} />
+	</div>
+
+	<div data-scenario="pinned" class="slow">
+		<p>Root 1 is not collapsible (B11).</p>
+		<button data-testid="pinned-collapse-all" onclick={() => pinnedTree?.collapseAll()}>collapseAll</button>
+		<button data-testid="pinned-collapse-root" onclick={() => pinnedTree?.collapseNodes('1')}>collapseNodes('1')</button>
+		<output data-testid="pinned-log">{pinnedLog.join(',')}</output>
+		<Tree bind:this={pinnedTree} nodes={pinnedData} idMember="id" pathMember="path" displayValueMember="name"
+			sortCallback={sortByPath} expandLevel={0} expandedPaths={new Set(['1', '1.1'])}
+			getIsCollapsibleCallback={({ node }) => node.path !== '1'}
+			onNodeCollapse={({ path }) => (pinnedLog = [...pinnedLog, path])} />
 	</div>
 
 	<div data-scenario="none">

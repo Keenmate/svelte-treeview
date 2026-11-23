@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.0.0-rc18] - 2026-11-22
 
+### Changed — `ctx.controller` is the public `TreeController` facade; the engine is `TreeEngine` (2026-11-23)
+- Every callback and event ctx carries `controller`. Until now that was the engine itself, with its `$state` fields, Node wiring and `_private` methods. It is now a frozen facade built with core `createControllerFacade` (SPEC §12.34), the same model as web-treeview's `TreeViewController`. It has the public methods (`<Tree>`'s exports minus `update`, listed in `TREE_CONTROLLER_METHODS`) and read-only state: `treeId`, `nodes`, `focusedNode`, `selectedPaths`, `checkedPaths`, `expandedPaths`, `cutPaths`, `insertResult`, `searchTerm`, `searchStatus`, `indexProgress` and `isRendering`. `selectionAnchor` is writable. Props are not on it: change them on `<Tree>` (props or `update()`).
+- `window.components['svelte-treeview'].getInstances()` lists the same facades.
+- Renames for renderers: the class `TreeController` → `TreeEngine`, `createTreeController(props)` → `createTreeEngine(props)`, `TreeControllerProps` → `TreeEngineProps`, module `core/TreeController.svelte.js` → `core/TreeEngine.svelte.js`. Renderers keep the full engine: `<Tree>`, the `TreeProvider` children snippet, svelte-treeview-canvas and custom layouts. The name `TreeController` is now the facade type, exported from the package root.
+
+### Fixed — a non-collapsible node stays open on collapse (2026-11-23)
+- `collapseAll()` under a node that `getIsCollapsibleCallback` / `isCollapsibleMember` keeps open animated that node's rows out, and then they snapped back. Now only the rows that really hide animate: below a non-collapsible node, the search goes on to its expanded children (B11).
+- `collapseNodes()` collapsed a non-collapsible node. The toggle and `collapseAll()` never did. Now it stays open: nothing animates and no `onNodeCollapse` fires. Same in web-treeview.
+
 ### Fixed — props changed after init apply (2026-11-23)
 
 - Every `*Member` prop, the `get*Callback` mappings (`getIsExpandedCallback`, `getDisplayValueCallback`, `getIsDraggableCallback`, …), `orderMember`, `isSorted`, `sortCallback`, `treePathSeparator`, `expandLevel` and the search-index options (`shouldUseInternalSearchIndex`, `initializeIndexCallback`, `indexerBatchSize`, `indexerTimeout`) were read once, when the tree was built — a later change on `<Tree>` or through `update()` did nothing. Now the tree re-inserts its current data with the new settings; expansion, selection, checks and focus are kept by path (a new `expandLevel` / `isExpandedMember` / `getIsExpandedCallback` re-seeds the expansion, a new `isCheckedMember` / `getIsCheckedCallback` the checks). A changed `treePathSeparator` used to switch the separator without rebuilding the paths. Guarded by `e2e/regressions.spec.ts` "B17" (fails on the old code).

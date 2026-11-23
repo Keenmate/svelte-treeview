@@ -8,7 +8,7 @@
 	import type { LTreeNode } from '$lib/ltree/types.js';
 	import { enablePerfLogging, disablePerfLogging, setPerfThreshold } from '$lib/perf-logger.js';
 	import type { GlobalTreeviewAPI } from '$lib/global-api.js';
-	import type { TreeController } from '$lib/core/TreeController.svelte.js';
+	import type { TreeController } from '$lib/core/TreeEngine.svelte.js';
 
 	type Item = { id: number; path: string; name: string };
 
@@ -347,7 +347,7 @@ const tv = window.components['svelte-treeview'];
 
 tv.version();                       // "5.0.0-rc16"
 tv.config;                          // { name, version, author, license, … }
-tv.getInstances();                  // live TreeControllers
+tv.getInstances();                  // each live tree's public controller
 
 // Logging (the tree's logger bundle — every tree on the page)
 tv.logging.getCategories();         // ["STV:INIT","STV:DATA","STV:RENDER","STV:INDEX","STV:DRAG","STV:UI"]

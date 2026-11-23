@@ -16,6 +16,8 @@
 	let treeRef: Tree<Item>;
 	let out = $state('');
 	let ctxLog = $state<string[]>([]);
+	/** The controller the last onNodeClick ctx carried (REVIEW #6: the public facade, not the engine). */
+	let clickController: Record<string, unknown> | null = null;
 
 	function show(value: unknown) {
 		out = JSON.stringify(value);
@@ -39,6 +41,14 @@
 		<button data-testid="drop" onclick={() => show([treeRef.isNodeDropAllowed('1'), treeRef.isNodeDropAllowed('2'), treeRef.isNodeDropAllowed('nope')])}>isNodeDropAllowed</button>
 		<button data-testid="clip" onclick={() => { treeRef.copyNodes(['3']); const a = [treeRef.hasClipboardContent(), treeRef.getClipboardOperation()]; const r = treeRef.pasteNodes('1'); treeRef.cutNodes(['3']); const b = treeRef.getClipboardOperation(); treeRef.cancelCut(); show([...a, r.success, b, treeRef.hasClipboardContent()]); }}>clipboard</button>
 		<button data-testid="nav" onclick={() => { treeRef.focusFirst(); treeRef.focusNext(); const a = treeRef.getVisibleFlatNodes().find((n) => n.isFocused)?.path; treeRef.focusLast(); treeRef.focusPrevious(); const b = treeRef.getVisibleFlatNodes().find((n) => n.isFocused)?.path; show([a, b]); }}>nav</button>
+		<button data-testid="facade" onclick={() => {
+			const c = clickController!;
+			const instances = (window as any).components['svelte-treeview'].getInstances() as unknown[];
+			const before = c.selectedPaths as Set<string>;
+			(c.selectNodes as (p: string[]) => void)(['1']);
+			show([Object.isFrozen(c), 'tree' in c, '_mutate' in c, 'nodeConfig' in c, typeof c.expandNodes,
+				instances.includes(c), before.size, (c.selectedPaths as Set<string>).has('1'), typeof c.treeId]);
+		}}>ctx.controller = facade</button>
 		<button data-testid="menu" onclick={() => treeRef.openContextMenu('3', 100, 100)}>openContextMenu('3')</button>
 	</div>
 	<pre data-testid="out">{out}</pre>
@@ -56,7 +66,7 @@
 			flatIndentSize="24px"
 			selectionMode="multiple"
 			getContextMenuItemsCallback={(ctx) => [{ id: 'x', text: `Menu for ${ctx.path}` }]}
-			onNodeClick={(ctx) => ctxInfo('onNodeClick', ctx)}
+			onNodeClick={(ctx) => { ctxInfo('onNodeClick', ctx); clickController = ctx.controller as unknown as Record<string, unknown>; }}
 			onSelectionChange={(ctx) => ctxInfo('onSelectionChange', ctx)}
 			onNodeCopy={(ctx) => ctxInfo('onNodeCopy', ctx)}
 			onNodePaste={(ctx) => ctxInfo('onNodePaste', ctx)}

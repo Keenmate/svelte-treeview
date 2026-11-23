@@ -1,4 +1,4 @@
-import type { TreeControllerProps } from './TreeController.svelte.js';
+import type { TreeEngineProps } from './TreeEngine.svelte.js';
 import { DEFAULT_INDEXER_BATCH_SIZE } from '../ltree/indexer.js';
 
 /**
@@ -7,7 +7,7 @@ import { DEFAULT_INDEXER_BATCH_SIZE } from '../ltree/indexer.js';
  * key and `update()` is `controller.updateProps`. A new prop goes here (the type check below fails
  * until it does) — never into a hand-written list.
  */
-type TreePropKey = keyof TreeControllerProps<unknown>;
+type TreePropKey = keyof TreeEngineProps<unknown>;
 
 /** Tree STATE, not options: applied through their writers, never compared or defaulted. */
 export const TREE_STATE_PROPS = ['nodes', 'focusedNode', 'selectedPaths', 'checkedPaths', 'expandedPaths'] as const;

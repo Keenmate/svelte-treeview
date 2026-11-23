@@ -8,7 +8,7 @@
 		BeforePasteContext,
 		BeforeDropContext,
 		NodeDropContext
-	} from '$lib/core/TreeController.svelte.js';
+	} from '$lib/core/TreeEngine.svelte.js';
 	import { uniqueName } from '$lib/core/clipboard.js';
 	import type { LTreeNode, DropPosition } from '$lib/ltree/types.js';
 	import type { NodeRef } from '$lib/index.js';

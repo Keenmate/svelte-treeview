@@ -15,7 +15,7 @@ A high-performance, feature-rich hierarchical tree view component for Svelte 5 w
 
 `@keenmate/svelte-treeview` is a hierarchical tree-view component for Svelte 5 apps. It renders flat, path-keyed data (`"1"`, `"1.2"`, `"1.2.3"`) into an expandable tree with built-in drag & drop, three-level selection (focus / multi-highlight / checkboxes), context menus, integrated FlexSearch filtering, and virtual scrolling for 50,000+ nodes.
 
-It's aimed at Svelte 5 developers building file browsers, org charts, navigation trees, settings dialogs, or any UI that displays hierarchical data. The core (data structure, expand/collapse, search, drag-and-drop logic) is decoupled from the renderer via `TreeProvider` + `TreeController`, so you can plug in custom HTML, Canvas, or SVG renderers on the same engine.
+It's aimed at Svelte 5 developers building file browsers, org charts, navigation trees, settings dialogs, or any UI that displays hierarchical data. The core (data structure, expand/collapse, search, drag-and-drop logic) is decoupled from the renderer via `TreeProvider` + `TreeEngine`, so you can plug in custom HTML, Canvas, or SVG renderers on the same engine.
 
 The component ships standalone with sensible light/dark defaults and integrates cleanly with [Pure Admin](https://pureadmin.io/) and the wider `@keenmate/*` design-token suite via the [`--base-*` CSS variable contract](https://github.com/Keenmate/base-css-variables).
 
@@ -35,7 +35,7 @@ There's a vanilla-TypeScript sibling, [`@keenmate/web-treeview`](https://github.
 | Drag & drop | Unified Pointer Events (no native drag session, so mid-drag re-renders can't freeze it) | Native HTML5 DnD + a long-press touch path |
 | Update mechanism | Svelte 5 runes + per-node `_rev` keyed `{#each}` | Imperative reconciler diffing `data-rev` / `data-expanded` attributes |
 
-Pick svelte-treeview in a Svelte 5 app, or when you want the Svelte ecosystem around it (e.g. the Canvas renderer in `@keenmate/svelte-treeview-canvas`, built on the same headless `TreeController`). Pick web-treeview outside Svelte, or when the job is mainly virtual scrolling over very large datasets with a flat DOM.
+Pick svelte-treeview in a Svelte 5 app, or when you want the Svelte ecosystem around it (e.g. the Canvas renderer in `@keenmate/svelte-treeview-canvas`, built on the same headless `TreeEngine`). Pick web-treeview outside Svelte, or when the job is mainly virtual scrolling over very large datasets with a flat DOM.
 
 ## What's New in v5.0.0-rc17
 
@@ -70,7 +70,7 @@ Earlier releases: [5.0.0-rc15 (CHANGELOG)](CHANGELOG.md); [CHANGELOG](CHANGELOG.
 > **In version 5, the tree core (data structure, expand/collapse, search, drag & drop logic) has been completely separated from the renderer.** The architecture is open for you to build your own custom renderers on top of the same core via `TreeProvider` and `TreeController`.
 
 **Key changes in v5:**
-- **Core/Renderer split**: Use the built-in HTML `Tree` renderer, or create custom visualizations (Canvas, WebGL, SVG) via `TreeProvider` + `TreeController`
+- **Core/Renderer split**: Use the built-in HTML `Tree` renderer, or create custom visualizations (Canvas, WebGL, SVG) via `TreeProvider` + `TreeEngine`
 - **Virtual scroll**: Render 50,000+ node trees smoothly with `isVirtualScrollEnabled={true}` — only ~50 DOM nodes at any time
 - **Canvas companion**: For canvas rendering, install [`@keenmate/svelte-treeview-canvas`](https://github.com/keenmate/svelte-treeview-canvas)
 - **Drop position naming**: `'above'`/`'below'` renamed to `'before'`/`'after'` everywhere: the `DropPosition` a drop reports (events, callbacks, `.stv__drop-zone--*` classes) and the `dropZoneLayout` values that place the floating zone row (`'before'` = row above the node, `'after'` = row below; `.stv__drop-zones--before` / `--after`)

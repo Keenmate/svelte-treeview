@@ -18,6 +18,12 @@
 	// The tree's own translateCallback: answers noData, passes everything else on (null).
 	const ownTranslate = ({ key }: { key: string }) =>
 		key === 'svelte-treeview.messages.noData' ? 'element' : null;
+	// The <Tree> refs the spec reaches through update() (the callbacks' controller has no props).
+	let translateTree: Tree<Item> | undefined = $state();
+	let noDisplayTree: Tree<Item> | undefined = $state();
+	$effect(() => {
+		(window as unknown as { __labelTrees: object }).__labelTrees = { translate: translateTree, noDisplay: noDisplayTree };
+	});
 </script>
 
 <main>
@@ -40,7 +46,7 @@
 
 	<div data-scenario="translate">
 		<p>Own translateCallback: answers messages.noData ("element"), null for the rest.</p>
-		<Tree nodes={[]} idMember="id" pathMember="path" displayValueMember="name" sortCallback={sortByPath} translateCallback={ownTranslate} />
+		<Tree nodes={[]} idMember="id" pathMember="path" displayValueMember="name" sortCallback={sortByPath} translateCallback={ownTranslate} bind:this={translateTree} />
 	</div>
 
 	<div data-scenario="nodes">
@@ -57,6 +63,6 @@
 
 	<div data-scenario="no-display">
 		<p>No displayValueMember → every row shows labels.noDisplayValue.</p>
-		<Tree nodes={[{ id: 1, path: '1' }]} idMember="id" pathMember="path" sortCallback={sortByPath} />
+		<Tree nodes={[{ id: 1, path: '1' }]} idMember="id" pathMember="path" sortCallback={sortByPath} bind:this={noDisplayTree} />
 	</div>
 </main>

@@ -2,11 +2,11 @@
 	// Deterministic e2e fixture for clipboard (Ctrl/Cmd + C / X / V) + multi-select.
 	// Uses PLAIN $state data on purpose so the copy path exercises Svelte's reactive
 	// proxy — the regression guard for the structuredClone→$state.snapshot fix in
-	// TreeController._collectClipboardEntry (structuredClone throws on a $state proxy).
+	// TreeEngine._collectClipboardEntry (structuredClone throws on a $state proxy).
 	//
 	// Targeted by e2e/clipboard.spec.ts.
 	import { Tree } from '$lib/index.js';
-	import type { TreeController, BeforePasteContext } from '$lib/core/TreeController.svelte.js';
+	import type { TreeController, BeforePasteContext } from '$lib/core/TreeEngine.svelte.js';
 	import type { LTreeNode } from '$lib/ltree/types.js';
 
 	type Item = { id: number; path: string; name: string };

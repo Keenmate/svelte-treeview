@@ -141,3 +141,23 @@ test('call order is kept: collapseAll(); expandNodes(x) in one tick ends as it w
 	const paths = () => scenario(page, 'on').locator('.stv__node').evaluateAll((els) => els.map((el) => el.getAttribute('data-tree-path')));
 	await expect.poll(paths, { timeout: 3000 }).toEqual(['1', '2', '2.1', '2.2', '3']);
 });
+
+// B11: a non-collapsible root stays open — only what really collapses under it animates out.
+test('collapseAll under a non-collapsible root: only the rows that hide animate, the root stays open', async ({ page }) => {
+	await expect(row(page, 'pinned', '1.1.1')).toBeVisible();
+	await page.getByTestId('pinned-collapse-all').click();
+	await expect.poll(() => closing(page, 'pinned')).toEqual(['1.1.1']);
+	await expect(row(page, 'pinned', '1.1.1')).toHaveCount(0, { timeout: 3000 });
+	await expect(row(page, 'pinned', '1.1')).toBeVisible();
+	await expect(row(page, 'pinned', '1.2')).toBeVisible();
+	expect(await closing(page, 'pinned')).toEqual([]);
+});
+
+test('collapseNodes on a non-collapsible node: nothing animates, nothing collapses, no event', async ({ page }) => {
+	await page.getByTestId('pinned-collapse-root').click();
+	expect(await closing(page, 'pinned')).toEqual([]);
+	await page.waitForTimeout(1300);
+	await expect(row(page, 'pinned', '1.1')).toBeVisible();
+	await expect(row(page, 'pinned', '1.1.1')).toBeVisible();
+	await expect(page.getByTestId('pinned-log')).toHaveText('');
+});

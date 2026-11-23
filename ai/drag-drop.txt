@@ -313,7 +313,7 @@ One pointer-events drag for every input — core createPointerDrag (no HTML5 dra
 Same callback as desktop:
 <Tree onNodeDrop={handleDrop} />
 
-CUSTOM RENDERER (TreeProvider / createTreeController)
+CUSTOM RENDERER (TreeProvider / createTreeEngine)
 -----------------------------------------------------
 controller.attachPointerDrag(container)   // once, on the element holding the nodes (returns detach)
 data-tree-path={node.path}                // on each node's element: press = drag it; nearest under the pointer = target

@@ -76,6 +76,8 @@ import {
 	isSelfOrDescendant
 } from '../helpers/ltree-helpers.js';
 import '../global-api.js';
+import { createTreeController, type TreeController } from './tree-controller.js';
+export type { TreeController } from './tree-controller.js';
 import {
 	TREE_CHECKED_SEED_OPTIONS,
 	TREE_EXPANSION_SEED_OPTIONS,
@@ -501,7 +503,7 @@ export interface NodeConfig {
 
 // ─── Controller props ─────────────────────────────────────────────────────
 
-export interface TreeControllerProps<T> {
+export interface TreeEngineProps<T> {
 	// MAPPINGS
 	idMember: string;
 	pathMember: string;
@@ -804,7 +806,7 @@ export interface TreeControllerProps<T> {
 	shouldIndicateUndraggable?: boolean;
 }
 
-// ─── TreeController ───────────────────────────────────────────────────────
+// ─── TreeEngine ───────────────────────────────────────────────────────
 
 /** A collapse animating out: core's handle, the real collapse to run, the nodes it closes. */
 interface ClosingEntry {
@@ -813,7 +815,15 @@ interface ClosingEntry {
 	targets: string[];
 }
 
-export class TreeController<T> {
+/**
+ * The tree's engine: state, behaviour and the wiring a renderer needs (`<Tree>`, `TreeProvider`,
+ * svelte-treeview-canvas, a custom layout via `createTreeEngine`). Callbacks never see it — their
+ * ctx carries {@link TreeEngine.controller}, the public facade (core/tree-controller.ts).
+ */
+export class TreeEngine<T> {
+	/** The public controller (frozen facade, core SPEC §12.34) — what every ctx carries. */
+	readonly controller: TreeController<T> = createTreeController(this);
+
 	// ── LTree instance ──────────────────────────────────────────────────
 	tree!: Ltree<T>;
 
@@ -1023,57 +1033,57 @@ export class TreeController<T> {
 
 	// Event handlers (on* = fire-and-forget)
 	/** @internal */
-	onNodeClickHandler: TreeControllerProps<T>['onNodeClick'];
+	onNodeClickHandler: TreeEngineProps<T>['onNodeClick'];
 	/** @internal */
-	onNodeDoubleClickHandler: TreeControllerProps<T>['onNodeDoubleClick'];
+	onNodeDoubleClickHandler: TreeEngineProps<T>['onNodeDoubleClick'];
 	/** @internal */
-	onSelectionChangeHandler: TreeControllerProps<T>['onSelectionChange'];
+	onSelectionChangeHandler: TreeEngineProps<T>['onSelectionChange'];
 	/** @internal */
-	onCheckedChangeHandler: TreeControllerProps<T>['onCheckedChange'];
+	onCheckedChangeHandler: TreeEngineProps<T>['onCheckedChange'];
 	/** @internal */
-	onNodesReorderHandler: TreeControllerProps<T>['onNodesReorder'];
+	onNodesReorderHandler: TreeEngineProps<T>['onNodesReorder'];
 	/** @internal */
-	onNodeExpandHandler: TreeControllerProps<T>['onNodeExpand'];
+	onNodeExpandHandler: TreeEngineProps<T>['onNodeExpand'];
 	/** @internal */
-	onNodeCollapseHandler: TreeControllerProps<T>['onNodeCollapse'];
+	onNodeCollapseHandler: TreeEngineProps<T>['onNodeCollapse'];
 	/** @internal */
-	onExpandedChangeHandler: TreeControllerProps<T>['onExpandedChange'];
+	onExpandedChangeHandler: TreeEngineProps<T>['onExpandedChange'];
 	/** @internal */
-	beforeExpandHandler: TreeControllerProps<T>['beforeExpandCallback'];
+	beforeExpandHandler: TreeEngineProps<T>['beforeExpandCallback'];
 	/** @internal */
-	onFocusChangeHandler: TreeControllerProps<T>['onFocusChange'];
+	onFocusChangeHandler: TreeEngineProps<T>['onFocusChange'];
 	/** @internal */
-	beforeActionHandler: TreeControllerProps<T>['beforeActionCallback'];
+	beforeActionHandler: TreeEngineProps<T>['beforeActionCallback'];
 	/** @internal */
-	onActionHandler: TreeControllerProps<T>['onAction'];
+	onActionHandler: TreeEngineProps<T>['onAction'];
 	/** @internal */
-	onTreeChangeHandler: TreeControllerProps<T>['onTreeChange'];
+	onTreeChangeHandler: TreeEngineProps<T>['onTreeChange'];
 	/** @internal */
-	onNodeDragStartHandler: TreeControllerProps<T>['onNodeDragStart'];
+	onNodeDragStartHandler: TreeEngineProps<T>['onNodeDragStart'];
 	/** @internal */
-	onNodeDragOverHandler: TreeControllerProps<T>['onNodeDragOver'];
+	onNodeDragOverHandler: TreeEngineProps<T>['onNodeDragOver'];
 	/** @internal */
-	onNodeDropHandler: TreeControllerProps<T>['onNodeDrop'];
+	onNodeDropHandler: TreeEngineProps<T>['onNodeDrop'];
 	/** @internal */
-	onNodeDragRejectHandler: TreeControllerProps<T>['onNodeDragReject'];
+	onNodeDragRejectHandler: TreeEngineProps<T>['onNodeDragReject'];
 	/** @internal */
-	onNodeDropRejectHandler: TreeControllerProps<T>['onNodeDropReject'];
+	onNodeDropRejectHandler: TreeEngineProps<T>['onNodeDropReject'];
 	/** @internal */
-	onNodeCopyHandler: TreeControllerProps<T>['onNodeCopy'];
+	onNodeCopyHandler: TreeEngineProps<T>['onNodeCopy'];
 	/** @internal */
-	onNodeCutHandler: TreeControllerProps<T>['onNodeCut'];
+	onNodeCutHandler: TreeEngineProps<T>['onNodeCut'];
 	/** @internal */
-	onNodePasteHandler: TreeControllerProps<T>['onNodePaste'];
+	onNodePasteHandler: TreeEngineProps<T>['onNodePaste'];
 	/** @internal */
-	onNodeDeleteHandler: TreeControllerProps<T>['onNodeDelete'];
+	onNodeDeleteHandler: TreeEngineProps<T>['onNodeDelete'];
 	/** @internal */
-	onRenderStartHandler: TreeControllerProps<T>['onRenderStart'];
+	onRenderStartHandler: TreeEngineProps<T>['onRenderStart'];
 	/** @internal */
-	onRenderProgressHandler: TreeControllerProps<T>['onRenderProgress'];
+	onRenderProgressHandler: TreeEngineProps<T>['onRenderProgress'];
 	/** @internal */
-	onRenderCompleteHandler: TreeControllerProps<T>['onRenderComplete'];
-	onIndexProgressHandler: TreeControllerProps<T>['onIndexProgress'];
-	onSearchStatusChangeHandler: TreeControllerProps<T>['onSearchStatusChange'];
+	onRenderCompleteHandler: TreeEngineProps<T>['onRenderComplete'];
+	onIndexProgressHandler: TreeEngineProps<T>['onIndexProgress'];
+	onSearchStatusChangeHandler: TreeEngineProps<T>['onSearchStatusChange'];
 	/** Status of the last applied/cleared filter (reactive); null before the first filter. */
 	searchStatus = $state.raw<SearchStatus | null>(null);
 	/** Latest search-index progress (reactive); null until a load queues indexing. */
@@ -1081,26 +1091,26 @@ export class TreeController<T> {
 
 	// Interceptor handlers (before*Callback)
 	/** @internal */
-	beforeDragStartHandler: TreeControllerProps<T>['beforeDragStartCallback'];
+	beforeDragStartHandler: TreeEngineProps<T>['beforeDragStartCallback'];
 	/** @internal */
-	beforeDropHandler: TreeControllerProps<T>['beforeDropCallback'];
+	beforeDropHandler: TreeEngineProps<T>['beforeDropCallback'];
 	/** @internal */
-	beforeCopyHandler: TreeControllerProps<T>['beforeCopyCallback'];
+	beforeCopyHandler: TreeEngineProps<T>['beforeCopyCallback'];
 	/** @internal */
-	beforeCutHandler: TreeControllerProps<T>['beforeCutCallback'];
+	beforeCutHandler: TreeEngineProps<T>['beforeCutCallback'];
 	/** @internal */
-	beforePasteHandler: TreeControllerProps<T>['beforePasteCallback'];
+	beforePasteHandler: TreeEngineProps<T>['beforePasteCallback'];
 	/** @internal */
-	beforeDeleteHandler: TreeControllerProps<T>['beforeDeleteCallback'];
+	beforeDeleteHandler: TreeEngineProps<T>['beforeDeleteCallback'];
 	/** @internal */
-	outputTransformHandler: TreeControllerProps<T>['nodeOutputTransformationCallback'];
+	outputTransformHandler: TreeEngineProps<T>['nodeOutputTransformationCallback'];
 	/** @internal */
-	inputTransformHandler: TreeControllerProps<T>['nodeInputTransformationCallback'];
+	inputTransformHandler: TreeEngineProps<T>['nodeInputTransformationCallback'];
 	/** @internal */
-	beforeCheckboxToggleHandler: TreeControllerProps<T>['beforeCheckboxToggleCallback'];
+	beforeCheckboxToggleHandler: TreeEngineProps<T>['beforeCheckboxToggleCallback'];
 
 	// Data provider handlers (get*Callback)
-	getContextMenuItemsHandler = $state.raw<TreeControllerProps<T>['getContextMenuItemsCallback']>(undefined);
+	getContextMenuItemsHandler = $state.raw<TreeEngineProps<T>['getContextMenuItemsCallback']>(undefined);
 
 	// Visual config (for nodeConfig updates)
 	clickBehavior = $state<ClickBehavior>('expand-and-focus');
@@ -1135,7 +1145,7 @@ export class TreeController<T> {
 	nodeTitleOverflow = $state<NodeTitleOverflow>('ellipsis');
 	flatIndentSize = $state<string>('var(--stv-indent-size)');
 	isNodeTooltipsShown = $state<boolean>(false);
-	getNodeTooltipCallback = $state<TreeControllerProps<T>['getNodeTooltipCallback']>(
+	getNodeTooltipCallback = $state<TreeEngineProps<T>['getNodeTooltipCallback']>(
 		undefined
 	);
 	tooltipPlacement = $state<TooltipPlacement>('top-start');
@@ -1143,21 +1153,21 @@ export class TreeController<T> {
 	tooltipOffset = $state<number>(8);
 	shouldTooltipFollowCursor = $state<boolean>(false);
 	iconMember = $state<string | null | undefined>(undefined);
-	getIconCallback = $state<TreeControllerProps<T>['getIconCallback']>(
+	getIconCallback = $state<TreeEngineProps<T>['getIconCallback']>(
 		undefined
 	);
 	/** This tree's icon hook — see `renderNodeIconHtml`. */
 	renderIconCallback = $state.raw<TreeRenderIconCallback<T> | null | undefined>(undefined);
 	iconColorMember = $state<string | null | undefined>(undefined);
-	getIconColorCallback = $state<TreeControllerProps<T>['getIconColorCallback']>(
+	getIconColorCallback = $state<TreeEngineProps<T>['getIconColorCallback']>(
 		undefined
 	);
 	shouldAlignNodeIcons = $state<boolean>(true);
 	selectedNodeClass = $state<string | null | undefined>(undefined);
 	focusedNodeClass = $state<string | null | undefined>(undefined);
 	checkedNodeClass = $state<string | null | undefined>(undefined);
-	getNodeClassCallback = $state<TreeControllerProps<T>['getNodeClassCallback']>(undefined);
-	getNodeContentClassCallback = $state<TreeControllerProps<T>['getNodeContentClassCallback']>(
+	getNodeClassCallback = $state<TreeEngineProps<T>['getNodeClassCallback']>(undefined);
+	getNodeContentClassCallback = $state<TreeEngineProps<T>['getNodeContentClassCallback']>(
 		undefined
 	);
 	dragOverNodeClass = $state<string | null | undefined>(undefined);
@@ -1395,7 +1405,7 @@ export class TreeController<T> {
 	 * `node` + `controller`. Reads `renderIconCallback`, so a changed hook re-renders the icons.
 	 */
 	renderNodeIconHtml = (value: string, node: LTreeNode<T>, ctx: NodeRenderContext): string =>
-		this._renderIconHtml(value, { ...ctx, node, controller: this });
+		this._renderIconHtml(value, { ...ctx, node, controller: this.controller });
 
 	/**
 	 * The icon hook core's `/menu` reads off its host (`host.renderIconCallback` — Tree.svelte puts
@@ -1404,7 +1414,7 @@ export class TreeController<T> {
 	 */
 	readonly menuRenderIconCallback: RenderIconCallback = (name, ctx) => {
 		const hook = this.renderIconCallback as RenderIconCallback | null | undefined;
-		return hook ? hook(name, { ...ctx, component: LABELS_TAG, prefix: 'stv', controller: this } as IconRenderContext) : null;
+		return hook ? hook(name, { ...ctx, component: LABELS_TAG, prefix: 'stv', controller: this.controller } as IconRenderContext) : null;
 	};
 
 	/**
@@ -1447,7 +1457,7 @@ export class TreeController<T> {
 
 	// ── Constructor ─────────────────────────────────────────────────────
 
-	constructor(props: TreeControllerProps<T>) {
+	constructor(props: TreeEngineProps<T>) {
 		// Every option as given (tree-props.ts holds the defaults); updateProps compares against it.
 		for (const key of TREE_OPTION_KEYS) this.#options[key] = props[key];
 		this.treeId = props.treeId || this.generateTreeId();
@@ -1920,13 +1930,17 @@ export class TreeController<T> {
 		if (pending.length) await Promise.all(pending);
 	}
 
-	/** Collapse the nodes (one level — descendants keep their own state). Fires
-	 *  `onNodeCollapse` for every node that actually collapsed unless `isSilent`. */
+	/** Collapse the nodes (one level — descendants keep their own state). A non-collapsible
+	 *  node (`getNodeIsCollapsible`) stays open. Fires `onNodeCollapse` for every node that
+	 *  actually collapsed unless `isSilent`. */
 	async collapseNodes(paths: string | string[], options?: ExpandOptions): Promise<void> {
 		const list = Array.isArray(paths) ? paths : [paths];
 		const wereExpanded = list
 			.map((p) => this.tree?.getNodeByPath(p))
-			.filter((n): n is LTreeNode<T> => !!n && !!n.isExpanded && !!n.hasChildren);
+			.filter(
+				(n): n is LTreeNode<T> =>
+					!!n && !!n.isExpanded && !!n.hasChildren && this.tree.getNodeIsCollapsible(n)
+			);
 		// Already animating out (a second collapse) → wait for that one.
 		const running = wereExpanded.filter((n) => this.#closingHandles.has(n.path));
 		const fresh = wereExpanded.filter((n) => !this.#closingHandles.has(n.path));
@@ -1986,13 +2000,20 @@ export class TreeController<T> {
 			this._syncExpanded(options?.isSilent);
 		};
 		if (!this.tree) return Promise.resolve();
-		// The nodes whose rows disappear: every expanded root (whole tree) or the given ones.
-		const targets = (paths == null
+		// The nodes whose rows disappear: from every root (whole tree) or the given nodes, the
+		// topmost expanded nodes that really collapse — a non-collapsible one stays open, so
+		// its rows stay and the search goes on below it (B11).
+		const starts = (paths == null
 			? this.tree.visibleFlatNodes.filter((n) => !n.parentPath)
 			: (Array.isArray(paths) ? paths : [paths]).map((p) => this.tree.getNodeByPath(p))
-		)
-			.filter((n): n is LTreeNode<T> => !!n && !!n.isExpanded && !!n.hasChildren)
-			.map((n) => n.path);
+		).filter((n): n is LTreeNode<T> => !!n);
+		const targets: string[] = [];
+		const collectCollapsing = (node: LTreeNode<T>) => {
+			if (!node.isExpanded || !node.hasChildren) return;
+			if (this.tree.getNodeIsCollapsible(node)) targets.push(node.path);
+			else for (const key in node.children) collectCollapsing(node.children[key]);
+		};
+		for (const node of starts) collectCollapsing(node);
 		return this._animateCollapse(targets, apply);
 	}
 
@@ -2287,7 +2308,7 @@ export class TreeController<T> {
 	 *  A spread therefore drops it — re-attach with `_ctx` after spreading. */
 	private _ctx<C extends object>(ctx: C): C & TreeCallbackContext<T> {
 		const out = { ...ctx } as C & TreeCallbackContext<T>;
-		Object.defineProperty(out, 'controller', { value: this, enumerable: false, configurable: true, writable: true });
+		Object.defineProperty(out, 'controller', { value: this.controller, enumerable: false, configurable: true, writable: true });
 		return out;
 	}
 
@@ -2306,7 +2327,7 @@ export class TreeController<T> {
 	}
 	#ctrlWrapped = new WeakMap<Function, (ctx: object) => unknown>();
 	/** Prototype of the per-node ctx: `controller` inherited (cheap, non-enumerable). */
-	#ctxProto: object = Object.defineProperty({}, 'controller', { get: () => this });
+	#ctxProto: object = Object.defineProperty({}, 'controller', { get: () => this.controller });
 
 	filterNodes(term: string, searchOptions?: SearchOptions): void {
 		this.tree?.filterNodes(term, searchOptions);
@@ -3700,7 +3721,7 @@ export class TreeController<T> {
 
 	/**
 	 * Make the nodes inside `container` draggable — for a custom renderer (TreeProvider /
-	 * createTreeController); `<Tree>` attaches its own container. Returns the detach. In Svelte:
+	 * createTreeEngine); `<Tree>` attaches its own container. Returns the detach. In Svelte:
 	 * `<div {@attach (el) => controller.attachPointerDrag(el)}>`.
 	 *
 	 * The drag is the built-in one — core createPointerDrag: mouse / pen engage after a 5px move,
@@ -3998,9 +4019,9 @@ export class TreeController<T> {
 	 * State props (`nodes`, `focusedNode`, `selectedPaths`, `checkedPaths`, `expandedPaths`) go
 	 * through their writers; `undefined` leaves them alone.
 	 */
-	updateProps(updates: Partial<TreeControllerProps<T>>) {
+	updateProps(updates: Partial<TreeEngineProps<T>>) {
 		const changedLtreeOptions: TreeOptionKey[] = [];
-		for (const key of Object.keys(updates) as (keyof TreeControllerProps<T>)[]) {
+		for (const key of Object.keys(updates) as (keyof TreeEngineProps<T>)[]) {
 			if ((TREE_STATE_PROPS as readonly string[]).includes(key)) continue;
 			const option = key as TreeOptionKey;
 			const value = updates[option];
@@ -4036,8 +4057,8 @@ export class TreeController<T> {
 	}
 
 	/** The value of a prop as last applied (constructor / `updateProps`); `undefined` = default. */
-	getOption<K extends TreeOptionKey>(key: K): TreeControllerProps<T>[K] {
-		return this.#options[key] as TreeControllerProps<T>[K];
+	getOption<K extends TreeOptionKey>(key: K): TreeEngineProps<T>[K] {
+		return this.#options[key] as TreeEngineProps<T>[K];
 	}
 
 	/** Apply one live option (not built into the ltree) — default resolved, field per tree-props.ts. */
@@ -4055,9 +4076,9 @@ export class TreeController<T> {
 
 	/** The ltree's configuration from the current options (callbacks get `ctx.controller`). */
 	private _ltreeConfig(): LTreeConfig<T> {
-		const o = this.#options as Partial<TreeControllerProps<T>>;
+		const o = this.#options as Partial<TreeEngineProps<T>>;
 		const resolved = <K extends TreeOptionKey>(key: K) =>
-			resolveTreeOption(key, o[key]) as TreeControllerProps<T>[K];
+			resolveTreeOption(key, o[key]) as TreeEngineProps<T>[K];
 		return {
 			idMember: o.idMember,
 			pathMember: o.pathMember,
@@ -5332,7 +5353,7 @@ export class TreeController<T> {
 	// routed to the target tree's controller via the clipboard registry + dragSet — no dataTransfer.
 
 	/** The controller whose hover state we last lit up (may be another tree for a cross-tree drag). */
-	private _hoverCtrl: TreeController<any> | null = null;
+	private _hoverCtrl: TreeEngine<any> | null = null;
 	/** The last pointer event of the drag — core's auto-scroll frames have none of their own. */
 	private _lastPointerEvent: PointerEvent | null = null;
 	/** The press that may become a drag, and its node (core hands `onStart` no event on a touch long press). */
@@ -5535,7 +5556,7 @@ export class TreeController<T> {
 	}
 
 	private _applyHover(
-		ctrl: TreeController<any>,
+		ctrl: TreeEngine<any>,
 		node: LTreeNode<any>,
 		position: DropPosition,
 		operation: DropOperation
@@ -5549,7 +5570,7 @@ export class TreeController<T> {
 		this._hoverCtrl = ctrl;
 	}
 
-	private _clearHoverCtrl(ctrl: TreeController<any>) {
+	private _clearHoverCtrl(ctrl: TreeEngine<any>) {
 		ctrl.hoveredNodeForDrop = null;
 		ctrl.activeDropPosition = null;
 		ctrl.isDropPlaceholderActive = false;
@@ -5644,7 +5665,7 @@ export class TreeController<T> {
 	 * pointer is on a drop pad (`[data-drop-position]`) inside it.
 	 */
 	private _resolveDropContext(el: Element | null): {
-		controller: TreeController<any>;
+		controller: TreeEngine<any>;
 		node: LTreeNode<any> | null;
 		nodeEl: HTMLElement | null;
 		position: DropPosition | null;
@@ -5654,7 +5675,7 @@ export class TreeController<T> {
 		const treeId = container?.getAttribute('data-tree-id') ?? null;
 		const registered =
 			treeId && treeId !== this.treeId
-				? (getClipboardTree(treeId) as unknown as TreeController<any> | undefined)
+				? (getClipboardTree(treeId) as unknown as TreeEngine<any> | undefined)
 				: undefined;
 		const controller = registered ?? this;
 		const nodeEl = el.closest('[data-tree-path]') as HTMLElement | null;
@@ -5671,7 +5692,7 @@ export class TreeController<T> {
 	 *  the pointer sits on the row content (built-in) or the `[data-tree-path]` element (custom).
 	 *  null = the pad's position isn't allowed on this node. */
 	private _pointerDropPosition(
-		ctx: { controller: TreeController<any>; node: LTreeNode<any> | null; nodeEl: HTMLElement | null; position: DropPosition | null },
+		ctx: { controller: TreeEngine<any>; node: LTreeNode<any> | null; nodeEl: HTMLElement | null; position: DropPosition | null },
 		el: Element,
 		event: PointerEvent
 	): DropPosition | null {

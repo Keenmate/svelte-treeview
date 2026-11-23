@@ -87,9 +87,8 @@ test("the tree's own translateCallback beats the page-wide one; null passes on",
 	await expect(emptyText(page, 'empty')).toHaveText('page:svelte-treeview.messages.noData');
 	// The own callback answering null for every key → the page-wide callback decides.
 	await page.evaluate(() => {
-		const api = (window as unknown as { components: Record<string, { getInstances(): { translateCallback: unknown; labels: unknown }[] }> }).components;
-		const tree = api['svelte-treeview'].getInstances().find((c) => typeof c.translateCallback === 'function')!;
-		tree.translateCallback = () => null;
+		const trees = (window as unknown as { __labelTrees: { translate: { update(u: object): void } } }).__labelTrees;
+		trees.translate.update({ translateCallback: () => null });
 	});
 	await expect(emptyText(page, 'translate')).toHaveText('page:svelte-treeview.messages.noData');
 });
@@ -106,8 +105,8 @@ test('a locale assigned before the tree loads is adopted', async ({ page }) => {
 
 test('a live labels change re-renders the rows (the prop path)', async ({ page }) => {
 	await page.evaluate(() => {
-		const api = (window as unknown as { components: Record<string, { getInstances(): { labels: unknown }[] }> }).components;
-		for (const c of api['svelte-treeview'].getInstances()) c.labels = { 'labels.noDisplayValue': 'PROP' };
+		const trees = (window as unknown as { __labelTrees: { noDisplay: { update(u: object): void } } }).__labelTrees;
+		trees.noDisplay.update({ labels: { 'labels.noDisplayValue': 'PROP' } });
 	});
 	await expect(scenario(page, 'no-display').locator('.stv__node-label')).toHaveText('PROP');
 });

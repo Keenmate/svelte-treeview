@@ -118,7 +118,7 @@ Without both requirements, no search indexing will occur.
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-Every `on*` event, `before*Callback` and per-node `get*Callback` ctx also carries **`controller`** (the `TreeController`, non-enumerable — destructure it; JSON / spread skip it). Every `on*` event receives a **single context object** mirroring the clipboard callbacks. The shared shape is `NodeRef<T> = { path, node, parent, siblings }` — the node the event is about plus the relational context the tree already resolved (`parent` node and `siblings`, the children of that parent), so you never need a `getNodeByPath(node.parentPath)` round-trip. `node`/`parent`/`siblings` are `null`/`[]` when the node isn't reachable (cross-tree, or removed by a cut). `NodeRef`, `NodeEventContext`, `NodeDragContext`, `NodeDropContext`, `ClipboardEventContext`, and `SelectionChangeContext` are exported from the package.
+Every `on*` event, `before*Callback` and per-node `get*Callback` ctx also carries **`controller`** (the `TreeController` — a frozen facade with the public methods and read-only state, the same object `window.components['svelte-treeview'].getInstances()` lists; non-enumerable — destructure it; JSON / spread skip it). Every `on*` event receives a **single context object** mirroring the clipboard callbacks. The shared shape is `NodeRef<T> = { path, node, parent, siblings }` — the node the event is about plus the relational context the tree already resolved (`parent` node and `siblings`, the children of that parent), so you never need a `getNodeByPath(node.parentPath)` round-trip. `node`/`parent`/`siblings` are `null`/`[]` when the node isn't reachable (cross-tree, or removed by a cut). `NodeRef`, `NodeEventContext`, `NodeDragContext`, `NodeDropContext`, `ClipboardEventContext`, and `SelectionChangeContext` are exported from the package.
 
 > **Drag/drop is single-origin.** A drag has one DOM origin, so `onNodeDragStart` / `onNodeDragOver` / `onNodeDrop` each fire **once**, even when multiple nodes are selected. `ctx.dragged` (on all three) carries the full top-level dragged set — the multi-selection, or a single-item array for a plain drag — so you never have to read `controller.selectedPaths` yourself. This holds **cross-tree too**: the source publishes its top-level set on drag start, so a cross-tree drop's `ctx.dragged` still lists every dragged path (as path-only refs — `node`/`parent` are `null` cross-tree). `source` (drop) is just the lead node of that set. Note the library only *auto-places* the lead node on a cross-tree drop; use `ctx.dragged` to fan out the rest yourself.
 
@@ -159,7 +159,7 @@ Order: `beforeActionCallback` → item `onClick(detail)` → built-in → `onAct
 
 ### Custom menu renderer
 
-Rendering your own menu (a `contextMenu` snippet, or a headless `TreeProvider` / `createTreeController` UI such as `@keenmate/svelte-treeview-canvas`) uses the same public pieces as the built-in menu, so built-in texts / state and the activation order stay identical:
+Rendering your own menu (a `contextMenu` snippet, or a headless `TreeProvider` / `createTreeEngine` UI such as `@keenmate/svelte-treeview-canvas`) uses the same public pieces as the built-in menu, so built-in texts / state and the activation order stay identical:
 
 | API | Description |
 |-----|-------------|
@@ -192,7 +192,7 @@ Rendering your own menu (a `contextMenu` snippet, or a headless `TreeProvider` /
 
 ### Custom drag renderer
 
-Drag and drop is one pointer-events drag for mouse, pen and touch (core `createPointerDrag`, no HTML5 drag session). A headless `TreeProvider` / `createTreeController` UI plugs into it with one call and two attributes:
+Drag and drop is one pointer-events drag for mouse, pen and touch (core `createPointerDrag`, no HTML5 drag session). A headless `TreeProvider` / `createTreeEngine` UI plugs into it with one call and two attributes:
 
 - `controller.attachPointerDrag(container)` once on the element holding your nodes (Svelte: `{@attach (el) => controller.attachPointerDrag(el)}`; returns the detach). Mouse / pen engage after a 5px move, touch after a long-press; ghost, edge autoscroll, Esc-cancel, `beforeDragStartCallback` / `beforeDropCallback`, multi-drag and cross-tree all work as in `<Tree>`.
 - `data-tree-path={node.path}` on each node's element — a press inside it drags that node, and the nearest one under the pointer is the drop target.

@@ -97,7 +97,7 @@ export const EXAMPLE_PAGES: ExamplePage[] = [
 		href: '/examples/custom-layout',
 		icon: '🧩',
 		title: 'Custom Layout',
-		description: 'Build custom UIs (breadcrumbs, badge clouds) on the headless TreeController via TreeProvider.'
+		description: 'Build custom UIs (breadcrumbs, badge clouds) on the headless TreeEngine via TreeProvider.'
 	},
 	{
 		href: '/examples/integration',

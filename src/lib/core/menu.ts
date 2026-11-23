@@ -6,7 +6,7 @@
  * Activation order: `beforeActionCallback` → item `onClick` → built-in → `onAction`.
  */
 import type { LTreeNode } from '../ltree/ltree-node.svelte.js';
-import type { NodeRef, TreeCallbackContext } from './TreeController.svelte.js';
+import type { NodeRef, TreeCallbackContext } from './TreeEngine.svelte.js';
 import type { ActionEventDetail, MenuEntry, MenuItem } from '../vendor/actions/types.js';
 
 export type {

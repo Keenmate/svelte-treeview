@@ -38,7 +38,7 @@
 	} from '../ltree/types.js';
 	import { setContext, onDestroy, untrack, type Snippet } from 'svelte';
 	import type { RenderStats } from '../ltree/types.js';
-	import { TreeController, type TreeControllerProps } from '../core/TreeController.svelte.js';
+	import { TreeEngine, type TreeEngineProps } from '../core/TreeEngine.svelte.js';
 	import { TREE_OPTION_KEYS } from '../core/tree-props.js';
 	import type { TranslateCallback, TreeLabelsInput } from '../core/labels.js';
 	import type {
@@ -60,10 +60,10 @@
 		TreeCallbackContext,
 		TreeRenderIconCallback,
 		ScrollToPathOptions
-	} from '../core/TreeController.svelte.js';
+	} from '../core/TreeEngine.svelte.js';
 	import { uiLogger } from '../logger.js';
 	import { getPageLoaderCallback, pageLoader } from '../core/loader.js';
-	import { createTreeController } from '../core/createTreeController.js';
+	import { createTreeEngine } from '../core/createTreeEngine.js';
 	import type { TreeNavigationOverrides } from '../core/navigation.js';
 	import type { TreeMenuContext, TreeMenuEntry, TreeAction, TreeActionEventDetail } from '../core/menu.js';
 	import { containerSize as trackContainerSize, environmentState } from '../core/responsive.svelte.js';
@@ -73,7 +73,7 @@
 	import { observeThemeContext, type ColorScheme, type ThemeSource } from '../vendor/core/environment/theme.js';
 	import { adoptMotionStyles, isMotion, publishMotionHook, type Motion } from '../vendor/core/environment/motion.js';
 
-	// NodeCallbacks and NodeConfig are now defined in ../core/TreeController.svelte.ts
+	// NodeCallbacks and NodeConfig are now defined in ../core/TreeEngine.svelte.ts
 	// and re-exported from index.ts for public consumption.
 
 	interface Props {
@@ -320,7 +320,7 @@
 		// carry paths + resolved nodes (pre-removal snapshots for delete); onNodePaste the PasteResult.
 		onNodeCopy?: (ctx: ClipboardEventContext<T>) => void;
 		onNodeCut?: (ctx: ClipboardEventContext<T>) => void;
-		onNodePaste?: (result: import('../core/TreeController.svelte.js').PasteResult<T>) => void;
+		onNodePaste?: (result: import('../core/TreeEngine.svelte.js').PasteResult<T>) => void;
 		/** Fired after the built-in Delete (or `runDeleteCommand`) removes nodes, with the removed
 		 *  top-level paths plus their pre-removal nodes. */
 		onNodeDelete?: (ctx: ClipboardEventContext<T>) => void;
@@ -346,36 +346,36 @@
 		 * cross-tree nodes are left for onNodeDrop). Return `void` to proceed. Async-capable.
 		 */
 		beforeDropCallback?: (
-			ctx: import('../core/TreeController.svelte.js').BeforeDropContext<T>
+			ctx: import('../core/TreeEngine.svelte.js').BeforeDropContext<T>
 		) =>
 			| boolean
 			| { position?: DropPosition; operation?: DropOperation }
-			| import('../core/TreeController.svelte.js').DropGroup[]
+			| import('../core/TreeEngine.svelte.js').DropGroup[]
 			| void
 			| Promise<
 					| boolean
 					| { position?: DropPosition; operation?: DropOperation }
-					| import('../core/TreeController.svelte.js').DropGroup[]
+					| import('../core/TreeEngine.svelte.js').DropGroup[]
 					| void
 			  >;
 		/** Set-level pre-drag interceptor. Return a `string[]` of top-level paths to REPLACE the
 		 *  dragged set (prune and/or force-add nodes that can't be omitted), `false` to cancel the
 		 *  drag, or `void` to keep the default. Synchronous. See DragStartContext. */
 		beforeDragStartCallback?: (
-			ctx: import('../core/TreeController.svelte.js').DragStartContext<T>
+			ctx: import('../core/TreeEngine.svelte.js').DragStartContext<T>
 		) => string[] | false | void;
 		beforeCopyCallback?: (
-			ctx: import('../core/TreeController.svelte.js').BeforeCopyContext<T>
+			ctx: import('../core/TreeEngine.svelte.js').BeforeCopyContext<T>
 		) => string[] | false | void;
 		beforeCutCallback?: (
-			ctx: import('../core/TreeController.svelte.js').BeforeCopyContext<T>
+			ctx: import('../core/TreeEngine.svelte.js').BeforeCopyContext<T>
 		) => string[] | false | void;
 		beforePasteCallback?: (
-			ctx: import('../core/TreeController.svelte.js').BeforePasteContext<T>
+			ctx: import('../core/TreeEngine.svelte.js').BeforePasteContext<T>
 		) => { targetPath?: string; position?: 'child' | 'before' | 'after' } | false | void;
 		/** Runs before the built-in Delete removes anything. Return a narrowed path[] to restrict, or false to block. */
 		beforeDeleteCallback?: (
-			ctx: import('../core/TreeController.svelte.js').BeforeDeleteContext<T>
+			ctx: import('../core/TreeEngine.svelte.js').BeforeDeleteContext<T>
 		) => string[] | false | void;
 		/** OUTPUT transform (egress) — per node as it LEAVES the source: Ctrl+C/X, or the capture
 		 *  side of a copy-drop. Strip transient/sensitive fields. Fires for copy, never a move. */
@@ -545,7 +545,7 @@
 		tooltip,
 		icon,
 
-		// Props of the component itself (not the controller's)
+		// Props of the component itself (not the engine's)
 		theme,
 		themeSource,
 		motion = 'auto',
@@ -556,16 +556,16 @@
 		onContainerResize,
 		beforeKeydownCallback,
 
-		// Every other prop is a controller option (core/tree-props.ts: defaults + how a change applies)
+		// Every other prop is a engine option (core/tree-props.ts: defaults + how a change applies)
 		...options
 	}: Props = $props();
 
-	// ── Create controller ───────────────────────────────────────────────
+	// ── Create engine ───────────────────────────────────────────────
 	// Initial values only — every option is re-synced by the per-key effects below (search for
-	// "Sync props → controller"); the svelte-ignore covers reading the props here.
+	// "Sync props → engine"); the svelte-ignore covers reading the props here.
 	// svelte-ignore state_referenced_locally
-	const controller = createTreeController<T>({
-		...(options as Partial<TreeControllerProps<T>>),
+	const engine = createTreeEngine<T>({
+		...(options as Partial<TreeEngineProps<T>>),
 		nodes,
 		focusedNode,
 		selectedPaths,
@@ -573,7 +573,7 @@
 		expandedPaths,
 		searchTerm,
 		hasContextMenuSnippet: !!contextMenu
-	} as TreeControllerProps<T>);
+	} as TreeEngineProps<T>);
 
 	// Reactive render environment shared with every Node — device class + the tree's
 	// container box. Mutated (not replaced) in an $effect below so the context reference
@@ -584,9 +584,9 @@
 	});
 
 	// ── Set contexts (must happen synchronously during component init) ──
-	setContext('Ltree', controller.tree);
-	setContext('NodeCallbacks', controller.nodeCallbacks);
-	setContext('NodeConfig', controller.nodeConfig);
+	setContext('Ltree', engine.tree);
+	setContext('NodeCallbacks', engine.nodeCallbacks);
+	setContext('NodeConfig', engine.nodeConfig);
 	// The rich-content tooltip snippet (stable identity) reaches every Node via
 	// context, so it doesn't need threading through each render site + the recursive
 	// forward. The string callback + options travel in NodeConfig.
@@ -596,21 +596,21 @@
 	// svelte-ignore state_referenced_locally
 	setContext('NodeIcon', icon);
 	setContext('NodeRenderEnv', nodeRenderEnv);
-	// The tree's controller for the snippet-based menu items (ContextMenuItem icons).
-	setContext('TreeController', controller);
+	// The tree's engine for the snippet-based menu items (ContextMenuItem icons).
+	setContext('TreeEngine', engine);
 
 	// ── Cleanup on destroy ──────────────────────────────────────────────
-	onDestroy(() => controller.destroy());
+	onDestroy(() => engine.destroy());
 
-	// ── Bind container element for controller ───────────────────────────
+	// ── Bind container element for engine ───────────────────────────
 	let treeContainerRef: HTMLDivElement;
 	$effect(() => {
 		if (treeContainerRef) {
-			controller.containerElement = treeContainerRef;
+			engine.containerElement = treeContainerRef;
 			// Core's /menu asks its host's `renderIconCallback` for item icons (a web component's
 			// own input): the container answers with this tree's hook (ctx.item).
 			(treeContainerRef as HTMLElement & { renderIconCallback?: unknown }).renderIconCallback =
-				controller.menuRenderIconCallback;
+				engine.menuRenderIconCallback;
 		}
 	});
 
@@ -619,7 +619,7 @@
 	$effect(() => {
 		if (!treeContainerRef) return;
 		const el = treeContainerRef;
-		return untrack(() => controller._attachPointerDrag(el, true));
+		return untrack(() => engine._attachPointerDrag(el, true));
 	});
 
 	// ── Theme context (core SPEC §12.10, vendored) ─────────────────────────
@@ -669,7 +669,7 @@
 		const snapshot: ElementSize = { width: w, height: h };
 		_lastEmittedBox = snapshot;
 		containerSize = snapshot;
-		onContainerResize?.(Object.defineProperty({ size: snapshot, deviceClass: classifyDevice(getEnvironment()) }, 'controller', { value: controller, enumerable: false }) as { size: ElementSize; deviceClass: DeviceClass } & TreeCallbackContext<T>);
+		onContainerResize?.(Object.defineProperty({ size: snapshot, deviceClass: classifyDevice(getEnvironment()) }, 'controller', { value: engine.controller, enumerable: false }) as { size: ElementSize; deviceClass: DeviceClass } & TreeCallbackContext<T>);
 	});
 
 	// Feed the shared NodeRenderContext env: reactive device class + container box.
@@ -683,29 +683,29 @@
 	// ── Context menu (core /menu `openMenu()` — the same menu as web-treeview) ─────
 	// Core renders it, positions it, dismisses it (outside press, scroll, blur, Escape, Tab, phone
 	// Back) and runs the WAI-ARIA menu keyboard; a phone gets the sheet / drawer (`menuPresentation`).
-	// It opens once per (node, point) and reports its own close back to the controller. A
+	// It opens once per (node, point) and reports its own close back to the engine. A
 	// `contextMenu` snippet renders into a host below and moves into core's custom-menu element.
 	let contextMenuHandle: MenuHandle | null = null;
 	let snippetMenuHost = $state<HTMLDivElement | null>(null);
 	/** The next open came from the keyboard (Shift+F10 / ContextMenu) → focus its first item. */
 	let isMenuOpeningFromKeyboard = false;
-	// Core owns the dismiss; the controller's own (for headless renderers — canvas) stays off.
-	controller.shouldAutoCloseContextMenu = false;
+	// Core owns the dismiss; the engine's own (for headless renderers — canvas) stays off.
+	engine.shouldAutoCloseContextMenu = false;
 	$effect(() => {
-		const node = controller.contextMenuNode;
-		const host = controller.containerElement;
-		// contextMenuX/Y already include contextMenuXOffset/YOffset (controller.openContextMenu).
-		const at = { x: controller.contextMenuX, y: controller.contextMenuY };
-		const getItems = controller.getContextMenuItemsHandler;
+		const node = engine.contextMenuNode;
+		const host = engine.containerElement;
+		// contextMenuX/Y already include contextMenuXOffset/YOffset (engine.openContextMenu).
+		const at = { x: engine.contextMenuX, y: engine.contextMenuY };
+		const getItems = engine.getContextMenuItemsHandler;
 		const isSnippet = !getItems && !!contextMenu;
 		const snippetHost = snippetMenuHost;
-		if (!controller.contextMenuVisible || !node || !host) return;
+		if (!engine.contextMenuVisible || !node || !host) return;
 		if (isSnippet && !snippetHost) return; // the snippet renders first, then moves into the menu
 		return untrack(() => {
 			const isFromKeyboard = isMenuOpeningFromKeyboard;
 			isMenuOpeningFromKeyboard = false;
 			// One surface ctx per open: every item callback, onClick and submenu share it.
-			const ctx = controller.menuContext(node);
+			const ctx = engine.menuContext(node);
 			const menu: MenuHandle = openMenu<TreeMenuContext<T>, TreeAction>(
 				isSnippet ? [] : (getItems?.(ctx) ?? []),
 				ctx,
@@ -715,30 +715,30 @@
 					shouldFocusFirst: isFromKeyboard,
 					returnFocusTo: host,
 					// The node's text names the menu: the phone sheet's header and the menu's aria-label.
-					title: controller.tree?.getNodeDisplayValue(node) || node.path,
+					title: engine.tree?.getNodeDisplayValue(node) || node.path,
 					presentation: menuPresentation ?? 'auto',
 					side: menuSide ?? 'start',
 					// The tree's own strings: a lazy submenu's loading row, the sheet's back / close buttons.
 					labels: {
-						loading: controller.getLabel('messages.loading'),
-						back: controller.getLabel('menuItems.back'),
-						close: controller.getLabel('ariaLabels.closeSheet')
+						loading: engine.getLabel('messages.loading'),
+						back: engine.getLabel('menuItems.back'),
+						close: engine.getLabel('ariaLabels.closeSheet')
 					},
-					defaults: (item) => controller.menuItemDefaults(item, ctx),
+					defaults: (item) => engine.menuItemDefaults(item, ctx),
 					renderMenuCallback:
 						isSnippet && snippetHost ? (el) => el.appendChild(snippetHost) : undefined,
 					runAction: (item, { triggerElement, sourceEvent }) =>
-						controller.activateMenuItem(item, ctx, triggerElement, sourceEvent),
+						engine.activateMenuItem(item, ctx, triggerElement, sourceEvent),
 					onClose: () => {
 						if (contextMenuHandle !== menu) return; // replaced by a newer open / torn down
 						contextMenuHandle = null;
-						if (controller.contextMenuVisible) controller.closeContextMenu();
+						if (engine.contextMenuVisible) engine.closeContextMenu();
 					}
 				}
 			);
 			if (!menu.isOpen) {
-				// No visible item — nothing was shown; keep the controller in sync.
-				controller.closeContextMenu();
+				// No visible item — nothing was shown; keep the engine in sync.
+				engine.closeContextMenu();
 				return;
 			}
 			contextMenuHandle = menu;
@@ -751,8 +751,8 @@
 
 	/** Shift+F10 / the ContextMenu key: the focused node's menu, below its row, first item focused. */
 	function openContextMenuFromKeyboard(): boolean {
-		if (!contextMenu && !controller.getContextMenuItemsHandler) return false;
-		const node = controller.focusedNode;
+		if (!contextMenu && !engine.getContextMenuItemsHandler) return false;
+		const node = engine.focusedNode;
 		if (!node || !treeContainerRef) return false;
 		const row = treeContainerRef.querySelector(
 			`[data-tree-path="${CSS.escape(node.path)}"] .stv__node-content`
@@ -762,16 +762,16 @@
 		// At the node's inline-start corner (the right edge in a right-to-left tree). openContextMenu
 		// adds the cursor offsets; take them back off — a keyboard menu sits on the row.
 		const isRtl = getComputedStyle(treeContainerRef).direction === 'rtl';
-		controller.openContextMenu(
+		engine.openContextMenu(
 			node.path,
-			(isRtl ? rect.right : rect.left) - controller.contextMenuXOffset,
-			rect.bottom - controller.contextMenuYOffset
+			(isRtl ? rect.right : rect.left) - engine.contextMenuXOffset,
+			rect.bottom - engine.contextMenuYOffset
 		);
 		return true;
 	}
 
-	// ── Sync props → controller (one-way: parent prop changes flow in) ─
-	// `nodes` is input AND current state: the controller writes the tree's data back after a
+	// ── Sync props → engine (one-way: parent prop changes flow in) ─
+	// `nodes` is input AND current state: the engine writes the tree's data back after a
 	// mutation (reverse effect below); that echo must not be fed in again as a new input.
 	let isNodesEcho = false;
 	$effect(() => {
@@ -780,15 +780,15 @@
 			isNodesEcho = false;
 			return;
 		}
-		controller.nodes = incoming;
+		engine.nodes = incoming;
 	});
 	$effect(() => {
 		const term = searchTerm;
-		untrack(() => controller.updateProps({ searchTerm: term }));
+		untrack(() => engine.updateProps({ searchTerm: term }));
 	});
 	$effect(() => {
 		const hasSnippet = !!contextMenu;
-		untrack(() => controller.updateProps({ hasContextMenuSnippet: hasSnippet }));
+		untrack(() => engine.updateProps({ hasContextMenuSnippet: hasSnippet }));
 	});
 	// One effect per option: a changed prop goes through updateProps (which skips an unchanged
 	// value, applies the default for undefined, re-inserts the data for an ltree option and warns
@@ -797,20 +797,20 @@
 		if (key === 'searchTerm' || key === 'hasContextMenuSnippet') continue;
 		$effect(() => {
 			const value = (options as Record<string, unknown>)[key];
-			untrack(() => controller.updateProps({ [key]: value }));
+			untrack(() => engine.updateProps({ [key]: value }));
 		});
 	}
 
-	// ── Sync controller → bindable props (outputs flow back to parent) ──
+	// ── Sync engine → bindable props (outputs flow back to parent) ──
 	$effect(() => {
-		focusedNode = controller.focusedNode;
+		focusedNode = engine.focusedNode;
 	});
 	$effect(() => {
-		selectedPaths = controller.selectedPaths;
+		selectedPaths = engine.selectedPaths;
 	});
 	$effect(() => {
-		// Current state after a mutation (the controller's write-back) flows out to bind:nodes.
-		const current = controller.nodes;
+		// Current state after a mutation (the engine's write-back) flows out to bind:nodes.
+		const current = engine.nodes;
 		if (untrack(() => nodes) !== current) {
 			isNodesEcho = true;
 			nodes = current;
@@ -819,63 +819,63 @@
 	$effect(() => {
 		// The bindable prop exposes the POLICY-PROJECTED selection (rolled-up /
 		// leaves / all), not the internal canonical set. See cascadeCheckPolicy.
-		checkedPaths = controller.emittedPaths;
+		checkedPaths = engine.emittedPaths;
 	});
 	$effect(() => {
-		expandedPaths = controller.expandedPaths;
+		expandedPaths = engine.expandedPaths;
 	});
 	$effect(() => {
-		insertResult = controller.insertResult;
+		insertResult = engine.insertResult;
 	});
 	$effect(() => {
-		isRendering = controller.isRendering;
+		isRendering = engine.isRendering;
 	});
 
 	// Bidirectional: parent can also SET these
 	$effect(() => {
 		// Through the focus writer: a raw write left the old row's focus visual behind and
-		// never set the new row's. The controller→prop echo is a no-op (same path).
+		// never set the new row's. The engine→prop echo is a no-op (same path).
 		const fn = focusedNode;
-		untrack(() => controller._replaceFocusedNode(fn));
+		untrack(() => engine._replaceFocusedNode(fn));
 	});
 	$effect(() => {
 		// Compare by size + content to avoid proxy identity loops
 		const hp = selectedPaths;
-		const cp = controller.selectedPaths;
+		const cp = engine.selectedPaths;
 		if (hp.size !== cp.size || [...hp].some((p) => !cp.has(p))) {
 			// Assigning the bindable replaces the set (node flags too) — silent, no event.
-			controller._replaceSelectedPaths(hp);
+			engine._replaceSelectedPaths(hp);
 		}
 	});
 	$effect(() => {
 		const sp = checkedPaths;
-		const cp = controller.emittedPaths;
+		const cp = engine.emittedPaths;
 		if (sp.size !== cp.size || [...sp].some((p) => !cp.has(p))) {
 			// Incoming set is a projection; expand it (cascade-down) into the canonical
 			// checked state. Silent — the parent set this, so don't echo onCheckedChange.
-			controller._replaceCheckedPaths(sp);
+			engine._replaceCheckedPaths(sp);
 		}
 	});
 	$effect(() => {
 		const ep = expandedPaths;
-		const cp = untrack(() => controller.expandedPaths);
+		const cp = untrack(() => engine.expandedPaths);
 		if (ep !== cp && (ep.size !== cp.size || [...ep].some((p) => !cp.has(p)))) {
 			// Assigning the bindable replaces the expanded state — silent, no event.
-			controller._replaceExpandedPaths(ep);
+			engine._replaceExpandedPaths(ep);
 		}
 	});
 
 	// ── Floating drop zone helpers ───────────────────────────────────────
 	const formattedDropZoneStart = $derived(
-		typeof controller.dropZoneStart === 'number'
-			? `${controller.dropZoneStart}%`
-			: controller.dropZoneStart
+		typeof engine.dropZoneStart === 'number'
+			? `${engine.dropZoneStart}%`
+			: engine.dropZoneStart
 	);
 
 	// Show the drop placeholder either mid-drag (isDropPlaceholderActive) or, when
 	// isEmptyDropPlaceholderShown is set, permanently while the tree is empty.
 	const showEmptyDropPlaceholder = $derived(
-		controller.isDropPlaceholderActive || isEmptyDropPlaceholderShown
+		engine.isDropPlaceholderActive || isEmptyDropPlaceholderShown
 	);
 
 	// Focus-on-hover for the permanent empty drop zone: gives the tabbable container
@@ -887,68 +887,68 @@
 
 	// ── Export public methods (thin proxies) ────────────────────────────
 	export async function expandNodes(paths: string | string[], options?: ExpandOptions) {
-		return controller.expandNodes(paths, options);
+		return engine.expandNodes(paths, options);
 	}
 
 	/** Settles after the collapse applied — after the rows animated out (motion). */
 	export async function collapseNodes(paths: string | string[], options?: ExpandOptions) {
-		return controller.collapseNodes(paths, options);
+		return engine.collapseNodes(paths, options);
 	}
 
 	export async function toggleNodeExpanded(path: string, options?: ExpandOptions) {
-		return controller.toggleNodeExpanded(path, options);
+		return engine.toggleNodeExpanded(path, options);
 	}
 
 	export function expandAll(paths?: string | string[] | null, options?: ExpandOptions) {
-		controller.expandAll(paths, options);
+		engine.expandAll(paths, options);
 	}
 
 	/** Settles after the collapse applied — after the rows animated out (motion). */
 	export function collapseAll(paths?: string | string[] | null, options?: ExpandOptions): Promise<void> {
-		return controller.collapseAll(paths, options);
+		return engine.collapseAll(paths, options);
 	}
 
 	export function filterNodes(term: string, searchOptions?: SearchOptions): void {
-		controller.filterNodes(term, searchOptions);
+		engine.filterNodes(term, searchOptions);
 	}
 
 	export function searchNodes(
 		term: string | null | undefined,
 		searchOptions?: SearchOptions
 	): LTreeNode<T>[] {
-		return controller.searchNodes(term, searchOptions);
+		return engine.searchNodes(term, searchOptions);
 	}
 
 	export function getChildren(parentPath: string): LTreeNode<T>[] {
-		return controller.getChildren(parentPath);
+		return engine.getChildren(parentPath);
 	}
 
 	export function getSiblings(path: string): LTreeNode<T>[] {
-		return controller.getSiblings(path);
+		return engine.getSiblings(path);
 	}
 
 	export function refreshSiblings(parentPath: string): void {
-		controller.refreshSiblings(parentPath);
+		engine.refreshSiblings(parentPath);
 	}
 
 	/** Sort the children of each node — one level (`''` = the root level). Default rule = the
 	 *  tree's own (`sortCallback` → `orderMember` → `Intl.Collator(numeric)` by display value);
 	 *  `compareCallback` / `direction` override it. Runs even with `isSortingEnabled={false}`. */
 	export function sortNodes(paths: string | string[], options?: SortOptions<T>): void {
-		controller.sortNodes(paths, options);
+		engine.sortNodes(paths, options);
 	}
 
 	/** Sort whole subtrees (`null` / omitted = the whole tree). Same rule / options as `sortNodes`. */
 	export function sortAll(paths?: string | string[] | null, options?: SortOptions<T>): void {
-		controller.sortAll(paths, options);
+		engine.sortAll(paths, options);
 	}
 
 	export function refreshNode(path: string): void {
-		controller.refreshNode(path);
+		engine.refreshNode(path);
 	}
 
 	export function getNodeByPath(path: string): LTreeNode<T> | null {
-		return controller.getNodeByPath(path);
+		return engine.getNodeByPath(path);
 	}
 
 	export function moveNode(
@@ -956,7 +956,7 @@
 		targetPath: string,
 		position: 'before' | 'after' | 'child'
 	): { success: boolean; error?: string } {
-		return controller.moveNode(sourcePath, targetPath, position);
+		return engine.moveNode(sourcePath, targetPath, position);
 	}
 
 	export function moveNodes(
@@ -964,7 +964,7 @@
 		targetPath: string,
 		position: 'before' | 'after' | 'child'
 	): { success: boolean; movedNodes: LTreeNode<T>[]; leftBehind: LTreeNode<T>[]; error?: string } {
-		return controller.moveNodes(paths, targetPath, position);
+		return engine.moveNodes(paths, targetPath, position);
 	}
 
 	export function duplicateNodes(
@@ -974,25 +974,25 @@
 		transform?: NodeTransformCallback<T> | null,
 		sourceTree?: Ltree<T>
 	): { success: boolean; copiedNodes: LTreeNode<T>[]; skipped: number; error?: string } {
-		return controller.duplicateNodes(paths, targetPath, position, transform, sourceTree);
+		return engine.duplicateNodes(paths, targetPath, position, transform, sourceTree);
 	}
 
 	export function removeNode(
 		path: string,
 		includeDescendants: boolean = true
 	): { success: boolean; node?: LTreeNode<T>; error?: string } {
-		return controller.removeNode(path, includeDescendants);
+		return engine.removeNode(path, includeDescendants);
 	}
 
 	/** The user's Delete command on `paths` (default: the selection, else the focused node):
 	 *  `beforeDeleteCallback` may narrow / veto, then `onNodeDelete` fires with the removed paths. */
 	export function runDeleteCommand(paths?: string[]): { removed: number; blocked: number } {
-		return controller.runDeleteCommand(paths);
+		return engine.runDeleteCommand(paths);
 	}
 
 	/** Programmatic removal of several subtrees (no beforeDeleteCallback, no onNodeDelete). */
 	export function removeNodes(paths: string[]): { removed: number; failed: number } {
-		return controller.removeNodes(paths);
+		return engine.removeNodes(paths);
 	}
 
 	export function addNode(
@@ -1000,18 +1000,18 @@
 		nodeData: T,
 		pathSegment?: string
 	): { success: boolean; node?: LTreeNode<T>; error?: string } {
-		return controller.addNode(parentPath, nodeData, pathSegment);
+		return engine.addNode(parentPath, nodeData, pathSegment);
 	}
 
 	export function updateNode(
 		path: string,
 		dataUpdates: Partial<T>
 	): { success: boolean; node?: LTreeNode<T>; error?: string } {
-		return controller.updateNode(path, dataUpdates);
+		return engine.updateNode(path, dataUpdates);
 	}
 
 	export function applyChanges(changes: TreeChange<T>[]): ApplyChangesResult {
-		return controller.applyChanges(changes);
+		return engine.applyChanges(changes);
 	}
 
 	export function insertNode(
@@ -1019,11 +1019,11 @@
 		nodeData: T,
 		position: InsertPosition
 	): { success: boolean; node?: LTreeNode<T>; error?: string } {
-		return controller.insertNode(targetPath, nodeData, position);
+		return engine.insertNode(targetPath, nodeData, position);
 	}
 
 	export function addBranch(parentPath: string, data: T[]): InsertBranchResult<T> {
-		return controller.addBranch(parentPath, data);
+		return engine.addBranch(parentPath, data);
 	}
 
 	export function insertBranch(
@@ -1031,15 +1031,15 @@
 		data: T[],
 		position: InsertPosition
 	): InsertBranchResult<T> {
-		return controller.insertBranch(targetPath, data, position);
+		return engine.insertBranch(targetPath, data, position);
 	}
 
 	export function replaceBranch(parentPath: string, data: T[]): ReplaceBranchResult<T> {
-		return controller.replaceBranch(parentPath, data);
+		return engine.replaceBranch(parentPath, data);
 	}
 
 	export function removeBranch(path: string, keepParent?: boolean): RemoveBranchResult<T> {
-		return controller.removeBranch(path, keepParent);
+		return engine.removeBranch(path, keepParent);
 	}
 
 	export function duplicateNode(
@@ -1049,7 +1049,7 @@
 		siblingPath?: string,
 		position?: 'before' | 'after'
 	): { success: boolean; rootNode?: LTreeNode<T>; count: number; error?: string } {
-		return controller.duplicateNode(
+		return engine.duplicateNode(
 			sourceNode,
 			targetParentPath,
 			transformData,
@@ -1059,44 +1059,44 @@
 	}
 
 	export function closeContextMenu() {
-		controller.closeContextMenu();
+		engine.closeContextMenu();
 	}
 
 	/** Open the context menu for the node at `path` at viewport coordinates (offsets applied). */
 	export function openContextMenu(path: string, x: number, y: number): void {
-		controller.openContextMenu(path, x, y);
+		engine.openContextMenu(path, x, y);
 	}
 
 	// ── Lookups ──────────────────────────────────────────────────────
 	/** `{ path, node, parent, siblings }` for a node (or a path — node/parent null when unknown). */
 	export function getNodeRef(nodeOrPath: LTreeNode<T> | string | null): NodeRef<T> {
-		return controller.getNodeRef(nodeOrPath);
+		return engine.getNodeRef(nodeOrPath);
 	}
 
 	/** The visible nodes in display order (expanded + search filter applied). */
 	export function getVisibleFlatNodes(): LTreeNode<T>[] {
-		return controller.getVisibleFlatNodes();
+		return engine.getVisibleFlatNodes();
 	}
 
 	/** The underlying LTree (advanced use). */
 	export function getTree(): Ltree<T> {
-		return controller.getTree();
+		return engine.getTree();
 	}
 
 	/** Whether the node at `path` accepts drops (`getIsDropAllowedCallback` > `isDropAllowedMember`). */
 	export function isNodeDropAllowed(path: string): boolean {
-		return controller.isNodeDropAllowed(path);
+		return engine.isNodeDropAllowed(path);
 	}
 
 	// ── Clipboard ────────────────────────────────────────────────────
 	/** Copy `paths` (default: the selection) to the clipboard (`beforeCopyCallback`, `onNodeCopy`). */
 	export function copyNodes(paths?: string[]): void {
-		controller.copyNodes(paths);
+		engine.copyNodes(paths);
 	}
 
 	/** Cut `paths` (default: the selection) — removed on paste (`beforeCutCallback`, `onNodeCut`). */
 	export function cutNodes(paths?: string[]): void {
-		controller.cutNodes(paths);
+		engine.cutNodes(paths);
 	}
 
 	/** Paste the clipboard under / before / after `targetPath` (`beforePasteCallback`, `onNodePaste`). */
@@ -1105,44 +1105,44 @@
 		transformData?: NodeTransformCallback<T> | null,
 		position: 'child' | 'before' | 'after' = 'child'
 	): PasteResult<T> {
-		return controller.pasteNodes(targetPath, transformData, position);
+		return engine.pasteNodes(targetPath, transformData, position);
 	}
 
 	/** Cancel a pending cut (the cut nodes stay). */
 	export function cancelCut(): void {
-		controller.cancelCut();
+		engine.cancelCut();
 	}
 
 	/** Whether the (page-wide) clipboard holds something to paste. */
 	export function hasClipboardContent(): boolean {
-		return controller.hasClipboardContent();
+		return engine.hasClipboardContent();
 	}
 
 	/** `'copy'` / `'cut'` of the clipboard content, `null` when empty. */
 	export function getClipboardOperation(): 'copy' | 'cut' | null {
-		return controller.getClipboardOperation();
+		return engine.getClipboardOperation();
 	}
 
 	// ── Keyboard navigation (what the built-in keys call; overridable via navigationOverrides) ──
-	export function focusAndSelectNode(path: string): void { controller.focusAndSelectNode(path); }
-	export function focusNext(): void { controller.focusNext(); }
-	export function focusPrevious(): void { controller.focusPrevious(); }
-	export function focusNextAtLevel(): void { controller.focusNextAtLevel(); }
-	export function focusPreviousAtLevel(): void { controller.focusPreviousAtLevel(); }
-	export function focusFirstChild(): void { controller.focusFirstChild(); }
-	export function focusParent(): void { controller.focusParent(); }
-	export function collapseParent(): void { controller.collapseParent(); }
-	export function toggleFocusedNodeExpanded(): void { controller.toggleFocusedNodeExpanded(); }
-	export function focusFirst(): void { controller.focusFirst(); }
-	export function focusLast(): void { controller.focusLast(); }
-	export function focusNextPage(): void { controller.focusNextPage(); }
-	export function focusPreviousPage(): void { controller.focusPreviousPage(); }
-	export function extendSelectionNext(): void { controller.extendSelectionNext(); }
-	export function extendSelectionPrevious(): void { controller.extendSelectionPrevious(); }
-	export function extendSelectionToFirst(): void { controller.extendSelectionToFirst(); }
-	export function extendSelectionToLast(): void { controller.extendSelectionToLast(); }
-	export function extendSelectionNextPage(): void { controller.extendSelectionNextPage(); }
-	export function extendSelectionPreviousPage(): void { controller.extendSelectionPreviousPage(); }
+	export function focusAndSelectNode(path: string): void { engine.focusAndSelectNode(path); }
+	export function focusNext(): void { engine.focusNext(); }
+	export function focusPrevious(): void { engine.focusPrevious(); }
+	export function focusNextAtLevel(): void { engine.focusNextAtLevel(); }
+	export function focusPreviousAtLevel(): void { engine.focusPreviousAtLevel(); }
+	export function focusFirstChild(): void { engine.focusFirstChild(); }
+	export function focusParent(): void { engine.focusParent(); }
+	export function collapseParent(): void { engine.collapseParent(); }
+	export function toggleFocusedNodeExpanded(): void { engine.toggleFocusedNodeExpanded(); }
+	export function focusFirst(): void { engine.focusFirst(); }
+	export function focusLast(): void { engine.focusLast(); }
+	export function focusNextPage(): void { engine.focusNextPage(); }
+	export function focusPreviousPage(): void { engine.focusPreviousPage(); }
+	export function extendSelectionNext(): void { engine.extendSelectionNext(); }
+	export function extendSelectionPrevious(): void { engine.extendSelectionPrevious(); }
+	export function extendSelectionToFirst(): void { engine.extendSelectionToFirst(); }
+	export function extendSelectionToLast(): void { engine.extendSelectionToLast(); }
+	export function extendSelectionNextPage(): void { engine.extendSelectionNextPage(); }
+	export function extendSelectionPreviousPage(): void { engine.extendSelectionPreviousPage(); }
 
 	// ── Selection set (UI multi-select — selectedPaths) ──────────────
 	export function selectNode(
@@ -1150,82 +1150,82 @@
 		mode: SelectMode = 'replace',
 		options?: TreeMutationOptions
 	) {
-		controller.selectNode(path, mode, options);
+		engine.selectNode(path, mode, options);
 	}
 
 	export function selectNodes(paths: string[], options?: TreeMutationOptions) {
-		controller.selectNodes(paths, options);
+		engine.selectNodes(paths, options);
 	}
 
 	export function selectAll(options?: TreeMutationOptions) {
-		controller.selectAll(options);
+		engine.selectAll(options);
 	}
 
 	export function clearSelection(paths?: string[], options?: TreeMutationOptions) {
-		controller.clearSelection(paths, options);
+		engine.clearSelection(paths, options);
 	}
 
 	// ── Checked set (checkbox / data state — checkedPaths) ───────────
 	export function checkNode(path: string, options?: TreeMutationOptions) {
-		controller.checkNode(path, options);
+		engine.checkNode(path, options);
 	}
 
 	export function checkNodes(paths: string[], options?: TreeMutationOptions) {
-		controller.checkNodes(paths, options);
+		engine.checkNodes(paths, options);
 	}
 
 	export function checkAll(options?: TreeMutationOptions) {
-		controller.checkAll(options);
+		engine.checkAll(options);
 	}
 
 	export function uncheckNode(path: string, options?: TreeMutationOptions) {
-		controller.uncheckNode(path, options);
+		engine.uncheckNode(path, options);
 	}
 
 	export function uncheckNodes(paths: string[], options?: TreeMutationOptions) {
-		controller.uncheckNodes(paths, options);
+		engine.uncheckNodes(paths, options);
 	}
 
 	export function uncheckAll(options?: TreeMutationOptions) {
-		controller.uncheckAll(options);
+		engine.uncheckAll(options);
 	}
 
 	// ── Focus (single cursor — focusedNode) ─────────────────────────────
 	export function focusNode(path: string, options?: TreeMutationOptions) {
-		controller.focusNode(path, options);
+		engine.focusNode(path, options);
 	}
 
 	export function clearFocus(options?: TreeMutationOptions) {
-		controller.clearFocus(options);
+		engine.clearFocus(options);
 	}
 
 	/** The selected nodes (the `selectedPaths` set, resolved). */
 	export function getSelectedNodes(): LTreeNode<T>[] {
-		return controller.getSelectedNodes();
+		return engine.getSelectedNodes();
 	}
 
 	/** Whether the node at `path` is in the selection. */
 	export function isNodeSelected(path: string): boolean {
-		return controller.isNodeSelected(path);
+		return engine.isNodeSelected(path);
 	}
 
 	export function getCheckedNodes(): LTreeNode<T>[] {
-		return controller.getCheckedNodes();
+		return engine.getCheckedNodes();
 	}
 
 	export function isNodeChecked(path: string): boolean {
-		return controller.isNodeChecked(path);
+		return engine.isNodeChecked(path);
 	}
 
 	/** Scroll the node at `path` into view (see `ScrollToPathOptions`); resolves `true` when found. */
 	export async function scrollToPath(path: string, options?: ScrollToPathOptions): Promise<boolean> {
-		return controller.scrollToPath(path, options);
+		return engine.scrollToPath(path, options);
 	}
 
 	/**
 	 * Change props from vanilla JavaScript (`tree.update({ searchTerm: 'x', expandLevel: 3 })`).
 	 * Every prop but the snippets. Bindable state and the component's own props are assigned here
-	 * (a parent's `bind:` sees them); every other prop goes to `controller.updateProps`.
+	 * (a parent's `bind:` sees them); every other prop goes to `engine.updateProps`.
 	 */
 	export function update(updates: TreeUpdateProps) {
 		if (updates.nodes !== undefined) nodes = updates.nodes;
@@ -1249,7 +1249,7 @@
 		for (const key of TREE_OPTION_KEYS) {
 			if (key !== 'searchTerm' && key in updates) optionUpdates[key] = (updates as Record<string, unknown>)[key];
 		}
-		controller.updateProps(optionUpdates as Partial<TreeControllerProps<T>>);
+		engine.updateProps(optionUpdates as Partial<TreeEngineProps<T>>);
 	}
 
 	// ── Arrow key navigation ─────────────────────────────────────────────
@@ -1258,19 +1258,19 @@
 		if (['Control', 'Shift', 'Alt', 'Meta'].includes(event.key)) return;
 
 		// Don't interfere with context menu keyboard handling
-		if (controller.contextMenuVisible) return;
+		if (engine.contextMenuVisible) return;
 
 		// Call custom handler first — return false to suppress default handling. Resolve the
 		// focus + selection sets up front so the consumer gets nodes, not raw paths.
 		if (beforeKeydownCallback) {
-			const selectedNodes = [...controller.selectedPaths]
-				.map((p) => controller.getNodeByPath(p))
+			const selectedNodes = [...engine.selectedPaths]
+				.map((p) => engine.getNodeByPath(p))
 				.filter((n): n is LTreeNode<T> => n !== null);
 			const result: unknown = beforeKeydownCallback({
 				event,
-				focusedNode: controller.focusedNode ?? null,
+				focusedNode: engine.focusedNode ?? null,
 				selectedNodes,
-				controller
+				controller: engine.controller
 			});
 			if (result instanceof Promise) {
 				uiLogger.warn('beforeKeydownCallback is synchronous — a returned Promise is ignored');
@@ -1293,69 +1293,69 @@
 		// Built-in opt-in shortcuts (copy/cut/paste/delete/esc). Runs AFTER the consumer
 		// hook (so it can override) but BEFORE the empty-tree return (so paste works into
 		// an empty tree). No-op unless shouldHandleKeyboardShortcuts is set.
-		if (controller.handleShortcutKeydown(event)) {
+		if (engine.handleShortcutKeydown(event)) {
 			event.preventDefault();
 			return;
 		}
 
-		if (controller.allFlatNodes.length === 0) return;
+		if (engine.allFlatNodes.length === 0) return;
 
 		let handled = true;
 
-		// Shift+nav extends the selection range. In single mode the controller
+		// Shift+nav extends the selection range. In single mode the engine
 		// short-circuits these to no-ops (see _extendSelectionTo).
 		switch (event.key) {
 			case 'ArrowDown':
-				event.shiftKey ? controller.extendSelectionNext() : controller.focusNextAtLevel();
+				event.shiftKey ? engine.extendSelectionNext() : engine.focusNextAtLevel();
 				break;
 			case 'ArrowUp':
-				event.shiftKey ? controller.extendSelectionPrevious() : controller.focusPreviousAtLevel();
+				event.shiftKey ? engine.extendSelectionPrevious() : engine.focusPreviousAtLevel();
 				break;
 			case 'ArrowRight':
-				controller.focusFirstChild();
+				engine.focusFirstChild();
 				break;
 			case 'ArrowLeft':
-				controller.focusParent();
+				engine.focusParent();
 				break;
 			case 'Backspace':
-				controller.collapseParent();
+				engine.collapseParent();
 				break;
 			case 'Home':
-				event.shiftKey ? controller.extendSelectionToFirst() : controller.focusFirst();
+				event.shiftKey ? engine.extendSelectionToFirst() : engine.focusFirst();
 				break;
 			case 'End':
-				event.shiftKey ? controller.extendSelectionToLast() : controller.focusLast();
+				event.shiftKey ? engine.extendSelectionToLast() : engine.focusLast();
 				break;
 			case 'PageDown':
-				event.shiftKey ? controller.extendSelectionNextPage() : controller.focusNextPage();
+				event.shiftKey ? engine.extendSelectionNextPage() : engine.focusNextPage();
 				break;
 			case 'PageUp':
-				event.shiftKey ? controller.extendSelectionPreviousPage() : controller.focusPreviousPage();
+				event.shiftKey ? engine.extendSelectionPreviousPage() : engine.focusPreviousPage();
 				break;
 			case 'Enter':
 				// WAI-ARIA tree: Enter = the node's default action (expand / collapse).
-				controller.toggleFocusedNodeExpanded();
+				engine.toggleFocusedNodeExpanded();
 				break;
 			case ' ':
 				// WAI-ARIA tree: Space toggles selection. With checkboxes: the focused node's
 				// checkbox; multiple mode: the focused node in the selection; single mode:
 				// selects the focused node (Enter expands / collapses).
-				if (controller.isCheckboxesShown && controller.focusedNode?.isSelectable) {
-					controller.nodeCallbacks.onCheckboxToggle(controller.focusedNode);
-				} else if (controller.selectionMode === 'multiple') {
-					controller.toggleFocusedSelect();
-				} else if (controller.focusedNode?.isSelectable) {
-					controller.selectNode(controller.focusedNode.path);
+				if (engine.isCheckboxesShown && engine.focusedNode?.isSelectable) {
+					engine.nodeCallbacks.onCheckboxToggle(engine.focusedNode);
+				} else if (engine.selectionMode === 'multiple') {
+					engine.toggleFocusedSelect();
+				} else if (engine.focusedNode?.isSelectable) {
+					engine.selectNode(engine.focusedNode.path);
 				}
 				break;
 			case 'Escape':
 				// Priority: pending cut → selection set → leave alone for surrounding UI.
 				// File Explorer / Finder convention. Context-menu Escape is handled by
 				// the separate window-level listener above and never reaches this path.
-				if (controller.hasClipboardContent() && controller.getClipboardOperation() === 'cut') {
-					controller.cancelCut();
-				} else if (controller.selectedPaths.size > 0) {
-					controller.clearSelection();
+				if (engine.hasClipboardContent() && engine.getClipboardOperation() === 'cut') {
+					engine.cancelCut();
+				} else if (engine.selectedPaths.size > 0) {
+					engine.clearSelection();
 				} else {
 					handled = false;
 				}
@@ -1378,7 +1378,7 @@
 	<div
 		class="stv__empty-state"
 		class:stv__drop-placeholder={showEmptyDropPlaceholder}
-		class:stv__drop-placeholder--active={controller.isDropPlaceholderActive}
+		class:stv__drop-placeholder--active={engine.isDropPlaceholderActive}
 		onmouseenter={focusEmptyDropZone}
 		onpointerdown={focusEmptyDropZone}
 	>
@@ -1386,14 +1386,14 @@
 			{#if dropPlaceholder}
 				{@render dropPlaceholder()}
 			{:else}
-				{@const dropHereText = controller.getLabel('messages.dropHere')}
+				{@const dropHereText = engine.getLabel('messages.dropHere')}
 				{#if dropHereText}<div class="stv__drop-placeholder-content">{dropHereText}</div>{/if}
 			{/if}
 		{:else if noData}
 			{@render noData()}
 		{:else}
 			<!-- No nodes at all → noData; nodes exist but the search filter hid them all → noResults -->
-			{@const emptyText = controller.getLabel(controller.hasNodes ? 'messages.noResults' : 'messages.noData')}
+			{@const emptyText = engine.getLabel(engine.hasNodes ? 'messages.noResults' : 'messages.noData')}
 			{#if emptyText}<div class="stv__empty-state-content">{emptyText}</div>{/if}
 		{/if}
 	</div>
@@ -1403,27 +1403,27 @@
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
 	class="stv__container"
-	class:stv__tree-drop-zone--active={controller.isTreeDropZoneEnabled && controller.isDropPlaceholderActive}
+	class:stv__tree-drop-zone--active={engine.isTreeDropZoneEnabled && engine.isDropPlaceholderActive}
 	tabindex="0"
 	data-theme={theme}
 	data-context-theme={contextTheme}
 	data-motion={motionLevel === 'auto' ? undefined : motionLevel}
-	data-node-title-overflow={controller.nodeTitleOverflow}
+	data-node-title-overflow={engine.nodeTitleOverflow}
 	data-icon-set={iconSet}
-	data-toggle-icon-mode={controller.toggleIconMode}
-	data-tree-id={controller.treeId}
+	data-toggle-icon-mode={engine.toggleIconMode}
+	data-tree-id={engine.treeId}
 	bind:this={treeContainerRef}
 	onkeydown={handleTreeKeydown}
 	oncontextmenu={(e) => {
 		// The browser's keyboard-initiated `contextmenu` (Shift+F10 / ContextMenu key) targets the
 		// focused container — ours is already open, don't show the native one too.
-		if (controller.contextMenuVisible && e.target === treeContainerRef) e.preventDefault();
+		if (engine.contextMenuVisible && e.target === treeContainerRef) e.preventDefault();
 	}}
 >
 	{@render treeHeader?.()}
 
-	{#if controller.isLoading}
-		{@const loadingText = controller.getLabel('ariaLabels.loading')}
+	{#if engine.isLoading}
+		{@const loadingText = engine.getLabel('ariaLabels.loading')}
 		<!-- Precedence: loadingPlaceholder snippet > page-wide window.components.renderLoadingCallback
 		     (the suite's shared loader hook, read without core; optional) > the default .stv__loader. -->
 		{@const pageLoaderHook = loadingPlaceholder ? undefined : getPageLoaderCallback()}
@@ -1445,28 +1445,28 @@
 		{/if}
 	{/if}
 
-	<div class={controller.bodyClass}>
-		{#if controller.tree?.root}
-			{#if controller.vsActive}
+	<div class={engine.bodyClass}>
+		{#if engine.tree?.root}
+			{#if engine.vsActive}
 				<!-- Virtual scrolling mode -->
 				<div
 					class="stv__tree stv__tree--flat stv__virtual-scroll"
-					style="height: {controller.vsContainerStyle}; overflow-y: auto;"
-					bind:this={controller.vsContainerRef}
-					onscroll={controller.handleVirtualScroll}
+					style="height: {engine.vsContainerStyle}; overflow-y: auto;"
+					bind:this={engine.vsContainerRef}
+					onscroll={engine.handleVirtualScroll}
 				>
 					<!-- Spacer for correct scrollbar -->
-					<div style="height: {controller.vsTotalHeight}px; position: relative;">
+					<div style="height: {engine.vsTotalHeight}px; position: relative;">
 						<!-- Rendered window at correct offset -->
-						<div style="transform: translateY({controller.vsOffsetY}px);">
-							{#each controller.flatNodesToRender as node (node.id + '|' + node.path + '|' + node.hasChildren + '|' + node._rev)}
+						<div style="transform: translateY({engine.vsOffsetY}px);">
+							{#each engine.flatNodesToRender as node (node.id + '|' + node.path + '|' + node.hasChildren + '|' + node._rev)}
 								<Node
 									{node}
 									children={nodeTemplate}
-									isDragInProgress={controller.isDragInProgress}
-									hoveredNodeForDropPath={controller.hoveredNodeForDrop?.path}
-									activeDropPosition={controller.activeDropPosition}
-									dropOperation={controller.currentDropOperation}
+									isDragInProgress={engine.isDragInProgress}
+									hoveredNodeForDropPath={engine.hoveredNodeForDrop?.path}
+									activeDropPosition={engine.activeDropPosition}
+									dropOperation={engine.currentDropOperation}
 								/>
 							{:else}
 								{@render emptyDropState()}
@@ -1477,14 +1477,14 @@
 			{:else}
 				<!-- Flat rendering: uses visibleFlatNodes (progressively revealed) for efficient updates -->
 				<div class="stv__tree stv__tree--flat">
-					{#each controller.flatNodesToRender as node (node.id + '|' + node.path + '|' + node.hasChildren + '|' + node._rev)}
+					{#each engine.flatNodesToRender as node (node.id + '|' + node.path + '|' + node.hasChildren + '|' + node._rev)}
 						<Node
 							{node}
 							children={nodeTemplate}
-							isDragInProgress={controller.isDragInProgress}
-							hoveredNodeForDropPath={controller.hoveredNodeForDrop?.path}
-							activeDropPosition={controller.activeDropPosition}
-							dropOperation={controller.currentDropOperation}
+							isDragInProgress={engine.isDragInProgress}
+							hoveredNodeForDropPath={engine.hoveredNodeForDrop?.path}
+							activeDropPosition={engine.activeDropPosition}
+							dropOperation={engine.currentDropOperation}
 						/>
 					{:else}
 						{@render emptyDropState()}
@@ -1500,37 +1500,37 @@
 	{@render treeFooter?.()}
 
 	<!-- Floating Drop Zones (position:fixed overlay, escapes overflow:hidden) -->
-	{#if controller.dropZoneMode === 'floating' && controller.isDragInProgress && controller.hoveredNodeForDrop && controller.floatingZoneRect}
+	{#if engine.dropZoneMode === 'floating' && engine.isDragInProgress && engine.hoveredNodeForDrop && engine.floatingZoneRect}
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
-			class="stv__drop-zones stv__drop-zones--{controller.dropZoneLayout}"
-			style="position: fixed; top: {controller.floatingZoneRect.top}px; left: {controller
-				.floatingZoneRect.left}px; width: {controller.floatingZoneRect.width}px; height: {controller
+			class="stv__drop-zones stv__drop-zones--{engine.dropZoneLayout}"
+			style="position: fixed; top: {engine.floatingZoneRect.top}px; left: {engine
+				.floatingZoneRect.left}px; width: {engine.floatingZoneRect.width}px; height: {engine
 				.floatingZoneRect
-				.height}px; z-index: 10000; --drop-zone-start: {formattedDropZoneStart}; --drop-zone-max-width: {controller.dropZoneMaxWidth}px;"
+				.height}px; z-index: 10000; --drop-zone-start: {formattedDropZoneStart}; --drop-zone-max-width: {engine.dropZoneMaxWidth}px;"
 		>
-			{#if controller._isFloatingPositionAllowed('before')}
+			{#if engine._isFloatingPositionAllowed('before')}
 				<div
 					class="stv__drop-zone stv__drop-zone--before"
-					class:stv__drop-zone--active={controller.floatingHoveredZone === 'before'}
+					class:stv__drop-zone--active={engine.floatingHoveredZone === 'before'}
 				>
-					<span aria-hidden="true">↑</span> {controller.getLabel('labels.dropBefore')}
+					<span aria-hidden="true">↑</span> {engine.getLabel('labels.dropBefore')}
 				</div>
 			{/if}
-			{#if controller._isFloatingPositionAllowed('after')}
+			{#if engine._isFloatingPositionAllowed('after')}
 				<div
 					class="stv__drop-zone stv__drop-zone--after"
-					class:stv__drop-zone--active={controller.floatingHoveredZone === 'after'}
+					class:stv__drop-zone--active={engine.floatingHoveredZone === 'after'}
 				>
-					<span aria-hidden="true">↓</span> {controller.getLabel('labels.dropAfter')}
+					<span aria-hidden="true">↓</span> {engine.getLabel('labels.dropAfter')}
 				</div>
 			{/if}
-			{#if controller._isFloatingPositionAllowed('child')}
+			{#if engine._isFloatingPositionAllowed('child')}
 				<div
 					class="stv__drop-zone stv__drop-zone--child"
-					class:stv__drop-zone--active={controller.floatingHoveredZone === 'child'}
+					class:stv__drop-zone--active={engine.floatingHoveredZone === 'child'}
 				>
-					<span aria-hidden="true">→</span> {controller.getLabel('labels.dropChild')}
+					<span aria-hidden="true">→</span> {engine.getLabel('labels.dropChild')}
 				</div>
 			{/if}
 		</div>
@@ -1538,11 +1538,11 @@
 
 	<!-- Context menu snippet: rendered here, moved into core's custom-menu element (openMenu's
 	     renderMenuCallback, the effect above) — the callback menu is all core's. -->
-	{#if controller.contextMenuVisible && controller.contextMenuNode && contextMenu && !controller.getContextMenuItemsHandler}
+	{#if engine.contextMenuVisible && engine.contextMenuNode && contextMenu && !engine.getContextMenuItemsHandler}
 		<div bind:this={snippetMenuHost} class="stv__context-menu-content" role="menu">
 			{@render contextMenu(
-				controller.contextMenuNode,
-				controller.closeContextMenu.bind(controller)
+				engine.contextMenuNode,
+				engine.closeContextMenu.bind(engine)
 			)}
 		</div>
 	{/if}

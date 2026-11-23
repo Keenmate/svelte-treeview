@@ -1,5 +1,5 @@
 // ─── Clipboard types & module-level singleton ─────────────────────────────
-// Shared across all TreeController instances for cross-tree copy/cut/paste.
+// Shared across all TreeEngine instances for cross-tree copy/cut/paste.
 
 export interface ClipboardEntry<T> {
 	sourceTreeId: string;
@@ -24,14 +24,14 @@ let _clipboard: TreeClipboard<any> | null = null;
 // Minimal registry so a paste can reach back to the SOURCE tree it came from
 // (identified by clipboard.sourceTreeId) — needed to remove the originals on a
 // cross-tree CUT (a same-tree cut removes them directly). Kept to a tiny surface
-// (just removeNode) to avoid a circular type dependency on TreeController.
+// (just removeNode) to avoid a circular type dependency on TreeEngine.
 export interface ClipboardSourceTree {
 	removeNode(path: string, includeDescendants?: boolean): unknown;
 	/** Resolve a live node by path in the SOURCE tree — needed for a cross-tree COPY that
 	 *  the library auto-handles (it reads the source subtree to duplicate it into the dest). */
 	getNodeByPath(path: string): unknown;
 	/** The source Ltree, passed to the dest's duplicateNodes() so the manifest paths resolve
-	 *  in the source tree's path space. Loosely typed to avoid a circular dep on TreeController. */
+	 *  in the source tree's path space. Loosely typed to avoid a circular dep on TreeEngine. */
 	readonly tree: unknown;
 }
 

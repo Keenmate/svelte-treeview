@@ -242,7 +242,8 @@ T
 -
 Touch drag → drag-drop.txt
 Tree → basic-setup.txt, typescript-types.txt
-TreeController → basic-setup.txt, advanced-patterns.txt
+TreeController (ctx.controller, public facade) → advanced-patterns.txt, typescript-types.txt
+TreeEngine (createTreeEngine, TreeProvider) → import-patterns.txt, drag-drop.txt
 TreeNavigation → typescript-types.txt, advanced-patterns.txt
 TreeNavigationOverrides → typescript-types.txt, advanced-patterns.txt
 TreeProvider → basic-setup.txt, advanced-patterns.txt

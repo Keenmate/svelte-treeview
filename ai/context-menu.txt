@@ -98,7 +98,7 @@ SNIPPET-BASED CONTEXT MENU
 
 CUSTOM MENU RENDERER (public API — same path as the built-in menu)
 --------------------------------------------------------------------
-For your own menu markup (contextMenu snippet, or a headless TreeProvider / createTreeController
+For your own menu markup (contextMenu snippet, or a headless TreeProvider / createTreeEngine
 UI like @keenmate/svelte-treeview-canvas):
   import { resolveMenuEntries, getMenuChildren, type ResolvedMenuEntry } from '@keenmate/svelte-treeview';
   const ctx = controller.menuContext(node);            // { node, path, parent, siblings } + controller

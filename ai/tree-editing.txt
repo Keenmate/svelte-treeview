@@ -438,10 +438,9 @@ Example: server-driven cut/paste
 
 CLIPBOARD API
 -------------
-Built-in clipboard for copy/cut/paste workflows. These methods live on the
-TreeController, NOT on the Tree component ref. Reach the controller via the
-beforeKeydownCallback interceptor (ctx.controller) or hold your own reference. Below,
-`controller` is that TreeController instance.
+Built-in clipboard for copy/cut/paste workflows. The methods are on the Tree component
+ref (bind:this) and on the TreeController every callback ctx carries (e.g.
+beforeKeydownCallback's ctx.controller). Below, `controller` is either one.
 
 // Copy selected nodes (or specific paths)
 controller.copyNodes();                 // copies selectedPaths

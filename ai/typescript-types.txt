@@ -99,6 +99,21 @@ import type {
   NodeConfig           // Node configuration
 } from '@keenmate/svelte-treeview';
 
+ENGINE AND CONTROLLER
+---------------------
+TreeEngine<T>      — the class behind <Tree> (createTreeEngine(props), TreeProvider's
+                     children snippet arg). For your own renderer (svelte-treeview-canvas,
+                     a custom layout): state, NodeConfig / NodeCallbacks, attachPointerDrag, …
+TreeController<T>  — the public controller: a frozen facade over the engine (core
+                     createControllerFacade). Every callback / event ctx carries it as
+                     `controller`; window.components['svelte-treeview'].getInstances()
+                     lists them. Methods = <Tree>'s exports minus update()
+                     (TREE_CONTROLLER_METHODS); read-only state: treeId, nodes, focusedNode,
+                     selectedPaths, checkedPaths, expandedPaths, cutPaths, insertResult,
+                     searchTerm, searchStatus, indexProgress, isRendering; writable
+                     selectionAnchor. Props are NOT on it — change them on <Tree>
+                     (props / update()).
+
 LTREENODE INTERFACE
 -------------------
 interface LTreeNode<T> {

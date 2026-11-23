@@ -46,8 +46,17 @@
 			]
 		},
 		{
+			"name": "controller-facade",
+			"description": "The public controller (SPEC §12.34): createControllerFacade builds the frozen `controller` every ctx carries over the TreeEngine (core/tree-controller.ts) — same as web-treeview's TreeViewController.",
+			"mode": "identical",
+			"baseline": "c330cb0",
+			"files": [
+				["src/element/controller-facade.ts", "src/lib/vendor/core/element/controller-facade.ts"]
+			]
+		},
+		{
 			"name": "pointer-drag",
-			"description": "Drag and drop (SPEC §12.28): core createPointerDrag drives the tree's ONE pointer drag (mouse / pen / touch — threshold, long press, scroll lock, hit test through shadow roots, auto-scroll, Escape, the swallowed trailing click) via TreeController.attachPointerDrag; same as web-treeview's renderer. scroll-container + ghost-click are its imports.",
+			"description": "Drag and drop (SPEC §12.28): core createPointerDrag drives the tree's ONE pointer drag (mouse / pen / touch — threshold, long press, scroll lock, hit test through shadow roots, auto-scroll, Escape, the swallowed trailing click) via TreeEngine.attachPointerDrag; same as web-treeview's renderer. scroll-container + ghost-click are its imports.",
 			"mode": "identical",
 			"baseline": "91e9f99",
 			"files": [
@@ -71,7 +80,7 @@
 		},
 		{
 			"name": "icons",
-			"description": "Icons (SPEC §12.33): renderIcon + ICON_CSS — node icons (TreeController.renderNodeIconHtml) and context-menu item icons: markup → built-in name → the tree's renderIconCallback → window.components.renderIconCallback → icon-font <i class=\"stv__icon …\"> → text. The `component` option (core 7e87b5f) names the tree, whose host is a <div>.",
+			"description": "Icons (SPEC §12.33): renderIcon + ICON_CSS — node icons (TreeEngine.renderNodeIconHtml) and context-menu item icons: markup → built-in name → the tree's renderIconCallback → window.components.renderIconCallback → icon-font <i class=\"stv__icon …\"> → text. The `component` option (core 7e87b5f) names the tree, whose host is a <div>.",
 			"mode": "identical",
 			"baseline": "7e87b5f",
 			"files": [

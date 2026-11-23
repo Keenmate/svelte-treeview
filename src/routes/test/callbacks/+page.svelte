@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Tree from '$lib/components/Tree.svelte';
 	import type { LTreeNode, DropPosition } from '$lib/ltree/types.js';
-	import type { NodeDropContext } from '$lib/core/TreeController.svelte.js';
+	import type { NodeDropContext } from '$lib/core/TreeEngine.svelte.js';
 
 	// Test fixture for the get*Callback props. Targeted by e2e/callbacks.spec.ts.
 	// Covers the bug class where seed-time callbacks reading node.data?.X

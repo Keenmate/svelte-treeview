@@ -4,7 +4,7 @@
 	import RenderModeSwitch from '../RenderModeSwitch.svelte';
 	import { getTreeProps } from '../render-mode.svelte.js';
 	import Node from '$lib/components/Node.svelte';
-	import { TreeController } from '$lib/core/TreeController.svelte.js';
+	import type { TreeEngine } from '$lib/core/TreeEngine.svelte.js';
 	import type { LTreeNode } from '$lib/ltree/types.js';
 	import type { DropPosition } from '$lib/ltree/types.js';
 	import { notepadppData, type FileItem } from './notepadpp-data.js';
@@ -200,7 +200,7 @@
 </svelte:head>
 
 <!-- Recursive horizontal token node renderer (nested groups with drop zone pills) -->
-{#snippet tokenNode(node: LTreeNode<Item>, getChildrenFn: (path: string) => LTreeNode<Item>[], ctrl: TreeController<Item>)}
+{#snippet tokenNode(node: LTreeNode<Item>, getChildrenFn: (path: string) => LTreeNode<Item>[], ctrl: TreeEngine<Item>)}
 	{@const depth = Math.min(node.path.split('.').length - 1, 3)}
 	{@const isOpen = tokenExpanded.has(node.path)}
 	{@const isDragging = ctrl.draggedNode?.path === node.path}
@@ -247,7 +247,7 @@
 {/snippet}
 
 <!-- Recursive dendrogram node renderer (with explicit drop zone pills) -->
-{#snippet dendroNode(node: LTreeNode<Item>, getChildrenFn: (path: string) => LTreeNode<Item>[], ctrl: TreeController<Item>)}
+{#snippet dendroNode(node: LTreeNode<Item>, getChildrenFn: (path: string) => LTreeNode<Item>[], ctrl: TreeEngine<Item>)}
 	{@const depth = Math.min(node.path.split('.').length - 1, 3)}
 	{@const isOpen = dendroExpanded.has(node.path)}
 	{@const isDragging = ctrl.draggedNode?.path === node.path}
@@ -296,7 +296,7 @@
 {/snippet}
 
 <!-- Recursive vertical dendrogram node renderer (top-to-bottom, with explicit drop zone pills) -->
-{#snippet vertDendroNode(node: LTreeNode<Item>, getChildrenFn: (path: string) => LTreeNode<Item>[], ctrl: TreeController<Item>)}
+{#snippet vertDendroNode(node: LTreeNode<Item>, getChildrenFn: (path: string) => LTreeNode<Item>[], ctrl: TreeEngine<Item>)}
 	{@const depth = Math.min(node.path.split('.').length - 1, 3)}
 	{@const isOpen = dendroExpanded.has(node.path)}
 	{@const isDragging = ctrl.draggedNode?.path === node.path}
@@ -348,7 +348,7 @@
 	<a href="/" class="back-link">&larr; Back to Examples</a>
 	<h1>Custom Layout (TreeProvider)</h1>
 	<p class="subtitle">
-		Build entirely different UIs on the same core TreeController.
+		Build entirely different UIs on the same core TreeEngine.
 		Compare the standard <code>&lt;Tree&gt;</code> with custom layouts using <code>&lt;TreeProvider&gt;</code>.
 	</p>
 	<RenderModeSwitch />
@@ -698,7 +698,7 @@
 <div class="card">
 	<h2>CL06 · 5. Controller API (programmatic access)</h2>
 	<p class="description">
-		Demonstrates using the <code>TreeController</code> methods directly:
+		Demonstrates using the <code>TreeEngine</code> methods directly:
 		<code>expandAll</code>, <code>collapseAll</code>, <code>searchNodes</code>,
 		<code>getChildren</code>, and <code>statistics</code>.
 	</p>
@@ -903,7 +903,7 @@
 <div class="card">
 	<h2>CL09 · How it works</h2>
 	<p class="description">
-		<code>&lt;TreeProvider&gt;</code> creates a <code>TreeController</code> and provides it
+		<code>&lt;TreeProvider&gt;</code> creates a <code>TreeEngine</code> and provides it
 		via a snippet parameter. The controller holds all tree state (expand/collapse, search,
 		drag-drop) while you render however you like.
 	</p>
