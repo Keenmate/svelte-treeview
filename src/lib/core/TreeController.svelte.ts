@@ -877,6 +877,24 @@ export class TreeController<T> {
 			}
 		});
 	}
+	/** Nesting depth of `_mutate` — the state reconcile runs once, after the outermost. */
+	#mutationDepth = 0;
+	/**
+	 * @internal THE bracket around every change to the tree's structure or data (move / add /
+	 * remove / paste / sort / applyChanges…): announces it (`onTreeChange` + the `nodes`
+	 * write-back, coalesced on a microtask) and, after the outermost one, brings the path-keyed
+	 * state back in line with the tree (_reconcileAfterMutation). Nested calls (moveNodes →
+	 * moveNode, a cross-tree cut-paste removing its sources) reconcile once.
+	 */
+	_mutate<R>(run: () => R): R {
+		this._markNodesChanged();
+		this.#mutationDepth++;
+		try {
+			return run();
+		} finally {
+			if (--this.#mutationDepth === 0) this._reconcileAfterMutation();
+		}
+	}
 	focusedNode = $state.raw<LTreeNode<T> | null | undefined>(null);
 	selectedPaths = $state.raw<Set<string>>(new Set());
 	/** Paths of the expanded nodes (kept in sync with the tree; `bind:expandedPaths`). */
@@ -1257,9 +1275,6 @@ export class TreeController<T> {
 
 	// Clipboard — paths dimmed during cut operation
 	cutPaths = $state.raw<Set<string>>(new Set());
-
-	// Skip insertArray flag
-	_skipInsertArray = false;
 
 	// Progressive flat rendering tracker
 	private lastFlatNodesTracker: Symbol | undefined | null = null;
@@ -1846,10 +1861,6 @@ export class TreeController<T> {
 		if (this.tree && nodes) {
 			// Our own write-back of the current state (after a mutation) — already in the tree.
 			if (nodes === this.#selfWrittenNodes) return;
-			if (this._skipInsertArray) {
-				this._skipInsertArray = false;
-				return;
-			}
 			this.flatRenderedIds = new Set();
 			this.flatRenderQueue = [];
 			untrack(() => this._finishRenderPass());
@@ -2526,17 +2537,19 @@ export class TreeController<T> {
 		// hand it to moveNodes. Reading held refs' live .path keeps cross-group moves correct.
 		const movedNodes: LTreeNode<T>[] = [];
 		let allOk = true;
-		for (const group of resolved) {
-			if (!group.nodes.length) continue;
-			const manifest = this._completeManifest(group.nodes.map((n) => n.path));
-			const r = this.moveNodes(
-				manifest,
-				group.targetNode?.path ?? group.targetPath,
-				group.position
-			);
-			movedNodes.push(...r.movedNodes);
-			if (!r.success) allOk = false;
-		}
+		this._mutate(() => {
+			for (const group of resolved) {
+				if (!group.nodes.length) continue;
+				const manifest = this._completeManifest(group.nodes.map((n) => n.path));
+				const r = this.moveNodes(
+					manifest,
+					group.targetNode?.path ?? group.targetPath,
+					group.position
+				);
+				movedNodes.push(...r.movedNodes);
+				if (!r.success) allOk = false;
+			}
+		});
 		fireDrop(movedNodes.length ? movedNodes : null);
 		return allOk;
 	}
@@ -2567,13 +2580,7 @@ export class TreeController<T> {
 	}
 
 	private _runSort(run: () => NodesReorderContext<T>[], options?: SortOptions<T>): void {
-		this._skipInsertArray = true;
-		this._markNodesChanged();
-		const reorders = run();
-		tick().then(() => {
-			this._skipInsertArray = false;
-			this._markNodesChanged(false);
-		});
+		const reorders = this._mutate(run);
 		if (options?.isSilent || !this.onNodesReorderHandler) return;
 		for (const ctx of reorders) this.onNodesReorderHandler(this._ctx(ctx));
 	}
@@ -2593,8 +2600,14 @@ export class TreeController<T> {
 		targetPath: string,
 		position: 'before' | 'after' | 'child'
 	): { success: boolean; error?: string } {
-		this._skipInsertArray = true;
-		this._markNodesChanged();
+		return this._mutate(() => this._moveNode(sourcePath, targetPath, position));
+	}
+
+	private _moveNode(
+		sourcePath: string,
+		targetPath: string,
+		position: 'before' | 'after' | 'child'
+	): { success: boolean; error?: string } {
 		// Capture the affected path set BEFORE the move: any highlighted /
 		// selected path that is the source itself or a descendant of it needs
 		// to be remapped onto the new location. Without this the path Sets
@@ -2671,11 +2684,6 @@ export class TreeController<T> {
 				}
 			}
 		}
-
-		tick().then(() => {
-			this._skipInsertArray = false;
-			this._markNodesChanged(false);
-		});
 		return result;
 	}
 
@@ -2724,6 +2732,14 @@ export class TreeController<T> {
 	 * Highlight/selection/focus remap happens per-move inside moveNode().
 	 */
 	moveNodes(
+		paths: string[],
+		targetPath: string,
+		position: DropPosition
+	): { success: boolean; movedNodes: LTreeNode<T>[]; leftBehind: LTreeNode<T>[]; error?: string } {
+		return this._mutate(() => this._moveNodes(paths, targetPath, position));
+	}
+
+	private _moveNodes(
 		paths: string[],
 		targetPath: string,
 		position: DropPosition
@@ -2875,50 +2891,45 @@ export class TreeController<T> {
 			};
 		};
 
-		this._skipInsertArray = true;
-		this._markNodesChanged();
 		const copiedNodes: LTreeNode<T>[] = [];
 		let skipped = 0;
 		let lastError: string | undefined;
 		let prevRootPath: string | null = null;
 
-		for (let index = 0; index < roots.length; index++) {
-			const root = roots[index];
+		this._mutate(() => {
+			for (let index = 0; index < roots.length; index++) {
+				const root = roots[index];
 
-			// First root lands at the drop anchor; the rest chain 'after' the previous copy.
-			const siblingPath =
-				prevRootPath !== null ? prevRootPath : position !== 'child' ? landTargetPath : undefined;
-			const rootPosition: 'before' | 'after' | undefined =
-				prevRootPath !== null ? 'after' : position !== 'child' ? position : undefined;
+				// First root lands at the drop anchor; the rest chain 'after' the previous copy.
+				const siblingPath =
+					prevRootPath !== null ? prevRootPath : position !== 'child' ? landTargetPath : undefined;
+				const rootPosition: 'before' | 'after' | undefined =
+					prevRootPath !== null ? 'after' : position !== 'child' ? position : undefined;
 
-			// Per-node wrapper: gate on the manifest (an absent descendant is a hole → NOT copied),
-			// then run the caller's input transform with a full context. `srcNode` is the live source
-			// node the ltree recursion passes as the 2nd arg.
-			const wrapped = ({ data, node: srcNode }: { data: T; node: LTreeNode<T> }): T | null => {
-				if (!manifest.has(srcNode.path)) return null; // hole → skip node + subtree
-				if (!transform) return data;
-				return transform(this._ctx({ ...ctxFor(srcNode, srcNode === root, index), data }));
-			};
+				// Per-node wrapper: gate on the manifest (an absent descendant is a hole → NOT copied),
+				// then run the caller's input transform with a full context. `srcNode` is the live source
+				// node the ltree recursion passes as the 2nd arg.
+				const wrapped = ({ data, node: srcNode }: { data: T; node: LTreeNode<T> }): T | null => {
+					if (!manifest.has(srcNode.path)) return null; // hole → skip node + subtree
+					if (!transform) return data;
+					return transform(this._ctx({ ...ctxFor(srcNode, srcNode === root, index), data }));
+				};
 
-			const result = tree.duplicateNode(
-				root,
-				parentPath,
-				wrapped,
-				siblingPath,
-				rootPosition
-			);
-			if (result.success && result.rootNode) {
-				copiedNodes.push(result.rootNode);
-				prevRootPath = result.rootNode.path;
-			} else {
-				lastError = result.error;
-				skipped++;
+				const result = tree.duplicateNode(
+					root,
+					parentPath,
+					wrapped,
+					siblingPath,
+					rootPosition
+				);
+				if (result.success && result.rootNode) {
+					copiedNodes.push(result.rootNode);
+					prevRootPath = result.rootNode.path;
+				} else {
+					lastError = result.error;
+					skipped++;
+				}
 			}
-		}
-
-		tick().then(() => {
-			this._skipInsertArray = false;
-			this._markNodesChanged(false);
 		});
 
 		return {
@@ -2942,17 +2953,13 @@ export class TreeController<T> {
 		path: string,
 		includeDescendants: boolean = true
 	): { success: boolean; node?: LTreeNode<T>; error?: string } {
-		this._skipInsertArray = true;
-		this._markNodesChanged();
-		const result = this.tree?.removeNode(path, includeDescendants) || {
-			success: false,
-			error: 'Tree not initialized'
-		};
-		tick().then(() => {
-			this._skipInsertArray = false;
-			this._markNodesChanged(false);
+		return this._mutate(() => {
+			const result = this.tree?.removeNode(path, includeDescendants) || {
+				success: false,
+				error: 'Tree not initialized'
+			};
+			return result;
 		});
-		return result;
 	}
 
 	addNode(
@@ -2960,45 +2967,33 @@ export class TreeController<T> {
 		nodeData: T,
 		pathSegment?: string
 	): { success: boolean; node?: LTreeNode<T>; error?: string } {
-		this._skipInsertArray = true;
-		this._markNodesChanged();
-		const result = this.tree?.addNode(parentPath, nodeData, pathSegment) || {
-			success: false,
-			error: 'Tree not initialized'
-		};
-		tick().then(() => {
-			this._skipInsertArray = false;
-			this._markNodesChanged(false);
+		return this._mutate(() => {
+			const result = this.tree?.addNode(parentPath, nodeData, pathSegment) || {
+				success: false,
+				error: 'Tree not initialized'
+			};
+			return result;
 		});
-		return result;
 	}
 
 	updateNode(
 		path: string,
 		dataUpdates: Partial<T>
 	): { success: boolean; node?: LTreeNode<T>; error?: string } {
-		this._skipInsertArray = true;
-		this._markNodesChanged();
-		const result = this.tree?.updateNode(path, dataUpdates) || {
-			success: false,
-			error: 'Tree not initialized'
-		};
-		tick().then(() => {
-			this._skipInsertArray = false;
-			this._markNodesChanged(false);
+		return this._mutate(() => {
+			const result = this.tree?.updateNode(path, dataUpdates) || {
+				success: false,
+				error: 'Tree not initialized'
+			};
+			return result;
 		});
-		return result;
 	}
 
 	applyChanges(changes: TreeChange<T>[]): ApplyChangesResult {
-		this._skipInsertArray = true;
-		this._markNodesChanged();
-		const result = this.tree?.applyChanges(changes) || { successful: 0, failed: [] };
-		tick().then(() => {
-			this._skipInsertArray = false;
-			this._markNodesChanged(false);
+		return this._mutate(() => {
+			const result = this.tree?.applyChanges(changes) || { successful: 0, failed: [] };
+			return result;
 		});
-		return result;
 	}
 
 	duplicateNode(
@@ -3008,20 +3003,16 @@ export class TreeController<T> {
 		siblingPath?: string,
 		position?: 'before' | 'after'
 	): { success: boolean; rootNode?: LTreeNode<T>; count: number; error?: string } {
-		this._skipInsertArray = true;
-		this._markNodesChanged();
-		const result = this.tree?.duplicateNode(
-			sourceNode,
-			targetParentPath,
-			transformData,
-			siblingPath,
-			position
-		) || { success: false, count: 0, error: 'Tree not initialized' };
-		tick().then(() => {
-			this._skipInsertArray = false;
-			this._markNodesChanged(false);
+		return this._mutate(() => {
+			const result = this.tree?.duplicateNode(
+				sourceNode,
+				targetParentPath,
+				transformData,
+				siblingPath,
+				position
+			) || { success: false, count: 0, error: 'Tree not initialized' };
+			return result;
 		});
-		return result;
 	}
 
 	// ── Bulk subtree operations ─────────────────────────────────────────
@@ -3033,86 +3024,66 @@ export class TreeController<T> {
 		nodeData: T,
 		position: InsertPosition
 	): { success: boolean; node?: LTreeNode<T>; error?: string } {
-		this._skipInsertArray = true;
-		this._markNodesChanged();
-		const result = this.tree?.insertNode(targetPath, nodeData, position) || {
-			success: false,
-			error: 'Tree not initialized'
-		};
-		tick().then(() => {
-			this._skipInsertArray = false;
-			this._markNodesChanged(false);
+		return this._mutate(() => {
+			const result = this.tree?.insertNode(targetPath, nodeData, position) || {
+				success: false,
+				error: 'Tree not initialized'
+			};
+			return result;
 		});
-		return result;
 	}
 
 	/** Insert a branch (flat rows with ltree paths) before / after `targetPath`, or under it.
 	 *  The block keeps its internal order. */
 	insertBranch(targetPath: string, data: T[], position: InsertPosition): InsertBranchResult<T> {
-		this._skipInsertArray = true;
-		this._markNodesChanged();
-		const result = this.tree?.insertBranch(targetPath, data, position) || {
-			success: false,
-			count: 0,
-			failed: [],
-			parentNode: null
-		};
-		tick().then(() => {
-			this._skipInsertArray = false;
-			this._markNodesChanged(false);
+		return this._mutate(() => {
+			const result = this.tree?.insertBranch(targetPath, data, position) || {
+				success: false,
+				count: 0,
+				failed: [],
+				parentNode: null
+			};
+			return result;
 		});
-		return result;
 	}
 
 	/** Add a branch (flat rows with ltree paths) under `parentPath` ('' = root), sorted. */
 	addBranch(parentPath: string, data: T[]): InsertBranchResult<T> {
-		this._skipInsertArray = true;
-		this._markNodesChanged();
-		const result = this.tree?.addBranch(parentPath, data) || {
-			success: false,
-			count: 0,
-			failed: [],
-			parentNode: null
-		};
-		tick().then(() => {
-			this._skipInsertArray = false;
-			this._markNodesChanged(false);
+		return this._mutate(() => {
+			const result = this.tree?.addBranch(parentPath, data) || {
+				success: false,
+				count: 0,
+				failed: [],
+				parentNode: null
+			};
+			return result;
 		});
-		return result;
 	}
 
 	replaceBranch(parentPath: string, data: T[]): ReplaceBranchResult<T> {
-		this._skipInsertArray = true;
-		this._markNodesChanged();
-		const result: ReplaceBranchResult<T> = this.tree?.replaceBranch(parentPath, data) || {
-			success: false,
-			count: 0,
-			failed: [],
-			parentNode: null,
-			removed: 0,
-			added: 0,
-			error: 'Tree not initialized'
-		};
-		tick().then(() => {
-			this._skipInsertArray = false;
-			this._markNodesChanged(false);
+		return this._mutate(() => {
+			const result: ReplaceBranchResult<T> = this.tree?.replaceBranch(parentPath, data) || {
+				success: false,
+				count: 0,
+				failed: [],
+				parentNode: null,
+				removed: 0,
+				added: 0,
+				error: 'Tree not initialized'
+			};
+			return result;
 		});
-		return result;
 	}
 
 	removeBranch(path: string, keepParent?: boolean): RemoveBranchResult<T> {
-		this._skipInsertArray = true;
-		this._markNodesChanged();
-		const result = this.tree?.removeBranch(path, keepParent) || {
-			success: false,
-			count: 0,
-			error: 'Tree not initialized'
-		};
-		tick().then(() => {
-			this._skipInsertArray = false;
-			this._markNodesChanged(false);
+		return this._mutate(() => {
+			const result = this.tree?.removeBranch(path, keepParent) || {
+				success: false,
+				count: 0,
+				error: 'Tree not initialized'
+			};
+			return result;
 		});
-		return result;
 	}
 
 	// ── Clipboard operations ───────────────────────────────────────────
@@ -3391,8 +3362,6 @@ export class TreeController<T> {
 			return result;
 		}
 
-		this._skipInsertArray = true;
-		this._markNodesChanged();
 		let totalCount = 0;
 		let skipped = 0;
 		let lastError: string | undefined;
@@ -3436,99 +3405,96 @@ export class TreeController<T> {
 			};
 		};
 
-		for (let index = 0; index < workEntries.length; index++) {
-			const entry = workEntries[index];
+		this._mutate(() => {
+			for (let index = 0; index < workEntries.length; index++) {
+				const entry = workEntries[index];
 
-			// Per-entry self-paste guard: skip (don't abort the batch) an entry whose
-			// destination is itself or its own descendant. Skipping one no longer drops
-			// the rest — selecting a folder + its child still pastes the valid nodes.
-			if (
-				sameTree &&
-				!isRootPasteAfter &&
-				(destParentPath === entry.sourcePath || destParentPath.startsWith(entry.sourcePath + sep))
-			) {
-				skipped++;
-				continue;
-			}
-
-			const rootData = apply(
-				entry.data,
-				ctxFor(targetPath, position, true, index, entry.sourcePath)
-			);
-			if (rootData === null) {
-				skipped++;
-				continue;
-			} // transform vetoed this entry
-
-			const addResult =
-				isRootPasteAfter || position === 'child'
-					? this.tree.addNode(targetPath, rootData)
-					: this.tree.addNode(targetNodeAfter!.parentPath ?? '', rootData);
-
-			if (!addResult.success || !addResult.node) {
-				lastError = addResult.error;
-				skipped++;
-				continue;
-			}
-			totalCount++;
-			pastedSourcePaths.push(entry.sourcePath);
-			firstPasted ??= addResult.node;
-
-			// Descendants from the snapshot. A descendant the transform vetoes (null)
-			// takes its own subtree with it (parent-first order makes this a prefix skip).
-			// Each pasted node's NEW path by its old relative path: addNode names a new segment
-			// after the (possibly re-minted) id, so `<new root> + <old relative path>` didn't
-			// exist from the 3rd level down and every grandchild was skipped.
-			const skippedDescRel = new Set<string>();
-			const newPathByRel = new Map<string, string>([['', addResult.node.path]]);
-			for (const desc of entry.descendants) {
-				const parentRel = desc.relativePath.substring(0, desc.relativePath.lastIndexOf(sep));
-				if (parentRel && skippedDescRel.has(parentRel)) {
-					skippedDescRel.add(desc.relativePath);
+				// Per-entry self-paste guard: skip (don't abort the batch) an entry whose
+				// destination is itself or its own descendant. Skipping one no longer drops
+				// the rest — selecting a folder + its child still pastes the valid nodes.
+				if (
+					sameTree &&
+					!isRootPasteAfter &&
+					(destParentPath === entry.sourcePath || destParentPath.startsWith(entry.sourcePath + sep))
+				) {
 					skipped++;
 					continue;
 				}
-				const descParentPath = newPathByRel.get(parentRel) ?? addResult.node.path;
-				const descData = apply(
-					desc.data,
-					ctxFor(descParentPath, 'child', false, index, entry.sourcePath + desc.relativePath)
+
+				const rootData = apply(
+					entry.data,
+					ctxFor(targetPath, position, true, index, entry.sourcePath)
 				);
-				if (descData === null) {
-					skippedDescRel.add(desc.relativePath);
+				if (rootData === null) {
+					skipped++;
+					continue;
+				} // transform vetoed this entry
+
+				const addResult =
+					isRootPasteAfter || position === 'child'
+						? this.tree.addNode(targetPath, rootData)
+						: this.tree.addNode(targetNodeAfter!.parentPath ?? '', rootData);
+
+				if (!addResult.success || !addResult.node) {
+					lastError = addResult.error;
 					skipped++;
 					continue;
 				}
-				const descResult = this.tree.addNode(descParentPath, descData);
-				if (descResult.success && descResult.node) {
-					totalCount++;
-					newPathByRel.set(desc.relativePath, descResult.node.path);
+				totalCount++;
+				pastedSourcePaths.push(entry.sourcePath);
+				firstPasted ??= addResult.node;
+
+				// Descendants from the snapshot. A descendant the transform vetoes (null)
+				// takes its own subtree with it (parent-first order makes this a prefix skip).
+				// Each pasted node's NEW path by its old relative path: addNode names a new segment
+				// after the (possibly re-minted) id, so `<new root> + <old relative path>` didn't
+				// exist from the 3rd level down and every grandchild was skipped.
+				const skippedDescRel = new Set<string>();
+				const newPathByRel = new Map<string, string>([['', addResult.node.path]]);
+				for (const desc of entry.descendants) {
+					const parentRel = desc.relativePath.substring(0, desc.relativePath.lastIndexOf(sep));
+					if (parentRel && skippedDescRel.has(parentRel)) {
+						skippedDescRel.add(desc.relativePath);
+						skipped++;
+						continue;
+					}
+					const descParentPath = newPathByRel.get(parentRel) ?? addResult.node.path;
+					const descData = apply(
+						desc.data,
+						ctxFor(descParentPath, 'child', false, index, entry.sourcePath + desc.relativePath)
+					);
+					if (descData === null) {
+						skippedDescRel.add(desc.relativePath);
+						skipped++;
+						continue;
+					}
+					const descResult = this.tree.addNode(descParentPath, descData);
+					if (descResult.success && descResult.node) {
+						totalCount++;
+						newPathByRel.set(desc.relativePath, descResult.node.path);
+					} else {
+						// Its subtree has no parent to land in — skip it like a vetoed one.
+						skippedDescRel.add(desc.relativePath);
+						skipped++;
+					}
+				}
+			}
+
+			// Cut = move: remove only the sources we actually pasted (skipped cuts stay put).
+			// Same-tree removes directly; cross-tree reaches back to the source tree via the
+			// registry so a cut-and-paste into another tree also removes the originals (was
+			// previously the consumer's job). Sources are top-level roots (their descendants
+			// ride along), so includeDescendants=true.
+			if (operation === 'cut') {
+				if (sameTree) {
+					for (const src of pastedSourcePaths) this.tree.removeNode(src, true);
 				} else {
-					// Its subtree has no parent to land in — skip it like a vetoed one.
-					skippedDescRel.add(desc.relativePath);
-					skipped++;
+					const source = getClipboardTree(clip.sourceTreeId);
+					if (source && source !== this) {
+						for (const src of pastedSourcePaths) source.removeNode(src, true);
+					}
 				}
 			}
-		}
-
-		// Cut = move: remove only the sources we actually pasted (skipped cuts stay put).
-		// Same-tree removes directly; cross-tree reaches back to the source tree via the
-		// registry so a cut-and-paste into another tree also removes the originals (was
-		// previously the consumer's job). Sources are top-level roots (their descendants
-		// ride along), so includeDescendants=true.
-		if (operation === 'cut') {
-			if (sameTree) {
-				for (const src of pastedSourcePaths) this.tree.removeNode(src, true);
-			} else {
-				const source = getClipboardTree(clip.sourceTreeId);
-				if (source && source !== this) {
-					for (const src of pastedSourcePaths) source.removeNode(src, true);
-				}
-			}
-		}
-
-		tick().then(() => {
-			this._skipInsertArray = false;
-			this._markNodesChanged(false);
 		});
 
 		// Clear cut-dimming. A CUT is a one-shot move, so clear the clipboard; a COPY
@@ -3614,14 +3580,17 @@ export class TreeController<T> {
 		const targets = this._topLevelOf(paths ?? []);
 		let removed = 0;
 		let failed = 0;
-		for (const p of targets) {
-			if (this.removeNode(p, true).success) removed++;
-			else failed++;
-		}
-		if (removed > 0) {
-			this.clearSelection();
-			this.clearFocus();
-		}
+		// One bracket: the clear runs before the reconcile, so the selection event fires once.
+		this._mutate(() => {
+			for (const p of targets) {
+				if (this.removeNode(p, true).success) removed++;
+				else failed++;
+			}
+			if (removed > 0) {
+				this.clearSelection();
+				this.clearFocus();
+			}
+		});
 		return { removed, failed };
 	}
 
@@ -3652,14 +3621,18 @@ export class TreeController<T> {
 		// Collect the paths that were actually removed — a failure in the middle used to shift
 		// `targets.slice(0, removed)` onto the wrong paths.
 		const removedPaths: string[] = [];
-		for (const p of targets) {
-			if (this.removeNode(p, true).success) removedPaths.push(p);
-		}
+		this._mutate(() => {
+			for (const p of targets) {
+				if (this.removeNode(p, true).success) removedPaths.push(p);
+			}
+			if (removedPaths.length > 0) {
+				this.clearSelection();
+				this.clearFocus();
+			}
+		});
 		const removed = removedPaths.length;
 		const blocked = targets.length - removed;
 		if (removed > 0) {
-			this.clearSelection();
-			this.clearFocus();
 			this.onNodeDeleteHandler?.(this._ctx({
 				paths: removedPaths,
 				nodes: removedPaths
@@ -4896,6 +4869,102 @@ export class TreeController<T> {
 	private _dispatchSelectionChange() {
 		this._notifySelectionChanged();
 		this._mirrorSelectedToChecked();
+	}
+
+	/**
+	 * After a mutation (see _mutate): the path-keyed state follows the tree (B2).
+	 * - Paths of nodes no longer in the tree leave the selection (+ range anchor), the checked
+	 *   set and the cut set — removeNode / removeBranch / a cut-paste source used to leave them
+	 *   behind, so `checkedPaths` kept reporting deleted nodes.
+	 * - A removed focused node is unfocused (bind:focusedNode no longer points at a detached
+	 *   node); when a different node now sits at its path (replaceBranch) focus moves onto it.
+	 * - Cascade mode re-derives the branch states: a removed / moved / added child changes its
+	 *   parent's [✓] / [-] (_rederiveCascadeStates).
+	 * Fires onSelectionChange / onFocusChange / onCheckedChange only for what changed.
+	 */
+	private _reconcileAfterMutation() {
+		if (!this.tree?.root) return;
+		const isLive = (path: string) => this._realNode(path) !== null;
+
+		const selected = [...this.selectedPaths].filter(isLive);
+		const cursor = this._shiftCursor;
+		const isSelectionChanged = selected.length !== this.selectedPaths.size;
+		if (isSelectionChanged) this._setSelection(selected, cursor && !isLive(cursor) ? null : undefined);
+		else if (cursor && !isLive(cursor)) this._shiftCursor = null;
+
+		const focused = this.focusedNode;
+		const liveFocused = focused ? this._realNode(focused.path) : null;
+		if (focused && liveFocused !== focused) this._setFocusedNode(liveFocused);
+
+		if (this.cutPaths.size > 0) {
+			const cut = [...this.cutPaths].filter(isLive);
+			if (cut.length !== this.cutPaths.size) this.cutPaths = new Set(cut);
+		}
+
+		const prevChecked = this.#checkedPaths;
+		const checked = new Set([...prevChecked].filter(isLive));
+		// No checkboxes = the checked set is the selection mirror (_mirrorSelectedToChecked),
+		// which has no cascade.
+		const isCascade = this.checkboxMode === 'cascade' && this.isCheckboxesShown;
+		if (isCascade && prevChecked.size > 0) this._rederiveCascadeStates(checked);
+		const isCheckedChanged =
+			checked.size !== prevChecked.size || [...checked].some((p) => !prevChecked.has(p));
+		if (isCheckedChanged) {
+			this.checkedPaths = checked;
+			this._syncFilteredCheckState();
+		}
+
+		if (isSelectionChanged) this._dispatchSelectionChange();
+		if (isCheckedChanged) this._notifyCheckedChanged();
+		if (isSelectionChanged || isCheckedChanged || (focused && liveFocused !== focused))
+			this.tree.refresh();
+		if (isSelectionChanged || isCheckedChanged || liveFocused !== focused)
+			uiLogger.debug('[mutate] State reconciled', {
+				selected: selected.length,
+				checked: checked.size,
+				focused: liveFocused?.path ?? null
+			});
+	}
+
+	/**
+	 * Cascade mode: re-derive every branch's visualState + isChecked from its descendants in
+	 * ONE bottom-up pass over the real tree (O(n) — _computeVisualState per node would re-walk
+	 * each subtree), writing membership changes into `checked`. Same rule as
+	 * _reconcileCascadeStates: all descendants checked → checked, none → unchecked, else [-]
+	 * (not in the canonical set). Leaves keep their own isChecked.
+	 */
+	private _rederiveCascadeStates(checked: Set<string>) {
+		// Returns whether the node's whole subtree (itself included) is checked / unchecked.
+		const visit = (n: LTreeNode<T>): { isAll: boolean; isNone: boolean } => {
+			let isAll = true;
+			let isNone = true;
+			let hasChildren = false;
+			for (const key in n.children) {
+				hasChildren = true;
+				const sub = visit(n.children[key]!);
+				isAll &&= sub.isAll;
+				isNone &&= sub.isNone;
+			}
+			let vs: VisualState;
+			if (!hasChildren) {
+				vs = n.isChecked ? VisualState.checked : VisualState.unchecked;
+			} else {
+				vs = isAll ? VisualState.checked : isNone ? VisualState.unchecked : VisualState.indeterminate;
+				const shouldBeChecked = vs === VisualState.checked;
+				if (n.isChecked !== shouldBeChecked) {
+					n.isChecked = shouldBeChecked;
+					n._rev = (n._rev || 0) + 1;
+				}
+				if (shouldBeChecked) checked.add(n.path);
+				else checked.delete(n.path);
+			}
+			if (n.visualState !== vs) {
+				n.visualState = vs;
+				n._rev = (n._rev || 0) + 1;
+			}
+			return { isAll: isAll && n.isChecked, isNone: isNone && !n.isChecked };
+		};
+		for (const key in this.tree.root.children) visit(this.tree.root.children[key]!);
 	}
 
 	/**

@@ -67,6 +67,58 @@ test('B5: assigning bind:focusedNode moves the focus visual to the new row', asy
 	expect(await page.evaluate(() => (window as any).__focusedPath())).toBe('2');
 });
 
+test.describe('B2: state follows a removal / move', () => {
+	const evalMain = (page: Page, fn: string) => page.evaluate((f) => (window as any)[f](), fn);
+
+	test('a removed checked node leaves checkedPaths and its parent re-derives', async ({ page }) => {
+		await box(page, '1.1.1').click();
+		await expect(box(page, '1.1')).toHaveClass(/stv__checkbox--indeterminate/);
+		await call(page, '__main', 'removeNode', '1.1.1');
+		await expect(row(page, '1.1.1')).toHaveCount(0);
+		expect(await evalMain(page, '__checked')).toEqual([]);
+		for (const p of ['1', '1.1']) {
+			await expect(box(page, p), p).not.toHaveClass(/stv__checkbox--indeterminate/);
+			await expect(box(page, p), p).not.toBeChecked();
+		}
+	});
+
+	test('removing the only unchecked sibling makes the parent checked', async ({ page }) => {
+		await box(page, '1.1.1').click();
+		await call(page, '__main', 'removeNode', '1.1.2');
+		await expect(box(page, '1.1')).toBeChecked();
+		await expect(box(page, '1')).toHaveClass(/stv__checkbox--indeterminate/);
+		expect(await evalMain(page, '__checked')).toEqual(['1.1', '1.1.1']);
+	});
+
+	test('moveNode re-derives the old and the new parent', async ({ page }) => {
+		await box(page, '1.1.1').click();
+		await call(page, '__main', 'moveNode', '1.1.2', '2', 'child');
+		await expect(box(page, '1.1')).toBeChecked();
+		await expect(box(page, '2')).not.toBeChecked();
+		await expect(box(page, '2')).not.toHaveClass(/stv__checkbox--indeterminate/);
+	});
+
+	test('a removed node leaves the selection and the focus', async ({ page }) => {
+		await call(page, '__main', 'selectNodes', ['1.1.2', '2']);
+		expect(await evalMain(page, '__selected')).toEqual(['1.1.2', '2']);
+		await call(page, '__main', 'focusNode', '1.1.1');
+		await call(page, '__main', 'removeNode', '1.1');
+		await expect.poll(() => evalMain(page, '__selected')).toEqual(['2']);
+		await expect.poll(() => evalMain(page, '__focusedPath')).toBe(null);
+	});
+
+	test('reassigning nodes right after a mutation loads the new data', async ({ page }) => {
+		// Used to be swallowed for one tick (the old _skipInsertArray guard).
+		await page.evaluate(() => {
+			const w = window as any;
+			w.__main.removeNode('2');
+			w.__setNodes([{ id: 50, path: '1', name: 'Fresh' }]);
+		});
+		await expect(label(page, '1')).toHaveText('Fresh');
+		await expect(main(page).locator('.stv__node')).toHaveCount(1);
+	});
+});
+
 test.describe('clipboard', () => {
 	test('R2: pasting a 3-level subtree with an id-minting transform keeps the grandchildren', async ({ page }) => {
 		await call(page, '__main', 'copyNodes', ['1']);

@@ -134,14 +134,8 @@
 	}
 
 	function resetTree() {
-		// Reassigning treeData is not sufficient on its own — once the tree has
-		// been mutated via treeRef.* methods, the data effect skips re-running
-		// for one tick (the _skipInsertArray guard). Use replaceBranch('') to
-		// swap the entire root subtree authoritatively.
 		nextId = 1000;
-		const fresh = initialData();
-		treeData = fresh;
-		treeRef.replaceBranch('', fresh);
+		treeData = initialData();
 		lastOp = emptyLastOp();
 		opCallCount = 0;
 		clipboard = null;

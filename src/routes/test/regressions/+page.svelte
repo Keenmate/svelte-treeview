@@ -26,6 +26,9 @@
 	let toggleExtra: string[] = [];
 	// B5: the parent-owned bindable focus.
 	let focusedNode = $state<LTreeNode<Item> | null | undefined>(null);
+	// B2: the bound selection / checked sets, read back after a removal or move.
+	let selectedPaths = $state.raw(new Set<string>());
+	let checkedPaths = $state.raw(new Set<string>());
 
 	let main = $state<any>();
 	let snippetTree = $state<any>();
@@ -51,6 +54,9 @@
 		w.__setToggleExtra = (v: string[]) => (toggleExtra = v);
 		w.__setFocused = (path: string | null) => (focusedNode = path ? main.getNodeByPath(path) : null);
 		w.__focusedPath = () => focusedNode?.path ?? null;
+		w.__selected = () => [...selectedPaths].sort();
+		w.__checked = () => [...checkedPaths].sort();
+		w.__setNodes = (v: Item[]) => (nodes = v);
 	});
 </script>
 
@@ -65,6 +71,8 @@
 				bind:searchTerm
 				bind:expandedPaths
 				bind:focusedNode
+				bind:selectedPaths
+				bind:checkedPaths
 				treeId="main"
 				dragDropMode="both"
 				getIsDraggableCallback={() => true}

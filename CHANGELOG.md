@@ -19,10 +19,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Attach it once to the element holding your nodes (Svelte: `{@attach (el) => controller.attachPointerDrag(el)}`; returns the detach); the drag is the built-in pointer drag (5px engage for mouse / pen, long-press for touch, ghost, autoscroll, Esc, `beforeDragStartCallback` / `beforeDropCallback`, multi-drag, cross-tree). A press inside a `[data-tree-path]` element drags that node. Drop targets are found under the pointer: the nearest `[data-tree-path]` element is the target node, and a `[data-drop-position="before|after|child"]` pad inside it fixes the position (a position `getAllowedDropPositionsCallback` disallows is not a target); without a pad the position comes from where the pointer sits. `/examples/custom-layout` (tokens + both dendrograms) moved to it; guarded by `e2e/custom-drag.spec.ts` + `/test/custom-drag`. Docs: `docs/usage.md` "Custom drag renderer", `ai/drag-drop.txt`.
 
+### Fixed — state follows a removal or move (2026-11-23)
+
+- Removing nodes (`removeNode`, `removeBranch`, `replaceBranch`, `applyChanges`, the source of a cut-paste — same tree or another one) now drops them from the selection, the checked set and the cut set, and unfocuses a removed focused node; `bind:selectedPaths` / `bind:checkedPaths` / `bind:focusedNode` used to keep reporting deleted nodes. In cascade mode the parents re-derive after any change to the tree: removing a checked child clears the parent's [-], removing the last unchecked one checks the parent, and `moveNode` updates both the old and the new parent. `onSelectionChange` / `onFocusChange` / `onCheckedChange` fire for what changed.
+- Assigning `nodes` right after a mutation loads the new data — it was ignored until the next tick.
+
 ### Fixed — checkbox cascade + bound focus (2026-11-22)
 
 - A path that `beforeCheckboxToggleCallback` ADDS to a toggle now re-derives its own parents too (they used to keep their old checked / [-] state, because only the clicked node's ancestors were walked). A check / uncheck also assigns the canonical checked set once instead of once per ancestor walk, so `checkNodes(1000 paths)` runs one `cascadeCheckPolicy` projection, not 1000.
 - Assigning `bind:focusedNode` from the parent moves the focus visual: the old row drops it and the new row gets it (the raw write skipped both, and `onFocusChange` stays silent as before). A multi-drag that moves the focused node still re-emits its new path through `bind:focusedNode`.
+
+### Internal — one bracket around every tree mutation (2026-11-23)
+
+- Every method that changes the tree (move / add / remove / insert / branch / paste / duplicate / sort / `applyChanges`) runs inside `_mutate(run)`: it announces the change (`onTreeChange` + the `nodes` write-back) and, after the outermost one, reconciles the path-keyed state (`_reconcileAfterMutation`, the fixes above). Replaces 16 copies of the same set-flag / tick / reset block; the `_skipInsertArray` flag is gone (the controller already recognises its own write-back).
 
 ### Internal — one writer per state family (2026-11-22)
 
