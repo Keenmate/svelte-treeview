@@ -1,5 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { getParentPath, getRelativePath, getPathSegments, getLevel } from './ltree-helpers.js';
+import {
+	getParentPath,
+	getRelativePath,
+	getPathSegments,
+	getLevel,
+	getAncestorPaths,
+	getPathChain,
+	isSelfOrDescendant,
+	getTopLevelPaths,
+	forEachDescendant,
+	getDescendantPaths,
+	bumpRev
+} from './ltree-helpers.js';
 
 describe('ltree-helpers', () => {
 	describe('getParentPath', () => {
@@ -188,5 +200,51 @@ describe('ltree-helpers', () => {
 			expect(getParentPath(`a${longSep}b${longSep}c`, longSep)).toBe(`a${longSep}b`);
 			expect(getLevel(`a${longSep}b${longSep}c`, longSep)).toBe(3);
 		});
+	});
+});
+describe('path + walk helpers', () => {
+	it('getAncestorPaths: nearest first, custom separator', () => {
+		expect(getAncestorPaths('1.2.3')).toEqual(['1.2', '1']);
+		expect(getAncestorPaths('1')).toEqual([]);
+		expect(getAncestorPaths('a::b::c', '::')).toEqual(['a::b', 'a']);
+	});
+
+	it('getPathChain: root-most first, includes the path', () => {
+		expect(getPathChain('1.2.3')).toEqual(['1', '1.2', '1.2.3']);
+		expect(getPathChain('7')).toEqual(['7']);
+	});
+
+	it('isSelfOrDescendant: segment-aware', () => {
+		expect(isSelfOrDescendant('1.1', '1.1')).toBe(true);
+		expect(isSelfOrDescendant('1.1.5', '1.1')).toBe(true);
+		expect(isSelfOrDescendant('1.10', '1.1')).toBe(false);
+		expect(isSelfOrDescendant('1', '1.1')).toBe(false);
+	});
+
+	it('getTopLevelPaths: drops paths under another one, keeps order', () => {
+		expect(getTopLevelPaths(['2.1', '1.1.1', '1', '2.10', '2.1.4'])).toEqual(['2.1', '1', '2.10']);
+		expect(getTopLevelPaths(new Set(['a/b', 'a']), '/')).toEqual(['a']);
+	});
+
+	it('forEachDescendant / getDescendantPaths: pre-order, false prunes', () => {
+		const n = (path: string, ...kids: any[]): any => ({
+			path,
+			children: Object.fromEntries(kids.map((k) => ['x' + k.path, k]))
+		});
+		const tree = n('1', n('1.1', n('1.1.1')), n('1.2'));
+		expect(getDescendantPaths(tree)).toEqual(['1.1', '1.1.1', '1.2']);
+		const seen: string[] = [];
+		forEachDescendant(tree, (d: any) => {
+			seen.push(d.path);
+			return d.path !== '1.1';
+		});
+		expect(seen).toEqual(['1.1', '1.2']);
+	});
+
+	it('bumpRev: starts from 0', () => {
+		const a: { _rev?: number } = {};
+		bumpRev(a);
+		bumpRev(a);
+		expect(a._rev).toBe(2);
 	});
 });

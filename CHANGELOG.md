@@ -29,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A path that `beforeCheckboxToggleCallback` ADDS to a toggle now re-derives its own parents too (they used to keep their old checked / [-] state, because only the clicked node's ancestors were walked). A check / uncheck also assigns the canonical checked set once instead of once per ancestor walk, so `checkNodes(1000 paths)` runs one `cascadeCheckPolicy` projection, not 1000.
 - Assigning `bind:focusedNode` from the parent moves the focus visual: the old row drops it and the new row gets it (the raw write skipped both, and `onFocusChange` stays silent as before). A multi-drag that moves the focused node still re-emits its new path through `bind:focusedNode`.
 
+### Internal — one set of path + walk helpers (2026-11-23)
+
+- `helpers/ltree-helpers.ts` gains `getAncestorPaths`, `getPathChain`, `isSelfOrDescendant`, `getTopLevelPaths`, `forEachDescendant`, `getDescendantPaths` and `bumpRev`; the controller and the ltree use them instead of their own copies (ancestor loops, `startsWith(path + sep)` tests, top-level-of-a-set ×2, descendant walks, `_rev` bumps). The ltree's segment walk is one local `walkPath` (`getNodeByPath`, expand / collapse). No behaviour change. Same in web-treeview. (REVIEW-2026-11-19 §3.6; its R3 — edits while filtered — was already fixed by resolving every edit against the real root.)
+
 ### Internal — one bracket around every tree mutation (2026-11-23)
 
 - Every method that changes the tree (move / add / remove / insert / branch / paste / duplicate / sort / `applyChanges`) runs inside `_mutate(run)`: it announces the change (`onTreeChange` + the `nodes` write-back) and, after the outermost one, reconciles the path-keyed state (`_reconcileAfterMutation`, the fixes above). Replaces 16 copies of the same set-flag / tick / reset block; the `_skipInsertArray` flag is gone (the controller already recognises its own write-back).

@@ -7,7 +7,11 @@ import {
 	getLevel,
 	getParentPath,
 	getPathSegments,
-	getRelativePath
+	getRelativePath,
+	getAncestorPaths,
+	getPathChain,
+	isSelfOrDescendant,
+	bumpRev
 } from '../helpers/ltree-helpers.js';
 
 import type { Ltree, InsertArrayResult, InsertBranchResult, ReplaceBranchResult, RemoveBranchResult, NodeContext, SortContext, ExpandOptions, InsertPosition, SortOptions, NodesReorderContext } from './types.js';
@@ -90,6 +94,35 @@ export function createLTree<T>(
 	// this is absolutely crucial to keep order of sorted items. Segments are just numbers and numbers as properties are always sorted
 	// see https://stackoverflow.com/questions/33351816/how-to-prevent-automatic-sort-of-object-numeric-property/51497854#51497854
 	const segmentPrefix = 'x';
+
+	/**
+	 * Follow `path` segment by segment down from `start`; `onStep` sees every node on the way
+	 * (not `start`). Null when a segment is missing. `''` = `start`.
+	 */
+	function walkPath(
+		start: LTreeNode<T>,
+		path: string,
+		separator: string,
+		onStep?: (node: LTreeNode<T>) => void
+	): LTreeNode<T> | null {
+		let node = start;
+		if (!path) return node;
+		for (const part of path.split(separator)) {
+			const segment = segmentPrefix + part;
+			if (!Object.prototype.hasOwnProperty.call(node.children, segment)) return null;
+			node = node.children[segment]!;
+			onStep?.(node);
+		}
+		return node;
+	}
+
+	/** Bump `_rev` on every ancestor of `path` in the real tree (their rows re-render). */
+	function bumpAncestors(path: string, separator: string): void {
+		for (const a of getAncestorPaths(path, separator)) {
+			const ancestor = walkPath(root, a, separator);
+			if (ancestor) bumpRev(ancestor);
+		}
+	}
 
 	// Display-value comparison of the default sibling rule (numeric-aware: 'Item 2' < 'Item 10').
 	const displayCollator = new Intl.Collator(undefined, { numeric: true });
@@ -665,10 +698,7 @@ export function createLTree<T>(
 			// 1. Expand all target paths to include their parents
 			const allRequiredPaths = new Set<string>();
 			targetPaths.forEach((path) => {
-				const segments = path.split(this.treePathSeparator);
-				for (let i = 1; i <= segments.length; i++) {
-					allRequiredPaths.add(segments.slice(0, i).join(this.treePathSeparator));
-				}
+				for (const p of getPathChain(path, this.treePathSeparator)) allRequiredPaths.add(p);
 			});
 
 			// 1b. filterScope — pull in (some of) each match's descendants.
@@ -796,7 +826,7 @@ export function createLTree<T>(
 			function setExpandedRecursive(node: LTreeNode<T>, value: boolean) {
 				if (node.isExpanded !== value) {
 					node.isExpanded = value;
-					node._rev = (node._rev || 0) + 1;
+					bumpRev(node);
 				}
 				for (const key in node.children) {
 					setExpandedRecursive(node.children[key], value);
@@ -818,16 +848,10 @@ export function createLTree<T>(
 					// so the target subtree is reachable.
 					const spineSet = new Set<string>();
 					for (const p of paths) {
-						const segs = p.split(this.treePathSeparator);
-						for (let i = 0; i < segs.length; i++) {
-							spineSet.add(segs.slice(0, i + 1).join(this.treePathSeparator));
-						}
+						for (const s of getPathChain(p, this.treePathSeparator)) spineSet.add(s);
 					}
 					const isUnderTarget = (path: string) => {
-						for (const tp of paths) {
-							if (path === tp || path.startsWith(tp + this.treePathSeparator)) return true;
-						}
-						return false;
+						return paths.some((tp) => isSelfOrDescendant(path, tp, this.treePathSeparator));
 					};
 					// Walk currently-expanded subtree; collapse anything not on a spine
 					// and not under a target. Only descends into expanded branches.
@@ -839,7 +863,7 @@ export function createLTree<T>(
 								trim(child);
 							} else if (self.getNodeIsCollapsible(child)) {
 								child.isExpanded = false;
-								child._rev = (child._rev || 0) + 1;
+								bumpRev(child);
 								trim(child);
 							}
 						}
@@ -849,21 +873,12 @@ export function createLTree<T>(
 
 				// Expand spine + entire subtree under each target.
 				for (const p of paths) {
-					let node: LTreeNode<T> | undefined = root;
-					const segments = p.split(this.treePathSeparator);
-					for (let i = 0; i < segments.length; i++) {
-						const segment = segmentPrefix + segments[i];
-						if (node && node.children.hasOwnProperty(segment)) {
-							node = node.children[segment];
-							if (!node.isExpanded) {
-								node.isExpanded = true;
-								node._rev = (node._rev || 0) + 1;
-							}
-						} else {
-							node = undefined;
-							break;
+					const node = walkPath(root, p, this.treePathSeparator, (n) => {
+						if (!n.isExpanded) {
+							n.isExpanded = true;
+							bumpRev(n);
 						}
-					}
+					});
 					if (node) setExpandedRecursive(node, true);
 				}
 			}
@@ -882,7 +897,7 @@ export function createLTree<T>(
 			function collapseRecursive(node: LTreeNode<T>) {
 				if (node.isExpanded && self.getNodeIsCollapsible(node)) {
 					node.isExpanded = false;
-					node._rev = (node._rev || 0) + 1;
+					bumpRev(node);
 				}
 				for (const key in node.children) {
 					collapseRecursive(node.children[key]);
@@ -944,10 +959,7 @@ export function createLTree<T>(
 				// Build spine set: union of every ancestor path across all inputs.
 				const spineSet = new Set<string>();
 				for (const p of paths) {
-					const segs = p.split(this.treePathSeparator);
-					for (let i = 0; i < segs.length; i++) {
-						spineSet.add(segs.slice(0, i + 1).join(this.treePathSeparator));
-					}
+					for (const s of getPathChain(p, this.treePathSeparator)) spineSet.add(s);
 				}
 				// Walk currently-expanded subtree, collapse anything off-spine.
 				// Bumping _rev on each mutation forces the flat-mode keyed {#each} to
@@ -962,7 +974,7 @@ export function createLTree<T>(
 							trim(child);
 						} else if (self.getNodeIsCollapsible(child)) {
 							child.isExpanded = false;
-							child._rev = (child._rev || 0) + 1;
+							bumpRev(child);
 							hasChanges = true;
 							trim(child);
 						}
@@ -972,21 +984,13 @@ export function createLTree<T>(
 			}
 
 			for (const p of paths) {
-				let node: LTreeNode<T> | undefined = rootNode;
-				const segments = p.split(this.treePathSeparator);
-				for (let i = 0; i < segments.length; i++) {
-					const segment = segmentPrefix + segments[i];
-					if (node && node.children.hasOwnProperty(segment)) {
-						node = node.children[segment];
-						if (!node.isExpanded) {
-							node.isExpanded = true;
-							node._rev = (node._rev || 0) + 1;
-							hasChanges = true;
-						}
-					} else {
-						break;
+				walkPath(rootNode, p, this.treePathSeparator, (n) => {
+					if (!n.isExpanded) {
+						n.isExpanded = true;
+						bumpRev(n);
+						hasChanges = true;
 					}
-				}
+				});
 			}
 
 			if (hasChanges) {
@@ -1003,22 +1007,12 @@ export function createLTree<T>(
 			let hasChanges = false;
 
 			for (const p of paths) {
-				let node: LTreeNode<T> | undefined = rootNode;
-				const segments = p.split(this.treePathSeparator);
-				for (let i = 0; i < segments.length; i++) {
-					const segment = segmentPrefix + segments[i];
-					if (node && node.children.hasOwnProperty(segment)) {
-						node = node.children[segment];
-					} else {
-						node = undefined;
-						break;
-					}
-				}
+				const node = walkPath(rootNode, p, this.treePathSeparator);
 				if (node && node.isExpanded) {
 					node.isExpanded = false;
 					// Bump _rev for the same reason as expandNodes — without it the
 					// keyed {#each} reuses the row and class:expanded stays stale.
-					node._rev = (node._rev || 0) + 1;
+					bumpRev(node);
 					hasChanges = true;
 				}
 			}
@@ -1035,21 +1029,7 @@ export function createLTree<T>(
 			path: string,
 			_root?: LTreeNode<T> | null | undefined
 		): LTreeNode<T> | null {
-			let node = _root || (this.isFiltered ? filteredRoot : root);
-
-			if (path) {
-				const parts = path.split(this.treePathSeparator);
-
-				for (let i = 0; i < parts.length; i++) {
-					const segment = segmentPrefix + parts[i];
-					if (!node.children.hasOwnProperty(segment)) {
-						return null;
-					}
-					node = node.children[segment]!;
-				}
-			}
-
-			return node;
+			return walkPath(_root || (this.isFiltered ? filteredRoot : root), path, this.treePathSeparator);
 		},
 
 		getNodeDisplayValue(node: LTreeNode<T>): string {
@@ -1564,7 +1544,7 @@ export function createLTree<T>(
 
 			// Merge updates into existing data
 			node.data = { ...node.data, ...dataUpdates };
-			node._rev = (node._rev || 0) + 1;
+			bumpRev(node);
 
 			// Re-index for search if needed
 			if (indexer && _shouldUseInternalSearchIndex) {
@@ -1775,7 +1755,7 @@ export function createLTree<T>(
 				// its old expanded arrow (class:expanded) after an `expandedPaths` assignment.
 				if (node.path && node.isExpanded !== pathSet.has(node.path)) {
 					node.isExpanded = pathSet.has(node.path);
-					node._rev = (node._rev || 0) + 1;
+					bumpRev(node);
 				}
 				for (const child of Object.values(node.children)) {
 					traverse(child);
@@ -1900,7 +1880,7 @@ export function createLTree<T>(
 				if (child === target && position === 'after') putBlock();
 			}
 			parent.children = reordered;
-			parent._rev = (parent._rev || 0) + 1;
+			bumpRev(parent);
 		},
 
 		addBranch(parentPath: string, data: T[]): InsertBranchResult<T> {
@@ -2044,13 +2024,12 @@ export function createLTree<T>(
 			// Bump _rev on all affected parents AND their ancestors up to root
 			const bumpedPaths = new Set<string>();
 			for (const pp of affectedParents) {
-				let walkPath = pp;
-				while (walkPath && !bumpedPaths.has(walkPath)) {
-					bumpedPaths.add(walkPath);
-					const ancestor = this.getNodeByPath(walkPath, root);
-					if (ancestor) ancestor._rev = (ancestor._rev || 0) + 1;
-					const sepIdx = walkPath.lastIndexOf(this.treePathSeparator);
-					walkPath = sepIdx > 0 ? walkPath.substring(0, sepIdx) : '';
+				if (!pp) continue;
+				for (const p of [pp, ...getAncestorPaths(pp, this.treePathSeparator)]) {
+					if (bumpedPaths.has(p)) break;
+					bumpedPaths.add(p);
+					const ancestor = this.getNodeByPath(p, root);
+					if (ancestor) bumpRev(ancestor);
 				}
 			}
 
@@ -2160,16 +2139,8 @@ export function createLTree<T>(
 				nodeCount -= removedCount;
 
 				// Bump _rev on node itself + ancestors
-				targetNode._rev = (targetNode._rev || 0) + 1;
-				let ancestorPath = path;
-				while (ancestorPath) {
-					const sepIdx = ancestorPath.lastIndexOf(this.treePathSeparator);
-					ancestorPath = sepIdx > 0 ? ancestorPath.substring(0, sepIdx) : '';
-					if (ancestorPath) {
-						const ancestor = this.getNodeByPath(ancestorPath, root);
-						if (ancestor) ancestor._rev = (ancestor._rev || 0) + 1;
-					}
-				}
+				bumpRev(targetNode);
+				bumpAncestors(path, this.treePathSeparator);
 
 				this._emitTreeChanged();
 				return { success: true, count: removedCount };
@@ -2212,13 +2183,7 @@ export function createLTree<T>(
 				nodeCount -= removedCount;
 
 				// Bump _rev on ancestors
-				let ancestorPath = parentPath;
-				while (ancestorPath) {
-					const ancestor = this.getNodeByPath(ancestorPath, root);
-					if (ancestor) ancestor._rev = (ancestor._rev || 0) + 1;
-					const sepIdx = ancestorPath.lastIndexOf(this.treePathSeparator);
-					ancestorPath = sepIdx > 0 ? ancestorPath.substring(0, sepIdx) : '';
-				}
+				bumpAncestors(node.path, this.treePathSeparator);
 
 				this._emitTreeChanged();
 				return { success: true, count: removedCount };

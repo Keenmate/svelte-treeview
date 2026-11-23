@@ -64,6 +64,16 @@ import { adoptStyles } from '../vendor/core/dom/adopt-styles.js';
 import { createPointerDrag, type PointerDrag } from '../vendor/core/dom/pointer-drag.js';
 
 // Re-register global API (safe to import multiple times)
+import {
+	bumpRev,
+	forEachDescendant,
+	getAncestorPaths,
+	getDescendantPaths,
+	getParentPath,
+	getPathChain,
+	getTopLevelPaths,
+	isSelfOrDescendant
+} from '../helpers/ltree-helpers.js';
 import '../global-api.js';
 
 // ─── Paste result type ────────────────────────────────────────────────────
@@ -1873,11 +1883,9 @@ export class TreeController<T> {
 			// Seed checkedPaths from node.isChecked flags written by insertArray
 			if (this.tree.isCheckedMember || this.tree.getIsCheckedCallback) {
 				const seeded = new Set<string>();
-				const walk = (node: LTreeNode<T>) => {
+				forEachDescendant(this.tree.root, (node) => {
 					if (node.isChecked) seeded.add(node.path);
-					for (const key in node.children) walk(node.children[key]!);
-				};
-				for (const key in this.tree.root.children) walk(this.tree.root.children[key]!);
+				});
 				this.checkedPaths = seeded;
 			}
 			if (this.#pendingExpanded && nodes.length) {
@@ -2089,11 +2097,8 @@ export class TreeController<T> {
 		}
 		const sep = this.treePathSeparator || '.';
 		const targetSet = new Set(targets);
-		const isUnderTarget = (path: string): boolean => {
-			for (let i = path.lastIndexOf(sep); i > 0; i = path.lastIndexOf(sep, i - 1))
-				if (targetSet.has(path.slice(0, i))) return true;
-			return false;
-		};
+		const isUnderTarget = (path: string): boolean =>
+			getAncestorPaths(path, sep).some((a) => targetSet.has(a));
 		const limit = Math.max(0, this.rowAnimationLimit ?? 50);
 		const hiding: string[] = [];
 		for (const n of this.tree.visibleFlatNodes) {
@@ -2145,7 +2150,7 @@ export class TreeController<T> {
 	private _settleClosing(paths: readonly string[] | null): boolean {
 		const sep = this.treePathSeparator || '.';
 		const isRelated = (t: string) =>
-			paths == null || paths.some((p) => p === t || p.startsWith(t + sep) || t.startsWith(p + sep));
+			paths == null || paths.some((p) => isSelfOrDescendant(p, t, sep) || isSelfOrDescendant(t, p, sep));
 		const entries = new Set(this.#closingHandles.values());
 		let isCancelled = false;
 		for (const entry of entries) {
@@ -2196,9 +2201,7 @@ export class TreeController<T> {
 		const sep = this.treePathSeparator || '.';
 		const changing = new Map<string, LTreeNode<T>>();
 		for (const p of paths) {
-			const segs = p.split(sep);
-			for (let i = 1; i <= segs.length; i++) {
-				const prefix = segs.slice(0, i).join(sep);
+			for (const prefix of getPathChain(p, sep)) {
 				if (changing.has(prefix)) continue;
 				const n = this.tree?.getNodeByPath(prefix);
 				if (!n) break;
@@ -2281,13 +2284,13 @@ export class TreeController<T> {
 				for (const sibling of this.tree.getSiblings(path)) {
 					if (sibling.path !== path && sibling.isExpanded && this.tree.getNodeIsCollapsible(sibling)) {
 						sibling.isExpanded = false;
-						sibling._rev = (sibling._rev || 0) + 1;
+						bumpRev(sibling);
 						collapsedSiblings.push(sibling);
 					}
 				}
 			}
 			node.isExpanded = true;
-			node._rev = (node._rev || 0) + 1;
+			bumpRev(node);
 			this.tree.refresh();
 		});
 		if (!options?.isSilent) {
@@ -2317,7 +2320,7 @@ export class TreeController<T> {
 		}
 		if (result && typeof (result as PromiseLike<unknown>).then === 'function') {
 			this.expandPendingPaths = new Set([...this.expandPendingPaths, path]);
-			node._rev = (node._rev || 0) + 1;
+			bumpRev(node);
 			this.tree.refresh();
 			return Promise.resolve(result as PromiseLike<unknown>)
 				.then(
@@ -2332,7 +2335,7 @@ export class TreeController<T> {
 					next.delete(path);
 					this.expandPendingPaths = next;
 					const live = this.tree?.getNodeByPath(path) ?? null;
-					if (live) live._rev = (live._rev || 0) + 1;
+					if (live) bumpRev(live);
 					if (isAllowed && live) applyLater();
 					this.tree?.refresh();
 					return isAllowed && !!live;
@@ -2619,7 +2622,7 @@ export class TreeController<T> {
 		const collect = (paths: Set<string>): Map<string, string> => {
 			const m = new Map<string, string>();
 			for (const p of paths) {
-				if (p === sourcePath || p.startsWith(sourcePath + sep)) {
+				if (isSelfOrDescendant(p, sourcePath, sep)) {
 					m.set(p, p.substring(sourcePath.length));
 				}
 			}
@@ -2639,7 +2642,7 @@ export class TreeController<T> {
 		// live node afterwards.
 		const focusedSuffix =
 			this.focusedNode &&
-			(this.focusedNode.path === sourcePath || this.focusedNode.path.startsWith(sourcePath + sep))
+			isSelfOrDescendant(this.focusedNode.path, sourcePath, sep)
 				? this.focusedNode.path.substring(sourcePath.length)
 				: undefined;
 
@@ -2699,7 +2702,7 @@ export class TreeController<T> {
 		const set = new Set<string>(paths);
 		for (const p of paths) {
 			const n = this.tree.getNodeByPath(p);
-			if (n) for (const dp of this._getDescendantPaths(n)) set.add(dp);
+			if (n) for (const dp of getDescendantPaths(n)) set.add(dp);
 		}
 		return [...set];
 	}
@@ -2766,9 +2769,9 @@ export class TreeController<T> {
 		const holes: { node: LTreeNode<T>; toParent: string }[] = [];
 		for (const root of roots) {
 			const oldParent = root.parentPath ?? '';
-			for (const dp of this._getDescendantPaths(root)) {
+			for (const dp of getDescendantPaths(root)) {
 				if (manifest.has(dp)) continue;
-				const parent = dp.substring(0, dp.lastIndexOf(this.treePathSeparator));
+				const parent = getParentPath(dp, this.treePathSeparator) ?? '';
 				if (!manifest.has(parent)) continue; // parent is also a hole → rides along inside it
 				const node = tree.getNodeByPath(dp);
 				if (node) holes.push({ node, toParent: oldParent });
@@ -3415,7 +3418,7 @@ export class TreeController<T> {
 				if (
 					sameTree &&
 					!isRootPasteAfter &&
-					(destParentPath === entry.sourcePath || destParentPath.startsWith(entry.sourcePath + sep))
+					isSelfOrDescendant(destParentPath, entry.sourcePath, sep)
 				) {
 					skipped++;
 					continue;
@@ -3556,28 +3559,13 @@ export class TreeController<T> {
 		return this.focusedNode ? [this.focusedNode.path] : [];
 	}
 
-	/** Keep only the top-level paths in a set — a path whose ancestor is also present
-	 *  is dropped (removing/operating on the ancestor covers it). */
-	private _topLevelOf(paths: string[]): string[] {
-		const set = new Set(paths);
-		const sep = this.treePathSeparator;
-		return paths.filter((p) => {
-			let cursor = p;
-			while (cursor.includes(sep)) {
-				cursor = cursor.substring(0, cursor.lastIndexOf(sep));
-				if (set.has(cursor)) return false;
-			}
-			return true;
-		});
-	}
-
 	/**
 	 * Programmatic removal of nodes (and their descendants): top-level subtrees only,
 	 * selection + focus are cleared when anything was removed. No `beforeDeleteCallback`,
 	 * no `onNodeDelete` — that is the user Delete command, {@link runDeleteCommand}.
 	 */
 	removeNodes(paths: string[]): { removed: number; failed: number } {
-		const targets = this._topLevelOf(paths ?? []);
+		const targets = getTopLevelPaths(paths ?? [], this.treePathSeparator);
 		let removed = 0;
 		let failed = 0;
 		// One bracket: the clear runs before the reconcile, so the selection event fires once.
@@ -3602,7 +3590,7 @@ export class TreeController<T> {
 	 * Programmatic removal is {@link removeNodes} (no veto, no event).
 	 */
 	runDeleteCommand(paths?: string[]): { removed: number; blocked: number } {
-		let targets = this._topLevelOf(paths ?? this._shortcutSelectionPaths());
+		let targets = getTopLevelPaths(paths ?? this._shortcutSelectionPaths(), this.treePathSeparator);
 		if (targets.length === 0) return { removed: 0, blocked: 0 };
 
 		if (this.beforeDeleteHandler) {
@@ -3611,7 +3599,7 @@ export class TreeController<T> {
 				.filter((n): n is LTreeNode<T> => n !== null);
 			const result = this.beforeDeleteHandler(this._ctx({ paths: targets, nodes }));
 			if (result === false) return { removed: 0, blocked: targets.length };
-			if (Array.isArray(result)) targets = this._topLevelOf(result);
+			if (Array.isArray(result)) targets = getTopLevelPaths(result, this.treePathSeparator);
 		}
 
 		// Snapshot the target nodes BEFORE removal so onNodeDelete can hand back resolved nodes
@@ -4435,23 +4423,7 @@ export class TreeController<T> {
 	 * which subtrees actually need to move (descendants ride along inside).
 	 */
 	private _getTopLevelSelectedPaths(): string[] {
-		const paths = this.selectedPaths;
-		if (paths.size === 0) return [];
-		const sep = this.treePathSeparator;
-		const result: string[] = [];
-		for (const p of paths) {
-			let cursor = p;
-			let absorbed = false;
-			while (cursor.includes(sep)) {
-				cursor = cursor.substring(0, cursor.lastIndexOf(sep));
-				if (paths.has(cursor)) {
-					absorbed = true;
-					break;
-				}
-			}
-			if (!absorbed) result.push(p);
-		}
-		return result;
+		return getTopLevelPaths(this.selectedPaths, this.treePathSeparator);
 	}
 
 	/**
@@ -4485,24 +4457,11 @@ export class TreeController<T> {
 			if (real && real !== copy && (copy.isChecked !== real.isChecked || copy.visualState !== real.visualState)) {
 				copy.isChecked = real.isChecked;
 				copy.visualState = real.visualState;
-				copy._rev = (copy._rev || 0) + 1;
+				bumpRev(copy);
 			}
 			for (const key in copy.children) visit(copy.children[key]!);
 		};
 		for (const node of this.tree.tree) visit(node);
-	}
-
-	/** Get all descendant paths of a node (depth-first) */
-	private _getDescendantPaths(node: LTreeNode<T>): string[] {
-		const result: string[] = [];
-		const traverse = (n: LTreeNode<T>) => {
-			for (const child of Object.values(n.children)) {
-				result.push(child.path);
-				traverse(child);
-			}
-		};
-		traverse(node);
-		return result;
 	}
 
 	/** Handle checkbox toggle with cascade and interceptor support */
@@ -4515,7 +4474,7 @@ export class TreeController<T> {
 		const isFilteredCascade = this.checkboxMode === 'cascade' && !!this.tree.isFiltered;
 		const visibleDescendants = (path: string): string[] => {
 			const copy = this.tree.getNodeByPath(path);
-			return copy ? this._getDescendantPaths(copy) : [];
+			return copy ? getDescendantPaths(copy) : [];
 		};
 
 		let newChecked: boolean;
@@ -4573,7 +4532,7 @@ export class TreeController<T> {
 		const expanded = new Set(paths);
 		for (const path of paths) {
 			const n = isVisibleOnly ? this.tree.getNodeByPath(path) : this._realNode(path);
-			if (n) for (const dp of this._getDescendantPaths(n)) expanded.add(dp);
+			if (n) for (const dp of getDescendantPaths(n)) expanded.add(dp);
 		}
 		return [...expanded];
 	}
@@ -4594,7 +4553,7 @@ export class TreeController<T> {
 			if (isChecked) next.add(path);
 			else next.delete(path);
 			n.isChecked = isChecked;
-			n._rev = (n._rev || 0) + 1;
+			bumpRev(n);
 		}
 		// Only in cascade mode — in independent mode, checkboxes are standalone and parents
 		// must not be auto-checked just because their descendants are.
@@ -4641,7 +4600,7 @@ export class TreeController<T> {
 				if (shouldBeChecked) checked.add(n.path);
 				else checked.delete(n.path);
 			}
-			if (isTouched) n._rev = (n._rev || 0) + 1;
+			if (isTouched) bumpRev(n);
 		}
 	}
 
@@ -4696,7 +4655,7 @@ export class TreeController<T> {
 			}
 			if (node.visualState !== vs || checkedTouched) {
 				node.visualState = vs;
-				node._rev = (node._rev || 0) + 1;
+				bumpRev(node);
 				anyChanged = true;
 				if (checkedTouched) checkedChanged = true;
 			}
@@ -4825,7 +4784,7 @@ export class TreeController<T> {
 				const n = this._realNode(path);
 				if (n) {
 					n.isChecked = false;
-					n._rev = (n._rev || 0) + 1;
+					bumpRev(n);
 				}
 			}
 		}
@@ -4834,7 +4793,7 @@ export class TreeController<T> {
 			const n = this._realNode(path);
 			if (n && !n.isChecked) {
 				n.isChecked = true;
-				n._rev = (n._rev || 0) + 1;
+				bumpRev(n);
 			}
 		}
 		this.checkedPaths = next;
@@ -4953,14 +4912,14 @@ export class TreeController<T> {
 				const shouldBeChecked = vs === VisualState.checked;
 				if (n.isChecked !== shouldBeChecked) {
 					n.isChecked = shouldBeChecked;
-					n._rev = (n._rev || 0) + 1;
+					bumpRev(n);
 				}
 				if (shouldBeChecked) checked.add(n.path);
 				else checked.delete(n.path);
 			}
 			if (n.visualState !== vs) {
 				n.visualState = vs;
-				n._rev = (n._rev || 0) + 1;
+				bumpRev(n);
 			}
 			return { isAll: isAll && n.isChecked, isNone: isNone && !n.isChecked };
 		};
@@ -4973,15 +4932,13 @@ export class TreeController<T> {
 	 * set), so `uncheckAll()` / assigning `checkedPaths` left their dash behind.
 	 */
 	private _clearAllCheckedFlags() {
-		const visit = (n: LTreeNode<T>) => {
+		forEachDescendant(this.tree.root, (n) => {
 			if (n.isChecked || n.visualState !== VisualState.unchecked) {
 				n.isChecked = false;
 				n.visualState = VisualState.unchecked;
-				n._rev = (n._rev || 0) + 1;
+				bumpRev(n);
 			}
-			for (const key in n.children) visit(n.children[key]!);
-		};
-		for (const key in this.tree.root.children) visit(this.tree.root.children[key]!);
+		});
 	}
 
 	/**
@@ -4996,7 +4953,7 @@ export class TreeController<T> {
 		for (const n of copy && copy !== real ? [real, copy] : [real]) {
 			if (!n) continue;
 			n[key] = value;
-			n._rev = (n._rev || 0) + 1;
+			bumpRev(n);
 		}
 	}
 
@@ -5271,7 +5228,7 @@ export class TreeController<T> {
 				const real = this._realNode(node.path) ?? node;
 				real.isChecked = true;
 				if (real.visualState !== VisualState.checked) real.visualState = VisualState.checked;
-				real._rev = (real._rev || 0) + 1;
+				bumpRev(real);
 				newPaths.add(node.path);
 			}
 			for (const child of Object.values(node.children)) traverse(child);
