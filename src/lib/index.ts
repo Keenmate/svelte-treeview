@@ -8,12 +8,12 @@ export {default as ContextMenuDividerC} from "./components/ContextMenuDivider.sv
 export { TreeEngine } from "./core/TreeEngine.svelte.js"
 export type { TreeController } from "./core/tree-controller.js"
 export { TREE_CONTROLLER_METHODS } from "./core/tree-controller.js"
-export type { TreeEngineProps, PasteResult, NodeTransformContext, NodeTransformCallbackContext, NodeTransformCallback, BeforeCheckboxToggleContext, KeydownContext, BeforePasteContext, BeforeCopyContext, BeforeDeleteContext, NodeRef, NodeEventContext, NodeDragContext, DragStartContext, BeforeDropContext, DropGroup, NodeDropContext, ClipboardEventContext, SelectionChangeContext, ExpandedChangeContext, BeforeExpandContext, TreeCallbackContext, FocusChangeContext, TreeChangeContext, ScrollToPathOptions, NodeIconRenderContext, TreeRenderIconCallback } from "./core/TreeEngine.svelte.js"
+export type { TreeEngineProps, PasteResult, NodeTransformContext, NodeTransformCallbackContext, NodeTransformCallback, BeforeCheckboxToggleContext, KeydownContext, BeforePasteContext, BeforeCopyContext, BeforeDeleteContext, NodeRef, NodeEventContext, NodeDragContext, DragStartContext, BeforeDropContext, DropGroup, NodeDropContext, ClipboardEventContext, SelectionChangeContext, ExpandedChangeContext, BeforeExpandContext, TreeCallbackContext, FocusChangeContext, NodesChangeContext, ScrollToPathOptions, NodeIconRenderContext, TreeRenderIconCallback } from "./core/TreeEngine.svelte.js"
 export { createTreeEngine } from "./core/createTreeEngine.js"
 
 // Export types
 export type { LTreeNode, NodeId, VisualState } from "./ltree/ltree-node.svelte.js"
-export type { Ltree, LTreeConfig, DropPosition, DragDropMode, DropOperation, ToggleIconMode, IconSet, NodeTitleOverflow, TooltipPlacement, TooltipDelay, NodeRenderContext, ClickBehavior, CheckboxMode, CascadeCheckPolicy, FilterScope, IndexProgress, SearchStatus, SelectionMode, SelectMode, TreeMutationOptions, ExpandOptions, InsertPosition, NodeContext, SortContext, SortCompareContext, SortOptions, NodesReorderContext, InsertArrayResult, InsertBranchResult, ReplaceBranchResult, RemoveBranchResult, TreeChange, ApplyChangesResult } from "./ltree/types.js"
+export type { Ltree, LTreeConfig, DropPosition, DragDropMode, DropOperation, ToggleIconMode, IconSet, NodeTitleOverflow, TooltipPlacement, TooltipDelay, NodeRenderContext, ClickBehavior, CheckboxMode, CascadeCheckPolicy, FilterScope, IndexProgress, SearchStatus, SelectionMode, SelectMode, TreeMutationOptions, ExpandOptions, InsertPosition, NodeContext, SortContext, SortCompareContext, SortOptions, NodesSortContext, InsertArrayResult, InsertBranchResult, ReplaceBranchResult, RemoveBranchResult, TreeChange, ProcessChangesResult } from "./ltree/types.js"
 
 // Tooltip action (use:tooltip) — the hover/focus tooltip primitive the Tree uses
 // internally; exported so consumers can reuse it on their own markup.

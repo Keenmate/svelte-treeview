@@ -81,7 +81,7 @@
 			checkboxMode="cascade"
 			{cascadeCheckPolicy}
 			bind:checkedPaths
-			shouldUseInternalSearchIndex={true}
+			isInternalSearchIndexEnabled={true}
 			searchValueMember="name"
 			bind:searchTerm
 		>

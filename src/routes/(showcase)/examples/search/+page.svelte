@@ -496,7 +496,7 @@
 					{checkboxMode}
 					{cascadeCheckPolicy}
 					bind:checkedPaths
-					shouldUseInternalSearchIndex={true}
+					isInternalSearchIndexEnabled={true}
 					searchValueMember="name"
 					bind:searchTerm={searchTerm}
 					onIndexProgress={(ctx) => (indexProgress = { processed: ctx.processed, total: ctx.total, isComplete: ctx.isComplete })}
@@ -601,7 +601,7 @@ ${"<"}/script>
 <Tree
   bind:this={treeRef}
   bind:searchTerm
-  shouldUseInternalSearchIndex={true}
+  isInternalSearchIndexEnabled={true}
   searchValueMember="name"
   ...
 />`}</pre>
@@ -623,7 +623,7 @@ ${"<"}/script>
 		</thead>
 		<tbody>
 			<tr>
-				<td><code>shouldUseInternalSearchIndex</code></td>
+				<td><code>isInternalSearchIndexEnabled</code></td>
 				<td><code>boolean</code></td>
 				<td>Enable the internal search index (required for search/filter)</td>
 			</tr>
@@ -671,14 +671,14 @@ ${"<"}/script>
 	<div class="code-block" data-language="svelte">
 		<pre>{`<!-- Using searchValueMember (simple) -->
 <Tree
-  shouldUseInternalSearchIndex={true}
+  isInternalSearchIndexEnabled={true}
   searchValueMember="name"
   ...
 />
 
 <!-- Using getSearchValueCallback (custom - search multiple fields) -->
 <Tree
-  shouldUseInternalSearchIndex={true}
+  isInternalSearchIndexEnabled={true}
   getSearchValueCallback={({ node }) => \`\${node.data?.name} \${node.data?.description}\`}
   ...
 />`}</pre>
@@ -752,7 +752,7 @@ ${"<"}/script>
 						sortCallback={sortOrg}
 						isSorted={true}
 						expandLevel={2}
-						shouldUseInternalSearchIndex={true}
+						isInternalSearchIndexEnabled={true}
 						searchValueMember="name"
 						searchTerm={scopeTerm}
 						filterScope={variant.scope}
@@ -829,7 +829,7 @@ ${"<"}/script>
 	<div class="code-block" data-language="svelte">
 		<pre>{`<Tree
   bind:searchTerm
-  shouldUseInternalSearchIndex={true}
+  isInternalSearchIndexEnabled={true}
   searchValueMember="name"
   filterScope="subtree-height"   // 'matches' | 'descendants' | 'tree-depth' | 'subtree-height' | 'levels-below'
   filterDescendantDepth={2}      // x

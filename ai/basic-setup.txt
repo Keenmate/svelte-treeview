@@ -121,7 +121,7 @@ BINDING SEARCH TEXT
   idMember="id"
   pathMember="path"
   bind:searchTerm
-  shouldUseInternalSearchIndex={true}
+  isInternalSearchIndexEnabled={true}
   searchValueMember="name"
 />
 
@@ -340,7 +340,7 @@ With search and drag-drop:
   idMember="id"
   pathMember="path"
   bind:searchTerm
-  shouldUseInternalSearchIndex={true}
+  isInternalSearchIndexEnabled={true}
   searchValueMember="name"
   dragDropMode="both"
   onNodeDrop={handleDrop}

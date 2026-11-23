@@ -10,7 +10,7 @@ import { test, expect, Page, Locator } from '@playwright/test';
  * and an op-call counter so specs assert on the lib's actual return shape
  * (success / count / removedCount / failed[] / error). The op-call counter
  * proxies for emission frequency at the public-API level — strict
- * single-emission-of-_emitTreeChanged is verified in a unit test, not here.
+ * the single refresh() per call is verified in a unit test, not here.
  */
 
 const PAGE = '/test/branch-operations';

@@ -12,7 +12,7 @@ import {
 	type DragDropMode,
 	type DropOperation,
 	type TreeChange,
-	type ApplyChangesResult,
+	type ProcessChangesResult,
 	type ToggleIconMode,
 	type NodeTitleOverflow,
 	type TooltipPlacement,
@@ -31,7 +31,7 @@ import {
 	type NodeContext,
 	type SortContext,
 	type SortOptions,
-	type NodesReorderContext,
+	type NodesSortContext,
 	type NodeRenderContext,
 	type RenderStats
 } from '../ltree/types.js';
@@ -64,6 +64,7 @@ import { animateOut, readAnimationMs, type AnimateOutHandle } from '../vendor/co
 import { ICON_CSS, renderIcon, type IconRenderContext, type RenderIconCallback } from '../vendor/core/dom/render-icon.js';
 import { adoptStyles } from '../vendor/core/dom/adopt-styles.js';
 import { createPointerDrag, type PointerDrag } from '../vendor/core/dom/pointer-drag.js';
+import { findScrollContainer } from '../vendor/core/dom/scroll-container.js';
 
 // Re-register global API (safe to import multiple times)
 import {
@@ -362,8 +363,8 @@ export interface FocusChangeContext<T> extends TreeCallbackContext<T> {
 	focusedNode: LTreeNode<T> | null;
 }
 
-/** ctx of `onTreeChange` — just the controller (read the new state from it). */
-export type TreeChangeContext<T> = TreeCallbackContext<T>;
+/** ctx of `onNodesChange` — just the controller (read the new state from it). */
+export type NodesChangeContext<T> = TreeCallbackContext<T>;
 
 /** ctx of `onExpandedChange` — the whole new expanded set (same as `expandedPaths`). */
 export interface ExpandedChangeContext<T> extends TreeCallbackContext<T> {
@@ -424,8 +425,8 @@ export interface BeforePasteContext<T> extends TreeCallbackContext<T> {
 // ─── Shared interfaces (also used by Node.svelte) ────────────────────────
 
 export interface SelectionModifiers {
-	ctrl: boolean;
-	shift: boolean;
+	isCtrlPressed: boolean;
+	isShiftPressed: boolean;
 }
 
 export interface NodeCallbacks<T> {
@@ -482,7 +483,7 @@ export interface NodeConfig {
 	// dragged visual dims the whole set in BOTH recursive and flat rendering (recursive
 	// nodes can't inherit a single top-level flag, else nested files never dim).
 	draggedPaths: Set<string>;
-	/** Rows the last expand revealed (capped at rowAnimationLimit) — they render
+	/** Rows the last expand revealed (capped at maxAnimatedRowCount) — they render
 	 *  `stv__node--opening`. Reassigned wholesale like draggedPaths. */
 	revealedPaths: Set<string>;
 	/** Rows a collapse is animating out (core animateOut) — they render
@@ -567,7 +568,7 @@ export interface TreeEngineProps<T> {
 
 	// DATA
 	/** The tree's nodes (flat `T[]` with ltree paths). Input AND current state: after a
-	 *  mutation (move / add / remove / paste / applyChanges…) `bind:nodes` receives the
+	 *  mutation (move / add / remove / paste / processChanges…) `bind:nodes` receives the
 	 *  tree's current data. */
 	nodes: T[];
 	focusedNode?: LTreeNode<T> | null | undefined;
@@ -627,8 +628,8 @@ export interface TreeEngineProps<T> {
 	shouldExpandFilterDescendants?: boolean | null | undefined;
 	/** Max matches a search/filter returns (default 1000). FlexSearch's own silent
 	 *  default was 100; check `isLimited` in onSearchStatusChange to surface truncation. */
-	searchResultLimit?: number | null | undefined;
-	shouldUseInternalSearchIndex?: boolean | null | undefined;
+	maxSearchResultCount?: number | null | undefined;
+	isInternalSearchIndexEnabled?: boolean | null | undefined;
 	indexerBatchSize?: number | null | undefined;
 	indexerTimeout?: number | null | undefined;
 	isLoading?: boolean;
@@ -641,7 +642,7 @@ export interface TreeEngineProps<T> {
 	/** Rows an expand reveals animate in (part of `motion` — `motion="none"`, reduced motion or
 	 *  `--stv-row-animation-duration: 0s` make it instant). At most this many rows animate per
 	 *  expand; the rest appear at once. Default 50; 0 = none. */
-	rowAnimationLimit?: number;
+	maxAnimatedRowCount?: number;
 	onRenderStart?: (ctx: TreeCallbackContext<T>) => void;
 	onRenderProgress?: (stats: RenderStats & TreeCallbackContext<T>) => void;
 	onRenderComplete?: (stats: RenderStats & TreeCallbackContext<T>) => void;
@@ -728,20 +729,20 @@ export interface TreeEngineProps<T> {
 	 *  node). Not fired for `{ isSilent: true }` nor for assigning `focusedNode`. */
 	onFocusChange?: (ctx: FocusChangeContext<T>) => void;
 	/** The tree's data / structure changed through a mutation (add / insert / move / remove /
-	 *  update / applyChanges / paste / drop / sort) — once per batch, after `nodes` was
+	 *  update / processChanges / paste / drop / sort) — once per batch, after `nodes` was
 	 *  re-collected (microtask). Not fired for loading new `nodes`. */
-	onTreeChange?: (ctx: TreeChangeContext<T>) => void;
+	onNodesChange?: (ctx: NodesChangeContext<T>) => void;
 	/** `sortNodes` / `sortAll` rewrote the `orderMember` values of one parent's children (custom
 	 *  `compareCallback` or `direction: 'desc'` with `orderMember` set) — persist `changes`.
 	 *  Once per affected parent; skipped with `isSilent`. */
-	onNodesReorder?: (ctx: NodesReorderContext<T> & TreeCallbackContext<T>) => void;
+	onNodesSort?: (ctx: NodesSortContext<T> & TreeCallbackContext<T>) => void;
 	// Post-operation clipboard notifications (fired AFTER the op succeeds). Symmetric
 	// with the before*Callback interceptors: onNodeCopy/onNodeCut/onNodeDelete carry the final paths
 	// plus resolved nodes (pre-removal snapshots for cut/delete); onNodePaste the PasteResult.
 	onNodeCopy?: (ctx: ClipboardEventContext<T>) => void;
 	onNodeCut?: (ctx: ClipboardEventContext<T>) => void;
 	onNodePaste?: (result: PasteResult<T> & TreeCallbackContext<T>) => void;
-	/** Fired after `runDeleteCommand` removes nodes (built-in Delete key or the public method),
+	/** Fired after `deleteNodes` removes nodes (built-in Delete key or the public method),
 	 *  with the top-level paths that were actually removed plus their pre-removal nodes. */
 	onNodeDelete?: (ctx: ClipboardEventContext<T>) => void;
 
@@ -753,7 +754,7 @@ export interface TreeEngineProps<T> {
 	 * suppress any of these. Paste targets the focused node (root when none) and uses
 	 * `nodeInputTransformationCallback` for id/name derivation.
 	 */
-	shouldHandleKeyboardShortcuts?: boolean;
+	isKeyboardShortcutsEnabled?: boolean;
 
 	// INTERCEPTORS (before*Callback = can modify/block)
 	/** Runs before the built-in Delete removes anything. Return a narrowed path[] to
@@ -931,7 +932,7 @@ const BUILT_IN_ACTIONS: Record<
 		isDisabled: (e) => !e.hasClipboardContent(),
 		run: (e, _paths, node) => e.pasteNodes(node?.path ?? '')
 	},
-	delete: { label: 'delete', isDanger: true, run: (e, paths) => e.runDeleteCommand(paths!) },
+	delete: { label: 'delete', isDanger: true, run: (e, paths) => e.deleteNodes(paths!) },
 	expand: {
 		label: 'expand',
 		isDisabled: (_e, branches) => !branches().some((n) => !n.isExpanded),
@@ -1040,9 +1041,9 @@ export class TreeEngine<T> {
 	/** The array this controller wrote back itself — the insertArray effect must not re-insert it. */
 	#selfWrittenNodes: T[] | null = null;
 	#nodesDirty = false;
-	#treeChangePending = false;
+	#nodesChangePending = false;
 	/** The tree's nodes. Assign to (re)load the tree; read for the CURRENT state — after a
-	 *  mutation (move / add / remove / paste / applyChanges…) this is the tree's data,
+	 *  mutation (move / add / remove / paste / processChanges…) this is the tree's data,
 	 *  re-collected (and written back on a microtask, which updates `bind:nodes`). */
 	get nodes(): T[] {
 		return this.#nodesDirty ? (this.tree?._collectData() ?? []) : this.#nodes;
@@ -1051,10 +1052,10 @@ export class TreeEngine<T> {
 		this.#nodes = value;
 	}
 	/** @internal A mutation changed the tree's data — re-collect `nodes` (coalesced, microtask)
-	 *  and fire `onTreeChange`. `shouldNotify: false` = the post-tick re-collect of a mutation
-	 *  already announced (no second onTreeChange). */
-	_markNodesChanged(shouldNotify = true) {
-		if (shouldNotify) this.#treeChangePending = true;
+	 *  and fire `onNodesChange`. `shouldNotify: false` = the post-tick re-collect of a mutation
+	 *  already announced (no second onNodesChange). */
+	_reconcileNodesProp(shouldNotify = true) {
+		if (shouldNotify) this.#nodesChangePending = true;
 		if (this.#nodesDirty) return;
 		this.#nodesDirty = true;
 		queueMicrotask(() => {
@@ -1063,9 +1064,9 @@ export class TreeEngine<T> {
 			const current = this.tree?._collectData() ?? [];
 			this.#selfWrittenNodes = current;
 			this.#nodes = current;
-			if (this.#treeChangePending) {
-				this.#treeChangePending = false;
-				this.onTreeChangeHandler?.(this._ctx({}));
+			if (this.#nodesChangePending) {
+				this.#nodesChangePending = false;
+				this.onNodesChangeHandler?.(this._ctx({}));
 			}
 		});
 	}
@@ -1073,13 +1074,13 @@ export class TreeEngine<T> {
 	#mutationDepth = 0;
 	/**
 	 * @internal THE bracket around every change to the tree's structure or data (move / add /
-	 * remove / paste / sort / applyChanges…): announces it (`onTreeChange` + the `nodes`
+	 * remove / paste / sort / processChanges…): announces it (`onNodesChange` + the `nodes`
 	 * write-back, coalesced on a microtask) and, after the outermost one, brings the path-keyed
 	 * state back in line with the tree (_reconcileAfterMutation). Nested calls (moveNodes →
 	 * moveNode, a cross-tree cut-paste removing its sources) reconcile once.
 	 */
 	_mutate<R>(run: () => R): R {
-		this._markNodesChanged();
+		this._reconcileNodesProp();
 		this.#mutationDepth++;
 		try {
 			return run();
@@ -1137,7 +1138,7 @@ export class TreeEngine<T> {
 	}
 	set checkedPaths(value: Set<string>) {
 		this.#checkedPaths = value;
-		this.#emittedPaths = this._projectChecked(value);
+		this.#emittedPaths = this._computeEmittedCheckedPaths(value);
 	}
 	/** The emitted (policy-projected) selection set — what `bind:checkedPaths` and
 	 *  `onCheckedChange` expose. Equals the canonical set in independent mode or
@@ -1150,7 +1151,7 @@ export class TreeEngine<T> {
 	filterScope = $state<FilterScope>('matches');
 	filterDescendantDepth = $state(1);
 	shouldExpandFilterDescendants = $state(true);
-	searchResultLimit = $state<number | undefined>(undefined);
+	maxSearchResultCount = $state<number | undefined>(undefined);
 	isRendering = $state(false);
 
 	// BEHAVIOUR
@@ -1161,11 +1162,11 @@ export class TreeEngine<T> {
 	maxBatchSize = $state(500);
 	// ROW ANIMATION (docs/PLAN-row-animation.md): rows an expand reveals get
 	// stv__node--opening (CSS @keyframes, timed by the motion tokens) — at most
-	// rowAnimationLimit of them. No on/off property: core `motion` is the one switch
+	// maxAnimatedRowCount of them. No on/off property: core `motion` is the one switch
 	// (SPEC §12.16 / C-NC-15); --stv-row-animation-duration: 0s turns off just rows.
 	// The reveal set gates it: rows re-key on _rev, so "animate on mount" alone would
 	// replay on every focus / select click.
-	rowAnimationLimit = $state(50);
+	maxAnimatedRowCount = $state(50);
 	revealedPaths = $state.raw<Set<string>>(new Set());
 	// Collapse half: the rows a collapse hides animate out first (core animateOut, the
 	// closing class + inert + --km-exit-height), THEN the node really collapses. The handle
@@ -1183,7 +1184,7 @@ export class TreeEngine<T> {
 	shouldAutoHandleCopy = $state(true);
 	shouldAutoHandleMove = $state(true);
 	shouldAutoHandlePaste = $state(true);
-	shouldHandleKeyboardShortcuts = $state(true);
+	isKeyboardShortcutsEnabled = $state(true);
 
 	// Event handlers (on* = fire-and-forget)
 	/** @internal */
@@ -1195,7 +1196,7 @@ export class TreeEngine<T> {
 	/** @internal */
 	onCheckedChangeHandler: TreeEngineProps<T>['onCheckedChange'];
 	/** @internal */
-	onNodesReorderHandler: TreeEngineProps<T>['onNodesReorder'];
+	onNodesSortHandler: TreeEngineProps<T>['onNodesSort'];
 	/** @internal */
 	onNodeExpandHandler: TreeEngineProps<T>['onNodeExpand'];
 	/** @internal */
@@ -1211,7 +1212,7 @@ export class TreeEngine<T> {
 	/** @internal */
 	onActionHandler: TreeEngineProps<T>['onAction'];
 	/** @internal */
-	onTreeChangeHandler: TreeEngineProps<T>['onTreeChange'];
+	onNodesChangeHandler: TreeEngineProps<T>['onNodesChange'];
 	/** @internal */
 	onNodeDragStartHandler: TreeEngineProps<T>['onNodeDragStart'];
 	/** @internal */
@@ -1280,7 +1281,7 @@ export class TreeEngine<T> {
 		this._reconcileVisualStatesForMode();
 		// Switching independent⇄cascade changes whether the policy applies, so the
 		// emitted projection can change even when the canonical set is untouched.
-		this.#emittedPaths = this._projectChecked(this.#checkedPaths);
+		this.#emittedPaths = this._computeEmittedCheckedPaths(this.#checkedPaths);
 	}
 	#cascadeCheckPolicy = $state<CascadeCheckPolicy>('rolled-up');
 	get cascadeCheckPolicy(): CascadeCheckPolicy {
@@ -1290,8 +1291,8 @@ export class TreeEngine<T> {
 		if (this.#cascadeCheckPolicy === value) return;
 		this.#cascadeCheckPolicy = value;
 		// Re-project the (unchanged) canonical set through the new policy and notify.
-		this.#emittedPaths = this._projectChecked(this.#checkedPaths);
-		this._notifyCheckedChanged();
+		this.#emittedPaths = this._computeEmittedCheckedPaths(this.#checkedPaths);
+		this._dispatchCheckedChange();
 	}
 	shouldClickToggleCheckbox = $state(false);
 	leafIconClass = $state('stv__toggle-icon--leaf');
@@ -1358,7 +1359,7 @@ export class TreeEngine<T> {
 	// ── Internal mutable state ──────────────────────────────────────────
 
 	// Context menu
-	contextMenuVisible = $state(false);
+	isContextMenuOpen = $state(false);
 	contextMenuX = $state(0);
 	contextMenuY = $state(0);
 	contextMenuNode: LTreeNode<T> | null = $state.raw(null);
@@ -1383,7 +1384,7 @@ export class TreeEngine<T> {
 	/** @internal */
 	isDragInProgress = $state(false);
 	// Snapshot of selectedPaths taken when the OS-convention selection sync
-	// in _engagePointerDrag replaces the selection with the dragged node. Restored
+	// in _startPointerDrag replaces the selection with the dragged node. Restored
 	// when the drag is cancelled (Esc) or lands nowhere; cleared otherwise. Null
 	// when no replacement happened (e.g. dragging a node that was already selected).
 	private _preDragSelectionSnapshot: Set<string> | null = null;
@@ -1780,22 +1781,22 @@ export class TreeEngine<T> {
 			this.tree.filterScope = this.filterScope;
 			this.tree.filterDescendantDepth = this.filterDescendantDepth;
 			this.tree.shouldExpandFilterDescendants = this.shouldExpandFilterDescendants;
-			this.tree.searchResultLimit = this.searchResultLimit;
+			this.tree.maxSearchResultCount = this.maxSearchResultCount;
 			this.tree.filterNodes(this.searchTerm as string);
 		});
 
 		// InsertArray when data changes
-		$effect(() => this._applyNodesInput());
+		$effect(() => this._insertNodesInput());
 
 		// Expanded set: any tree change (data load, toggles, mutations) re-derives it and
 		// announces a change through onExpandedChange (the first sync is the baseline).
 		$effect(() => {
 			void this.tree?.changeTracker;
-			untrack(() => this._syncExpanded());
+			untrack(() => this._reconcileExpanded());
 		});
 
 		// Progressive rendering for flat mode
-		$effect(() => this._syncProgressiveRender());
+		$effect(() => this._reconcileProgressiveRender());
 
 		// Virtual scroll: auto-measure row height from the first rendered node.
 		// Virtual scroll assumes UNIFORM row heights: the spacer is count * rowHeight,
@@ -1849,7 +1850,7 @@ export class TreeEngine<T> {
 		// Context menu global event listeners — for a headless renderer (canvas) drawing its own
 		// menu. Tree.svelte turns them off: its menu is core openMenu(), which dismisses itself.
 		$effect(() => {
-			if (this.contextMenuVisible && this.shouldAutoCloseContextMenu) {
+			if (this.isContextMenuOpen && this.shouldAutoCloseContextMenu) {
 				const handleGlobalClick = (event: MouseEvent) => {
 					const target = event.target as Element;
 					if (!target.closest('.stv__context-menu')) {
@@ -1903,9 +1904,9 @@ export class TreeEngine<T> {
 
 	/**
 	 * Body of the constructor's nodes effect: (re)insert the `nodes` input. A method, not inline —
-	 * see `_syncProgressiveRender`.
+	 * see `_reconcileProgressiveRender`.
 	 */
-	private _applyNodesInput() {
+	private _insertNodesInput() {
 		const nodes = this.#nodes;
 		if (this.tree && nodes) {
 			// Our own write-back of the current state (after a mutation) — already in the tree.
@@ -1918,7 +1919,7 @@ export class TreeEngine<T> {
 	private _loadNodes(nodes: T[]) {
 		this.flatRenderedIds = new Set();
 		this.flatRenderQueue = [];
-		untrack(() => this._finishRenderPass());
+		untrack(() => this._completeRenderPass());
 		this.currentBatchSize = 0;
 		// Reset virtual scroll measurements
 		this.vsMeasuredRowHeight = null;
@@ -1944,7 +1945,7 @@ export class TreeEngine<T> {
 	 * the constructor: the SSR build drops `$effect` calls but keeps esbuild's @__PURE__ marks
 	 * on their `new Set(…)`, and Rollup warns about the stranded comments.
 	 */
-	private _syncProgressiveRender() {
+	private _reconcileProgressiveRender() {
 		if (!this.isProgressiveRenderEnabled || !this.tree?.visibleFlatNodes)
 			return;
 
@@ -2000,7 +2001,7 @@ export class TreeEngine<T> {
 
 				if (remaining.length > 0) {
 					this.flatRenderQueue = [...remaining];
-					untrack(() => this._beginRenderPass(immediateBatch.length));
+					untrack(() => this._startRenderPass(immediateBatch.length));
 					this.scheduleFlatRenderBatch();
 				}
 			}
@@ -2030,7 +2031,7 @@ export class TreeEngine<T> {
 	 */
 	async expandNodes(paths: string | string[], options?: ExpandOptions): Promise<void> {
 		const list = Array.isArray(paths) ? paths : [paths];
-		this._settleClosing(list);
+		this._commitPendingCollapses(list);
 		if (!this.beforeExpandHandler) {
 			this._expandWithEvents(list, options);
 			return;
@@ -2043,7 +2044,7 @@ export class TreeEngine<T> {
 				now.push(p);
 				continue;
 			}
-			const result = this._gateExpand(node, () => this._expandWithEvents([p], options));
+			const result = this._checkBeforeExpand(node, () => this._expandWithEvents([p], options));
 			if (result === true) now.push(p);
 			else if (result !== false) pending.push(result);
 		}
@@ -2071,8 +2072,8 @@ export class TreeEngine<T> {
 				this._animateCollapse(fresh.map((n) => n.path), () => {
 					this.tree.collapseNodes(fresh.length ? fresh.map((n) => n.path) : list, options);
 					if (!options?.isSilent)
-						for (const n of fresh) if (!n.isExpanded) this._emitExpandEvent('collapse', n);
-					this._syncExpanded(options?.isSilent);
+						for (const n of fresh) if (!n.isExpanded) this._dispatchExpandEvent('collapse', n);
+					this._reconcileExpanded(options?.isSilent);
 				})
 			);
 		await Promise.all(waits);
@@ -2090,7 +2091,7 @@ export class TreeEngine<T> {
 		if (!this.tree.getNodeIsCollapsible(node)) return;
 		if (this.expandPendingPaths.has(path)) return;
 		// Toggled again while its rows animate out = re-expand: cancel, it stays open.
-		if (this._settleClosing([path])) {
+		if (this._commitPendingCollapses([path])) {
 			uiLogger.debug(`Node re-expanded mid-collapse (animation cancelled): ${path}`);
 			return;
 		}
@@ -2099,17 +2100,17 @@ export class TreeEngine<T> {
 			return;
 		}
 		uiLogger.debug(`Expanding node: ${path}`, { accordion: this.shouldExpandAsAccordion });
-		const result = this._gateExpand(node, () => this._toggleExpandApply(path, options));
-		if (result === true) this._toggleExpandApply(path, options);
+		const result = this._checkBeforeExpand(node, () => this._expandFromToggle(path, options));
+		if (result === true) this._expandFromToggle(path, options);
 		else if (result !== false) await result;
 	}
 
 	/** Expand the whole tree (`null` / omitted), or the given nodes + all their descendants.
 	 *  No `beforeExpandCallback`, no `onNodeExpand` — only `onExpandedChange`. */
 	expandAll(paths?: string | string[] | null, options?: ExpandOptions) {
-		this._settleClosing(paths == null ? null : Array.isArray(paths) ? paths : [paths]);
-		this._withReveal(() => this.tree?.expandAll(paths, options));
-		this._syncExpanded(options?.isSilent);
+		this._commitPendingCollapses(paths == null ? null : Array.isArray(paths) ? paths : [paths]);
+		this._animateExpand(() => this.tree?.expandAll(paths, options));
+		this._reconcileExpanded(options?.isSilent);
 	}
 
 	/** Collapse the whole tree (`null` / omitted), or the given nodes + all their descendants.
@@ -2118,7 +2119,7 @@ export class TreeEngine<T> {
 	collapseAll(paths?: string | string[] | null, options?: ExpandOptions): Promise<void> {
 		const apply = () => {
 			this.tree?.collapseAll(paths, options);
-			this._syncExpanded(options?.isSilent);
+			this._reconcileExpanded(options?.isSilent);
 		};
 		if (!this.tree) return Promise.resolve();
 		// The nodes whose rows disappear: from every root (whole tree) or the given nodes, the
@@ -2140,13 +2141,13 @@ export class TreeEngine<T> {
 
 	/**
 	 * Row animation, collapse half: animate out the visible rows under `targets` (the first
-	 * `rowAnimationLimit`; the rest go with the collapse), then `apply()` the real collapse —
+	 * `maxAnimatedRowCount`; the rest go with the collapse), then `apply()` the real collapse —
 	 * core `animateOut` (closing class + inert + --km-exit-height, waits for the CSS
 	 * animation; 0s → at once). Nothing to animate → `apply()` now.
 	 */
 	private _animateCollapse(targets: string[], apply: () => void): Promise<void> {
 		const container = this.containerElement;
-		if (!targets.length || !container || !this._isRowAnimationOn()) {
+		if (!targets.length || !container || !this._isRowAnimationEnabled()) {
 			apply();
 			return Promise.resolve();
 		}
@@ -2154,7 +2155,7 @@ export class TreeEngine<T> {
 		const targetSet = new Set(targets);
 		const isUnderTarget = (path: string): boolean =>
 			getAncestorPaths(path, sep).some((a) => targetSet.has(a));
-		const limit = Math.max(0, this.rowAnimationLimit ?? 50);
+		const limit = Math.max(0, this.maxAnimatedRowCount ?? 50);
 		const hiding: string[] = [];
 		for (const n of this.tree.visibleFlatNodes) {
 			if (hiding.length >= limit) break;
@@ -2202,7 +2203,7 @@ export class TreeEngine<T> {
 	 * collapseAll in flight) is applied NOW, so calls keep their order: `collapseAll();
 	 * expandNodes(x)` ends exactly as it does without motion. Returns whether one was cancelled.
 	 */
-	private _settleClosing(paths: readonly string[] | null): boolean {
+	private _commitPendingCollapses(paths: readonly string[] | null): boolean {
 		const sep = this.treePathSeparator || '.';
 		const isRelated = (t: string) =>
 			paths == null || paths.some((p) => isSelfOrDescendant(p, t, sep) || isSelfOrDescendant(t, p, sep));
@@ -2246,7 +2247,7 @@ export class TreeEngine<T> {
 		return this.expandPendingPaths.has(path);
 	}
 
-	private _emitExpandEvent(kind: 'expand' | 'collapse', node: LTreeNode<T>): void {
+	private _dispatchExpandEvent(kind: 'expand' | 'collapse', node: LTreeNode<T>): void {
 		const handler = kind === 'expand' ? this.onNodeExpandHandler : this.onNodeCollapseHandler;
 		handler?.(this._ctx(this.getNodeRef(node)));
 	}
@@ -2263,21 +2264,21 @@ export class TreeEngine<T> {
 				if (!n.isExpanded && n.hasChildren) changing.set(prefix, n);
 			}
 		}
-		this._withReveal(() => this.tree.expandNodes(paths, options));
+		this._animateExpand(() => this.tree.expandNodes(paths, options));
 		if (!options?.isSilent)
-			for (const n of changing.values()) if (n.isExpanded) this._emitExpandEvent('expand', n);
-		this._syncExpanded(options?.isSilent);
+			for (const n of changing.values()) if (n.isExpanded) this._dispatchExpandEvent('expand', n);
+		this._reconcileExpanded(options?.isSilent);
 	}
 
 	/**
 	 * Row animation: run an expand and record the rows it made visible (the first
-	 * `rowAnimationLimit` in visible order) as the reveal. Nested calls (the accordion
+	 * `maxAnimatedRowCount` in visible order) as the reveal. Nested calls (the accordion
 	 * toggle → _expandWithEvents) record once, around the outermost. Nothing to animate
 	 * (duration 0s — motion "none", reduced motion, the token — or a limit of 0) → just
 	 * `apply()`, so a motion-off tree never builds the before-set.
 	 */
-	private _withReveal(apply: () => void): void {
-		if (this.#revealDepth > 0 || !this.tree || !this._isRowAnimationOn()) {
+	private _animateExpand(apply: () => void): void {
+		if (this.#revealDepth > 0 || !this.tree || !this._isRowAnimationEnabled()) {
 			apply();
 			return;
 		}
@@ -2289,7 +2290,7 @@ export class TreeEngine<T> {
 		} finally {
 			this.#revealDepth--;
 		}
-		const limit = Math.max(0, this.rowAnimationLimit ?? 50);
+		const limit = Math.max(0, this.maxAnimatedRowCount ?? 50);
 		const revealed = new Set<string>();
 		if (limit > 0)
 			for (const n of this.tree.visibleFlatNodes) {
@@ -2316,8 +2317,8 @@ export class TreeEngine<T> {
 	}
 
 	/** Rows animate: a limit above 0 and a resolved `--stv-row-animation-duration` above 0s. */
-	private _isRowAnimationOn(): boolean {
-		if ((this.rowAnimationLimit ?? 50) <= 0) return false;
+	private _isRowAnimationEnabled(): boolean {
+		if ((this.maxAnimatedRowCount ?? 50) <= 0) return false;
 		const el = this.containerElement;
 		if (!el || typeof getComputedStyle !== 'function') return false;
 		const raw = getComputedStyle(el).getPropertyValue('--stv-row-animation-duration').trim();
@@ -2326,7 +2327,7 @@ export class TreeEngine<T> {
 	}
 
 	/** The expand half of a UI toggle, after the gate: accordion side-effect + expand + events. */
-	private _toggleExpandApply(path: string, options?: ExpandOptions): void {
+	private _expandFromToggle(path: string, options?: ExpandOptions): void {
 		const node = this.tree?.getNodeByPath(path);
 		if (!node || node.isExpanded) return;
 		if (options?.isExclusive) {
@@ -2334,7 +2335,7 @@ export class TreeEngine<T> {
 			return;
 		}
 		const collapsedSiblings: LTreeNode<T>[] = [];
-		this._withReveal(() => {
+		this._animateExpand(() => {
 			if (this.shouldExpandAsAccordion) {
 				for (const sibling of this.tree.getSiblings(path)) {
 					if (sibling.path !== path && sibling.isExpanded && this.tree.getNodeIsCollapsible(sibling)) {
@@ -2349,10 +2350,10 @@ export class TreeEngine<T> {
 			this.tree.refresh();
 		});
 		if (!options?.isSilent) {
-			for (const s of collapsedSiblings) this._emitExpandEvent('collapse', s);
-			this._emitExpandEvent('expand', node);
+			for (const s of collapsedSiblings) this._dispatchExpandEvent('collapse', s);
+			this._dispatchExpandEvent('expand', node);
 		}
-		this._syncExpanded(options?.isSilent);
+		this._reconcileExpanded(options?.isSilent);
 	}
 
 	/**
@@ -2361,7 +2362,7 @@ export class TreeEngine<T> {
 	 * state) and returns a Promise; on settle the mark clears and `applyLater()` runs unless
 	 * the hook resolved `false` (a rejection counts as false). A pending node answers `false`.
 	 */
-	private _gateExpand(node: LTreeNode<T>, applyLater: () => void): boolean | Promise<boolean> {
+	private _checkBeforeExpand(node: LTreeNode<T>, applyLater: () => void): boolean | Promise<boolean> {
 		const path = node.path;
 		if (this.expandPendingPaths.has(path)) return false;
 		const cb = this.beforeExpandHandler;
@@ -2404,7 +2405,7 @@ export class TreeEngine<T> {
 	 * `onExpandedChange` — unless `isSilent` (re-baseline only) or this is the first sync
 	 * (the baseline).
 	 */
-	private _syncExpanded(isSilent?: boolean): void {
+	private _reconcileExpanded(isSilent?: boolean): void {
 		if (!this.tree) return;
 		const paths = this.tree.getExpandedPaths();
 		const key = paths.join('\u0000');
@@ -2421,7 +2422,7 @@ export class TreeEngine<T> {
 	_replaceExpandedPaths(paths: Iterable<string>): void {
 		if (!this.tree) return;
 		this.tree.setExpandedPaths([...paths]);
-		this._syncExpanded(true);
+		this._reconcileExpanded(true);
 	}
 
 	/** Attach the `controller` to a callback / event context — non-enumerable (like web-treeview's
@@ -2552,7 +2553,7 @@ export class TreeEngine<T> {
 	 * ABSENT from the manifest as a hole (left behind). Order is preserved (= landing order); the
 	 * lead is appended only if the callback dropped it.
 	 */
-	private _normalizeDragManifest(paths: string[], leadPath: string): string[] {
+	private _validateDragManifest(paths: string[], leadPath: string): string[] {
 		const seen = new Set<string>();
 		const deduped: string[] = [];
 		for (const p of paths) {
@@ -2573,9 +2574,9 @@ export class TreeEngine<T> {
 	 * can't be auto-moved and are skipped — the consumer places those in onNodeDrop. Fires
 	 * onNodeDrop once with all placed nodes. Returns true when every attempted move succeeded.
 	 */
-	private _executeDropGroups(
+	private _processDropGroups(
 		groups: DropGroup[],
-		fireDrop: (dropped: LTreeNode<T>[] | null) => void
+		dispatchDrop: (dropped: LTreeNode<T>[] | null) => void
 	): boolean {
 		// Resolve every target + source to a LIVE node reference BEFORE moving anything: each
 		// moveNode reassigns sibling paths, so a path string captured for a not-yet-processed
@@ -2598,7 +2599,7 @@ export class TreeEngine<T> {
 		this._mutate(() => {
 			for (const group of resolved) {
 				if (!group.nodes.length) continue;
-				const manifest = this._completeManifest(group.nodes.map((n) => n.path));
+				const manifest = this._getPathsWithDescendants(group.nodes.map((n) => n.path));
 				const r = this.moveNodes(
 					manifest,
 					group.targetNode?.path ?? group.targetPath,
@@ -2608,7 +2609,7 @@ export class TreeEngine<T> {
 				if (!r.success) allOk = false;
 			}
 		});
-		fireDrop(movedNodes.length ? movedNodes : null);
+		dispatchDrop(movedNodes.length ? movedNodes : null);
 		return allOk;
 	}
 
@@ -2628,19 +2629,19 @@ export class TreeEngine<T> {
 	 *  tree's own (`sortCallback` → `orderMember` → `Intl.Collator(numeric)` by display value);
 	 *  `compareCallback` / `direction` override it. Runs even with `isSortingEnabled = false`. */
 	sortNodes(paths: string | string[], options?: SortOptions<T>): void {
-		this._runSort(() => this.tree?.sortNodes(paths, options) ?? [], options);
+		this._processSort(() => this.tree?.sortNodes(paths, options) ?? [], options);
 	}
 
 	/** Sort whole subtrees — the given nodes' children at every depth; `null` / omitted = the
 	 *  whole tree. Same rule / options as `sortNodes`. */
 	sortAll(paths?: string | string[] | null, options?: SortOptions<T>): void {
-		this._runSort(() => this.tree?.sortAll(paths, options) ?? [], options);
+		this._processSort(() => this.tree?.sortAll(paths, options) ?? [], options);
 	}
 
-	private _runSort(run: () => NodesReorderContext<T>[], options?: SortOptions<T>): void {
+	private _processSort(run: () => NodesSortContext<T>[], options?: SortOptions<T>): void {
 		const reorders = this._mutate(run);
-		if (options?.isSilent || !this.onNodesReorderHandler) return;
-		for (const ctx of reorders) this.onNodesReorderHandler(this._ctx(ctx));
+		if (options?.isSilent || !this.onNodesSortHandler) return;
+		for (const ctx of reorders) this.onNodesSortHandler(this._ctx(ctx));
 	}
 
 	refreshNode(path: string): void {
@@ -2752,7 +2753,7 @@ export class TreeEngine<T> {
 	 * subtrees (multi-drag, DropGroup routing) must complete their set first, otherwise every
 	 * unlisted descendant would be read as a hole and left behind.
 	 */
-	private _completeManifest(paths: string[]): string[] {
+	private _getPathsWithDescendants(paths: string[]): string[] {
 		if (!this.tree) return paths;
 		const set = new Set<string>(paths);
 		for (const p of paths) {
@@ -2768,14 +2769,14 @@ export class TreeEngine<T> {
 	 * this set and returns the kept manifest; whatever it drops from a moved subtree becomes a
 	 * hole (left behind by moveNodes). Same-tree only (nodes are live at drag start).
 	 */
-	private _completeDraggedRefs(refs: NodeRef<T>[]): NodeRef<T>[] {
-		return this._completeManifest(refs.map((r) => r.path)).map((p) => this.getNodeRef(p));
+	private _getDraggedRefsWithDescendants(refs: NodeRef<T>[]): NodeRef<T>[] {
+		return this._getPathsWithDescendants(refs.map((r) => r.path)).map((p) => this.getNodeRef(p));
 	}
 
 	/**
 	 * Batch-move a COMPLETE manifest of nodes under a target, honoring "holes".
 	 *
-	 * `paths` is a complete manifest (see _completeManifest): every descendant of every moved
+	 * `paths` is a complete manifest (see _getPathsWithDescendants): every descendant of every moved
 	 * node is expected to be present. Any real descendant of a moved subtree that is ABSENT
 	 * from the manifest is a hole — it is LEFT BEHIND by re-homing it to its moved root's OLD
 	 * parent (option ii: it physically stays where the subtree used to be) instead of
@@ -2864,7 +2865,7 @@ export class TreeEngine<T> {
 	 * moveNodes. (Named `duplicateNodes`, not `copyNodes`: the latter is the clipboard
 	 * "copy to clipboard" op; this one duplicates a subtree straight into a destination.)
 	 *
-	 * `paths` is a complete manifest (see _completeManifest): every descendant of every copied
+	 * `paths` is a complete manifest (see _getPathsWithDescendants): every descendant of every copied
 	 * root is expected to be present. A descendant that is ABSENT from the manifest is a hole —
 	 * but unlike a move (which re-homes the omitted node so it physically stays), a copy has
 	 * nothing to re-home: the source never leaves, so the hole is simply NOT copied. Omission =
@@ -3084,9 +3085,9 @@ export class TreeEngine<T> {
 		});
 	}
 
-	applyChanges(changes: TreeChange<T>[]): ApplyChangesResult {
+	processChanges(changes: TreeChange<T>[]): ProcessChangesResult {
 		return this._mutate(() => {
-			const result = this.tree?.applyChanges(changes) || { successful: 0, failed: [] };
+			const result = this.tree?.processChanges(changes) || { successful: 0, failed: [] };
 			return result;
 		});
 	}
@@ -3532,7 +3533,7 @@ export class TreeEngine<T> {
 	/**
 	 * Programmatic removal of nodes (and their descendants): top-level subtrees only,
 	 * selection + focus are cleared when anything was removed. No `beforeDeleteCallback`,
-	 * no `onNodeDelete` — that is the user Delete command, {@link runDeleteCommand}.
+	 * no `onNodeDelete` — that is the user Delete command, {@link deleteNodes}.
 	 */
 	removeNodes(paths: string[]): { removed: number; failed: number } {
 		const targets = getTopLevelPaths(paths ?? [], this.treePathSeparator);
@@ -3559,7 +3560,7 @@ export class TreeEngine<T> {
 	 * anything removed, and fires `onNodeDelete` with pre-removal node snapshots.
 	 * Programmatic removal is {@link removeNodes} (no veto, no event).
 	 */
-	runDeleteCommand(paths?: string[]): { removed: number; blocked: number } {
+	deleteNodes(paths?: string[]): { removed: number; blocked: number } {
 		let targets = getTopLevelPaths(paths ?? this._shortcutSelectionPaths(), this.treePathSeparator);
 		if (targets.length === 0) return { removed: 0, blocked: 0 };
 
@@ -3618,7 +3619,7 @@ export class TreeEngine<T> {
 		if (['Control', 'Shift', 'Alt', 'Meta'].includes(event.key)) return;
 
 		// Don't interfere with context menu keyboard handling
-		if (this.contextMenuVisible) return;
+		if (this.isContextMenuOpen) return;
 
 		// Call custom handler first — return false to suppress default handling. Resolve the
 		// focus + selection sets up front so the consumer gets nodes, not raw paths.
@@ -3726,7 +3727,7 @@ export class TreeEngine<T> {
 	}
 
 	/**
-	 * Built-in keyboard shortcuts, opt-in via `shouldHandleKeyboardShortcuts`. Returns
+	 * Built-in keyboard shortcuts, opt-in via `isKeyboardShortcutsEnabled`. Returns
 	 * true when it consumed the event (caller should preventDefault + stop). A consumer
 	 * `beforeKeydownCallback` runs BEFORE this in Tree.svelte, so it can override or suppress any
 	 * of these. Shared by Tree.svelte and the canvas renderer.
@@ -3736,7 +3737,7 @@ export class TreeEngine<T> {
 	 * @internal
 	 */
 	handleShortcutKeydown(event: KeyboardEvent): boolean {
-		if (!this.shouldHandleKeyboardShortcuts) return false;
+		if (!this.isKeyboardShortcutsEnabled) return false;
 		const mod = event.ctrlKey || event.metaKey;
 		const key = event.key.toLowerCase();
 		// Classic CUA (old-school) aliases alongside the modern C/X/V:
@@ -3767,7 +3768,7 @@ export class TreeEngine<T> {
 		// Delete selection — plain Delete only (Shift+Delete was cut, handled above).
 		if (event.key === 'Delete' && !event.shiftKey) {
 			if (!this._shortcutSelectionPaths().length) return false;
-			this.runDeleteCommand();
+			this.deleteNodes();
 			return true;
 		}
 		if (event.key === 'Escape' && getClipboardOp() === 'cut') {
@@ -3785,7 +3786,7 @@ export class TreeEngine<T> {
 		this.contextMenuNode = node;
 		this.contextMenuX = screenX + this.contextMenuXOffset;
 		this.contextMenuY = screenY + this.contextMenuYOffset;
-		this.contextMenuVisible = true;
+		this.isContextMenuOpen = true;
 	}
 
 	/**
@@ -3909,7 +3910,7 @@ export class TreeEngine<T> {
 
 	// svelte-ignore non_reactive_update
 	closeContextMenu() {
-		this.contextMenuVisible = false;
+		this.isContextMenuOpen = false;
 		this.contextMenuNode = null;
 	}
 
@@ -4095,11 +4096,11 @@ export class TreeEngine<T> {
 
 			if (highlight && this.scrollHighlightClass) {
 				const elementId = `${this.treeId}-${node.id}`;
-				if (!this.applySelection(elementId)) {
+				if (!this._highlightRow(elementId)) {
 					// Element might not be rendered yet — retry after another frame
 					await tick();
 					await new Promise((r) => requestAnimationFrame(r));
-					this.applySelection(elementId);
+					this._highlightRow(elementId);
 				}
 			}
 
@@ -4135,7 +4136,7 @@ export class TreeEngine<T> {
 		}
 
 		if (containerScroll) {
-			const container = this.findScrollableAncestor(contentDiv);
+			const container = findScrollContainer(contentDiv);
 			if (container) {
 				const containerRect = container.getBoundingClientRect();
 				const elementRect = contentDiv.getBoundingClientRect();
@@ -4166,7 +4167,7 @@ export class TreeEngine<T> {
 		}
 
 		if (highlight && this.scrollHighlightClass) {
-			this.applySelection(elementId);
+			this._highlightRow(elementId);
 		}
 
 		perfEnd(`[${this.treeId}] scrollToPath`);
@@ -4177,7 +4178,7 @@ export class TreeEngine<T> {
 	 * Apply scroll highlight to a node element by ID.
 	 * Returns true if the element was found and highlighted, false otherwise.
 	 */
-	private applySelection(elementId: string): boolean {
+	private _highlightRow(elementId: string): boolean {
 		const rootEl = this.containerElement;
 		const element = rootEl
 			? rootEl.querySelector(`#${CSS.escape(elementId)}`)
@@ -4304,7 +4305,7 @@ export class TreeEngine<T> {
 			sortCallback: this._withController(o.sortCallback),
 			treePathSeparator: resolved('treePathSeparator'),
 			expandLevel: resolved('expandLevel'),
-			shouldUseInternalSearchIndex: resolved('shouldUseInternalSearchIndex'),
+			isInternalSearchIndexEnabled: resolved('isInternalSearchIndexEnabled'),
 			initializeIndexCallback: o.initializeIndexCallback,
 			indexerBatchSize: resolved('indexerBatchSize'),
 			indexerTimeout: resolved('indexerTimeout')
@@ -4360,8 +4361,8 @@ export class TreeEngine<T> {
 	 */
 	handleNodeClick(node: LTreeNode<T>, event?: MouseEvent): void {
 		uiLogger.debug(`Node clicked: ${node.path}`, { id: node.id, hasChildren: node.hasChildren });
-		const modifiers = event ? { ctrl: event.ctrlKey || event.metaKey, shift: event.shiftKey } : undefined;
-		const hasModifiers = !!(modifiers?.ctrl || modifiers?.shift);
+		const modifiers = event ? { isCtrlPressed: event.ctrlKey || event.metaKey, isShiftPressed: event.shiftKey } : undefined;
+		const hasModifiers = !!(modifiers?.isCtrlPressed || modifiers?.isShiftPressed);
 		const toggleExpanded = () => {
 			if (node.hasChildren && this.tree.getNodeIsCollapsible(node)) void this.toggleNodeExpanded(node.path);
 		};
@@ -4385,7 +4386,7 @@ export class TreeEngine<T> {
 		modifiers?: SelectionModifiers,
 		options?: { isSilent?: boolean; forceMultiSemantics?: boolean; uiClick?: boolean }
 	) {
-		if (this.contextMenuVisible) {
+		if (this.isContextMenuOpen) {
 			this.closeContextMenu();
 		}
 
@@ -4399,7 +4400,7 @@ export class TreeEngine<T> {
 		// Threshold = 400ms, a touch tighter than Windows' 500ms default to avoid
 		// coupling unrelated clicks. Gated on uiClick so programmatic highlight/select
 		// API calls never get mistaken for a double-click.
-		if (options?.uiClick && !modifiers?.ctrl && !modifiers?.shift) {
+		if (options?.uiClick && !modifiers?.isCtrlPressed && !modifiers?.isShiftPressed) {
 			const now = Date.now();
 			const isDouble = this._lastClickPath === node.path && now - this._lastClickTime < 400;
 			if (isDouble) {
@@ -4419,8 +4420,8 @@ export class TreeEngine<T> {
 		// callers (selectNode with mode='toggle'/'range') pass forceMultiSemantics
 		// to opt out of the gate — the API contract should not depend on selectionMode.
 		const isMulti = options?.forceMultiSemantics || this.selectionMode === 'multiple';
-		const ctrl = isMulti && (modifiers?.ctrl ?? false);
-		const shift = isMulti && (modifiers?.shift ?? false);
+		const ctrl = isMulti && (modifiers?.isCtrlPressed ?? false);
+		const shift = isMulti && (modifiers?.isShiftPressed ?? false);
 		const silent = options?.isSilent ?? false;
 
 		uiLogger.debug(`[highlight] Click on ${node.path}`, {
@@ -4491,7 +4492,7 @@ export class TreeEngine<T> {
 	 * child of) the real node, or a parent with one visible match reads as fully checked
 	 * and checks made while filtered are lost when the filter clears.
 	 */
-	private _realNode(path: string): LTreeNode<T> | null {
+	private _getRealNode(path: string): LTreeNode<T> | null {
 		return this.tree.getNodeByPath(path, this.tree.root);
 	}
 
@@ -4508,10 +4509,10 @@ export class TreeEngine<T> {
 
 	/** Mirror isChecked/visualState from the real nodes onto the filtered copies
 	 *  (bumping `_rev` so they re-render). No-op when no filter is active. */
-	private _syncFilteredCheckState() {
+	private _reconcileFilteredCheckState() {
 		if (!this.tree?.isFiltered) return;
 		const visit = (copy: LTreeNode<T>) => {
-			const real = this._realNode(copy.path);
+			const real = this._getRealNode(copy.path);
 			if (real && real !== copy && (copy.isChecked !== real.isChecked || copy.visualState !== real.visualState)) {
 				copy.isChecked = real.isChecked;
 				copy.visualState = real.visualState;
@@ -4538,7 +4539,7 @@ export class TreeEngine<T> {
 		let newChecked: boolean;
 		const clickedVisible = isFilteredCascade ? visibleDescendants(node.path) : [];
 		if (clickedVisible.length > 0) {
-			newChecked = !clickedVisible.every((p) => this._realNode(p)?.isChecked);
+			newChecked = !clickedVisible.every((p) => this._getRealNode(p)?.isChecked);
 		} else {
 			// In cascade mode, indeterminate → check all (not fully selected yet)
 			newChecked =
@@ -4578,7 +4579,7 @@ export class TreeEngine<T> {
 		if (!options?.skipFocus) this._setFocusedNode(node);
 
 		this.onNodeClickHandler?.(this._ctx(this.getNodeRef(node)));
-		this._notifyCheckedChanged();
+		this._dispatchCheckedChange();
 		this.tree.refresh();
 		if (!options?.skipFocus) this.containerElement?.focus();
 	}
@@ -4589,7 +4590,7 @@ export class TreeEngine<T> {
 	private _withCascadeDescendants(paths: string[], isVisibleOnly = false): string[] {
 		const expanded = new Set(paths);
 		for (const path of paths) {
-			const n = isVisibleOnly ? this.tree.getNodeByPath(path) : this._realNode(path);
+			const n = isVisibleOnly ? this.tree.getNodeByPath(path) : this._getRealNode(path);
 			if (n) for (const dp of getDescendantPaths(n)) expanded.add(dp);
 		}
 		return [...expanded];
@@ -4606,7 +4607,7 @@ export class TreeEngine<T> {
 		const prev = this.#checkedPaths;
 		const next = new Set(prev);
 		for (const path of paths) {
-			const n = this._realNode(path);
+			const n = this._getRealNode(path);
 			if (!n) continue;
 			if (isChecked) next.add(path);
 			else next.delete(path);
@@ -4618,7 +4619,7 @@ export class TreeEngine<T> {
 		if (this.checkboxMode === 'cascade') this._reconcileCascadeStates(paths, next, isAffectedSynced);
 		const isChanged = next.size !== prev.size || [...next].some((p) => !prev.has(p));
 		this.checkedPaths = next;
-		this._syncFilteredCheckState();
+		this._reconcileFilteredCheckState();
 		return isChanged;
 	}
 
@@ -4637,11 +4638,11 @@ export class TreeEngine<T> {
 		const affected = new Set(paths);
 		const nodes = new Map<string, LTreeNode<T>>();
 		for (const path of affected) {
-			let n = this._realNode(path);
+			let n = this._getRealNode(path);
 			// A collected node's ancestors are collected already — stop climbing there.
 			while (n && !nodes.has(n.path)) {
 				nodes.set(n.path, n);
-				n = n.parentPath ? this._realNode(n.parentPath) : null;
+				n = n.parentPath ? this._getRealNode(n.parentPath) : null;
 			}
 		}
 		const ordered = [...nodes.values()].sort((a, b) => (b.level ?? 0) - (a.level ?? 0));
@@ -4722,9 +4723,9 @@ export class TreeEngine<T> {
 		for (const key in this.tree.root.children) visit(this.tree.root.children[key]!);
 		if (checkedChanged) this.checkedPaths = newPaths;
 		if (anyChanged) {
-			this._syncFilteredCheckState();
+			this._reconcileFilteredCheckState();
 			this.tree.refresh();
-			if (checkedChanged) this._notifyCheckedChanged();
+			if (checkedChanged) this._dispatchCheckedChange();
 		}
 	}
 
@@ -4766,7 +4767,7 @@ export class TreeEngine<T> {
 	 * - `'rolled-up'` → a fully-checked selectable branch collapses to its root
 	 *   (stop descending); indeterminate branches descend to emit their checked bits.
 	 */
-	private _projectChecked(canonical: Set<string>): Set<string> {
+	private _computeEmittedCheckedPaths(canonical: Set<string>): Set<string> {
 		if (this.#checkboxMode !== 'cascade' || this.#cascadeCheckPolicy === 'all' || !this.tree) {
 			return canonical;
 		}
@@ -4817,7 +4818,7 @@ export class TreeEngine<T> {
 		const prevPath = this.focusedNode?.path;
 		if (prevPath && prevPath !== node?.path) this._setNodeFlag(prevPath, 'isFocused', false);
 		const canonical = node
-			? (this._realNode(node.path) ?? this.tree.getNodeByPath(node.path) ?? node)
+			? (this._getRealNode(node.path) ?? this.tree.getNodeByPath(node.path) ?? node)
 			: null;
 		if (canonical) this._setNodeFlag(canonical.path, 'isFocused', true);
 		this.focusedNode = canonical;
@@ -4831,7 +4832,7 @@ export class TreeEngine<T> {
 	 * highlight set IS the form selection, so writes to selectedPaths cascade
 	 * to checkedPaths and fire onCheckedChange alongside onSelectionChange.
 	 */
-	private _mirrorSelectedToChecked() {
+	private _reconcileCheckedFromSelection() {
 		if (this.isCheckboxesShown) return;
 		// Take a snapshot to avoid identity-loop on parent rebinding
 		const next = new Set(this.selectedPaths);
@@ -4839,7 +4840,7 @@ export class TreeEngine<T> {
 		// First clear isChecked on anything currently in checkedPaths but not in next.
 		for (const path of this.checkedPaths) {
 			if (!next.has(path)) {
-				const n = this._realNode(path);
+				const n = this._getRealNode(path);
 				if (n) {
 					n.isChecked = false;
 					bumpRev(n);
@@ -4848,15 +4849,15 @@ export class TreeEngine<T> {
 		}
 		// Then set isChecked on the new set.
 		for (const path of next) {
-			const n = this._realNode(path);
+			const n = this._getRealNode(path);
 			if (n && !n.isChecked) {
 				n.isChecked = true;
 				bumpRev(n);
 			}
 		}
 		this.checkedPaths = next;
-		this._syncFilteredCheckState();
-		this._notifyCheckedChanged();
+		this._reconcileFilteredCheckState();
+		this._dispatchCheckedChange();
 	}
 
 	/**
@@ -4872,7 +4873,7 @@ export class TreeEngine<T> {
 			if (!next.has(path)) this._setNodeFlag(path, 'isSelected', false);
 		}
 		for (const path of next) {
-			if (!prev.has(path) || !this._realNode(path)?.isSelected) {
+			if (!prev.has(path) || !this._getRealNode(path)?.isSelected) {
 				this._setNodeFlag(path, 'isSelected', true);
 			}
 		}
@@ -4884,8 +4885,11 @@ export class TreeEngine<T> {
 
 	/** onSelectionChange + the no-checkbox mirror into checkedPaths (onCheckedChange). */
 	private _dispatchSelectionChange() {
-		this._notifySelectionChanged();
-		this._mirrorSelectedToChecked();
+		if (this.onSelectionChangeHandler) {
+			const nodes = this.getSelectedNodes();
+			this.onSelectionChangeHandler(this._ctx({ paths: this.selectedPaths, nodes }));
+		}
+		this._reconcileCheckedFromSelection();
 	}
 
 	/**
@@ -4901,7 +4905,7 @@ export class TreeEngine<T> {
 	 */
 	private _reconcileAfterMutation() {
 		if (!this.tree?.root) return;
-		const isLive = (path: string) => this._realNode(path) !== null;
+		const isLive = (path: string) => this._getRealNode(path) !== null;
 
 		const selected = [...this.selectedPaths].filter(isLive);
 		const cursor = this._shiftCursor;
@@ -4910,7 +4914,7 @@ export class TreeEngine<T> {
 		else if (cursor && !isLive(cursor)) this._shiftCursor = null;
 
 		const focused = this.focusedNode;
-		const liveFocused = focused ? this._realNode(focused.path) : null;
+		const liveFocused = focused ? this._getRealNode(focused.path) : null;
 		if (focused && liveFocused !== focused) this._setFocusedNode(liveFocused);
 
 		if (this.cutPaths.size > 0) {
@@ -4920,7 +4924,7 @@ export class TreeEngine<T> {
 
 		const prevChecked = this.#checkedPaths;
 		const checked = new Set([...prevChecked].filter(isLive));
-		// No checkboxes = the checked set is the selection mirror (_mirrorSelectedToChecked),
+		// No checkboxes = the checked set is the selection mirror (_reconcileCheckedFromSelection),
 		// which has no cascade.
 		const isCascade = this.checkboxMode === 'cascade' && this.isCheckboxesShown;
 		if (isCascade && prevChecked.size > 0) this._rederiveCascadeStates(checked);
@@ -4928,11 +4932,11 @@ export class TreeEngine<T> {
 			checked.size !== prevChecked.size || [...checked].some((p) => !prevChecked.has(p));
 		if (isCheckedChanged) {
 			this.checkedPaths = checked;
-			this._syncFilteredCheckState();
+			this._reconcileFilteredCheckState();
 		}
 
 		if (isSelectionChanged) this._dispatchSelectionChange();
-		if (isCheckedChanged) this._notifyCheckedChanged();
+		if (isCheckedChanged) this._dispatchCheckedChange();
 		if (isSelectionChanged || isCheckedChanged || (focused && liveFocused !== focused))
 			this.tree.refresh();
 		if (isSelectionChanged || isCheckedChanged || liveFocused !== focused)
@@ -5006,7 +5010,7 @@ export class TreeEngine<T> {
 	 * while filtered and left stale flags on hidden nodes.
 	 */
 	private _setNodeFlag(path: string, key: 'isSelected' | 'isFocused', value: boolean) {
-		const real = this._realNode(path);
+		const real = this._getRealNode(path);
 		const copy = this.tree.isFiltered ? this.tree.getNodeByPath(path) : null;
 		for (const n of copy && copy !== real ? [real, copy] : [real]) {
 			if (!n) continue;
@@ -5015,17 +5019,9 @@ export class TreeEngine<T> {
 		}
 	}
 
-	/** Notify listeners about highlight change */
-	private _notifySelectionChanged() {
-		if (this.onSelectionChangeHandler) {
-			const nodes = this.getSelectedNodes();
-			this.onSelectionChangeHandler(this._ctx({ paths: this.selectedPaths, nodes }));
-		}
-	}
-
 	/** Notify listeners about checkbox selection change. Emits the POLICY-PROJECTED
 	 *  set (`#emittedPaths`), matching what the bindable `checkedPaths` prop exposes. */
-	private _notifyCheckedChanged() {
+	private _dispatchCheckedChange() {
 		if (this.onCheckedChangeHandler) {
 			const nodes: LTreeNode<T>[] = [];
 			for (const path of this.#emittedPaths) {
@@ -5129,13 +5125,13 @@ export class TreeEngine<T> {
 		if (mode === 'toggle') {
 			this._onNodeClicked(
 				node,
-				{ ctrl: true, shift: false },
+				{ isCtrlPressed: true, isShiftPressed: false },
 				{ ...options, forceMultiSemantics: true }
 			);
 		} else if (mode === 'range') {
 			this._onNodeClicked(
 				node,
-				{ ctrl: false, shift: true },
+				{ isCtrlPressed: false, isShiftPressed: true },
 				{ ...options, forceMultiSemantics: true }
 			);
 		} else {
@@ -5222,7 +5218,7 @@ export class TreeEngine<T> {
 		const focused = this.focusedNode;
 		const node = focused ? (this.tree?.getNodeByPath(focused.path) ?? null) : null;
 		if (!node || !node.isSelectable) return;
-		this._onNodeClicked(node, { ctrl: true, shift: false }, { forceMultiSemantics: true });
+		this._onNodeClicked(node, { isCtrlPressed: true, isShiftPressed: false }, { forceMultiSemantics: true });
 	}
 
 	// ── Public selection methods (checkbox data state) ───────────────
@@ -5253,7 +5249,7 @@ export class TreeEngine<T> {
 	 *  Pass `{ isSilent: true }` to skip `onCheckedChange`. */
 	checkNode(path: string, options?: TreeMutationOptions) {
 		const changed = this._setCheckedWithCascade([path], true);
-		if (changed && !options?.isSilent) this._notifyCheckedChanged();
+		if (changed && !options?.isSilent) this._dispatchCheckedChange();
 		this.tree.refresh();
 	}
 
@@ -5262,7 +5258,7 @@ export class TreeEngine<T> {
 	 *  Pass `{ isSilent: true }` to skip `onCheckedChange`. */
 	checkNodes(paths: string[], options?: TreeMutationOptions) {
 		const changed = this._setCheckedWithCascade(paths, true);
-		if (changed && !options?.isSilent) this._notifyCheckedChanged();
+		if (changed && !options?.isSilent) this._dispatchCheckedChange();
 		this.tree.refresh();
 	}
 
@@ -5283,7 +5279,7 @@ export class TreeEngine<T> {
 		const newPaths = isFiltered ? new Set(this.checkedPaths) : new Set<string>();
 		const traverse = (node: LTreeNode<T>) => {
 			if (node.path && node.isSelectable) {
-				const real = this._realNode(node.path) ?? node;
+				const real = this._getRealNode(node.path) ?? node;
 				real.isChecked = true;
 				if (real.visualState !== VisualState.checked) real.visualState = VisualState.checked;
 				bumpRev(real);
@@ -5295,8 +5291,8 @@ export class TreeEngine<T> {
 		this.checkedPaths = newPaths;
 		// Branches with hidden unchecked children must fall back to [-] in cascade.
 		if (isFiltered && this.checkboxMode === 'cascade') this._reconcileVisualStatesForMode();
-		this._syncFilteredCheckState();
-		if (!options?.isSilent) this._notifyCheckedChanged();
+		this._reconcileFilteredCheckState();
+		if (!options?.isSilent) this._dispatchCheckedChange();
 		this.tree.refresh();
 	}
 
@@ -5304,7 +5300,7 @@ export class TreeEngine<T> {
 	 *  Pass `{ isSilent: true }` to skip `onCheckedChange`. */
 	uncheckNode(path: string, options?: TreeMutationOptions) {
 		const changed = this._setCheckedWithCascade([path], false);
-		if (changed && !options?.isSilent) this._notifyCheckedChanged();
+		if (changed && !options?.isSilent) this._dispatchCheckedChange();
 		this.tree.refresh();
 	}
 
@@ -5312,7 +5308,7 @@ export class TreeEngine<T> {
 	 *  Pass `{ isSilent: true }` to skip `onCheckedChange`. */
 	uncheckNodes(paths: string[], options?: TreeMutationOptions) {
 		const changed = this._setCheckedWithCascade(paths, false);
-		if (changed && !options?.isSilent) this._notifyCheckedChanged();
+		if (changed && !options?.isSilent) this._dispatchCheckedChange();
 		this.tree.refresh();
 	}
 
@@ -5321,8 +5317,8 @@ export class TreeEngine<T> {
 	uncheckAll(options?: TreeMutationOptions) {
 		this._clearAllCheckedFlags();
 		this.checkedPaths = new Set();
-		this._syncFilteredCheckState();
-		if (!options?.isSilent) this._notifyCheckedChanged();
+		this._reconcileFilteredCheckState();
+		if (!options?.isSilent) this._dispatchCheckedChange();
 		this.tree.refresh();
 	}
 
@@ -5396,8 +5392,8 @@ export class TreeEngine<T> {
 			return { paths, isSet: paths.length > 0 };
 		}
 		if (this.selectedPaths.has(lead.path) && this.selectedPaths.size > 1)
-			return { paths: this._completeManifest(this._getDraggableTopLevelSelection(dropPath)), isSet: true };
-		return { paths: this._completeManifest([lead.path]), isSet: false };
+			return { paths: this._getPathsWithDescendants(this._getDraggableTopLevelSelection(dropPath)), isSet: true };
+		return { paths: this._getPathsWithDescendants([lead.path]), isSet: false };
 	}
 
 	private async _handleDrop(
@@ -5429,7 +5425,7 @@ export class TreeEngine<T> {
 		// One fire path for every branch: `dropped` = the nodes the library actually placed
 		// (null when it didn't — cross-tree or shouldAutoHandle*=false). NodeRefs are built
 		// at fire time so parent/siblings reflect the final tree.
-		const fireDrop = (dropped: LTreeNode<T>[] | null) => {
+		const dispatchDrop = (dropped: LTreeNode<T>[] | null) => {
 			this.onNodeDropHandler?.(this._ctx({
 				source: this.getNodeRef(draggedNodeRef),
 				target: dropNode ? this.getNodeRef(dropNode) : null,
@@ -5454,7 +5450,7 @@ export class TreeEngine<T> {
 				// Content-addressed routing: fan the drop out to the returned groups. Same-tree
 				// nodes are moved by the library; cross-tree nodes can't be (not in this tree),
 				// so they're left for the consumer's onNodeDrop. Paths in no group aren't placed.
-				return this._executeDropGroups(result, fireDrop);
+				return this._processDropGroups(result, dispatchDrop);
 			}
 			if (result && typeof result === 'object') {
 				if ('position' in result && result.position) position = result.position;
@@ -5474,14 +5470,14 @@ export class TreeEngine<T> {
 		if (isSameTreeDrag && operation === 'move' && dropNode) {
 			// shouldAutoHandleMove=false: library placed nothing → dropped is null.
 			if (!this.shouldAutoHandleMove) {
-				fireDrop(null);
+				dispatchDrop(null);
 				return true;
 			}
 			const { paths, isSet } = this._dropManifest(draggedNodeRef, dropNode.path);
 			if (!isSet) {
 				const result = this.moveNode(draggedNodeRef.path, dropNode.path, position);
 				// moveNode mutates in place, so draggedNodeRef IS the landed node.
-				fireDrop([draggedNodeRef]);
+				dispatchDrop([draggedNodeRef]);
 				return result.success;
 			}
 			// moveNodes resolves refs up front (no stale paths), picks the roots and chains them in
@@ -5494,7 +5490,7 @@ export class TreeEngine<T> {
 				position
 			});
 			const result = this.moveNodes(paths, dropNode.path, position);
-			fireDrop(result.movedNodes);
+			dispatchDrop(result.movedNodes);
 			return result.success;
 		}
 
@@ -5505,7 +5501,7 @@ export class TreeEngine<T> {
 			const transform = this.inputTransformHandler ?? this._defaultCopyTransform;
 			const { paths } = this._dropManifest(draggedNodeRef, dropNode.path);
 			const result = this.duplicateNodes(paths, dropNode.path, position, transform);
-			fireDrop(result.copiedNodes);
+			dispatchDrop(result.copiedNodes);
 			return result.success;
 		}
 
@@ -5537,14 +5533,14 @@ export class TreeEngine<T> {
 					transform,
 					sourceTree
 				);
-				fireDrop(result.copiedNodes);
+				dispatchDrop(result.copiedNodes);
 				return result.success;
 			}
 		}
 
 		// Cross-tree without a reachable source (or copy without shouldAutoHandleCopy): the
 		// consumer performs the insertion, so the library placed nothing → dropped is null.
-		fireDrop(null);
+		dispatchDrop(null);
 		return true;
 	}
 
@@ -5624,11 +5620,11 @@ export class TreeEngine<T> {
 				};
 				if (!this.getNodeIsDraggable(node)) {
 					this.touchDragState = { ...this.touchDragState, isDenied: true };
-					this._indicateDragDenied(node);
+					this._showDragBlockedIndicator(node);
 					return;
 				}
 				this._lastPointerEvent = press;
-				this._engagePointerDrag(node, press, x, y);
+				this._startPointerDrag(node, press, x, y);
 				if (!this.touchDragState.isDragging) return false; // beforeDragStartCallback vetoed it
 			},
 			onMove: ({ target, x, y, event }) => {
@@ -5653,7 +5649,7 @@ export class TreeEngine<T> {
 		};
 	}
 
-	private _engagePointerDrag(node: LTreeNode<any>, event: PointerEvent, x: number, y: number) {
+	private _startPointerDrag(node: LTreeNode<any>, event: PointerEvent, x: number, y: number) {
 		this.draggedNode = node;
 		this.isDragInProgress = true;
 
@@ -5664,7 +5660,7 @@ export class TreeEngine<T> {
 		if (this.beforeDragStartHandler) {
 			const decision = this.beforeDragStartHandler(this._ctx({
 				lead: this.getNodeRef(node),
-				dragged: this._completeDraggedRefs(draggedRefs),
+				dragged: this._getDraggedRefsWithDescendants(draggedRefs),
 				event
 			}));
 			if (decision === false) {
@@ -5672,7 +5668,7 @@ export class TreeEngine<T> {
 				return;
 			}
 			if (Array.isArray(decision)) {
-				this._dragSetOverride = this._normalizeDragManifest(decision, node.path);
+				this._dragSetOverride = this._validateDragManifest(decision, node.path);
 				draggedRefs = this._draggedRefs(node);
 			}
 		}
@@ -5682,7 +5678,7 @@ export class TreeEngine<T> {
 		// manifest (roots + descendants, minus any leave-behind holes), not just the
 		// top-level roots — otherwise a folder's children or a nested file wouldn't dim.
 		const placementManifest =
-			this._dragSetOverride ?? this._completeManifest(draggedRefs.map((r) => r.path));
+			this._dragSetOverride ?? this._getPathsWithDescendants(draggedRefs.map((r) => r.path));
 		this.draggedPaths = new Set(placementManifest);
 		setDragSet(this.treeId, draggedRefs.map((r) => r.path), placementManifest);
 		this.createGhostElement(node, x, y);
@@ -5745,7 +5741,7 @@ export class TreeEngine<T> {
 				? this._pointerDropPosition(ctx, el as Element, event)
 				: null;
 		if (ctx?.node && position) {
-			this._applyHover(targetCtrl, ctx.node, position, operation);
+			this._updateDropHover(targetCtrl, ctx.node, position, operation);
 			// Floating dropZoneMode renders overlay buttons (position:fixed) sized to the row.
 			if (targetCtrl.dropZoneMode === 'floating') {
 				const rowEl = (el as Element).closest('.stv__node-content') as HTMLElement | null;
@@ -5766,7 +5762,7 @@ export class TreeEngine<T> {
 		}
 	}
 
-	private _applyHover(
+	private _updateDropHover(
 		ctrl: TreeEngine<any>,
 		node: LTreeNode<any>,
 		position: DropPosition,
@@ -5849,7 +5845,7 @@ export class TreeEngine<T> {
 			} else if ((emptyZone || rootZone) && !dropNode && modeOk) {
 				isDropped = await targetCtrl._handleDrop(null, dragged, 'child', event);
 			} else if (dropNode && dropNode !== dragged) {
-				targetCtrl._indicateDropDenied(dropNode);
+				targetCtrl._showDropBlockedIndicator(dropNode);
 			}
 			if (!isDropped) this._restorePreDragSelection();
 		}
@@ -5943,7 +5939,7 @@ export class TreeEngine<T> {
 	 * shouldIndicateUndraggable is on. Purely imperative DOM (mirrors the touch drop-target
 	 * highlight) — no per-node render state. Torn down by _clearDragDenied on release.
 	 */
-	private _indicateDragDenied(node: LTreeNode<any>) {
+	private _showDragBlockedIndicator(node: LTreeNode<any>) {
 		dragLogger.debug('[drag-denied] locked node long-pressed', { path: node?.path });
 
 		this.onNodeDragRejectHandler?.(this._ctx(this.getNodeRef(node)));
@@ -5988,12 +5984,12 @@ export class TreeEngine<T> {
 	}
 
 	/**
-	 * "Can't drop here" feedback — the target-side twin of _indicateDragDenied. Fires the
+	 * "Can't drop here" feedback — the target-side twin of _showDragBlockedIndicator. Fires the
 	 * onNodeDropReject consumer hook always; the built-in indicator (haptic + a brief no-entry
 	 * flash on the refusing target) only when shouldIndicateUndraggable is on. Transient (a drop
 	 * is a discrete moment, not a held gesture), so it auto-clears after a short beat.
 	 */
-	private _indicateDropDenied(node: LTreeNode<any>) {
+	private _showDropBlockedIndicator(node: LTreeNode<any>) {
 		dragLogger.debug('[drop-denied] target refused drop', { path: node?.path });
 
 		this.onNodeDropRejectHandler?.(this._ctx(this.getNodeRef(node)));
@@ -6085,7 +6081,7 @@ export class TreeEngine<T> {
 		this.flatRenderAnimationFrame = requestAnimationFrame(() => {
 			this.flatRenderAnimationFrame = null;
 			if (this.flatRenderQueue.length === 0) {
-				this._finishRenderPass();
+				this._completeRenderPass();
 				return;
 			}
 
@@ -6109,7 +6105,7 @@ export class TreeEngine<T> {
 				tick().then(() => {
 					if (!this.#isRenderPassActive) return;
 					this.onRenderProgressHandler?.(this._ctx({ pending, processed }));
-					if (pending === 0 && this.flatRenderQueue.length === 0) this._finishRenderPass();
+					if (pending === 0 && this.flatRenderQueue.length === 0) this._completeRenderPass();
 				});
 			}
 		});
@@ -6119,7 +6115,7 @@ export class TreeEngine<T> {
 	#renderPassProcessed = 0;
 
 	/** A progressive (rAF-batched) render pass began: `isRendering` + `onRenderStart`. */
-	private _beginRenderPass(processed: number) {
+	private _startRenderPass(processed: number) {
 		if (this.#isRenderPassActive) return;
 		this.#isRenderPassActive = true;
 		this.#renderPassProcessed = processed;
@@ -6128,7 +6124,7 @@ export class TreeEngine<T> {
 	}
 
 	/** The progressive pass ended (queue drained or reset): `onRenderComplete`. */
-	private _finishRenderPass() {
+	private _completeRenderPass() {
 		if (!this.#isRenderPassActive) return;
 		this.#isRenderPassActive = false;
 		this.isRendering = false;
@@ -6404,22 +6400,5 @@ export class TreeEngine<T> {
 		if (node) this._setFocusedNode(node);
 		this._scrollToPath(path, { shouldExpandAncestors: false, block: 'nearest', behavior: 'auto' }, true);
 		this.tree.refresh();
-	}
-
-	/** @internal */
-	findScrollableAncestor(element: HTMLElement): HTMLElement | null {
-		let parent = element.parentElement;
-		while (parent) {
-			const style = getComputedStyle(parent);
-			const overflowY = style.overflowY;
-			if (
-				(overflowY === 'auto' || overflowY === 'scroll') &&
-				parent.scrollHeight > parent.clientHeight
-			) {
-				return parent;
-			}
-			parent = parent.parentElement;
-		}
-		return null;
 	}
 }

@@ -31,7 +31,7 @@ menuDivider(text?)                 // { divider: true, text? } — named divider
 
 BUILT-IN ACTION NAMES (texts from `labels`, act on the selection when the clicked node is in it,
 else on the clicked node): copy, cut, paste (into the clicked node; disabled with an empty
-clipboard), delete (isDanger; runDeleteCommand — beforeDeleteCallback applies), expand, collapse
+clipboard), delete (isDanger; deleteNodes — beforeDeleteCallback applies), expand, collapse
 (one level), expand-subtree, collapse-subtree (targets + descendants), expand-all, collapse-all
 (whole tree), sort (children, one level), sort-subtree, sort-all.
 

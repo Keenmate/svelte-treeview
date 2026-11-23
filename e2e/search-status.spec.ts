@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Search status API on /test/search-status: searchResultLimit truncation detection,
+ * Search status API on /test/search-status: maxSearchResultCount truncation detection,
  * onSearchStatusChange, onIndexProgress, and a tree that STARTS with a searchTerm.
  * Fixture: 20 groups × 10 leaves ("Group g", "Leaf g-l") = 220 nodes.
  * status text = `${searchTerm}|${matchCount}|${isLimited}|${limit}`.
@@ -25,7 +25,7 @@ test("default limit is no longer FlexSearch's silent 100", async ({ page }) => {
 	await expect(page.getByTestId('status')).toHaveText('Leaf|200|false|1000');
 });
 
-test('searchResultLimit truncates and reports isLimited', async ({ page }) => {
+test('maxSearchResultCount truncates and reports isLimited', async ({ page }) => {
 	await page.goto('/test/search-status');
 	await expect(page.getByTestId('index-complete')).toHaveText('true');
 	await page.getByTestId('term').fill('Leaf');

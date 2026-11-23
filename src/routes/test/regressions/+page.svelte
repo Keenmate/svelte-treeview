@@ -84,7 +84,7 @@
 				pathMember="path"
 				displayValueMember={displayMember}
 				searchValueMember="name"
-				shouldUseInternalSearchIndex={true}
+				isInternalSearchIndexEnabled={true}
 				expandLevel={5}
 				isCheckboxesShown={true}
 				checkboxMode="cascade"

@@ -4,7 +4,7 @@ Working branch: `feature/core-render-split`. NOTHING COMMITTED yet, in either re
 
 ## Done (svelte-treeview, uncommitted)
 
-- **Checkbox + filter**: cascade math uses REAL nodes (`_realNode`, `_syncFilteredCheckState`); runtime
+- **Checkbox + filter**: cascade math uses REAL nodes (`_getRealNode`, `_reconcileFilteredCheckState`); runtime
   `checkboxMode` reaches rows (nodeConfig sync); filtered cascade click acts on VISIBLE matches only
   (all visible checked → uncheck, else check; branches re-derived deepest-first); `checkAll` keeps hidden
   checks. SF01 demo: checkboxes, Check mode + Cascade reports selectors, Checked list.
@@ -33,7 +33,7 @@ Working branch: `feature/core-render-split`. NOTHING COMMITTED yet, in either re
   `renderBatchSize`, `flatMode`, `isProgressiveRenderEnabled` prop), `RenderCoordinator.svelte.ts` (deleted),
   `isFlatRenderingEnabled` (prop/controller/types), `NodeConfig.loadingLabel`, `.stv__children` +
   `--stv-children-margin-top` + `.stv__loading-more` CSS.
-- onRender* + `isRendering` ported to flat progressive (`_beginRenderPass` / `_finishRenderPass`, mirrors
+- onRender* + `isRendering` ported to flat progressive (`_startRenderPass` / `_completeRenderPass`, mirrors
   web). `RenderStats` moved to `ltree/types.ts` (still exported). New e2e `render-events` + `/test/render-events`.
 - Examples: RenderModeSwitch = Flat / Progressive / Virtual (default Flat); performance pages drop
   Recursive; perf example indexer default 1000. Canvas json-loader "Use Flat Rendering" toggle removed.

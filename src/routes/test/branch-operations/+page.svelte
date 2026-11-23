@@ -15,7 +15,7 @@
 	// shape (count / removedCount / failed / error) and on call-count delta.
 	//
 	// Note: opCallCount is per public-method call, not per internal
-	// _emitTreeChanged. The lib has no public emission hook; strict
+	// refresh. The lib has no public emission hook; strict
 	// single-emission verification belongs in a vitest unit test.
 
 	type Item = {

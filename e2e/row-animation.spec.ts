@@ -3,7 +3,7 @@ import { test, expect, type Page, type Locator } from '@playwright/test';
 /**
  * Row animation (docs/PLAN-row-animation.md) on /test/row-animation: on by default — part of
  * core `motion`, no on/off prop (SPEC §12.16). The rows an expand reveals get
- * stv__node--opening (the first rowAnimationLimit in visible order), cleared after the CSS
+ * stv__node--opening (the first maxAnimatedRowCount in visible order), cleared after the CSS
  * duration (read back with core readAnimationMs). Never on first render, a re-key (focus
  * click) or a data reload; motion="none", reduced motion or --stv-row-animation-duration: 0s
  * → no reveal at all.
@@ -33,7 +33,7 @@ test('--stv-row-animation-duration: 0s turns off just the rows', async ({ page }
 	expect(await opening(page, 'off')).toEqual([]);
 });
 
-test('default (no prop): exactly the revealed rows animate, capped at rowAnimationLimit, then the class goes', async ({ page }) => {
+test('default (no prop): exactly the revealed rows animate, capped at maxAnimatedRowCount, then the class goes', async ({ page }) => {
 	await toggle(page, 'on', '1');
 	await expect(row(page, 'on', '1.5')).toBeVisible();
 	expect(await opening(page, 'on')).toEqual(['1.1', '1.2', '1.3']);
@@ -113,7 +113,7 @@ test('collapse: await collapseNodes() settles after the animation, with the rows
 	expect(rowsLeft).toBe(0);
 });
 
-test('collapseAll: animates the first rowAnimationLimit rows out, then collapses everything', async ({ page }) => {
+test('collapseAll: animates the first maxAnimatedRowCount rows out, then collapses everything', async ({ page }) => {
 	await page.getByTestId('expand-all').click();
 	await expect.poll(() => opening(page, 'on'), { timeout: 3000 }).toEqual([]);
 	await page.getByTestId('collapse-all').click();

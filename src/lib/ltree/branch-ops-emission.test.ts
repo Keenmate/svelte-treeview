@@ -5,7 +5,7 @@ import { createLTree } from './ltree.svelte.js';
  * Verifies the single-emission guarantee for bulk subtree operations.
  *
  * addBranch / replaceBranch / removeBranch each mutate many nodes but must
- * fire _emitTreeChanged exactly once per public call. Counting per-call
+ * call refresh() exactly once per public call. Counting per-call
  * emissions is impossible from outside the lib (there is no public hook), so
  * this is verified by spying on the internal method at the unit level.
  */
@@ -18,7 +18,7 @@ function createTree() {
 		treeId: 'test-tree',
 		treePathSeparator: '.',
 		expandLevel: 3,
-		shouldUseInternalSearchIndex: false,
+		isInternalSearchIndexEnabled: false,
 		indexerBatchSize: 25,
 		indexerTimeout: 50
 	});
@@ -36,11 +36,11 @@ const seed = [
 ];
 
 describe('branch operations — single-emission guarantee', () => {
-	it('addBranch fires _emitTreeChanged exactly once for an N-node batch', () => {
+	it('addBranch calls refresh() exactly once for an N-node batch', () => {
 		const tree = createTree();
 		tree.insertArray(seed);
 
-		const spy = vi.spyOn(tree, '_emitTreeChanged');
+		const spy = vi.spyOn(tree, 'refresh');
 
 		const newNodes = [
 			{ id: 100, path: '1.100', name: 'New-Root' },
@@ -55,11 +55,11 @@ describe('branch operations — single-emission guarantee', () => {
 		expect(spy).toHaveBeenCalledTimes(1);
 	});
 
-	it('replaceBranch fires _emitTreeChanged exactly once even though it deletes then inserts', () => {
+	it('replaceBranch calls refresh() exactly once even though it deletes then inserts', () => {
 		const tree = createTree();
 		tree.insertArray(seed);
 
-		const spy = vi.spyOn(tree, '_emitTreeChanged');
+		const spy = vi.spyOn(tree, 'refresh');
 
 		// '1' has 2 existing children; replace them with 3 new ones plus a grandchild.
 		const replacement = [
@@ -75,11 +75,11 @@ describe('branch operations — single-emission guarantee', () => {
 		expect(spy).toHaveBeenCalledTimes(1);
 	});
 
-	it('removeBranch fires _emitTreeChanged exactly once for a multi-descendant subtree', () => {
+	it('removeBranch calls refresh() exactly once for a multi-descendant subtree', () => {
 		const tree = createTree();
 		tree.insertArray(seed);
 
-		const spy = vi.spyOn(tree, '_emitTreeChanged');
+		const spy = vi.spyOn(tree, 'refresh');
 
 		// '2.1' has itself + 2 grandchildren = 3 nodes removed.
 		const result = tree.removeBranch('2.1');
@@ -93,7 +93,7 @@ describe('branch operations — single-emission guarantee', () => {
 		const tree = createTree();
 		tree.insertArray(seed);
 
-		const spy = vi.spyOn(tree, '_emitTreeChanged');
+		const spy = vi.spyOn(tree, 'refresh');
 
 		const result = tree.removeBranch('2.1', true);
 
@@ -106,7 +106,7 @@ describe('branch operations — single-emission guarantee', () => {
 		const tree = createTree();
 		tree.insertArray(seed);
 
-		const spy = vi.spyOn(tree, '_emitTreeChanged');
+		const spy = vi.spyOn(tree, 'refresh');
 
 		const insRes = tree.addBranch('999.999', [
 			{ id: 300, path: '999.999.1', name: 'X' }
@@ -128,7 +128,7 @@ describe('isSilent on expand / collapse — never skips the re-render', () => {
 		const tree = createTree();
 		tree.insertArray(seed);
 		tree.collapseAll();
-		const spy = vi.spyOn(tree, '_emitTreeChanged');
+		const spy = vi.spyOn(tree, 'refresh');
 
 		tree.expandNodes('2.1', { isSilent: true });
 		expect(tree.getNodeByPath('2.1')!.isExpanded).toBe(true);

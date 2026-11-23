@@ -71,7 +71,7 @@ ASYNC SEARCH INDEXING
 Search indexing uses requestIdleCallback:
 
 <Tree
-  shouldUseInternalSearchIndex={true}
+  isInternalSearchIndexEnabled={true}
   indexerBatchSize={25}   <!-- Nodes per idle callback -->
   indexerTimeout={50}     <!-- Max wait before forcing -->
 />

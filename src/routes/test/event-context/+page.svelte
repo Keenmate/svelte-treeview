@@ -166,7 +166,7 @@
 				dragDropMode="both"
 				getIsDraggableCallback={() => true}
 				getIsDropAllowedCallback={() => true}
-				shouldHandleKeyboardShortcuts={true}
+				isKeyboardShortcutsEnabled={true}
 				bind:focusedNode={focusedA}
 				bind:selectedPaths={highlightedA}
 				onNodeClick={logClick}

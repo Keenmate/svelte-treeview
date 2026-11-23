@@ -599,7 +599,7 @@ collapseAll(paths?: string | string[] | null, options?: ExpandOptions): Promise<
 			<input type="checkbox" bind:checked={isPlainFade} />
 			Plain fade (<code>--stv-row-animation-distance: 0</code>)
 		</label>
-		<label><code>rowAnimationLimit</code>
+		<label><code>maxAnimatedRowCount</code>
 			<select bind:value={rowLimit}>
 				<option value={50}>50 (default)</option>
 				<option value={5}>5</option>
@@ -628,7 +628,7 @@ collapseAll(paths?: string | string[] | null, options?: ExpandOptions): Promise<
 			sortCallback={sortByPath}
 			isSorted={true}
 			expandLevel={1}
-			rowAnimationLimit={rowLimit}
+			maxAnimatedRowCount={rowLimit}
 			motion={rowMotion}
 			{...getTreeProps()}
 		>
@@ -654,7 +654,7 @@ collapseAll(paths?: string | string[] | null, options?: ExpandOptions): Promise<
 <Tree {nodes} motion="none" ... />
 
 <!-- At most 5 rows animate per expand / collapse; the rest appear / go at once -->
-<Tree {nodes} rowAnimationLimit={5} ... />`}</pre>
+<Tree {nodes} maxAnimatedRowCount={5} ... />`}</pre>
 	</div>
 	<div class="code-block" data-language="ts">
 		<pre>{`// The collapse applies after the rows animated out — await it before reading state
@@ -667,7 +667,7 @@ await tree.collapseNodes('1');`}</pre>
 		<p>
 			Only expands and collapses animate — never the first render, a reload, a filter or a
 			re-render. Toggling a node again while its rows are animating out cancels the collapse
-			(it stays open). <code>rowAnimationLimit</code> is a performance cap: expanding a node
+			(it stays open). <code>maxAnimatedRowCount</code> is a performance cap: expanding a node
 			with thousands of children animates just the first rows.
 		</p>
 	</div>

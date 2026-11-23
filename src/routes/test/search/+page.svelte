@@ -153,7 +153,7 @@
 					sortCallback={sortByName}
 					isSorted={true}
 					expandLevel={3}
-					shouldUseInternalSearchIndex={true}
+					isInternalSearchIndexEnabled={true}
 					searchValueMember="name"
 					bind:searchTerm
 				>

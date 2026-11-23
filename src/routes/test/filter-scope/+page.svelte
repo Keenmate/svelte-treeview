@@ -66,7 +66,7 @@
 			sortCallback={sortByPath}
 			isSorted={true}
 			expandLevel={1}
-			shouldUseInternalSearchIndex={true}
+			isInternalSearchIndexEnabled={true}
 			searchValueMember="name"
 			bind:searchTerm
 			{filterScope}

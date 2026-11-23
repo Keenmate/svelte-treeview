@@ -56,7 +56,7 @@
 		},
 		{
 			"name": "pointer-drag",
-			"description": "Drag and drop (SPEC §12.28): core createPointerDrag drives the tree's ONE pointer drag (mouse / pen / touch — threshold, long press, scroll lock, hit test through shadow roots, auto-scroll, Escape, the swallowed trailing click) via TreeEngine.attachPointerDrag; same as web-treeview's renderer. scroll-container + ghost-click are its imports.",
+			"description": "Drag and drop (SPEC §12.28): core createPointerDrag drives the tree's ONE pointer drag (mouse / pen / touch — threshold, long press, scroll lock, hit test through shadow roots, auto-scroll, Escape, the swallowed trailing click) via TreeEngine.attachPointerDrag; same as web-treeview's renderer. scroll-container + ghost-click are its imports; scroll-container also backs scrollToPath({ containerScroll }) (was a hand-rolled findScrollableAncestor).",
 			"mode": "identical",
 			"baseline": "91e9f99",
 			"files": [

@@ -4,7 +4,7 @@ TREE EDITING
 CRITICAL: Built-in methods for programmatic tree editing
 - addNode: Add new nodes
 - moveNode: Move nodes with subtrees
-- removeNode / removeNodes: remove nodes programmatically (controller.runDeleteCommand = the user Delete command: beforeDeleteCallback + onNodeDelete)
+- removeNode / removeNodes: remove nodes programmatically (controller.deleteNodes = the user Delete command: beforeDeleteCallback + onNodeDelete)
 - Automatic path management
 
 ADD NODE
@@ -140,10 +140,10 @@ treeRef.sortAll(null, { direction: 'desc' });
 treeRef.sortNodes('', { compareCallback: ({ a, b }) => a.data.size - b.data.size });
 // SortOptions { compareCallback?: ({ a, b }) => number  /* ascending */,
 //               direction?: 'asc' | 'desc'  /* reverses whichever rule applies */,
-//               isSilent?: boolean          /* no onNodesReorder; still re-renders */ }
+//               isSilent?: boolean          /* no onNodesSort; still re-renders */ }
 // With orderMember: a custom compare (or 'desc') rewrites the order values 10, 20, 30...
-// and fires onNodesReorder once per parent:
-<Tree onNodesReorder={({ parentPath, nodes, changes }) => save(changes)} />
+// and fires onNodesSort once per parent:
+<Tree onNodesSort={({ parentPath, nodes, changes }) => save(changes)} />
 // changes: [{ path, oldOrder, newOrder }] (only the nodes whose value changed)
 
 HELPER METHODS
@@ -243,7 +243,7 @@ bind:nodes receives the tree's current data after every mutation (written
 back on a microtask; getAllData() was removed):
 
 <Tree bind:nodes={items} ... />
-// after treeRef.addNode / moveNode / applyChanges …:
+// after treeRef.addNode / moveNode / processChanges …:
 await tick();
 const allItems = $state.snapshot(items);
 
@@ -251,8 +251,8 @@ APPLY CHANGES
 -------------
 Apply a batch of tracked changes in one reactive update:
 
-const result = treeRef.applyChanges(changes);   // changes: TreeChange<T>[]
-// result: ApplyChangesResult = { successful: number, failed: [{ changeIndex, operation, path, error }] }
+const result = treeRef.processChanges(changes);   // changes: TreeChange<T>[]
+// result: ProcessChangesResult = { successful: number, failed: [{ changeIndex, operation, path, error }] }
 // TreeChange<T>:
 //   { operation: 'add', parentPath, data, pathSegment? }              // child of parentPath
 //   { operation: 'insert', targetPath, position: 'before'|'after'|'child', data }
@@ -455,8 +455,8 @@ controller.pasteNodes('2.1');           // paste as children of 2.1 (default)
 controller.pasteNodes('2.1', null, 'after');  // paste as siblings after 2.1
 
 // Delete nodes (selectedPaths, or specific paths; honors beforeDeleteCallback)
-controller.runDeleteCommand();               // returns { removed, blocked }
-controller.runDeleteCommand(['1.2']);
+controller.deleteNodes();               // returns { removed, blocked }
+controller.deleteNodes(['1.2']);
 
 // Cancel cut (removes dimming)
 controller.cancelCut();
@@ -482,7 +482,7 @@ Returns: PasteResult = { success, count, skipped, error? }
 
 BUILT-IN KEYBOARD SHORTCUTS
 ---------------------------
-shouldHandleKeyboardShortcuts (default true; false = opt out) enables Ctrl/Cmd+C/X/V,
+isKeyboardShortcutsEnabled (default true; false = opt out) enables Ctrl/Cmd+C/X/V,
 Delete, Esc (cancel cut), plus classic aliases Ctrl+Insert / Shift+Insert /
 Shift+Delete. Shortcuts are FOCUS-SCOPED to the tree's .stv__container
 (tabindex=0): they only fire when focus is inside the tree.

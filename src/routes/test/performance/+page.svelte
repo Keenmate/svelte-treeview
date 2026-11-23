@@ -240,7 +240,7 @@
 						{sortCallback}
 						isSorted={true}
 						{expandLevel}
-						shouldUseInternalSearchIndex={true}
+						isInternalSearchIndexEnabled={true}
 						searchValueMember="name"
 						bind:searchTerm
 						{isVirtualScrollEnabled}

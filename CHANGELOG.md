@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - With a `searchValueMember` set, the indexer read only that field, so a row without it was never searchable even when a `getSearchValueCallback` was given; with the member unset it read only the callback. It now resolves like `getNodeSearchValue`: the member when the row has it, else the callback. (REVIEW-2026-11-19 §3.7.)
 
+### Changed — public names follow the BlissFramework naming guideline (2026-11-23)
+
+- Renamed (REVIEW-2026-11-19 §2): `applyChanges` → `processChanges` (+ `ApplyChangesResult` → `ProcessChangesResult`; "apply" is never a method), `runDeleteCommand` → `deleteNodes` (delete = the user's destructive command), `shouldHandleKeyboardShortcuts` → `isKeyboardShortcutsEnabled`, `shouldUseInternalSearchIndex` → `isInternalSearchIndexEnabled` (feature switches are `is*Enabled`), `searchResultLimit` → `maxSearchResultCount`, `rowAnimationLimit` → `maxAnimatedRowCount` (limits are `max*Count`), `onTreeChange` → `onNodesChange` (+ `TreeChangeContext` → `NodesChangeContext`; `<state>-change` matching `nodes`), `onNodesReorder` → `onNodesSort` (+ `NodesReorderContext` → `NodesSortContext`; "reorder" is a UI gesture, this fires from sorting), `SelectionModifiers.ctrl` / `.shift` → `isCtrlPressed` / `isShiftPressed`, engine `contextMenuVisible` → `isContextMenuOpen` (menus open / close). Same names in web-treeview (attributes `enable-keyboard-shortcuts`, `enable-internal-search-index`, `max-search-result-count`, `max-animated-row-count`; events `nodes-change`, `nodes-sort`).
+- `scrollToPath({ containerScroll: true })` finds its scroll container with core `findScrollContainer` (vendored) instead of a hand-rolled walk: shadow roots are crossed and the page itself (`<html>` / `<body>`) is never picked as the container.
+
+### Internal — private names follow the BlissFramework verb registry (2026-11-23)
+
+- Event firing is `_dispatch*` (`_dispatchCheckedChange`, `_dispatchExpandEvent`, `dispatchDrop`; `_notifySelectionChanged` folded into `_dispatchSelectionChange`), syncing derived state is `_reconcile*` / `_compute*` (`_reconcileNodesProp`, `_reconcileExpanded`, `_reconcileFilteredCheckState`, `_reconcileCheckedFromSelection`, `_computeEmittedCheckedPaths`), no `apply` methods (`_insertNodesInput`, `_updateDropHover`, `_highlightRow`, `_expandFromToggle`), row animation `_animateExpand` / `_commitPendingCollapses` / `_checkBeforeExpand` / `_isRowAnimationEnabled`, drag set `_getPathsWithDescendants` / `_validateDragManifest` / `_processDropGroups` / `_startPointerDrag` / `_show*BlockedIndicator`, lookups `_getRealNode`, render pass `_startRenderPass` / `_completeRenderPass`. The ltree's `_emitTreeChanged` was `refresh()`'s body — gone, `refresh()` does it. Same names in web-treeview. Public names are a separate round. (REVIEW-2026-11-19 §2a.)
+
 ### Removed — the `treeBody` snippet prop (2026-11-23)
 
 - It was declared but never rendered ("reserved"). Use `treeHeader` / `treeFooter` or a custom renderer (`TreeProvider`). (REVIEW-2026-11-19 §3.9.)

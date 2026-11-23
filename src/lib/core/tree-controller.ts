@@ -19,8 +19,8 @@ export const TREE_CONTROLLER_METHODS = [
 	'getSiblings', 'getNodeRef', 'getVisibleFlatNodes', 'getTree', 'refreshNode', 'refreshSiblings',
 	'isNodeDropAllowed',
 	// mutations
-	'addNode', 'insertNode', 'updateNode', 'removeNode', 'removeNodes', 'runDeleteCommand', 'moveNode',
-	'moveNodes', 'duplicateNode', 'duplicateNodes', 'applyChanges', 'addBranch', 'insertBranch',
+	'addNode', 'insertNode', 'updateNode', 'removeNode', 'removeNodes', 'deleteNodes', 'moveNode',
+	'moveNodes', 'duplicateNode', 'duplicateNodes', 'processChanges', 'addBranch', 'insertBranch',
 	'replaceBranch', 'removeBranch',
 	// selection / checked / focus
 	'selectNode', 'selectNodes', 'selectAll', 'clearSelection', 'getSelectedNodes', 'isNodeSelected',

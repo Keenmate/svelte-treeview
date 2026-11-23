@@ -17,7 +17,7 @@
 		type InsertPosition,
 		type SortOptions,
 		type TreeChange,
-		type ApplyChangesResult
+		type ProcessChangesResult
 	} from '../ltree/types.js';
 	import { setContext, onDestroy, untrack, type Snippet } from 'svelte';
 	import type { TreeEngineProps } from '../core/TreeEngine.svelte.js';
@@ -319,7 +319,7 @@
 		const getItems = engine.getContextMenuItemsHandler;
 		const isSnippet = !getItems && !!contextMenu;
 		const snippetHost = snippetMenuHost;
-		if (!engine.contextMenuVisible || !node || !host) return;
+		if (!engine.isContextMenuOpen || !node || !host) return;
 		if (isSnippet && !snippetHost) return; // the snippet renders first, then moves into the menu
 		return untrack(() => {
 			const isFromKeyboard = isMenuOpeningFromKeyboard;
@@ -352,7 +352,7 @@
 					onClose: () => {
 						if (contextMenuHandle !== menu) return; // replaced by a newer open / torn down
 						contextMenuHandle = null;
-						if (engine.contextMenuVisible) engine.closeContextMenu();
+						if (engine.isContextMenuOpen) engine.closeContextMenu();
 					}
 				}
 			);
@@ -606,8 +606,8 @@
 
 	/** The user's Delete command on `paths` (default: the selection, else the focused node):
 	 *  `beforeDeleteCallback` may narrow / veto, then `onNodeDelete` fires with the removed paths. */
-	export function runDeleteCommand(paths?: string[]): { removed: number; blocked: number } {
-		return engine.runDeleteCommand(paths);
+	export function deleteNodes(paths?: string[]): { removed: number; blocked: number } {
+		return engine.deleteNodes(paths);
 	}
 
 	/** Programmatic removal of several subtrees (no beforeDeleteCallback, no onNodeDelete). */
@@ -630,8 +630,8 @@
 		return engine.updateNode(path, dataUpdates);
 	}
 
-	export function applyChanges(changes: TreeChange<T>[]): ApplyChangesResult {
-		return engine.applyChanges(changes);
+	export function processChanges(changes: TreeChange<T>[]): ProcessChangesResult {
+		return engine.processChanges(changes);
 	}
 
 	export function insertNode(
@@ -942,7 +942,7 @@
 	oncontextmenu={(e) => {
 		// The browser's keyboard-initiated `contextmenu` (Shift+F10 / ContextMenu key) targets the
 		// focused container — ours is already open, don't show the native one too.
-		if (engine.contextMenuVisible && e.target === treeContainerRef) e.preventDefault();
+		if (engine.isContextMenuOpen && e.target === treeContainerRef) e.preventDefault();
 	}}
 >
 	{@render treeHeader?.()}
@@ -1036,7 +1036,7 @@
 
 	<!-- Context menu snippet: rendered here, moved into core's custom-menu element (openMenu's
 	     renderMenuCallback, the effect above) — the callback menu is all core's. -->
-	{#if engine.contextMenuVisible && engine.contextMenuNode && contextMenu && !engine.getContextMenuItemsHandler}
+	{#if engine.isContextMenuOpen && engine.contextMenuNode && contextMenu && !engine.getContextMenuItemsHandler}
 		<div bind:this={snippetMenuHost} class="stv__context-menu-content" role="menu">
 			{@render contextMenu(
 				engine.contextMenuNode,

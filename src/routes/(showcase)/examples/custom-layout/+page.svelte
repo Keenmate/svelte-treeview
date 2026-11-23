@@ -710,7 +710,7 @@
 		sortCallback={sortByName}
 		isSorted={true}
 		expandLevel={2}
-		shouldUseInternalSearchIndex={true}
+		isInternalSearchIndexEnabled={true}
 		searchValueMember="name"
 	>
 		{#snippet children(ctrl: any)}

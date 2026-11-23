@@ -12,7 +12,7 @@ function createTree(orderMember?: string, opts: Record<string, unknown> = {}) {
 		treeId: 'test-tree',
 		treePathSeparator: '.',
 		expandLevel: 3,
-		shouldUseInternalSearchIndex: false,
+		isInternalSearchIndexEnabled: false,
 		indexerBatchSize: 25,
 		indexerTimeout: 50
 	}, opts);

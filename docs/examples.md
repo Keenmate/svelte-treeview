@@ -54,7 +54,7 @@ For live demos, see [svelte-treeview.keenmate.dev](https://svelte-treeview.keenm
   nodes={data}
   idMember="path"
   pathMember="path"
-  shouldUseInternalSearchIndex={true}
+  isInternalSearchIndexEnabled={true}
   searchValueMember="name"
   bind:searchTerm
 />
@@ -94,7 +94,7 @@ For live demos, see [svelte-treeview.keenmate.dev](https://svelte-treeview.keenm
   nodes={data}
   idMember="path"
   pathMember="path"
-  shouldUseInternalSearchIndex={true}
+  isInternalSearchIndexEnabled={true}
   searchValueMember="name"
 />
 

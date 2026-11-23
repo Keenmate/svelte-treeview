@@ -178,7 +178,7 @@
 			}
 			if (event.key === 'Delete') {
 				const p = clipPaths(controller, focused);
-				if (p.length) controller.runDeleteCommand(p);
+				if (p.length) controller.deleteNodes(p);
 				return false;
 			}
 			return;

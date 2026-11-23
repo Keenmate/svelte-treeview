@@ -143,7 +143,7 @@ test('onFocusChange fires on a node click', async ({ page }) => {
 	await expect.poll(() => log2(page)).toEqual(['focus:2:ctrl']);
 });
 
-test('onTreeChange fires once per mutation batch (add, add+remove, sort)', async ({ page }) => {
+test('onNodesChange fires once per mutation batch (add, add+remove, sort)', async ({ page }) => {
 	await page.getByTestId('add-node').click();
 	await expect.poll(() => log2(page)).toEqual(['tree:ctrl']);
 	await page.getByTestId('batch').click();

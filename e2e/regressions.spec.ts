@@ -211,7 +211,7 @@ test.describe('context menu', () => {
 });
 
 test('B1: onNodeDelete reports the removed paths when one in the middle fails', async ({ page }) => {
-	const result = await call(page, '__main', 'runDeleteCommand', ['1.2', '9.9', '2.1']);
+	const result = await call(page, '__main', 'deleteNodes', ['1.2', '9.9', '2.1']);
 	expect(result).toEqual({ removed: 2, blocked: 1 });
 	await expect(page.getByTestId('deleted')).toHaveText('1.2,2.1');
 });

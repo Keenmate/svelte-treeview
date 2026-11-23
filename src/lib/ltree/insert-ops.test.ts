@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createLTree } from './ltree.svelte.js';
 
-/** insertNode / positioned insertBranch / applyChanges add|insert|update|remove. */
+/** insertNode / positioned insertBranch / processChanges add|insert|update|remove. */
 
 function createTree(orderMember?: string) {
 	return createLTree<any>({
@@ -12,7 +12,7 @@ function createTree(orderMember?: string) {
 		treeId: 'test-tree',
 		treePathSeparator: '.',
 		expandLevel: 3,
-		shouldUseInternalSearchIndex: false,
+		isInternalSearchIndexEnabled: false,
 		indexerBatchSize: 25,
 		indexerTimeout: 50
 	});
@@ -99,14 +99,14 @@ describe('insertBranch (positioned)', () => {
 	});
 });
 
-describe('applyChanges operations', () => {
+describe('processChanges operations', () => {
 	it('add / insert / update / remove', () => {
 		const tree = createTree();
 		tree.insertArray([
 			{ id: 1, path: '1', name: 'A' },
 			{ id: 2, path: '2', name: 'B' }
 		]);
-		const result = tree.applyChanges([
+		const result = tree.processChanges([
 			{ operation: 'add', parentPath: '1', data: { id: 3, name: 'A-child' } },
 			{ operation: 'insert', targetPath: '2', position: 'before', data: { id: 4, name: 'Z' } },
 			{ operation: 'update', path: '1', data: { name: 'A2' } },

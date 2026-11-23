@@ -11,7 +11,7 @@ describe('LTree Sorting', () => {
 			treeId: 'test-tree',
 			treePathSeparator: '.',
 			expandLevel: 2,
-			shouldUseInternalSearchIndex: false,
+			isInternalSearchIndexEnabled: false,
 			indexerBatchSize: 25,
 			indexerTimeout: 50
 		});

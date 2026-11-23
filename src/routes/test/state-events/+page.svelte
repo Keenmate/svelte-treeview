@@ -23,7 +23,7 @@
 	let treeRef: Tree<Item>;
 	let expanded = $state<Set<string>>(new Set());
 	let log = $state<string[]>([]);
-	// focus / tree-change log (separate so the expand assertions stay exact)
+	// focus / nodes-change log (separate so the expand assertions stay exact)
 	let log2 = $state<string[]>([]);
 	let isAccordion = $state(false);
 	let releaseLazy: ((v: boolean) => void) | null = null;
@@ -95,7 +95,7 @@
 			onNodeCollapse={(ctx) => push(`collapse:${ctx.path}`)}
 			onExpandedChange={(ctx) => push(`changed:${[...ctx.paths].sort().join(',')}`)}
 			onFocusChange={(ctx) => (log2 = [...log2, `focus:${ctx.focusedNode?.path ?? 'null'}:${ctx.controller ? 'ctrl' : 'no-ctrl'}`])}
-			onTreeChange={(ctx) => (log2 = [...log2, `tree:${ctx.controller ? 'ctrl' : 'no-ctrl'}`])}
+			onNodesChange={(ctx) => (log2 = [...log2, `tree:${ctx.controller ? 'ctrl' : 'no-ctrl'}`])}
 		/>
 	</div>
 </main>

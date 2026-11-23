@@ -166,11 +166,11 @@ and because the closing rows shrink in normal flow, the rows below slide up with
 
 Both trees, same shape:
 
-- **No on/off input.** `_isRowAnimationOn()` reads the container's resolved
+- **No on/off input.** `_isRowAnimationEnabled()` reads the container's resolved
   `--<p>-row-animation-duration` (and the limit) before each expand; 0 → plain expand, no before-set.
 - **Reveal = a before/after diff of the visible list**, not a walk under the expanded node:
-  `_withReveal(apply)` wraps `_expandWithEvents` (→ `expandNodes`, keyboard, lazy-load apply),
-  `_toggleExpandApply` (toggle + accordion) and `expandAll`; nested calls record once. It takes the
+  `_animateExpand(apply)` wraps `_expandWithEvents` (→ `expandNodes`, keyboard, lazy-load apply),
+  `_expandFromToggle` (toggle + accordion) and `expandAll`; nested calls record once. It takes the
   visible paths before, runs the expand, keeps the first `rowAnimationLimit` new paths in visible
   order.
 - svelte: `controller.revealedPaths` (`$state.raw`, reassigned) → `NodeConfig.revealedPaths` →
@@ -205,7 +205,7 @@ Both trees, same shape (svelte `TreeController`, web `TreeEngine`):
   true, onDone: apply })`. `apply` = the real collapse + `onNodeCollapse` / `node-collapse` +
   `onExpandedChange` / `expanded-change`. Toggle → `collapseNodes`, so clicks / keyboard / menu animate too.
 - Pending collapses: `path → { handle, apply, targets }`. A second collapse of a closing node awaits
-  the same handle. **Before any expand** (`expandNodes`, toggle, `expandAll`) `_settleClosing(paths)`:
+  the same handle. **Before any expand** (`expandNodes`, toggle, `expandAll`) `_commitPendingCollapses(paths)`:
   a pending collapse of exactly that ONE node is cancelled (re-expand — it stays open, no events); any
   other related one (same / ancestor / descendant; `expandAll(null)` = all) is cancelled AND applied now,
   so `collapseAll(); expandNodes(x)` ends exactly as without motion. Unrelated collapses keep animating.
@@ -259,7 +259,7 @@ Both trees, same shape (svelte `TreeController`, web `TreeEngine`):
   reuses rows; create branch ~1324, remove loop ~1338; same path + new node object (filter, reload) →
   row recreated (~1280).
 - **Engine:** add a snapshot field `rowMotion: { generation, opening: string[], closing: string[] } | null`
-  set in `_expandWithEvents`, `_toggleExpandApply`, `expandAll` / `collapseAll`, `collapseNodes`
+  set in `_expandWithEvents`, `_expandFromToggle`, `expandAll` / `collapseAll`, `collapseNodes`
   (tree-engine.ts ~1111-1291); `getSnapshot()` (~4466) carries it. Today the snapshot has no delta or
   cause — this is the one new field.
 - **Core:** bump to core rc24 (tarball `_core-tarballs/keenmate-web-components-core-1.0.0-rc24-pre.4.tgz`

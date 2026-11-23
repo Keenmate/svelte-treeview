@@ -311,7 +311,7 @@
 						treePathSeparator="."
 						bind:focusedNode={selectedNode}
 						bind:searchTerm
-						shouldUseInternalSearchIndex={true}
+						isInternalSearchIndexEnabled={true}
 						clickBehavior="expand-and-focus"
 						{onNodeClick}
 						{contextMenuXOffset}
@@ -489,7 +489,7 @@
 						treePathSeparator="."
 						bind:focusedNode={selectedNode2}
 						bind:searchTerm={searchText2}
-						shouldUseInternalSearchIndex={true}
+						isInternalSearchIndexEnabled={true}
 						clickBehavior="expand-and-focus"
 						{onNodeClick}
 						{contextMenuXOffset}

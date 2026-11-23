@@ -25,7 +25,7 @@ A
 -
 addNode → tree-editing.txt
 isCopyAllowed → drag-drop.txt
-applyChanges → tree-editing.txt
+processChanges → tree-editing.txt
 allowedDropPositions → drag-drop.txt
 allowedDropPositionsMember → drag-drop.txt
 Async indexing → search-features.txt, performance.txt
@@ -104,7 +104,7 @@ getDisplayValueCallback → data-handling.txt
 expandedPaths (bindable) → tree-editing.txt
 beforeExpandCallback → tree-editing.txt, events-callbacks.txt
 onNodeExpand / onNodeCollapse / onExpandedChange → tree-editing.txt, events-callbacks.txt
-onFocusChange / onTreeChange → events-callbacks.txt
+onFocusChange / onNodesChange → events-callbacks.txt
 getIsCollapsibleCallback → data-handling.txt
 getIsDraggableCallback → drag-drop.txt, data-handling.txt
 getNodeByPath → tree-editing.txt
@@ -203,7 +203,7 @@ rangeSelectionMode → advanced-patterns.txt
 refreshNode → tree-editing.txt
 replaceBranch → tree-editing.txt
 refreshSiblings → tree-editing.txt
-onNodesReorder → tree-editing.txt, events-callbacks.txt
+onNodesSort → tree-editing.txt, events-callbacks.txt
 removeNode → tree-editing.txt
 Root drop zone → drag-drop.txt
 
@@ -229,7 +229,7 @@ checkedPaths → advanced-patterns.txt (checkbox data state)
 isCheckboxesShown → basic-setup.txt
 checkboxMode → basic-setup.txt
 clickBehavior → basic-setup.txt, events-callbacks.txt
-shouldUseInternalSearchIndex → search-features.txt
+isInternalSearchIndexEnabled → search-features.txt
 Snippets → basic-setup.txt, context-menu.txt
 sortCallback → data-handling.txt, basic-setup.txt
 sortNodes / sortAll / SortOptions → tree-editing.txt

@@ -198,7 +198,7 @@
 						isSorted={false}
 						bind:focusedNode={selectedNode}
 						bind:searchTerm
-						shouldUseInternalSearchIndex={true}
+						isInternalSearchIndexEnabled={true}
 						clickBehavior="expand-and-focus"
 						{onNodeClick}
 					>

@@ -149,7 +149,7 @@
 
 	// ── Cross-tree clipboard + Delete ────────────────────────────────────────
 	// Both trees opt into the library's built-in keyboard handling via
-	// shouldHandleKeyboardShortcuts: Ctrl/Cmd+C/X/V (copy/cut/paste), Delete, Esc.
+	// isKeyboardShortcutsEnabled: Ctrl/Cmd+C/X/V (copy/cut/paste), Delete, Esc.
 	// The clipboard is a shared singleton, so copy in one tree + paste in the other
 	// just works — and a cross-tree CUT now removes the originals automatically (the
 	// source tree is reached through the library's internal registry). All that's left
@@ -816,7 +816,7 @@
 		it);
 		<strong>Esc</strong> cancels a pending cut. The classic <strong>Ctrl+Insert</strong> /
 		<strong>Shift+Insert</strong> / <strong>Shift+Delete</strong> aliases work too. These keys
-		come from the library's built-in <code>shouldHandleKeyboardShortcuts</code> — no hand-rolled
+		come from the library's built-in <code>isKeyboardShortcutsEnabled</code> — no hand-rolled
 		keymap; this demo only supplies the paste transform (fresh ids / <em>Copy N</em> names) and a self-paste
 		redirect.
 	</p>
@@ -927,7 +927,7 @@
 					{selectionMode}
 					selectedNodeClass="stv__node-content--selected-bold"
 					bind:selectedPaths={sourceSelectedPaths}
-					shouldHandleKeyboardShortcuts={handleKeyboardShortcuts}
+					isKeyboardShortcutsEnabled={handleKeyboardShortcuts}
 					nodeInputTransformationCallback={transformPasted}
 					beforePasteCallback={selfPasteRedirect}
 					onNodeCopy={(c) => addLog('Copy', `${c.paths.length} from source-tree`)}
@@ -980,7 +980,7 @@
 					{selectionMode}
 					selectedNodeClass="stv__node-content--selected-bold"
 					bind:selectedPaths={targetSelectedPaths}
-					shouldHandleKeyboardShortcuts={handleKeyboardShortcuts}
+					isKeyboardShortcutsEnabled={handleKeyboardShortcuts}
 					nodeInputTransformationCallback={transformPasted}
 					beforePasteCallback={selfPasteRedirect}
 					onNodeCopy={(c) => addLog('Copy', `${c.paths.length} from target-tree`)}

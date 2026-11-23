@@ -2,7 +2,7 @@ SEARCH FEATURES
 ===============
 
 CRITICAL: Search requires explicit configuration
-- Set shouldUseInternalSearchIndex={true}
+- Set isInternalSearchIndexEnabled={true}
 - Provide searchValueMember OR getSearchValueCallback
 - Optional: FlexSearch for advanced search
 
@@ -19,7 +19,7 @@ BASIC SEARCH SETUP
   idMember="id"
   pathMember="path"
   bind:searchTerm
-  shouldUseInternalSearchIndex={true}
+  isInternalSearchIndexEnabled={true}
   searchValueMember="name"
 />
 
@@ -170,7 +170,7 @@ Initialize your own FlexSearch index:
 
 <Tree
   initializeIndexCallback={initializeIndex}
-  shouldUseInternalSearchIndex={true}
+  isInternalSearchIndexEnabled={true}
   searchValueMember="name"
 />
 
@@ -329,7 +329,7 @@ console.log('Stats:', treeRef.statistics);
 
 BEST PRACTICES
 --------------
-✅ Set shouldUseInternalSearchIndex={true}
+✅ Set isInternalSearchIndexEnabled={true}
 ✅ Provide searchValueMember or getSearchValueCallback
 ✅ Use debouncing for search input
 ✅ Handle loading state during indexing
@@ -343,7 +343,7 @@ BEST PRACTICES
 TROUBLESHOOTING
 ---------------
 Search not working:
-✅ Check shouldUseInternalSearchIndex={true}
+✅ Check isInternalSearchIndexEnabled={true}
 ✅ Check searchValueMember or getSearchValueCallback is set
 ✅ Wait for indexing to complete (check statistics.isIndexing)
 

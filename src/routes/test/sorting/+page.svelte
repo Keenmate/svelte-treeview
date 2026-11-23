@@ -1,8 +1,8 @@
 <script lang="ts">
 	import Tree from '$lib/components/Tree.svelte';
-	import type { LTreeNode, NodesReorderContext } from '$lib/ltree/types.js';
+	import type { LTreeNode, NodesSortContext } from '$lib/ltree/types.js';
 
-	// Fixture for isSortingEnabled + sortNodes / sortAll + onNodesReorder.
+	// Fixture for isSortingEnabled + sortNodes / sortAll + onNodesSort.
 	// Targeted by e2e/sorting.spec.ts.
 
 	type Item = { id: number; path: string; name: string; order: number };
@@ -19,7 +19,7 @@
 	let isSortingEnabled = $state(false);
 	let reorders = $state<string[]>([]);
 
-	function onNodesReorder(ctx: NodesReorderContext<Item>) {
+	function onNodesSort(ctx: NodesSortContext<Item>) {
 		reorders = [
 			...reorders,
 			`${ctx.parentPath || '(root)'}: ` +
@@ -71,7 +71,7 @@
 			displayValueMember="name"
 			orderMember="order"
 			{isSortingEnabled}
-			{onNodesReorder}
+			{onNodesSort}
 			expandLevel={5}
 		/>
 	</div>

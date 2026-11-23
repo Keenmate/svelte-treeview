@@ -31,7 +31,7 @@ function build() {
 		treeId: 'search-removal-tree',
 		treePathSeparator: '.',
 		expandLevel: 5,
-		shouldUseInternalSearchIndex: true,
+		isInternalSearchIndexEnabled: true,
 		indexerBatchSize: 100,
 		indexerTimeout: 50,
 		sortCallback: sortByPath
@@ -101,7 +101,7 @@ describe('search index stays correct across removals', () => {
 			searchValueMember: 'keywords',
 			getSearchValueCallback: ({ node }) => `${node.data?.name} callback`,
 			treeId: 'search-fallback-tree',
-			shouldUseInternalSearchIndex: true,
+			isInternalSearchIndexEnabled: true,
 			sortCallback: sortByPath
 		});
 		ltree.insertArray([...fixture.slice(0, 2), { ...fixture[3], keywords: 'kilo' } as Row]);

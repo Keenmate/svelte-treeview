@@ -25,17 +25,17 @@ export interface SortCompareContext<T> {
 export interface SortOptions<T = any> {
 	/** Ascending comparator (negative = `a` first). Default: the tree's own rule — `sortCallback`
 	 *  → `orderMember` → `Intl.Collator(numeric)` by display value. With `orderMember` set, a
-	 *  custom compare rewrites the order values (10, 20, 30…) and fires `onNodesReorder`. */
+	 *  custom compare rewrites the order values (10, 20, 30…) and fires `onNodesSort`. */
 	compareCallback?: (ctx: SortCompareContext<T>) => number;
 	/** `'desc'` reverses whichever rule applies (with `orderMember`: values rewritten, like a
 	 *  custom compare). Default `'asc'`. */
 	direction?: 'asc' | 'desc';
-	/** Suppress `onNodesReorder` only — the tree always re-renders. */
+	/** Suppress `onNodesSort` only — the tree always re-renders. */
 	isSilent?: boolean;
 }
 
-/** ctx of `onNodesReorder`: one parent whose children's `orderMember` values were rewritten. */
-export interface NodesReorderContext<T> {
+/** ctx of `onNodesSort`: one parent whose children's `orderMember` values were rewritten. */
+export interface NodesSortContext<T> {
 	/** The parent ('' = root). */
 	parentPath: string;
 	/** All its children, in the new order. */
@@ -154,7 +154,7 @@ export type TreeChange<T> =
 /** Where `insertNode` / `insertBranch` place the new node(s) relative to the target. */
 export type InsertPosition = 'before' | 'after' | 'child';
 
-export interface ApplyChangesResult {
+export interface ProcessChangesResult {
 	successful: number;
 	failed: Array<{ changeIndex: number; operation: string; path: string; error: string }>;
 }
@@ -231,7 +231,7 @@ export interface LTreeConfig<T> {
 	sortCallback?: (ctx: SortContext<T>) => LTreeNode<T>[];
 	treePathSeparator?: string | null;
 	expandLevel?: number | null;
-	shouldUseInternalSearchIndex?: boolean | null;
+	isInternalSearchIndexEnabled?: boolean | null;
 	initializeIndexCallback?: () => Index;
 	indexerBatchSize?: number | null;
 	indexerTimeout?: number | null;
@@ -339,13 +339,13 @@ export interface Ltree<T> {
 	/** Fired as the async search index fills (per idle batch) and once on completion. */
 	onIndexProgress?: (progress: IndexProgress) => void;
 	/** Max matches a search/filter returns (default DEFAULT_SEARCH_RESULT_LIMIT). */
-	searchResultLimit?: number;
+	maxSearchResultCount?: number;
 	/** Fired every time filterNodes applies or clears a filter. */
 	onSearchStatus?: (status: SearchStatus) => void;
 	/** @internal */
 	_resolveSearchLimit(searchOptions?: SearchOptions): number;
 	/** @internal Runs the index query with the result limit + truncation detection. */
-	_runSearch(
+	_searchWithLimit(
 		searchTerm: string,
 		searchOptions?: SearchOptions
 	): { nodes: LTreeNode<T>[]; isLimited: boolean; limit: number };
@@ -389,15 +389,14 @@ export interface Ltree<T> {
 	_sortChildrenOf(
 		parent: LTreeNode<T>,
 		options: SortOptions<T> | undefined,
-		out: NodesReorderContext<T>[]
+		out: NodesSortContext<T>[]
 	): void;
 	/** Sort the children of each node (one level; '' = root). Returns the orderMember rewrites. */
-	sortNodes(paths: string | string[], options?: SortOptions<T>): NodesReorderContext<T>[];
+	sortNodes(paths: string | string[], options?: SortOptions<T>): NodesSortContext<T>[];
 	/** Sort whole subtrees (`null` / omitted = the whole tree). Returns the orderMember rewrites. */
-	sortAll(paths?: string | string[] | null, options?: SortOptions<T>): NodesReorderContext<T>[];
+	sortAll(paths?: string | string[] | null, options?: SortOptions<T>): NodesSortContext<T>[];
 
 	_scheduleRefilter(): void;
-	_emitTreeChanged(): void;
 
 	refresh(): void;
 
@@ -426,7 +425,7 @@ export interface Ltree<T> {
 		path: string,
 		dataUpdates: Partial<T>
 	): { success: boolean; node?: LTreeNode<T>; error?: string };
-	applyChanges(changes: TreeChange<T>[]): ApplyChangesResult;
+	processChanges(changes: TreeChange<T>[]): ProcessChangesResult;
 
 	// Bulk subtree operations (single emission)
 	addBranch(parentPath: string, data: T[]): InsertBranchResult<T>;

@@ -909,7 +909,7 @@ treeRef.addBranch(targetPath, serverResult);`}</pre>
 		<ul>
 			<li>For large datasets, consider pagination or lazy loading</li>
 			<li>Use <code>expandLevel</code> to limit initial expansion</li>
-			<li>Enable search indexing only when needed (<code>shouldUseInternalSearchIndex</code>)</li>
+			<li>Enable search indexing only when needed (<code>isInternalSearchIndexEnabled</code>)</li>
 			<li>Avoid recreating the data array on every render</li>
 		</ul>
 	</div>

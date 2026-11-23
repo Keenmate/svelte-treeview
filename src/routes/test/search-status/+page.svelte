@@ -2,10 +2,10 @@
 	import Tree from '$lib/components/Tree.svelte';
 	import type { LTreeNode, IndexProgress, SearchStatus } from '$lib/ltree/types.js';
 
-	// e2e fixture for the search-status API: searchResultLimit truncation detection,
+	// e2e fixture for the search-status API: maxSearchResultCount truncation detection,
 	// onSearchStatusChange, onIndexProgress — and a tree that STARTS with a non-empty
 	// searchTerm (?term=) before its index is built. Targeted by e2e/search-status.spec.ts.
-	//   ?term=<initial searchTerm>   ?limit=<searchResultLimit>   ?count=<groups>
+	//   ?term=<initial searchTerm>   ?limit=<maxSearchResultCount>   ?count=<groups>
 
 	type Item = { id: number; path: string; name: string };
 
@@ -22,7 +22,7 @@
 	}
 
 	let searchTerm = $state(params.get('term') ?? '');
-	let searchResultLimit = $state<number | undefined>(limitParam ? Number(limitParam) : undefined);
+	let maxSearchResultCount = $state<number | undefined>(limitParam ? Number(limitParam) : undefined);
 	let status = $state<SearchStatus | null>(null);
 	let progress = $state<IndexProgress | null>(null);
 	let statusEvents = $state(0);
@@ -36,8 +36,8 @@
 	<h1>Search status fixture</h1>
 	<div class="controls">
 		<input data-testid="term" bind:value={searchTerm} />
-		<button data-testid="limit-5" onclick={() => (searchResultLimit = 5)}>limit = 5</button>
-		<button data-testid="limit-default" onclick={() => (searchResultLimit = undefined)}>limit = default</button>
+		<button data-testid="limit-5" onclick={() => (maxSearchResultCount = 5)}>limit = 5</button>
+		<button data-testid="limit-default" onclick={() => (maxSearchResultCount = undefined)}>limit = default</button>
 	</div>
 	<pre>status: <span data-testid="status"
 			>{status
@@ -56,10 +56,10 @@ status events: <span data-testid="status-events">{statusEvents}</span></pre>
 			sortCallback={sortByPath}
 			isSorted={true}
 			expandLevel={1}
-			shouldUseInternalSearchIndex={true}
+			isInternalSearchIndexEnabled={true}
 			searchValueMember="name"
 			bind:searchTerm
-			{searchResultLimit}
+			{maxSearchResultCount}
 			onSearchStatusChange={(ctx) => {
 				status = { searchTerm: ctx.searchTerm, matchCount: ctx.matchCount, isLimited: ctx.isLimited, limit: ctx.limit, isIndexing: ctx.isIndexing };
 				statusEvents++;

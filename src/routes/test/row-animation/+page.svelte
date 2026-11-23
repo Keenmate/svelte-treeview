@@ -4,7 +4,7 @@
 
 	// e2e fixture for the row animation (docs/PLAN-row-animation.md): on by default (part of
 	// core `motion`, no on/off prop); rows an expand reveals get stv__node--opening (capped by
-	// rowAnimationLimit), never on first render, a re-key (focus / select click) or a data
+	// maxAnimatedRowCount), never on first render, a re-key (focus / select click) or a data
 	// reload. Off = motion="none" / reduced motion / --stv-row-animation-duration: 0s.
 	// Targeted by e2e/row-animation.spec.ts.
 
@@ -70,7 +70,7 @@
 		<output data-testid="await-result">{awaitResult}</output>
 		<Tree bind:this={onTree} nodes={onData} idMember="id" pathMember="path" displayValueMember="name"
 			sortCallback={sortByPath} expandLevel={0} expandedPaths={new Set(['3'])}
-			rowAnimationLimit={3} onNodeCollapse={({ path }) => (collapseLog = [...collapseLog, path])} />
+			maxAnimatedRowCount={3} onNodeCollapse={({ path }) => (collapseLog = [...collapseLog, path])} />
 	</div>
 
 	<div data-scenario="pinned" class="slow">

@@ -56,7 +56,7 @@ function buildTree(opts: {
 		treeId: 'seed-cb-tree',
 		treePathSeparator: '.',
 		expandLevel: 2,
-		shouldUseInternalSearchIndex: false,
+		isInternalSearchIndexEnabled: false,
 		indexerBatchSize: 25,
 		indexerTimeout: 50,
 		sortCallback: sortByPath
@@ -128,7 +128,7 @@ describe('addBranch seed-time get*Callback', () => {
 });
 
 // Regression for the cross-tree drop bug: addNode (and therefore
-// duplicateNode / applyChanges 'add') created nodes via
+// duplicateNode / processChanges 'add') created nodes via
 // createLTreeNode WITHOUT running the seed callbacks, so the new node kept the
 // defaults isDraggable=false / isDropAllowed=false. The DOM `draggable` attr and
 // the drop gates read those raw properties, so a node dropped into a target tree

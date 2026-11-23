@@ -84,7 +84,7 @@ import type {
   InsertBranchResult,      // insertBranch()/replaceBranch() result
   RemoveBranchResult,      // removeBranch() result
   TreeChange,              // incremental change descriptor
-  ApplyChangesResult,      // applyChanges() result
+  ProcessChangesResult,      // processChanges() result
 
   // Clipboard entries
   ClipboardEntry,          // immutable clipboard snapshot
@@ -324,7 +324,7 @@ onAction?: (detail: TreeActionEventDetail<T>) => void;
 // Sort
 sortCallback?: (ctx: SortContext<T>) => LTreeNode<T>[];
 isSortingEnabled?: boolean;   // default true; false = never auto-sort
-onNodesReorder?: (ctx: NodesReorderContext<T>) => void;
+onNodesSort?: (ctx: NodesSortContext<T>) => void;
 
 // sortNodes(paths, options?) / sortAll(paths?, options?)
 interface SortOptions<T> {
@@ -332,7 +332,7 @@ interface SortOptions<T> {
   direction?: 'asc' | 'desc';
   isSilent?: boolean;
 }
-interface NodesReorderContext<T> {
+interface NodesSortContext<T> {
   parentPath: string;              // '' = root
   nodes: LTreeNode<T>[];           // all children, new order
   changes: Array<{ path: string; oldOrder: number | undefined; newOrder: number }>;

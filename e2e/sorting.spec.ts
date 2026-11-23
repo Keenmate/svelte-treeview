@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 
 /**
- * isSortingEnabled + sortNodes / sortAll + onNodesReorder. Targets /test/sorting
+ * isSortingEnabled + sortNodes / sortAll + onNodesSort. Targets /test/sorting
  * (orderMember="order", isSortingEnabled starts false, input order C, A, B).
  */
 
@@ -49,7 +49,7 @@ test('sortNodes / sortAll re-render; default rule fires no reorder', async ({ pa
 	);
 });
 
-test('compareCallback fires onNodesReorder; isSilent suppresses it but still re-renders', async ({
+test('compareCallback fires onNodesSort; isSilent suppresses it but still re-renders', async ({
 	page
 }) => {
 	await goto(page);

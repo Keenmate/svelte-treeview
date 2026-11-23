@@ -28,7 +28,7 @@
   let initialBatchSize = $state(savedConfig.initialBatchSize ?? 20);
   let maxBatchSize = $state(savedConfig.maxBatchSize ?? 500);
   let indexerBatchSize = $state(savedConfig.indexerBatchSize ?? 1000);
-  let shouldUseInternalSearchIndex = $state(savedConfig.shouldUseInternalSearchIndex ?? true);
+  let isInternalSearchIndexEnabled = $state(savedConfig.isInternalSearchIndexEnabled ?? true);
   let virtualScrollContainerHeight = $state(savedConfig.virtualScrollContainerHeight ?? '500px');
   let virtualScrollOverscan = $state(savedConfig.virtualScrollOverscan ?? 5);
   let perfLoggingEnabled = $state(isPerfLoggingEnabled());
@@ -46,7 +46,7 @@
       initialBatchSize,
       maxBatchSize,
       indexerBatchSize,
-      shouldUseInternalSearchIndex,
+      isInternalSearchIndexEnabled,
       virtualScrollContainerHeight,
       virtualScrollOverscan,
       nodeCountTarget
@@ -63,7 +63,7 @@
     initialBatchSize = 20;
     maxBatchSize = 500;
     indexerBatchSize = 1000;
-    shouldUseInternalSearchIndex = true;
+    isInternalSearchIndexEnabled = true;
     virtualScrollContainerHeight = '500px';
     virtualScrollOverscan = 5;
     nodeCountTarget = 5000;
@@ -617,10 +617,10 @@
       Sort by name
     </label>
     <label>
-      <input type="checkbox" bind:checked={shouldUseInternalSearchIndex} />
+      <input type="checkbox" bind:checked={isInternalSearchIndexEnabled} />
       Search Index
     </label>
-    {#if shouldUseInternalSearchIndex}
+    {#if isInternalSearchIndexEnabled}
       <label>
         Index Batch:
         <input type="number" bind:value={indexerBatchSize} min="25" max="5000" step="25" />
@@ -784,7 +784,7 @@
           {initialBatchSize}
           {maxBatchSize}
           {indexerBatchSize}
-          {shouldUseInternalSearchIndex}
+          {isInternalSearchIndexEnabled}
           searchValueMember="name"
           bind:searchTerm
           {isVirtualScrollEnabled}

@@ -64,10 +64,10 @@ each fire ONCE even for a multi-selection; ctx.dragged carries the full top-leve
 
 REORDER EVENT
 -------------
-onNodesReorder: sortNodes / sortAll rewrote one parent's orderMember values (custom
+onNodesSort: sortNodes / sortAll rewrote one parent's orderMember values (custom
 compareCallback or direction 'desc' with orderMember set). Once per parent; suppressed by
 { isSilent: true }.
-<Tree onNodesReorder={({ parentPath, nodes, changes }) => api.saveOrder(changes)} />
+<Tree onNodesSort={({ parentPath, nodes, changes }) => api.saveOrder(changes)} />
 // changes: [{ path, oldOrder, newOrder }]
 
 SELECTION EVENTS
@@ -282,7 +282,7 @@ Callback props (one-way notification):
 - onSelectionChange
 - onCheckedChange
 - onNodeExpand / onNodeCollapse / onExpandedChange
-- onFocusChange ({ focusedNode, controller }) / onTreeChange ({ controller }, after mutations)
+- onFocusChange ({ focusedNode, controller }) / onNodesChange ({ controller }, after mutations)
 - beforeExpandCallback (interceptor; Promise = lazy load with loading state)
 - onNodeCopy / onNodeCut / onNodePaste / onNodeDelete
 - beforeKeydownCallback (interceptor)
@@ -344,7 +344,7 @@ onExpandedChange:
 onFocusChange:
 (ctx: { focusedNode: LTreeNode<T> | null, controller }) => void   // not for isSilent / bind assign
 
-onTreeChange:
+onNodesChange:
 (ctx: { controller }) => void   // data/structure changed by a mutation; once per batch; not on load
 
 beforeExpandCallback (interceptor):
