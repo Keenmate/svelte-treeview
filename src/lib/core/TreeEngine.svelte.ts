@@ -59,6 +59,7 @@ import type { TreeNavigation, TreeNavigationOverrides } from './navigation.js';
 import type { TreeMenuContext, TreeMenuEntry, TreeMenuItem, TreeAction, TreeActionEventDetail } from './menu.js';
 import type { MenuItem, ResolvedActionItem } from '../vendor/actions/types.js';
 import { runAction } from '../vendor/actions/resolve.js';
+import { matchesShortcut, isTypingTarget } from '../vendor/actions/shortcut.js';
 import { animateOut, readAnimationMs, type AnimateOutHandle } from '../vendor/core/dom/animate-out.js';
 import { ICON_CSS, renderIcon, type IconRenderContext, type RenderIconCallback } from '../vendor/core/dom/render-icon.js';
 import { adoptStyles } from '../vendor/core/dom/adopt-styles.js';
@@ -428,6 +429,8 @@ export interface SelectionModifiers {
 }
 
 export interface NodeCallbacks<T> {
+	/** A click on a row's content — {@link TreeEngine.handleNodeClick} (checkbox / clickBehavior routing). */
+	onNodeContentClicked: (node: LTreeNode<T>, event?: MouseEvent) => void;
 	onNodeClicked: (node: LTreeNode<T>, modifiers?: SelectionModifiers) => void;
 	onCheckboxToggle: (node: LTreeNode<T>, options?: { skipFocus?: boolean }) => void;
 	onNodeRightClicked: (node: LTreeNode<T>, event: MouseEvent) => void;
@@ -903,6 +906,74 @@ interface ClosingEntry {
  * svelte-treeview-canvas, a custom layout via `createTreeEngine`). Callbacks never see it — their
  * ctx carries {@link TreeEngine.controller}, the public facade (core/tree-controller.ts).
  */
+/**
+ * The built-in context-menu actions (REVIEW §3.8 — one table instead of four switches): the
+ * `menuItems.<label>` text, whether it also runs on a menu over empty space (`isNodeFree`; the
+ * others are disabled there), `isDanger`, when it is disabled on a node (`branches` = the
+ * targets that have children) and what it does (`paths` = the targets: the whole selection when
+ * the menu's node is in it, else the node; null on a menu over empty space).
+ */
+const BUILT_IN_ACTIONS: Record<
+	TreeAction,
+	{
+		label: string;
+		isNodeFree?: boolean;
+		isDanger?: boolean;
+		isDisabled?: (engine: TreeEngine<any>, branches: () => LTreeNode<any>[]) => boolean;
+		run: (engine: TreeEngine<any>, paths: string[] | null, node: LTreeNode<any> | null) => unknown;
+	}
+> = {
+	copy: { label: 'copy', run: (e, paths) => e.copyNodes(paths!) },
+	cut: { label: 'cut', run: (e, paths) => e.cutNodes(paths!) },
+	paste: {
+		label: 'paste',
+		isNodeFree: true,
+		isDisabled: (e) => !e.hasClipboardContent(),
+		run: (e, _paths, node) => e.pasteNodes(node?.path ?? '')
+	},
+	delete: { label: 'delete', isDanger: true, run: (e, paths) => e.runDeleteCommand(paths!) },
+	expand: {
+		label: 'expand',
+		isDisabled: (_e, branches) => !branches().some((n) => !n.isExpanded),
+		run: (e, paths) => e.expandNodes(paths!)
+	},
+	collapse: {
+		label: 'collapse',
+		isDisabled: (_e, branches) => !branches().some((n) => n.isExpanded),
+		run: (e, paths) => e.collapseNodes(paths!)
+	},
+	'expand-subtree': {
+		label: 'expandSubtree',
+		isDisabled: (_e, branches) => branches().length === 0,
+		run: (e, paths) => e.expandAll(paths!)
+	},
+	'collapse-subtree': {
+		label: 'collapseSubtree',
+		isDisabled: (_e, branches) => branches().length === 0,
+		run: (e, paths) => e.collapseAll(paths!)
+	},
+	'expand-all': { label: 'expandAll', isNodeFree: true, run: (e) => e.expandAll(null) },
+	'collapse-all': { label: 'collapseAll', isNodeFree: true, run: (e) => e.collapseAll(null) },
+	sort: {
+		label: 'sort',
+		isDisabled: (_e, branches) => branches().length === 0,
+		run: (e, paths) => e.sortNodes(paths!)
+	},
+	'sort-subtree': {
+		label: 'sortSubtree',
+		isDisabled: (_e, branches) => branches().length === 0,
+		run: (e, paths) => e.sortAll(paths!)
+	},
+	'sort-all': { label: 'sortAll', isNodeFree: true, run: (e) => e.sortAll(null) }
+};
+
+/** The built-in action behind a menu item's `action`, if it names one. */
+function getBuiltInAction(action: string | undefined) {
+	return action && Object.prototype.hasOwnProperty.call(BUILT_IN_ACTIONS, action)
+		? BUILT_IN_ACTIONS[action as TreeAction]
+		: undefined;
+}
+
 export class TreeEngine<T> {
 	/** The public controller (frozen facade, core SPEC §12.34) — what every ctx carries. */
 	readonly controller: TreeController<T> = createTreeController(this);
@@ -1589,6 +1660,7 @@ export class TreeEngine<T> {
 
 		// ── Create stable nodeCallbacks ─────────────────────────────────
 		this.nodeCallbacks = {
+			onNodeContentClicked: (node: LTreeNode<T>, event?: MouseEvent) => this.handleNodeClick(node, event),
 			onNodeClicked: (node: LTreeNode<T>, modifiers?: SelectionModifiers) =>
 				this._onNodeClicked(node, modifiers, { uiClick: true }),
 			onCheckboxToggle: (node: LTreeNode<T>, options?: { skipFocus?: boolean }) =>
@@ -3531,6 +3603,129 @@ export class TreeEngine<T> {
 	}
 
 	/**
+	 * The tree's keydown (WAI-ARIA tree navigation + the built-in shortcuts) for the renderer's
+	 * container — `<Tree>` calls it; a custom renderer can. Order: `beforeKeydownCallback`
+	 * (`false` suppresses everything + preventDefault) → keys typed into a field inside a row are
+	 * left alone → Shift+F10 / the ContextMenu key → `openContextMenu()` (the renderer knows where
+	 * the row is; omitted = not handled) → `handleShortcutKeydown` (before the empty-tree return,
+	 * so paste works into an empty tree) → navigation. preventDefaults a key it handled.
+	 */
+	handleKeydown(
+		event: KeyboardEvent,
+		options: { beforeKeydownCallback?: (ctx: KeydownContext<T>) => false | void; openContextMenu?: () => boolean } = {}
+	): void {
+		// Ignore modifier-only key presses (Ctrl, Shift, Alt, Meta)
+		if (['Control', 'Shift', 'Alt', 'Meta'].includes(event.key)) return;
+
+		// Don't interfere with context menu keyboard handling
+		if (this.contextMenuVisible) return;
+
+		// Call custom handler first — return false to suppress default handling. Resolve the
+		// focus + selection sets up front so the consumer gets nodes, not raw paths.
+		if (options.beforeKeydownCallback) {
+			const result: unknown = options.beforeKeydownCallback({
+				event,
+				focusedNode: this.focusedNode ?? null,
+				selectedNodes: this.getSelectedNodes(),
+				controller: this.controller
+			});
+			if (result instanceof Promise) {
+				uiLogger.warn('beforeKeydownCallback is synchronous — a returned Promise is ignored');
+			} else if (result === false) {
+				event.preventDefault();
+				return;
+			}
+		}
+
+		// A key typed into a field inside a row (an <input> in a nodeTemplate) belongs to that
+		// field — no built-in shortcut (Delete, Ctrl+C/V) and no navigation (arrows, Backspace).
+		if (isTypingTarget(event)) return;
+
+		// Shift+F10 / the ContextMenu key open the focused node's context menu.
+		if (matchesShortcut(event, 'ContextMenu') || matchesShortcut(event, 'Shift+F10')) {
+			if (options.openContextMenu?.()) event.preventDefault();
+			return;
+		}
+
+		// Built-in shortcuts (copy/cut/paste/delete/esc): after the consumer hook (so it can
+		// override), before the empty-tree return (so paste works into an empty tree).
+		if (this.handleShortcutKeydown(event)) {
+			event.preventDefault();
+			return;
+		}
+
+		if (this.allFlatNodes.length === 0) return;
+
+		let isHandled = true;
+		// Shift+nav extends the selection range (a no-op in single mode — see _extendSelectionTo).
+		switch (event.key) {
+			case 'ArrowDown':
+				if (event.shiftKey) this.extendSelectionNext();
+				else this.focusNextAtLevel();
+				break;
+			case 'ArrowUp':
+				if (event.shiftKey) this.extendSelectionPrevious();
+				else this.focusPreviousAtLevel();
+				break;
+			case 'ArrowRight':
+				this.focusFirstChild();
+				break;
+			case 'ArrowLeft':
+				this.focusParent();
+				break;
+			case 'Backspace':
+				this.collapseParent();
+				break;
+			case 'Home':
+				if (event.shiftKey) this.extendSelectionToFirst();
+				else this.focusFirst();
+				break;
+			case 'End':
+				if (event.shiftKey) this.extendSelectionToLast();
+				else this.focusLast();
+				break;
+			case 'PageDown':
+				if (event.shiftKey) this.extendSelectionNextPage();
+				else this.focusNextPage();
+				break;
+			case 'PageUp':
+				if (event.shiftKey) this.extendSelectionPreviousPage();
+				else this.focusPreviousPage();
+				break;
+			case 'Enter':
+				// WAI-ARIA tree: Enter = the node's default action (expand / collapse).
+				this.toggleFocusedNodeExpanded();
+				break;
+			case ' ':
+				// WAI-ARIA tree: Space toggles selection. With checkboxes: the focused node's
+				// checkbox; multiple mode: the focused node in the selection; single mode:
+				// selects the focused node (Enter expands / collapses).
+				if (this.isCheckboxesShown && this.focusedNode?.isSelectable) {
+					this.nodeCallbacks.onCheckboxToggle(this.focusedNode);
+				} else if (this.selectionMode === 'multiple') {
+					this.toggleFocusedSelect();
+				} else if (this.focusedNode?.isSelectable) {
+					this.selectNode(this.focusedNode.path);
+				}
+				break;
+			case 'Escape':
+				// Priority: pending cut → selection set → leave alone for surrounding UI
+				// (File Explorer / Finder convention).
+				if (this.hasClipboardContent() && this.getClipboardOperation() === 'cut') {
+					this.cancelCut();
+				} else if (this.selectedPaths.size > 0) {
+					this.clearSelection();
+				} else {
+					isHandled = false;
+				}
+				break;
+			default:
+				isHandled = false;
+		}
+		if (isHandled) event.preventDefault();
+	}
+
+	/**
 	 * Built-in keyboard shortcuts, opt-in via `shouldHandleKeyboardShortcuts`. Returns
 	 * true when it consumed the event (caller should preventDefault + stop). A consumer
 	 * `beforeKeydownCallback` runs BEFORE this in Tree.svelte, so it can override or suppress any
@@ -3625,46 +3820,23 @@ export class TreeEngine<T> {
 		item: MenuItem<any, string>,
 		ctx: TreeCallbackContext<T> & { node?: LTreeNode<T> | null }
 	): Partial<ResolvedActionItem<TreeAction>> | undefined {
+		const builtIn = getBuiltInAction(item.action);
+		if (!builtIn) return undefined;
 		// Built-in item texts are the `menuItems.<name>` labels.
-		const label = (name: string) => this.getLabel(`menuItems.${name}` as keyof TreeLabels);
+		const text = this.getLabel(`menuItems.${builtIn.label}` as keyof TreeLabels);
 		const node = ctx.node;
-		if (!node) {
-			switch (item.action) {
-				case 'paste': return { text: label('paste'), isDisabled: !this.hasClipboardContent() };
-				case 'expand-all': return { text: label('expandAll') };
-				case 'collapse-all': return { text: label('collapseAll') };
-				case 'sort-all': return { text: label('sortAll') };
-				case 'copy': case 'cut': case 'delete': case 'expand': case 'collapse':
-				case 'expand-subtree': case 'collapse-subtree': case 'sort': case 'sort-subtree': {
-					const key = item.action === 'expand-subtree' ? 'expandSubtree'
-						: item.action === 'collapse-subtree' ? 'collapseSubtree'
-						: item.action === 'sort-subtree' ? 'sortSubtree'
-						: item.action;
-					return { text: label(key), isDisabled: true };
-				}
-				default: return undefined;
-			}
-		}
-		const targets = () =>
-			this._actionTargets(node)
-				.map((p) => this.tree?.getNodeByPath(p))
-				.filter((n): n is LTreeNode<T> => !!n && !!n.hasChildren);
-		switch (item.action) {
-			case 'copy': return { text: label('copy') };
-			case 'cut': return { text: label('cut') };
-			case 'paste': return { text: label('paste'), isDisabled: !this.hasClipboardContent() };
-			case 'delete': return { text: label('delete'), isDanger: true };
-			case 'expand': return { text: label('expand'), isDisabled: !targets().some((n) => !n.isExpanded) };
-			case 'collapse': return { text: label('collapse'), isDisabled: !targets().some((n) => n.isExpanded) };
-			case 'expand-subtree': return { text: label('expandSubtree'), isDisabled: targets().length === 0 };
-			case 'collapse-subtree': return { text: label('collapseSubtree'), isDisabled: targets().length === 0 };
-			case 'expand-all': return { text: label('expandAll') };
-			case 'collapse-all': return { text: label('collapseAll') };
-			case 'sort': return { text: label('sort'), isDisabled: targets().length === 0 };
-			case 'sort-subtree': return { text: label('sortSubtree'), isDisabled: targets().length === 0 };
-			case 'sort-all': return { text: label('sortAll') };
-			default: return undefined;
-		}
+		const branches = () =>
+			node
+				? this._actionTargets(node)
+						.map((p) => this.tree?.getNodeByPath(p))
+						.filter((n): n is LTreeNode<T> => !!n && !!n.hasChildren)
+				: [];
+		// A menu over empty space: only the node-free built-ins are enabled.
+		if (!node && !builtIn.isNodeFree) return { text, isDisabled: true };
+		const defaults: Partial<ResolvedActionItem<TreeAction>> = { text };
+		if (builtIn.isDisabled) defaults.isDisabled = builtIn.isDisabled(this, branches);
+		if (builtIn.isDanger && node) defaults.isDanger = true;
+		return defaults;
 	}
 
 	/**
@@ -3725,36 +3897,14 @@ export class TreeEngine<T> {
 
 	/** The built-in menu actions act on the node — or on the whole selection when the node is in it. */
 	private async _runBuiltInAction(action: string, node: LTreeNode<T> | null): Promise<void> {
-		if (!node) {
+		const builtIn = getBuiltInAction(action);
+		if (!builtIn) return;
+		if (!node && !builtIn.isNodeFree) {
 			// A menu over empty space: only the node-free built-ins apply.
-			switch (action) {
-				case 'paste': this.pasteNodes(''); break;
-				case 'expand-all': this.expandAll(null); break;
-				case 'collapse-all': await this.collapseAll(null); break;
-				case 'sort-all': this.sortAll(null); break;
-				case 'copy': case 'cut': case 'delete': case 'expand': case 'collapse':
-				case 'expand-subtree': case 'collapse-subtree': case 'sort': case 'sort-subtree':
-					uiLogger.debug(`[menu] built-in '${action}' needs a node — skipped (menu without a node)`);
-					break;
-			}
+			uiLogger.debug(`[menu] built-in '${action}' needs a node — skipped (menu without a node)`);
 			return;
 		}
-		const paths = this._actionTargets(node);
-		switch (action) {
-			case 'copy': this.copyNodes(paths); break;
-			case 'cut': this.cutNodes(paths); break;
-			case 'paste': this.pasteNodes(node.path); break;
-			case 'delete': this.runDeleteCommand(paths); break;
-			case 'expand': await this.expandNodes(paths); break;
-			case 'collapse': await this.collapseNodes(paths); break;
-			case 'expand-subtree': this.expandAll(paths); break;
-			case 'collapse-subtree': await this.collapseAll(paths); break;
-			case 'expand-all': this.expandAll(null); break;
-			case 'collapse-all': await this.collapseAll(null); break;
-			case 'sort': this.sortNodes(paths); break;
-			case 'sort-subtree': this.sortAll(paths); break;
-			case 'sort-all': this.sortAll(null); break;
-		}
+		await builtIn.run(this, node ? this._actionTargets(node) : null, node);
 	}
 
 	// svelte-ignore non_reactive_update
@@ -4200,6 +4350,35 @@ export class TreeEngine<T> {
 	}
 
 	// ── Internal event handlers ─────────────────────────────────────────
+
+	/**
+	 * A click on a node row's content, routed like `<Tree>` does (a custom renderer can call it):
+	 * with `shouldClickToggleCheckbox` + checkboxes, a plain click on a selectable node toggles its
+	 * checkbox (no focus / selection; still expands unless `clickBehavior` is 'select'); else
+	 * `clickBehavior` — 'expand' only expands, 'expand-and-focus' selects + expands, 'select' only
+	 * selects. Ctrl/Shift(+Cmd) clicks manage the selection and never expand (OS file explorers).
+	 */
+	handleNodeClick(node: LTreeNode<T>, event?: MouseEvent): void {
+		uiLogger.debug(`Node clicked: ${node.path}`, { id: node.id, hasChildren: node.hasChildren });
+		const modifiers = event ? { ctrl: event.ctrlKey || event.metaKey, shift: event.shiftKey } : undefined;
+		const hasModifiers = !!(modifiers?.ctrl || modifiers?.shift);
+		const toggleExpanded = () => {
+			if (node.hasChildren && this.tree.getNodeIsCollapsible(node)) void this.toggleNodeExpanded(node.path);
+		};
+
+		if (this.shouldClickToggleCheckbox && this.isCheckboxesShown && node.isSelectable && !hasModifiers) {
+			this._onCheckboxToggle(node, { skipFocus: true });
+			if (this.clickBehavior !== 'select') toggleExpanded();
+			return;
+		}
+		// 'expand': no selection, so Ctrl/Shift mean nothing — and don't expand either.
+		if (this.clickBehavior === 'expand') {
+			if (!hasModifiers) toggleExpanded();
+			return;
+		}
+		this._onNodeClicked(node, modifiers, { uiClick: true });
+		if (this.clickBehavior === 'expand-and-focus' && !hasModifiers) toggleExpanded();
+	}
 
 	private async _onNodeClicked(
 		node: LTreeNode<T>,
@@ -6045,6 +6224,21 @@ export class TreeEngine<T> {
 
 	/** @internal Create the default flat-list navigation strategy (used by the HTML tree renderer) */
 	createDefaultNavigation(): TreeNavigation<T> {
+		/** The visible rows and the focused node's index among them (-1 = none / not visible). */
+		const cursor = () => {
+			const nodes = this.allFlatNodes;
+			const path = this.focusedNode?.path;
+			return { nodes, index: path ? nodes.findIndex((n) => n.path === path) : -1 };
+		};
+		/** The next row (`step` 1 / -1) at the same level as row `index`; -1 when none. */
+		const sameLevel = (nodes: LTreeNode<T>[], index: number, step: 1 | -1) => {
+			const level = nodes[index].level;
+			for (let i = index + step; i >= 0 && i < nodes.length; i += step) if (nodes[i].level === level) return i;
+			return -1;
+		};
+		const go = (path: string) => this.navigation.focusAndSelectNode(path);
+		const PAGE = 10;
+
 		return {
 			focusAndSelectNode: (path: string) => {
 				const node = this.getNodeByPath(path);
@@ -6053,64 +6247,35 @@ export class TreeEngine<T> {
 				this._scrollToPath(path, { shouldExpandAncestors: false, block: 'nearest', behavior: 'auto' }, true);
 			},
 
+			// Plain navigation: with nothing focused, Down / Next start at the first row, Up / Previous at the last.
 			focusNext: () => {
-				const flatNodes = this.allFlatNodes;
-				if (flatNodes.length === 0) return;
-				const currentPath = this.focusedNode?.path;
-				const idx = currentPath ? flatNodes.findIndex((n) => n.path === currentPath) : -1;
-				if (idx === -1) {
-					this.navigation.focusAndSelectNode(flatNodes[0].path);
-					return;
-				}
-				if (idx < flatNodes.length - 1) this.navigation.focusAndSelectNode(flatNodes[idx + 1].path);
+				const { nodes, index } = cursor();
+				if (nodes.length === 0) return;
+				if (index === -1) go(nodes[0].path);
+				else if (index < nodes.length - 1) go(nodes[index + 1].path);
 			},
 
 			focusPrevious: () => {
-				const flatNodes = this.allFlatNodes;
-				if (flatNodes.length === 0) return;
-				const currentPath = this.focusedNode?.path;
-				const idx = currentPath ? flatNodes.findIndex((n) => n.path === currentPath) : -1;
-				if (idx === -1) {
-					this.navigation.focusAndSelectNode(flatNodes[flatNodes.length - 1].path);
-					return;
-				}
-				if (idx > 0) this.navigation.focusAndSelectNode(flatNodes[idx - 1].path);
+				const { nodes, index } = cursor();
+				if (nodes.length === 0) return;
+				if (index === -1) go(nodes[nodes.length - 1].path);
+				else if (index > 0) go(nodes[index - 1].path);
 			},
 
 			focusNextAtLevel: () => {
-				const flatNodes = this.allFlatNodes;
-				if (flatNodes.length === 0) return;
-				const currentPath = this.focusedNode?.path;
-				const currentIndex = currentPath ? flatNodes.findIndex((n) => n.path === currentPath) : -1;
-				if (currentIndex === -1) {
-					this.navigation.focusAndSelectNode(flatNodes[0].path);
-					return;
-				}
-				const currentLevel = flatNodes[currentIndex].level;
-				for (let i = currentIndex + 1; i < flatNodes.length; i++) {
-					if (flatNodes[i].level === currentLevel) {
-						this.navigation.focusAndSelectNode(flatNodes[i].path);
-						return;
-					}
-				}
+				const { nodes, index } = cursor();
+				if (nodes.length === 0) return;
+				if (index === -1) return go(nodes[0].path);
+				const next = sameLevel(nodes, index, 1);
+				if (next !== -1) go(nodes[next].path);
 			},
 
 			focusPreviousAtLevel: () => {
-				const flatNodes = this.allFlatNodes;
-				if (flatNodes.length === 0) return;
-				const currentPath = this.focusedNode?.path;
-				const currentIndex = currentPath ? flatNodes.findIndex((n) => n.path === currentPath) : -1;
-				if (currentIndex === -1) {
-					this.navigation.focusAndSelectNode(flatNodes[flatNodes.length - 1].path);
-					return;
-				}
-				const currentLevel = flatNodes[currentIndex].level;
-				for (let i = currentIndex - 1; i >= 0; i--) {
-					if (flatNodes[i].level === currentLevel) {
-						this.navigation.focusAndSelectNode(flatNodes[i].path);
-						return;
-					}
-				}
+				const { nodes, index } = cursor();
+				if (nodes.length === 0) return;
+				if (index === -1) return go(nodes[nodes.length - 1].path);
+				const previous = sameLevel(nodes, index, -1);
+				if (previous !== -1) go(nodes[previous].path);
 			},
 
 			focusFirstChild: () => {
@@ -6118,23 +6283,16 @@ export class TreeEngine<T> {
 				if (!currentPath) return;
 				const node = this.getNodeByPath(currentPath);
 				if (!node) return;
-				const flatNodes = this.allFlatNodes;
-				const currentIndex = flatNodes.findIndex((n) => n.path === currentPath);
 
 				if (node.hasChildren && !node.isExpanded && node.isCollapsible !== false) {
 					// After any async beforeExpandCallback (lazy load) settles.
 					this.expandNodes(currentPath).then(() => tick()).then(() => {
-						const updatedFlat = this.allFlatNodes;
-						const idx = updatedFlat.findIndex((n) => n.path === currentPath);
-						if (idx >= 0 && idx + 1 < updatedFlat.length) {
-							this.navigation.focusAndSelectNode(updatedFlat[idx + 1].path);
-						}
+						const { nodes, index } = cursor();
+						if (index >= 0 && index + 1 < nodes.length) go(nodes[index + 1].path);
 					});
 				} else if (node.hasChildren && node.isExpanded) {
-					const nextIdx = currentIndex + 1;
-					if (nextIdx < flatNodes.length) {
-						this.navigation.focusAndSelectNode(flatNodes[nextIdx].path);
-					}
+					const { nodes, index } = cursor();
+					if (index + 1 < nodes.length) go(nodes[index + 1].path);
 				}
 			},
 
@@ -6143,7 +6301,7 @@ export class TreeEngine<T> {
 				if (!currentPath) return;
 				const node = this.getNodeByPath(currentPath);
 				if (!node?.parentPath) return;
-				this.navigation.focusAndSelectNode(node.parentPath);
+				go(node.parentPath);
 			},
 
 			collapseParent: () => {
@@ -6156,9 +6314,7 @@ export class TreeEngine<T> {
 				if (parent.hasChildren && parent.isExpanded && this.tree.getNodeIsCollapsible(parent)) {
 					this.collapseNodes(parent.path);
 				}
-				tick().then(() => {
-					this.navigation.focusAndSelectNode(parent.path);
-				});
+				tick().then(() => go(parent.path));
 			},
 
 			toggleFocusedNodeExpanded: () => {
@@ -6169,109 +6325,62 @@ export class TreeEngine<T> {
 			},
 
 			focusFirst: () => {
-				const flatNodes = this.allFlatNodes;
-				if (flatNodes.length > 0) {
-					this.navigation.focusAndSelectNode(flatNodes[0].path);
-				}
+				const { nodes } = cursor();
+				if (nodes.length > 0) go(nodes[0].path);
 			},
 
 			focusLast: () => {
-				const flatNodes = this.allFlatNodes;
-				if (flatNodes.length > 0) {
-					this.navigation.focusAndSelectNode(flatNodes[flatNodes.length - 1].path);
-				}
+				const { nodes } = cursor();
+				if (nodes.length > 0) go(nodes[nodes.length - 1].path);
 			},
 
 			focusNextPage: () => {
-				const flatNodes = this.allFlatNodes;
-				if (flatNodes.length === 0) return;
-				const currentPath = this.focusedNode?.path;
-				const currentIndex = currentPath ? flatNodes.findIndex((n) => n.path === currentPath) : -1;
-				const targetIndex = Math.min(
-					(currentIndex === -1 ? 0 : currentIndex) + 10,
-					flatNodes.length - 1
-				);
-				this.navigation.focusAndSelectNode(flatNodes[targetIndex].path);
+				const { nodes, index } = cursor();
+				if (nodes.length === 0) return;
+				go(nodes[Math.min((index === -1 ? 0 : index) + PAGE, nodes.length - 1)].path);
 			},
 
 			focusPreviousPage: () => {
-				const flatNodes = this.allFlatNodes;
-				if (flatNodes.length === 0) return;
-				const currentPath = this.focusedNode?.path;
-				const currentIndex = currentPath
-					? flatNodes.findIndex((n) => n.path === currentPath)
-					: flatNodes.length;
-				const targetIndex = Math.max(
-					(currentIndex === -1 ? flatNodes.length : currentIndex) - 10,
-					0
-				);
-				this.navigation.focusAndSelectNode(flatNodes[targetIndex].path);
+				const { nodes, index } = cursor();
+				if (nodes.length === 0) return;
+				go(nodes[Math.max((index === -1 ? nodes.length : index) - PAGE, 0)].path);
 			},
 
-			// ── Shift+navigation: extend highlight range ────────────
+			// ── Shift+navigation: extend the selection range (no-op without a focused row) ──
 			extendSelectionNext: () => {
-				const flatNodes = this.allFlatNodes;
-				if (flatNodes.length === 0) return;
-				const currentPath = this.focusedNode?.path;
-				const currentIndex = currentPath ? flatNodes.findIndex((n) => n.path === currentPath) : -1;
-				if (currentIndex === -1) return;
-				// Move to next node at same level
-				const currentLevel = flatNodes[currentIndex].level;
-				for (let i = currentIndex + 1; i < flatNodes.length; i++) {
-					if (flatNodes[i].level === currentLevel) {
-						this._extendSelectionTo(flatNodes[i].path);
-						return;
-					}
-				}
+				const { nodes, index } = cursor();
+				if (index === -1) return;
+				const next = sameLevel(nodes, index, 1);
+				if (next !== -1) this._extendSelectionTo(nodes[next].path);
 			},
 
 			extendSelectionPrevious: () => {
-				const flatNodes = this.allFlatNodes;
-				if (flatNodes.length === 0) return;
-				const currentPath = this.focusedNode?.path;
-				const currentIndex = currentPath ? flatNodes.findIndex((n) => n.path === currentPath) : -1;
-				if (currentIndex === -1) return;
-				const currentLevel = flatNodes[currentIndex].level;
-				for (let i = currentIndex - 1; i >= 0; i--) {
-					if (flatNodes[i].level === currentLevel) {
-						this._extendSelectionTo(flatNodes[i].path);
-						return;
-					}
-				}
+				const { nodes, index } = cursor();
+				if (index === -1) return;
+				const previous = sameLevel(nodes, index, -1);
+				if (previous !== -1) this._extendSelectionTo(nodes[previous].path);
 			},
 
 			extendSelectionToFirst: () => {
-				const flatNodes = this.allFlatNodes;
-				if (flatNodes.length > 0) {
-					this._extendSelectionTo(flatNodes[0].path);
-				}
+				const { nodes } = cursor();
+				if (nodes.length > 0) this._extendSelectionTo(nodes[0].path);
 			},
 
 			extendSelectionToLast: () => {
-				const flatNodes = this.allFlatNodes;
-				if (flatNodes.length > 0) {
-					this._extendSelectionTo(flatNodes[flatNodes.length - 1].path);
-				}
+				const { nodes } = cursor();
+				if (nodes.length > 0) this._extendSelectionTo(nodes[nodes.length - 1].path);
 			},
 
 			extendSelectionNextPage: () => {
-				const flatNodes = this.allFlatNodes;
-				if (flatNodes.length === 0) return;
-				const currentPath = this.focusedNode?.path;
-				const currentIndex = currentPath ? flatNodes.findIndex((n) => n.path === currentPath) : -1;
-				if (currentIndex === -1) return;
-				const targetIndex = Math.min(currentIndex + 10, flatNodes.length - 1);
-				this._extendSelectionTo(flatNodes[targetIndex].path);
+				const { nodes, index } = cursor();
+				if (index === -1) return;
+				this._extendSelectionTo(nodes[Math.min(index + PAGE, nodes.length - 1)].path);
 			},
 
 			extendSelectionPreviousPage: () => {
-				const flatNodes = this.allFlatNodes;
-				if (flatNodes.length === 0) return;
-				const currentPath = this.focusedNode?.path;
-				const currentIndex = currentPath ? flatNodes.findIndex((n) => n.path === currentPath) : -1;
-				if (currentIndex === -1) return;
-				const targetIndex = Math.max(currentIndex - 10, 0);
-				this._extendSelectionTo(flatNodes[targetIndex].path);
+				const { nodes, index } = cursor();
+				if (index === -1) return;
+				this._extendSelectionTo(nodes[Math.max(index - PAGE, 0)].path);
 			}
 		};
 	}

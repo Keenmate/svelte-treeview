@@ -104,6 +104,9 @@ ENGINE AND CONTROLLER
 TreeEngine<T>      — the class behind <Tree> (createTreeEngine(props), TreeProvider's
                      children snippet arg). For your own renderer (svelte-treeview-canvas,
                      a custom layout): state, NodeConfig / NodeCallbacks, attachPointerDrag, …
+                     handleKeydown(event, { beforeKeydownCallback?, openContextMenu? }) = <Tree>'s
+                     keyboard (shortcuts + WAI-ARIA navigation); handleNodeClick(node, event) =
+                     <Tree>'s row click (shouldClickToggleCheckbox + clickBehavior).
 TreeController<T>  — the public controller: a frozen facade over the engine (core
                      createControllerFacade). Every callback / event ctx carries it as
                      `controller`; window.components['svelte-treeview'].getInstances()

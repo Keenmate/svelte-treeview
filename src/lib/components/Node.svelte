@@ -3,7 +3,6 @@
 	import {getContext, type Snippet} from "svelte"
 	import type {Ltree, DropPosition, DropOperation, NodeRenderContext} from "../ltree/types.js"
 	import type {NodeCallbacks, NodeConfig} from "../core/TreeEngine.svelte.js"
-	import { uiLogger } from "../logger.js"
 	import { observeElementSize } from "../vendor/core/environment/element-size.js"
 	import { computePosition, autoUpdate, offset, flip, shift } from "@floating-ui/dom"
 	import { tooltip } from "../actions/tooltip.js"
@@ -74,10 +73,8 @@
 	const customNodeContentClass = $derived(config.getNodeContentClassCallback ? (config.getNodeContentClassCallback({ node }) ?? '') : '');
 	// dragOverNodeClass is applied to the DOM directly by the controller
 	// (see hoveredNodeForDrop $effect in TreeEngine) — no per-Node binding.
-	const clickBehavior = $derived(config.clickBehavior);
 	const isCheckboxesShown = $derived(config.isCheckboxesShown);
 	const checkboxMode = $derived(config.checkboxMode);
-	const shouldClickToggleCheckbox = $derived(config.shouldClickToggleCheckbox);
 
 	// Indeterminate state: driven by controller's _reconcileCascadeStates
 	const isIndeterminate = $derived(checkboxMode === 'cascade' && node.visualState === 'indeterminate');
@@ -254,34 +251,9 @@
 	}
 
 
+	// Click routing (checkbox-on-click, clickBehavior) is the engine's handleNodeClick.
 	function _onNodeClicked(event?: MouseEvent) {
-		uiLogger.debug(`Node clicked: ${node.path}`, { id: node.id, hasChildren: node.hasChildren })
-		const modifiers = event ? { ctrl: event.ctrlKey || event.metaKey, shift: event.shiftKey } : undefined;
-		const hasModifiers = !!(modifiers?.ctrl || modifiers?.shift);
-
-		// Plain click on a selectable node with checkboxes shown → toggle the checkbox
-		// instead of focusing/highlighting. Expand still happens if clickBehavior asks for it.
-		// Modified clicks (Ctrl/Shift) fall through to the normal multi-highlight path.
-		if (shouldClickToggleCheckbox && isCheckboxesShown && node.isSelectable && !hasModifiers) {
-			callbacks.onCheckboxToggle(node, { skipFocus: true });
-			if (clickBehavior !== 'select') toggleExpanded();
-			return;
-		}
-
-		if (clickBehavior === 'expand') {
-			// Expand only — no selection callback. Ctrl/Shift have no meaning here
-			// (no selection to extend), so they shouldn't toggle expand either.
-			if (!hasModifiers) toggleExpanded()
-		} else if (clickBehavior === 'expand-and-focus') {
-			// Select + expand on single click. Modified clicks are reserved for
-			// highlight management — don't also toggle expand (matches OS file
-			// explorers where Ctrl/Shift+click manages selection without opening).
-			callbacks.onNodeClicked(node, modifiers)
-			if (!hasModifiers) toggleExpanded()
-		} else {
-			// 'select' — single click selects only
-			callbacks.onNodeClicked(node, modifiers)
-		}
+		callbacks.onNodeContentClicked(node, event)
 	}
 
 	// Note: double-click in clickBehavior='select' is detected on the controller

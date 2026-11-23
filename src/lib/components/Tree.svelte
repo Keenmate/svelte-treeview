@@ -3,7 +3,6 @@
 	import Node from './Node.svelte';
 	import { openMenu } from '../vendor/core/menu/open-menu.js';
 	import type { MenuDrawerSide, MenuHandle, MenuPresentation } from '../vendor/core/menu/types.js';
-	import { matchesShortcut, isTypingTarget } from '../vendor/actions/shortcut.js';
 	import { type LTreeNode } from '../ltree/ltree-node.svelte.js';
 	import {
 		type Ltree,
@@ -31,7 +30,6 @@
 		TreeCallbackContext,
 		ScrollToPathOptions
 	} from '../core/TreeEngine.svelte.js';
-	import { uiLogger } from '../logger.js';
 	import { getPageLoaderCallback, pageLoader } from '../core/loader.js';
 	import { createTreeEngine } from '../core/createTreeEngine.js';
 	import type { TreeMenuContext, TreeAction } from '../core/menu.js';
@@ -70,8 +68,6 @@
 		icon?: Snippet<[LTreeNode<T>, string | null | undefined, NodeRenderContext]>;
 		/** Above the tree. */
 		treeHeader?: Snippet;
-		/** Unused by the default renderer (reserved). */
-		treeBody?: Snippet;
 		/** Below the tree. */
 		treeFooter?: Snippet;
 		/** Empty state (no nodes / no search results). */
@@ -143,7 +139,7 @@
 
 	/** What `update()` takes: every prop but the snippets. */
 	type TreeUpdateProps = Partial<
-		Omit<Props, 'nodeTemplate' | 'tooltip' | 'icon' | 'treeHeader' | 'treeBody' | 'treeFooter' | 'noData' | 'contextMenu' | 'dropPlaceholder' | 'loadingPlaceholder'>
+		Omit<Props, 'nodeTemplate' | 'tooltip' | 'icon' | 'treeHeader' | 'treeFooter' | 'noData' | 'contextMenu' | 'dropPlaceholder' | 'loadingPlaceholder'>
 	>;
 
 	let {
@@ -878,123 +874,28 @@
 
 	// ── Arrow key navigation ─────────────────────────────────────────────
 	function handleTreeKeydown(event: KeyboardEvent) {
-		// Ignore modifier-only key presses (Ctrl, Shift, Alt, Meta)
-		if (['Control', 'Shift', 'Alt', 'Meta'].includes(event.key)) return;
-
-		// Don't interfere with context menu keyboard handling
-		if (engine.contextMenuVisible) return;
-
-		// Call custom handler first — return false to suppress default handling. Resolve the
-		// focus + selection sets up front so the consumer gets nodes, not raw paths.
-		if (beforeKeydownCallback) {
-			const selectedNodes = [...engine.selectedPaths]
-				.map((p) => engine.getNodeByPath(p))
-				.filter((n): n is LTreeNode<T> => n !== null);
-			const result: unknown = beforeKeydownCallback({
-				event,
-				focusedNode: engine.focusedNode ?? null,
-				selectedNodes,
-				controller: engine.controller
-			});
-			if (result instanceof Promise) {
-				uiLogger.warn('beforeKeydownCallback is synchronous — a returned Promise is ignored');
-			} else if (result === false) {
-				event.preventDefault();
-				return;
-			}
-		}
-
-		// A key typed into a field inside a row (an <input> in a nodeTemplate) belongs to that
-		// field — no built-in shortcut (Delete, Ctrl+C/V) and no navigation (arrows, Backspace).
-		if (isTypingTarget(event)) return;
-
-		// Shift+F10 / the ContextMenu key open the focused node's context menu.
-		if (matchesShortcut(event, 'ContextMenu') || matchesShortcut(event, 'Shift+F10')) {
-			if (openContextMenuFromKeyboard()) event.preventDefault();
-			return;
-		}
-
-		// Built-in opt-in shortcuts (copy/cut/paste/delete/esc). Runs AFTER the consumer
-		// hook (so it can override) but BEFORE the empty-tree return (so paste works into
-		// an empty tree). No-op unless shouldHandleKeyboardShortcuts is set.
-		if (engine.handleShortcutKeydown(event)) {
-			event.preventDefault();
-			return;
-		}
-
-		if (engine.allFlatNodes.length === 0) return;
-
-		let handled = true;
-
-		// Shift+nav extends the selection range. In single mode the engine
-		// short-circuits these to no-ops (see _extendSelectionTo).
-		switch (event.key) {
-			case 'ArrowDown':
-				event.shiftKey ? engine.extendSelectionNext() : engine.focusNextAtLevel();
-				break;
-			case 'ArrowUp':
-				event.shiftKey ? engine.extendSelectionPrevious() : engine.focusPreviousAtLevel();
-				break;
-			case 'ArrowRight':
-				engine.focusFirstChild();
-				break;
-			case 'ArrowLeft':
-				engine.focusParent();
-				break;
-			case 'Backspace':
-				engine.collapseParent();
-				break;
-			case 'Home':
-				event.shiftKey ? engine.extendSelectionToFirst() : engine.focusFirst();
-				break;
-			case 'End':
-				event.shiftKey ? engine.extendSelectionToLast() : engine.focusLast();
-				break;
-			case 'PageDown':
-				event.shiftKey ? engine.extendSelectionNextPage() : engine.focusNextPage();
-				break;
-			case 'PageUp':
-				event.shiftKey ? engine.extendSelectionPreviousPage() : engine.focusPreviousPage();
-				break;
-			case 'Enter':
-				// WAI-ARIA tree: Enter = the node's default action (expand / collapse).
-				engine.toggleFocusedNodeExpanded();
-				break;
-			case ' ':
-				// WAI-ARIA tree: Space toggles selection. With checkboxes: the focused node's
-				// checkbox; multiple mode: the focused node in the selection; single mode:
-				// selects the focused node (Enter expands / collapses).
-				if (engine.isCheckboxesShown && engine.focusedNode?.isSelectable) {
-					engine.nodeCallbacks.onCheckboxToggle(engine.focusedNode);
-				} else if (engine.selectionMode === 'multiple') {
-					engine.toggleFocusedSelect();
-				} else if (engine.focusedNode?.isSelectable) {
-					engine.selectNode(engine.focusedNode.path);
-				}
-				break;
-			case 'Escape':
-				// Priority: pending cut → selection set → leave alone for surrounding UI.
-				// File Explorer / Finder convention. Context-menu Escape is handled by
-				// the separate window-level listener above and never reaches this path.
-				if (engine.hasClipboardContent() && engine.getClipboardOperation() === 'cut') {
-					engine.cancelCut();
-				} else if (engine.selectedPaths.size > 0) {
-					engine.clearSelection();
-				} else {
-					handled = false;
-				}
-				break;
-			default:
-				handled = false;
-		}
-
-		if (handled) event.preventDefault();
+		engine.handleKeydown(event, { beforeKeydownCallback, openContextMenu: openContextMenuFromKeyboard });
 	}
 </script>
 
 
-<!-- Empty-tree drop zone. Shared by all render modes (virtual / flat / recursive)
-     and the no-container fallback. Shows the drop placeholder mid-drag, or
+<!-- The rows of the flat renderer (plain / progressive / virtual window). -->
+{#snippet rows()}
+	{#each engine.flatNodesToRender as node (node.id + '|' + node.path + '|' + node.hasChildren + '|' + node._rev)}
+		<Node
+			{node}
+			children={nodeTemplate}
+			isDragInProgress={engine.isDragInProgress}
+			hoveredNodeForDropPath={engine.hoveredNodeForDrop?.path}
+			activeDropPosition={engine.activeDropPosition}
+			dropOperation={engine.currentDropOperation}
+		/>
+	{:else}
+		{@render emptyDropState()}
+	{/each}
+{/snippet}
+
+<!-- Empty-tree drop zone, rendered by `rows` when no row is visible. Shows the drop placeholder mid-drag, or
      permanently when isEmptyDropPlaceholderShown is set; focus-on-hover
      then arms this tree for a keyboard paste. -->
 {#snippet emptyDropState()}
@@ -1070,54 +971,27 @@
 	{/if}
 
 	<div class={engine.bodyClass}>
-		{#if engine.tree?.root}
-			{#if engine.vsActive}
-				<!-- Virtual scrolling mode -->
-				<div
-					class="stv__tree stv__tree--flat stv__virtual-scroll"
-					style="height: {engine.vsContainerStyle}; overflow-y: auto;"
-					bind:this={engine.vsContainerRef}
-					onscroll={engine.handleVirtualScroll}
-				>
-					<!-- Spacer for correct scrollbar -->
-					<div style="height: {engine.vsTotalHeight}px; position: relative;">
-						<!-- Rendered window at correct offset -->
-						<div style="transform: translateY({engine.vsOffsetY}px);">
-							{#each engine.flatNodesToRender as node (node.id + '|' + node.path + '|' + node.hasChildren + '|' + node._rev)}
-								<Node
-									{node}
-									children={nodeTemplate}
-									isDragInProgress={engine.isDragInProgress}
-									hoveredNodeForDropPath={engine.hoveredNodeForDrop?.path}
-									activeDropPosition={engine.activeDropPosition}
-									dropOperation={engine.currentDropOperation}
-								/>
-							{:else}
-								{@render emptyDropState()}
-							{/each}
-						</div>
+		{#if engine.vsActive}
+			<!-- Virtual scrolling mode -->
+			<div
+				class="stv__tree stv__tree--flat stv__virtual-scroll"
+				style="height: {engine.vsContainerStyle}; overflow-y: auto;"
+				bind:this={engine.vsContainerRef}
+				onscroll={engine.handleVirtualScroll}
+			>
+				<!-- Spacer for correct scrollbar -->
+				<div style="height: {engine.vsTotalHeight}px; position: relative;">
+					<!-- Rendered window at correct offset -->
+					<div style="transform: translateY({engine.vsOffsetY}px);">
+						{@render rows()}
 					</div>
 				</div>
-			{:else}
-				<!-- Flat rendering: uses visibleFlatNodes (progressively revealed) for efficient updates -->
-				<div class="stv__tree stv__tree--flat">
-					{#each engine.flatNodesToRender as node (node.id + '|' + node.path + '|' + node.hasChildren + '|' + node._rev)}
-						<Node
-							{node}
-							children={nodeTemplate}
-							isDragInProgress={engine.isDragInProgress}
-							hoveredNodeForDropPath={engine.hoveredNodeForDrop?.path}
-							activeDropPosition={engine.activeDropPosition}
-							dropOperation={engine.currentDropOperation}
-						/>
-					{:else}
-						{@render emptyDropState()}
-					{/each}
-				</div>
-			{/if}
+			</div>
 		{:else}
-			<!-- Empty tree drop zone -->
-			{@render emptyDropState()}
+			<!-- Flat rendering: uses visibleFlatNodes (progressively revealed) for efficient updates -->
+			<div class="stv__tree stv__tree--flat">
+				{@render rows()}
+			</div>
 		{/if}
 	</div>
 

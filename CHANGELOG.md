@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - With a `searchValueMember` set, the indexer read only that field, so a row without it was never searchable even when a `getSearchValueCallback` was given; with the member unset it read only the callback. It now resolves like `getNodeSearchValue`: the member when the row has it, else the callback. (REVIEW-2026-11-19 §3.7.)
 
+### Removed — the `treeBody` snippet prop (2026-11-23)
+
+- It was declared but never rendered ("reserved"). Use `treeHeader` / `treeFooter` or a custom renderer (`TreeProvider`). (REVIEW-2026-11-19 §3.9.)
+
+### Internal — keyboard and click routing live on the engine; one table of menu built-ins (2026-11-23)
+
+- `<Tree>`'s keydown handling (`beforeKeydownCallback`, Shift+F10, the built-in shortcuts, WAI-ARIA navigation) is `TreeEngine.handleKeydown(event, { beforeKeydownCallback, openContextMenu })`, and a row click (`shouldClickToggleCheckbox`, `clickBehavior`) is `TreeEngine.handleNodeClick(node, event)` — a custom renderer can call both instead of re-implementing them. The built-in menu actions are one `BUILT_IN_ACTIONS` table (label, node-free, danger, disabled rule, run) instead of four parallel switches; the default keyboard navigation shares one focused-row lookup instead of ten copies; `<Tree>` renders its rows from one snippet for both the plain and the virtual-scroll layout. No behaviour change. (REVIEW-2026-11-19 §3.8 / §3.9.)
+
 ### Internal — one drop manifest, one mode rule, one allowed-position rule (2026-11-23)
 
 - A same-tree move and copy-drop build what they place in one `_dropManifest` (the `beforeDragStartCallback` override as-is, else the multi-selection or the lead, completed to whole subtrees) instead of two copies — a copy-drop with an override now also leaves out the drop target itself and vanished paths, like the move always did. The `dragDropMode` check is one rule asked of the target tree (`isDropAllowedByMode`) instead of a separate cross-tree copy; "is this drop position allowed on this node" is one ltree `isDropPositionAllowed` (floating zones, glow, drop pads, leaf-aware paste) instead of four hand-written checks. (REVIEW-2026-11-19 §3.5.)
