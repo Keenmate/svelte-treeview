@@ -73,7 +73,7 @@ Behavior props:
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | treePathSeparator | string | "." | Separator character for hierarchical paths |
-| expandLevel | number | 2 | Automatically expand nodes up to this level |
+| expandLevel | number | 0 | Automatically expand nodes up to this level (0 = roots only) |
 | isSorted | boolean | null | Whether items are pre-sorted (skip internal sorting) |
 | isSortingEnabled | boolean | true | false = never auto-sort (input order kept; see tree-editing.txt SORTING & POSITIONS) |
 

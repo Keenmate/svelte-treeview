@@ -3,6 +3,7 @@ import { type LTreeNode, VisualState } from '../ltree/ltree-node.svelte.js';
 import { createLTree } from '../ltree/ltree.svelte.js';
 import {
 	type Ltree,
+	type LTreeConfig,
 	type InsertArrayResult,
 	type InsertBranchResult,
 	type RemoveBranchResult,
@@ -54,7 +55,7 @@ import {
 	getDragSet,
 	clearDragSet
 } from './clipboard.js';
-import type { TreeNavigation } from './navigation.js';
+import type { TreeNavigation, TreeNavigationOverrides } from './navigation.js';
 import type { TreeMenuContext, TreeMenuEntry, TreeMenuItem, TreeAction, TreeActionEventDetail } from './menu.js';
 import type { MenuItem, ResolvedActionItem } from '../vendor/actions/types.js';
 import { runAction } from '../vendor/actions/resolve.js';
@@ -75,6 +76,17 @@ import {
 	isSelfOrDescendant
 } from '../helpers/ltree-helpers.js';
 import '../global-api.js';
+import {
+	TREE_CHECKED_SEED_OPTIONS,
+	TREE_EXPANSION_SEED_OPTIONS,
+	TREE_INIT_ONLY_OPTIONS,
+	TREE_LTREE_OPTIONS,
+	TREE_OPTION_FIELDS,
+	TREE_OPTION_KEYS,
+	TREE_STATE_PROPS,
+	resolveTreeOption,
+	type TreeOptionKey
+} from './tree-props.js';
 
 // ─── Paste result type ────────────────────────────────────────────────────
 
@@ -627,6 +639,8 @@ export interface TreeControllerProps<T> {
 	shouldAutoHandleMove?: boolean;
 	shouldAutoHandlePaste?: boolean;
 	shouldExpandAsAccordion?: boolean;
+	/** The whole populated tree is one drop target (a drop anywhere lands with target null). */
+	isTreeDropZoneEnabled?: boolean;
 
 	// EVENTS (on* = fire-and-forget notifications). Each carries a context object mirroring
 	// the clipboard callbacks: single-node events get a NodeRef (node + live parent/siblings);
@@ -685,8 +699,8 @@ export interface TreeControllerProps<T> {
 	/**
 	 * Built-in keyboard shortcuts (default true; false = opt out): Ctrl/Cmd+C/X/V (copy/cut/paste),
 	 * Delete (remove selection), Escape (cancel a pending cut), plus the classic CUA aliases
-	 * Ctrl+Insert (copy) / Shift+Insert (paste) / Shift+Delete (cut). Off by default so it
-	 * never hijacks keys; a consumer `beforeKeydownCallback` still runs first and can override or
+	 * Ctrl+Insert (copy) / Shift+Insert (paste) / Shift+Delete (cut). They only fire while focus is
+	 * in the tree; a consumer `beforeKeydownCallback` still runs first and can override or
 	 * suppress any of these. Paste targets the focused node (root when none) and uses
 	 * `nodeInputTransformationCallback` for id/name derivation.
 	 */
@@ -752,6 +766,8 @@ export interface TreeControllerProps<T> {
 
 	// Tells the controller whether a context menu snippet exists (set by Tree.svelte)
 	hasContextMenuSnippet?: boolean;
+	/** Replace individual keyboard-navigation methods (merged over the defaults). */
+	navigationOverrides?: TreeNavigationOverrides<T>;
 
 	// VISUALS
 	bodyClass?: string | null | undefined;
@@ -841,7 +857,7 @@ export class TreeController<T> {
 		renderIconHtml: () => '',
 		iconColorMember: undefined,
 		getIconColorCallback: undefined,
-		shouldAlignNodeIcons: false,
+		shouldAlignNodeIcons: true,
 		dropZoneMaxWidth: 120,
 		isCopyAllowed: false,
 		shouldExpandAsAccordion: false,
@@ -849,6 +865,8 @@ export class TreeController<T> {
 	});
 
 	// ── Props stored as reactive state ──────────────────────────────────
+	/** Every option as last applied — raw, before defaults (constructor / `updateProps`). */
+	#options = {} as Record<TreeOptionKey, unknown>;
 	treeId = $state<string>('');
 	treePathSeparator = $state<string>('.');
 
@@ -1082,7 +1100,7 @@ export class TreeController<T> {
 	beforeCheckboxToggleHandler: TreeControllerProps<T>['beforeCheckboxToggleCallback'];
 
 	// Data provider handlers (get*Callback)
-	getContextMenuItemsHandler: TreeControllerProps<T>['getContextMenuItemsCallback'];
+	getContextMenuItemsHandler = $state.raw<TreeControllerProps<T>['getContextMenuItemsCallback']>(undefined);
 
 	// Visual config (for nodeConfig updates)
 	clickBehavior = $state<ClickBehavior>('expand-and-focus');
@@ -1281,7 +1299,7 @@ export class TreeController<T> {
 	// Whole-tree drop zone (Tree.svelte `isTreeDropZoneEnabled`). When on, a node that
 	// REJECTS a drop must NOT tear down the drag — the same drop event bubbles up to the
 	// container's tree-zone handler, which needs `draggedNode` still live to route it.
-	isTreeDropZoneEnabled = false;
+	isTreeDropZoneEnabled = $state(false);
 
 	// Clipboard — paths dimmed during cut operation
 	cutPaths = $state.raw<Set<string>>(new Set());
@@ -1430,17 +1448,65 @@ export class TreeController<T> {
 	// ── Constructor ─────────────────────────────────────────────────────
 
 	constructor(props: TreeControllerProps<T>) {
-		// Assign prop values (with defaults)
+		// Every option as given (tree-props.ts holds the defaults); updateProps compares against it.
+		for (const key of TREE_OPTION_KEYS) this.#options[key] = props[key];
 		this.treeId = props.treeId || this.generateTreeId();
-		this.treePathSeparator = props.treePathSeparator ?? '.';
+		this.treePathSeparator = resolveTreeOption('treePathSeparator', props.treePathSeparator) as string;
 
 		// Register in the cross-tree clipboard registry so a cut pasted into ANOTHER
 		// tree can remove the originals from here (same-tree cut removes them directly).
 		registerClipboardTree(this.treeId, this);
 
+		// ── Create LTree ────────────────────────────────────────────────
+		const config = this._ltreeConfig();
+		// svelte-ignore non_reactive_update
+		this.tree = createLTree<T>(
+			config.idMember ?? '',
+			config.pathMember ?? '',
+			config.parentPathMember,
+			config.levelMember,
+			config.hasChildrenMember,
+			config.isExpandedMember,
+			config.getIsExpandedCallback,
+			config.isSelectableMember,
+			config.getIsSelectableCallback,
+			config.isCheckedMember,
+			config.getIsCheckedCallback,
+			config.isDraggableMember,
+			config.getIsDraggableCallback,
+			config.isDropAllowedMember,
+			config.getIsDropAllowedCallback,
+			config.allowedDropPositionsMember,
+			config.displayValueMember,
+			config.getDisplayValueCallback,
+			config.searchValueMember,
+			config.getSearchValueCallback,
+			config.getAllowedDropPositionsCallback,
+			config.isCollapsibleMember,
+			config.getIsCollapsibleCallback,
+			config.orderMember,
+			this.treeId,
+			config.treePathSeparator,
+			config.expandLevel,
+			config.shouldUseInternalSearchIndex,
+			config.initializeIndexCallback,
+			config.indexerBatchSize,
+			config.indexerTimeout,
+			{
+				isSorted: config.isSorted,
+				sortCallback: config.sortCallback,
+				displayValueFallback: resolveLabel(props.labels, 'labels.noDisplayValue')
+			}
+		);
+
+		// Every live option (after the tree: isSortingEnabled lives on it).
+		for (const key of TREE_OPTION_KEYS) {
+			if (!TREE_LTREE_OPTIONS.has(key) && !TREE_INIT_ONLY_OPTIONS.has(key))
+				this._applyOption(key, props[key]);
+		}
+
+		// State
 		this.#nodes = props.nodes;
-		this.labels = props.labels;
-		this.translateCallback = props.translateCallback;
 		this.focusedNode = props.focusedNode ?? null;
 		this.selectedPaths = props.selectedPaths ?? new Set();
 		this.checkedPaths = props.checkedPaths ?? new Set();
@@ -1448,156 +1514,6 @@ export class TreeController<T> {
 			this.expandedPaths = props.expandedPaths;
 			this.#pendingExpanded = props.expandedPaths;
 		}
-		this.searchTerm = props.searchTerm;
-		this.filterScope = props.filterScope ?? 'matches';
-		this.filterDescendantDepth = props.filterDescendantDepth ?? 1;
-		this.shouldExpandFilterDescendants = props.shouldExpandFilterDescendants ?? true;
-		this.searchResultLimit = props.searchResultLimit ?? undefined;
-
-		this.rangeSelectionMode = props.rangeSelectionMode ?? 'visual';
-		this.isLoading = props.isLoading ?? false;
-
-		this.isProgressiveRenderEnabled = props.isProgressiveRenderEnabled ?? true;
-		this.initialBatchSize = props.initialBatchSize ?? 20;
-		this.maxBatchSize = props.maxBatchSize ?? 500;
-		this.rowAnimationLimit = props.rowAnimationLimit ?? 50;
-		this.bodyClass = props.bodyClass;
-
-		this.dragDropMode = props.dragDropMode ?? 'none';
-		this.isCopyAllowed = props.isCopyAllowed ?? false;
-		this.shouldAutoHandleCopy = props.shouldAutoHandleCopy ?? true;
-		this.shouldAutoHandleMove = props.shouldAutoHandleMove ?? true;
-		this.shouldAutoHandlePaste = props.shouldAutoHandlePaste ?? true;
-		this.shouldExpandAsAccordion = props.shouldExpandAsAccordion ?? false;
-
-		this.clickBehavior = props.clickBehavior ?? 'expand-and-focus';
-		this.selectionMode = props.selectionMode ?? 'single';
-		this.isCheckboxesShown = props.isCheckboxesShown ?? false;
-		this.checkboxMode = props.checkboxMode ?? 'independent';
-		this.cascadeCheckPolicy = props.cascadeCheckPolicy ?? 'rolled-up';
-		this.shouldClickToggleCheckbox = props.shouldClickToggleCheckbox ?? false;
-		this.beforeCheckboxToggleHandler = props.beforeCheckboxToggleCallback;
-		this.leafIconClass = props.leafIconClass ?? 'stv__toggle-icon--leaf';
-		this.toggleIconMode = props.toggleIconMode ?? 'rotate';
-		this.nodeTitleOverflow = props.nodeTitleOverflow ?? 'ellipsis';
-		this.flatIndentSize = props.flatIndentSize || 'var(--stv-indent-size)';
-		this.isNodeTooltipsShown = props.isNodeTooltipsShown ?? false;
-		this.getNodeTooltipCallback = props.getNodeTooltipCallback;
-		this.tooltipPlacement = props.tooltipPlacement ?? 'top-start';
-		this.tooltipDelay = props.tooltipDelay ?? { show: 400, hide: 100 };
-		this.tooltipOffset = props.tooltipOffset ?? 8;
-		this.shouldTooltipFollowCursor = props.shouldTooltipFollowCursor ?? false;
-		this.iconMember = props.iconMember;
-		this.getIconCallback = props.getIconCallback;
-		this.renderIconCallback = props.renderIconCallback;
-		this.iconColorMember = props.iconColorMember;
-		this.getIconColorCallback = props.getIconColorCallback;
-		this.shouldAlignNodeIcons = props.shouldAlignNodeIcons ?? true;
-		this.selectedNodeClass = props.selectedNodeClass;
-		this.focusedNodeClass = props.focusedNodeClass;
-		this.checkedNodeClass = props.checkedNodeClass;
-		this.getNodeClassCallback = props.getNodeClassCallback;
-		this.getNodeContentClassCallback = props.getNodeContentClassCallback;
-		this.dragOverNodeClass = props.dragOverNodeClass;
-		this.draggedNodeClass = props.draggedNodeClass;
-		this.dropZoneMode = props.dropZoneMode ?? 'glow';
-		this.dropZoneLayout = props.dropZoneLayout ?? 'around';
-		this.dropZoneStart = props.dropZoneStart ?? 33;
-		this.dropZoneMaxWidth = props.dropZoneMaxWidth ?? 120;
-		this.scrollHighlightTimeout = props.scrollHighlightTimeout ?? 4000;
-		this.scrollHighlightClass = props.scrollHighlightClass ?? 'stv__node-content--scroll-highlight';
-		this.contextMenuXOffset = props.contextMenuXOffset ?? 8;
-		this.contextMenuYOffset = props.contextMenuYOffset ?? 0;
-		this.touchDragDelay = props.touchDragDelay ?? 300;
-		this.shouldIndicateUndraggable = props.shouldIndicateUndraggable ?? true;
-		this.hasContextMenuSnippet = props.hasContextMenuSnippet ?? false;
-
-		// Virtual scrolling
-		this.isVirtualScrollEnabled = props.isVirtualScrollEnabled ?? false;
-		this.virtualScrollItemHeight = props.virtualScrollItemHeight;
-		this.virtualScrollOverscan = props.virtualScrollOverscan ?? 5;
-		this.virtualScrollContainerHeight = props.virtualScrollContainerHeight;
-
-		// Store callbacks
-		this.onNodeClickHandler = props.onNodeClick;
-		this.onNodeDoubleClickHandler = props.onNodeDoubleClick;
-		this.onSelectionChangeHandler = props.onSelectionChange;
-		this.onCheckedChangeHandler = props.onCheckedChange;
-		this.onNodesReorderHandler = props.onNodesReorder;
-		this.onNodeExpandHandler = props.onNodeExpand;
-		this.onNodeCollapseHandler = props.onNodeCollapse;
-		this.onExpandedChangeHandler = props.onExpandedChange;
-		this.beforeExpandHandler = props.beforeExpandCallback;
-		this.onFocusChangeHandler = props.onFocusChange;
-		this.beforeActionHandler = props.beforeActionCallback;
-		this.onActionHandler = props.onAction;
-		this.onTreeChangeHandler = props.onTreeChange;
-		this.onNodeDragStartHandler = props.onNodeDragStart;
-		this.onNodeDragOverHandler = props.onNodeDragOver;
-		this.onNodeDropHandler = props.onNodeDrop;
-		this.onNodeDragRejectHandler = props.onNodeDragReject;
-		this.onNodeDropRejectHandler = props.onNodeDropReject;
-		this.onNodeCopyHandler = props.onNodeCopy;
-		this.onNodeCutHandler = props.onNodeCut;
-		this.onNodePasteHandler = props.onNodePaste;
-		this.onNodeDeleteHandler = props.onNodeDelete;
-		this.beforeDragStartHandler = props.beforeDragStartCallback;
-		this.beforeDropHandler = props.beforeDropCallback;
-		this.beforeCopyHandler = props.beforeCopyCallback;
-		this.beforeCutHandler = props.beforeCutCallback;
-		this.beforePasteHandler = props.beforePasteCallback;
-		this.beforeDeleteHandler = props.beforeDeleteCallback;
-		this.shouldHandleKeyboardShortcuts = props.shouldHandleKeyboardShortcuts ?? true;
-		this.outputTransformHandler = props.nodeOutputTransformationCallback;
-		this.inputTransformHandler = props.nodeInputTransformationCallback;
-		this.getContextMenuItemsHandler = props.getContextMenuItemsCallback;
-		this.onRenderStartHandler = props.onRenderStart;
-		this.onRenderProgressHandler = props.onRenderProgress;
-		this.onRenderCompleteHandler = props.onRenderComplete;
-		this.onIndexProgressHandler = props.onIndexProgress;
-		this.onSearchStatusChangeHandler = props.onSearchStatusChange;
-
-		// ── Create LTree ────────────────────────────────────────────────
-		// svelte-ignore non_reactive_update
-		this.tree = createLTree<T>(
-			props.idMember,
-			props.pathMember,
-			props.parentPathMember,
-			props.levelMember,
-			props.hasChildrenMember,
-			props.isExpandedMember,
-			this._withController(props.getIsExpandedCallback),
-			props.isSelectableMember,
-			this._withController(props.getIsSelectableCallback),
-			props.isCheckedMember,
-			this._withController(props.getIsCheckedCallback),
-			props.isDraggableMember,
-			this._withController(props.getIsDraggableCallback),
-			props.isDropAllowedMember,
-			this._withController(props.getIsDropAllowedCallback),
-			props.allowedDropPositionsMember,
-			props.displayValueMember,
-			this._withController(props.getDisplayValueCallback),
-			props.searchValueMember,
-			this._withController(props.getSearchValueCallback),
-			this._withController(props.getAllowedDropPositionsCallback),
-			props.isCollapsibleMember,
-			this._withController(props.getIsCollapsibleCallback),
-			props.orderMember,
-			this.treeId,
-			this.treePathSeparator,
-			props.expandLevel,
-			props.shouldUseInternalSearchIndex,
-			props.initializeIndexCallback,
-			props.indexerBatchSize,
-			props.indexerTimeout,
-			{
-				isSorted: props.isSorted,
-				isSortingEnabled: props.isSortingEnabled ?? true,
-				sortCallback: this._withController(props.sortCallback),
-				displayValueFallback: resolveLabel(props.labels, 'labels.noDisplayValue')
-			}
-		);
 		// Both can fire synchronously inside the searchTerm/filter $effect (filterNodes →
 		// status). untrack() so whatever the consumer's handler READS doesn't become a
 		// dependency of that effect (a handler doing `count++` would loop forever).
@@ -1666,17 +1582,9 @@ export class TreeController<T> {
 			showFullLabel: this.getLabel('ariaLabels.showFullLabel')
 		};
 
-		// ── Initialize default navigation strategy ─────────────────────
-		this.navigation = this.createDefaultNavigation();
-
 		// ── Effects ─────────────────────────────────────────────────────
 		// IMPORTANT: These $effect() calls bind to the lifecycle of whichever
 		// component instantiates this class. Must be created during component init.
-
-		// Sync treePathSeparator → LTree
-		$effect(() => {
-			this.tree.treePathSeparator = this.treePathSeparator;
-		});
 
 		// Page-wide locale (window.components.locale) changed → every getLabel() reader re-runs.
 		$effect(() =>
@@ -1871,27 +1779,32 @@ export class TreeController<T> {
 		if (this.tree && nodes) {
 			// Our own write-back of the current state (after a mutation) — already in the tree.
 			if (nodes === this.#selfWrittenNodes) return;
-			this.flatRenderedIds = new Set();
-			this.flatRenderQueue = [];
-			untrack(() => this._finishRenderPass());
-			this.currentBatchSize = 0;
-			// Reset virtual scroll measurements
-			this.vsMeasuredRowHeight = null;
-			this.vsDetectedHeight = null;
-			this.insertResult = this.tree.insertArray(nodes);
+			this._loadNodes(nodes);
+		}
+	}
 
-			// Seed checkedPaths from node.isChecked flags written by insertArray
-			if (this.tree.isCheckedMember || this.tree.getIsCheckedCallback) {
-				const seeded = new Set<string>();
-				forEachDescendant(this.tree.root, (node) => {
-					if (node.isChecked) seeded.add(node.path);
-				});
-				this.checkedPaths = seeded;
-			}
-			if (this.#pendingExpanded && nodes.length) {
-				this.tree.setExpandedPaths([...this.#pendingExpanded]);
-				this.#pendingExpanded = null;
-			}
+	/** Insert `nodes` into the tree from scratch (render pass, virtual scroll and checked seed reset). */
+	private _loadNodes(nodes: T[]) {
+		this.flatRenderedIds = new Set();
+		this.flatRenderQueue = [];
+		untrack(() => this._finishRenderPass());
+		this.currentBatchSize = 0;
+		// Reset virtual scroll measurements
+		this.vsMeasuredRowHeight = null;
+		this.vsDetectedHeight = null;
+		this.insertResult = this.tree.insertArray(nodes);
+
+		// Seed checkedPaths from node.isChecked flags written by insertArray
+		if (this.tree.isCheckedMember || this.tree.getIsCheckedCallback) {
+			const seeded = new Set<string>();
+			forEachDescendant(this.tree.root, (node) => {
+				if (node.isChecked) seeded.add(node.path);
+			});
+			this.checkedPaths = seeded;
+		}
+		if (this.#pendingExpanded && nodes.length) {
+			this.tree.setExpandedPaths([...this.#pendingExpanded]);
+			this.#pendingExpanded = null;
 		}
 	}
 
@@ -4073,169 +3986,150 @@ export class TreeController<T> {
 		return true;
 	}
 
-	// ── updateProps (for external JS usage) ─────────────────────────────
+	// ── updateProps (the one way props change after construction) ────────
 
+	/**
+	 * Apply changed props — Tree.svelte's prop effects, `update()` and vanilla callers all come
+	 * through here (REVIEW §3.1, the table in tree-props.ts). A key that is present applies; an
+	 * `undefined` option means its default. Unchanged options are skipped, so re-sending the same
+	 * value is free. An option built into the ltree (a `*Member`, a `get*Callback` mapping, the
+	 * sort, the search index, `expandLevel`, `treePathSeparator`) reconfigures the ltree and
+	 * re-inserts the current data (_rebuildTree); `treeId` is init-only and only warns.
+	 * State props (`nodes`, `focusedNode`, `selectedPaths`, `checkedPaths`, `expandedPaths`) go
+	 * through their writers; `undefined` leaves them alone.
+	 */
 	updateProps(updates: Partial<TreeControllerProps<T>>) {
-		if (updates.treeId !== undefined) this.treeId = updates.treeId || this.treeId;
-		if (updates.treePathSeparator !== undefined)
-			this.treePathSeparator = updates.treePathSeparator ?? '.';
+		const changedLtreeOptions: TreeOptionKey[] = [];
+		for (const key of Object.keys(updates) as (keyof TreeControllerProps<T>)[]) {
+			if ((TREE_STATE_PROPS as readonly string[]).includes(key)) continue;
+			const option = key as TreeOptionKey;
+			const value = updates[option];
+			if (value === this.#options[option]) continue;
+			if (TREE_INIT_ONLY_OPTIONS.has(option)) {
+				if (value != null && value !== this.treeId)
+					uiLogger.warn(
+						`[${this.treeId}] ${option} is init-only — the change to ${JSON.stringify(value)} is ignored (re-create the tree, e.g. {#key ${option}})`
+					);
+				continue;
+			}
+			this.#options[option] = value;
+			if (TREE_LTREE_OPTIONS.has(option)) changedLtreeOptions.push(option);
+			else this._applyOption(option, value);
+		}
+
+		// State, after the options (a new checkboxMode / policy shapes how checkedPaths applies).
 		if (updates.nodes !== undefined) this.nodes = updates.nodes;
+		if (changedLtreeOptions.length > 0) this._rebuildTree(changedLtreeOptions);
 		if (updates.focusedNode !== undefined) this._replaceFocusedNode(updates.focusedNode);
 		if (updates.selectedPaths !== undefined)
 			this._replaceSelectedPaths(updates.selectedPaths ?? []);
 		if (updates.expandedPaths !== undefined) {
 			// With new nodes in the same update the tree re-inserts later — apply after it.
-			if (updates.nodes === undefined) this._replaceExpandedPaths(updates.expandedPaths ?? []);
+			if (updates.nodes === undefined || changedLtreeOptions.length > 0)
+				this._replaceExpandedPaths(updates.expandedPaths ?? []);
 			else this.#pendingExpanded = new Set(updates.expandedPaths ?? []);
 		}
 		if (updates.checkedPaths !== undefined)
 			// Incoming set is a projection intent — expand it (cascade-down) into the
 			// canonical checked state rather than storing it raw.
 			this._replaceCheckedPaths(updates.checkedPaths ?? []);
-		if (updates.cascadeCheckPolicy !== undefined)
-			this.cascadeCheckPolicy = updates.cascadeCheckPolicy ?? 'rolled-up';
-		if (updates.searchTerm !== undefined) this.searchTerm = updates.searchTerm;
-		if (updates.filterScope !== undefined) this.filterScope = updates.filterScope ?? 'matches';
-		if (updates.filterDescendantDepth !== undefined)
-			this.filterDescendantDepth = updates.filterDescendantDepth ?? 1;
-		if (updates.shouldExpandFilterDescendants !== undefined)
-			this.shouldExpandFilterDescendants = updates.shouldExpandFilterDescendants ?? true;
-		if (updates.searchResultLimit !== undefined)
-			this.searchResultLimit = updates.searchResultLimit ?? undefined;
-		if (updates.rowAnimationLimit !== undefined)
-			this.rowAnimationLimit = updates.rowAnimationLimit ?? 50;
-		if (updates.rangeSelectionMode !== undefined)
-			this.rangeSelectionMode = updates.rangeSelectionMode ?? 'visual';
-		if (updates.isLoading !== undefined) this.isLoading = updates.isLoading ?? false;
-		if (updates.bodyClass !== undefined) this.bodyClass = updates.bodyClass;
+	}
 
-		if (updates.isVirtualScrollEnabled !== undefined)
-			this.isVirtualScrollEnabled = updates.isVirtualScrollEnabled ?? false;
-		if (updates.virtualScrollItemHeight !== undefined) this.virtualScrollItemHeight = updates.virtualScrollItemHeight;
-		if (updates.virtualScrollOverscan !== undefined) this.virtualScrollOverscan = updates.virtualScrollOverscan ?? 5;
-		if (updates.virtualScrollContainerHeight !== undefined)
-			this.virtualScrollContainerHeight = updates.virtualScrollContainerHeight;
+	/** The value of a prop as last applied (constructor / `updateProps`); `undefined` = default. */
+	getOption<K extends TreeOptionKey>(key: K): TreeControllerProps<T>[K] {
+		return this.#options[key] as TreeControllerProps<T>[K];
+	}
 
-		if (updates.clickBehavior !== undefined)
-			this.clickBehavior = updates.clickBehavior ?? 'expand-and-focus';
-		if (updates.selectionMode !== undefined) this.selectionMode = updates.selectionMode ?? 'single';
-		if (updates.isCheckboxesShown !== undefined)
-			this.isCheckboxesShown = updates.isCheckboxesShown ?? false;
-		if (updates.checkboxMode !== undefined)
-			this.checkboxMode = updates.checkboxMode ?? 'independent';
-		if (updates.shouldClickToggleCheckbox !== undefined)
-			this.shouldClickToggleCheckbox = updates.shouldClickToggleCheckbox ?? false;
-		if (updates.beforeCheckboxToggleCallback !== undefined)
-			this.beforeCheckboxToggleHandler = updates.beforeCheckboxToggleCallback;
-		if (updates.leafIconClass !== undefined)
-			this.leafIconClass = updates.leafIconClass ?? 'stv__toggle-icon--leaf';
-		if (updates.selectedNodeClass !== undefined)
-			this.selectedNodeClass = updates.selectedNodeClass;
-		if (updates.focusedNodeClass !== undefined) this.focusedNodeClass = updates.focusedNodeClass;
-		if (updates.checkedNodeClass !== undefined) this.checkedNodeClass = updates.checkedNodeClass;
-		if (updates.getNodeClassCallback !== undefined) this.getNodeClassCallback = updates.getNodeClassCallback;
-		if (updates.getNodeContentClassCallback !== undefined) this.getNodeContentClassCallback = updates.getNodeContentClassCallback;
-		if (updates.dragOverNodeClass !== undefined) this.dragOverNodeClass = updates.dragOverNodeClass;
-		if (updates.draggedNodeClass !== undefined) this.draggedNodeClass = updates.draggedNodeClass;
-		if (updates.isNodeTooltipsShown !== undefined)
-			this.isNodeTooltipsShown = updates.isNodeTooltipsShown ?? false;
-		if (updates.getNodeTooltipCallback !== undefined)
-			this.getNodeTooltipCallback = updates.getNodeTooltipCallback;
-		if (updates.tooltipPlacement !== undefined)
-			this.tooltipPlacement = updates.tooltipPlacement ?? 'top-start';
-		if (updates.tooltipDelay !== undefined)
-			this.tooltipDelay = updates.tooltipDelay ?? { show: 400, hide: 100 };
-		if (updates.tooltipOffset !== undefined) this.tooltipOffset = updates.tooltipOffset ?? 8;
-		if (updates.shouldTooltipFollowCursor !== undefined)
-			this.shouldTooltipFollowCursor = updates.shouldTooltipFollowCursor ?? false;
-		if (updates.iconMember !== undefined) this.iconMember = updates.iconMember;
-		if (updates.getIconCallback !== undefined) this.getIconCallback = updates.getIconCallback;
-		if (updates.renderIconCallback !== undefined) this.renderIconCallback = updates.renderIconCallback;
-		if (updates.iconColorMember !== undefined) this.iconColorMember = updates.iconColorMember;
-		if (updates.getIconColorCallback !== undefined)
-			this.getIconColorCallback = updates.getIconColorCallback;
-		if (updates.shouldAlignNodeIcons !== undefined)
-			this.shouldAlignNodeIcons = updates.shouldAlignNodeIcons ?? true;
-		if (updates.dropZoneMode !== undefined) this.dropZoneMode = updates.dropZoneMode ?? 'glow';
-		if (updates.dropZoneLayout !== undefined)
-			this.dropZoneLayout = updates.dropZoneLayout ?? 'around';
-		if (updates.dropZoneStart !== undefined) this.dropZoneStart = updates.dropZoneStart ?? 33;
-		if (updates.dropZoneMaxWidth !== undefined)
-			this.dropZoneMaxWidth = updates.dropZoneMaxWidth ?? 120;
-		if (updates.isCopyAllowed !== undefined) this.isCopyAllowed = updates.isCopyAllowed ?? false;
-		if (updates.shouldAutoHandleCopy !== undefined)
-			this.shouldAutoHandleCopy = updates.shouldAutoHandleCopy ?? true;
-		if (updates.shouldAutoHandleMove !== undefined)
-			this.shouldAutoHandleMove = updates.shouldAutoHandleMove ?? true;
-		if (updates.shouldAutoHandlePaste !== undefined)
-			this.shouldAutoHandlePaste = updates.shouldAutoHandlePaste ?? true;
-		if (updates.shouldHandleKeyboardShortcuts !== undefined)
-			this.shouldHandleKeyboardShortcuts = updates.shouldHandleKeyboardShortcuts ?? true;
-		if (updates.dragDropMode !== undefined) this.dragDropMode = updates.dragDropMode ?? 'none';
-		if (updates.scrollHighlightTimeout !== undefined)
-			this.scrollHighlightTimeout = updates.scrollHighlightTimeout ?? 4000;
-		if (updates.scrollHighlightClass !== undefined)
-			this.scrollHighlightClass =
-				updates.scrollHighlightClass ?? 'stv__node-content--scroll-highlight';
-		if (updates.contextMenuXOffset !== undefined)
-			this.contextMenuXOffset = updates.contextMenuXOffset ?? 8;
-		if (updates.contextMenuYOffset !== undefined)
-			this.contextMenuYOffset = updates.contextMenuYOffset ?? 0;
-		if (updates.touchDragDelay !== undefined)
-			this.touchDragDelay = updates.touchDragDelay ?? 300;
-		if (updates.labels !== undefined) this.labels = updates.labels;
-		if (updates.translateCallback !== undefined) this.translateCallback = updates.translateCallback;
-		if (updates.isSortingEnabled !== undefined)
-			this.isSortingEnabled = updates.isSortingEnabled ?? true;
-		if (updates.shouldIndicateUndraggable !== undefined)
-			this.shouldIndicateUndraggable = updates.shouldIndicateUndraggable ?? true;
+	/** Apply one live option (not built into the ltree) — default resolved, field per tree-props.ts. */
+	private _applyOption(key: TreeOptionKey, raw: unknown) {
+		const value = resolveTreeOption(key, raw);
+		if (key === 'navigationOverrides') {
+			this.navigation = value
+				? { ...this.createDefaultNavigation(), ...(value as TreeNavigationOverrides<T>) }
+				: this.createDefaultNavigation();
+			return;
+		}
+		const field = TREE_OPTION_FIELDS[key] ?? key;
+		(this as unknown as Record<string, unknown>)[field] = value;
+	}
 
-		// Callbacks
-		if (updates.onNodeClick !== undefined) this.onNodeClickHandler = updates.onNodeClick;
-		if (updates.onNodeDoubleClick !== undefined)
-			this.onNodeDoubleClickHandler = updates.onNodeDoubleClick;
-		if (updates.onNodeDragStart !== undefined)
-			this.onNodeDragStartHandler = updates.onNodeDragStart;
-		if (updates.onNodeDragOver !== undefined) this.onNodeDragOverHandler = updates.onNodeDragOver;
-		if (updates.beforeDragStartCallback !== undefined)
-			this.beforeDragStartHandler = updates.beforeDragStartCallback;
-		if (updates.beforeDropCallback !== undefined)
-			this.beforeDropHandler = updates.beforeDropCallback;
-		if (updates.beforeCopyCallback !== undefined)
-			this.beforeCopyHandler = updates.beforeCopyCallback;
-		if (updates.beforeCutCallback !== undefined) this.beforeCutHandler = updates.beforeCutCallback;
-		if (updates.beforePasteCallback !== undefined)
-			this.beforePasteHandler = updates.beforePasteCallback;
-		if (updates.beforeDeleteCallback !== undefined)
-			this.beforeDeleteHandler = updates.beforeDeleteCallback;
-		if (updates.nodeOutputTransformationCallback !== undefined)
-			this.outputTransformHandler = updates.nodeOutputTransformationCallback;
-		if (updates.nodeInputTransformationCallback !== undefined)
-			this.inputTransformHandler = updates.nodeInputTransformationCallback;
-		if (updates.onNodeDrop !== undefined) this.onNodeDropHandler = updates.onNodeDrop;
-		if (updates.onNodeDragReject !== undefined)
-			this.onNodeDragRejectHandler = updates.onNodeDragReject;
-		if (updates.onNodeDropReject !== undefined)
-			this.onNodeDropRejectHandler = updates.onNodeDropReject;
-		if (updates.onNodeCopy !== undefined) this.onNodeCopyHandler = updates.onNodeCopy;
-		if (updates.onNodeCut !== undefined) this.onNodeCutHandler = updates.onNodeCut;
-		if (updates.onNodePaste !== undefined) this.onNodePasteHandler = updates.onNodePaste;
-		if (updates.onNodeDelete !== undefined) this.onNodeDeleteHandler = updates.onNodeDelete;
-		if (updates.getContextMenuItemsCallback !== undefined)
-			this.getContextMenuItemsHandler = updates.getContextMenuItemsCallback;
-		if (updates.onSelectionChange !== undefined)
-			this.onSelectionChangeHandler = updates.onSelectionChange;
-		if (updates.onCheckedChange !== undefined)
-			this.onCheckedChangeHandler = updates.onCheckedChange;
-		if (updates.onNodesReorder !== undefined) this.onNodesReorderHandler = updates.onNodesReorder;
-		if (updates.onNodeExpand !== undefined) this.onNodeExpandHandler = updates.onNodeExpand;
-		if (updates.onNodeCollapse !== undefined) this.onNodeCollapseHandler = updates.onNodeCollapse;
-		if (updates.onExpandedChange !== undefined) this.onExpandedChangeHandler = updates.onExpandedChange;
-		if (updates.beforeExpandCallback !== undefined) this.beforeExpandHandler = updates.beforeExpandCallback;
-		if (updates.onFocusChange !== undefined) this.onFocusChangeHandler = updates.onFocusChange;
-		if (updates.beforeActionCallback !== undefined) this.beforeActionHandler = updates.beforeActionCallback;
-		if (updates.onAction !== undefined) this.onActionHandler = updates.onAction;
-		if (updates.onTreeChange !== undefined) this.onTreeChangeHandler = updates.onTreeChange;
+	/** The ltree's configuration from the current options (callbacks get `ctx.controller`). */
+	private _ltreeConfig(): LTreeConfig<T> {
+		const o = this.#options as Partial<TreeControllerProps<T>>;
+		const resolved = <K extends TreeOptionKey>(key: K) =>
+			resolveTreeOption(key, o[key]) as TreeControllerProps<T>[K];
+		return {
+			idMember: o.idMember,
+			pathMember: o.pathMember,
+			parentPathMember: o.parentPathMember,
+			levelMember: o.levelMember,
+			hasChildrenMember: o.hasChildrenMember,
+			isExpandedMember: o.isExpandedMember,
+			getIsExpandedCallback: this._withController(o.getIsExpandedCallback),
+			isSelectableMember: o.isSelectableMember,
+			getIsSelectableCallback: this._withController(o.getIsSelectableCallback),
+			isCheckedMember: o.isCheckedMember,
+			getIsCheckedCallback: this._withController(o.getIsCheckedCallback),
+			isDraggableMember: o.isDraggableMember,
+			getIsDraggableCallback: this._withController(o.getIsDraggableCallback),
+			isDropAllowedMember: o.isDropAllowedMember,
+			getIsDropAllowedCallback: this._withController(o.getIsDropAllowedCallback),
+			allowedDropPositionsMember: o.allowedDropPositionsMember,
+			getAllowedDropPositionsCallback: this._withController(o.getAllowedDropPositionsCallback),
+			isCollapsibleMember: o.isCollapsibleMember,
+			getIsCollapsibleCallback: this._withController(o.getIsCollapsibleCallback),
+			displayValueMember: o.displayValueMember,
+			getDisplayValueCallback: this._withController(o.getDisplayValueCallback),
+			searchValueMember: o.searchValueMember,
+			getSearchValueCallback: this._withController(o.getSearchValueCallback),
+			orderMember: o.orderMember,
+			isSorted: o.isSorted,
+			sortCallback: this._withController(o.sortCallback),
+			treePathSeparator: resolved('treePathSeparator'),
+			expandLevel: resolved('expandLevel'),
+			shouldUseInternalSearchIndex: resolved('shouldUseInternalSearchIndex'),
+			initializeIndexCallback: o.initializeIndexCallback,
+			indexerBatchSize: resolved('indexerBatchSize'),
+			indexerTimeout: resolved('indexerTimeout')
+		};
+	}
+
+	/**
+	 * An option built into the ltree changed (B17): reconfigure it and re-insert the current data.
+	 * Expansion, selection, checks and focus follow by path — except the expanded set is re-seeded
+	 * when `expandLevel` / `isExpandedMember` / `getIsExpandedCallback` changed, and the checked set
+	 * when `isCheckedMember` / `getIsCheckedCallback` changed (the new seed is what was asked for).
+	 * Paths that no longer exist (e.g. a new `pathMember`) leave the state, with the usual events.
+	 */
+	private _rebuildTree(changed: TreeOptionKey[]) {
+		if (!this.tree) return;
+		const isExpansionReseeded = changed.some((key) => TREE_EXPANSION_SEED_OPTIONS.has(key));
+		const isCheckedReseeded = changed.some((key) => TREE_CHECKED_SEED_OPTIONS.has(key));
+		const expanded = isExpansionReseeded ? null : this.tree.getExpandedPaths();
+		const checked = this.#checkedPaths;
+		const data = this.nodes;
+		uiLogger.debug(`[${this.treeId}] ltree options changed — re-inserting the data`, {
+			changed,
+			nodes: data?.length ?? 0,
+			isExpansionReseeded,
+			isCheckedReseeded
+		});
+		this.treePathSeparator = resolveTreeOption('treePathSeparator', this.#options.treePathSeparator) as string;
+		this.tree.reconfigure(this._ltreeConfig());
+		if (!data) return;
+		this._loadNodes(data);
+		// The data is in the tree already — the nodes effect must not insert it again.
+		this.#selfWrittenNodes = data;
+		if (expanded) this.tree.setExpandedPaths(expanded);
+		if (!isCheckedReseeded && !this.tree.isCheckedMember && !this.tree.getIsCheckedCallback)
+			this._replaceCheckedPaths(checked);
+		// Fresh node objects: put the selection / focus flags back on them, then drop what is gone.
+		this._setSelection(this.selectedPaths);
+		const focusedPath = this.focusedNode?.path;
+		if (focusedPath) this._setNodeFlag(focusedPath, 'isFocused', true);
+		this._reconcileAfterMutation();
+		if (this.searchTerm) this.tree.filterNodes(this.searchTerm);
+		this.tree.refresh();
 	}
 
 	// ── Internal event handlers ─────────────────────────────────────────

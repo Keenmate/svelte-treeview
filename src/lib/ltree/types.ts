@@ -198,9 +198,55 @@ export interface RemoveBranchResult<T = any> {
 	error?: string;
 }
 
+/**
+ * What the ltree builds its nodes, sort, search index and expand seed from — the `createLTree`
+ * arguments as one object. `reconfigure(config)` swaps all of it; the next `insertArray` uses it.
+ */
+export interface LTreeConfig<T> {
+	idMember: string | null | undefined;
+	pathMember: string | null | undefined;
+	parentPathMember?: string | null;
+	levelMember?: string | null;
+	hasChildrenMember?: string | null;
+	isExpandedMember?: string | null;
+	getIsExpandedCallback?: (ctx: NodeContext<T>) => boolean;
+	isSelectableMember?: string | null;
+	getIsSelectableCallback?: (ctx: NodeContext<T>) => boolean;
+	isCheckedMember?: string | null;
+	getIsCheckedCallback?: (ctx: NodeContext<T>) => boolean;
+	isDraggableMember?: string | null;
+	getIsDraggableCallback?: (ctx: NodeContext<T>) => boolean;
+	isDropAllowedMember?: string | null;
+	getIsDropAllowedCallback?: (ctx: NodeContext<T>) => boolean;
+	allowedDropPositionsMember?: string | null;
+	getAllowedDropPositionsCallback?: (ctx: NodeContext<T>) => DropPosition[] | null | undefined;
+	isCollapsibleMember?: string | null;
+	getIsCollapsibleCallback?: (ctx: NodeContext<T>) => boolean;
+	displayValueMember?: string | null;
+	getDisplayValueCallback?: (ctx: NodeContext<T>) => string;
+	searchValueMember?: string | null;
+	getSearchValueCallback?: (ctx: NodeContext<T>) => string;
+	orderMember?: string | null;
+	isSorted?: boolean | null;
+	sortCallback?: (ctx: SortContext<T>) => LTreeNode<T>[];
+	treePathSeparator?: string | null;
+	expandLevel?: number | null;
+	shouldUseInternalSearchIndex?: boolean | null;
+	initializeIndexCallback?: () => Index;
+	indexerBatchSize?: number | null;
+	indexerTimeout?: number | null;
+}
+
 export interface Ltree<T> {
 	// Properties (readonly getters)
 	treePathSeparator: string;
+
+	/**
+	 * Swap the whole node-building configuration (members, callbacks, sort, separator, expand
+	 * seed, search index). Empties nothing by itself — re-insert the data (`insertArray`) to
+	 * rebuild the nodes with it. The search index is recreated (it is refilled by the insert).
+	 */
+	reconfigure(config: LTreeConfig<T>): void;
 
 	root: LTreeNode<T>;
 	filteredRoot: LTreeNode<T>;

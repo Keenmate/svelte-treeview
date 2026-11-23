@@ -29,6 +29,8 @@
 	// B2: the bound selection / checked sets, read back after a removal or move.
 	let selectedPaths = $state.raw(new Set<string>());
 	let checkedPaths = $state.raw(new Set<string>());
+	// B17: a member prop changed by the parent after the tree was built.
+	let displayMember = $state('name');
 
 	let main = $state<any>();
 	let snippetTree = $state<any>();
@@ -57,6 +59,7 @@
 		w.__selected = () => [...selectedPaths].sort();
 		w.__checked = () => [...checkedPaths].sort();
 		w.__setNodes = (v: Item[]) => (nodes = v);
+		w.__setDisplayMember = (v: string) => (displayMember = v);
 	});
 </script>
 
@@ -79,7 +82,7 @@
 				getIsDropAllowedCallback={() => true}
 				idMember="id"
 				pathMember="path"
-				displayValueMember="name"
+				displayValueMember={displayMember}
 				searchValueMember="name"
 				shouldUseInternalSearchIndex={true}
 				expandLevel={5}

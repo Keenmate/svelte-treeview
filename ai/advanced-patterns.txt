@@ -14,17 +14,27 @@ const treeElement = document.querySelector('#my-tree');
 treeElement.update({
   searchTerm: 'query',
   expandLevel: 3,
-  data: newData
+  nodes: newData
 });
 
 // Update single prop
 treeElement.update({ searchTerm: '' });
 
-All props updatable except snippets:
-- data, searchTerm, focusedNode, selectedPaths, checkedPaths, expandLevel
-- Members: idMember, pathMember, displayValueMember
-- Callbacks: sortCallback, onNodeClick, etc.
-- Visual: selectedNodeClass, focusedNodeClass, etc.
+Every prop is updatable except the snippets, and every change applies:
+- State: nodes, searchTerm, focusedNode, selectedPaths, checkedPaths, expandedPaths
+  (assigned on the component, so a parent bind: sees them)
+- Options: every other prop (callbacks, visuals, behaviour) — controller.updateProps
+- Props built into the tree — every *Member, the get*Callback mappings (getIsExpandedCallback,
+  getDisplayValueCallback, getIsDraggableCallback, ...), orderMember, isSorted, sortCallback,
+  treePathSeparator, expandLevel, shouldUseInternalSearchIndex, initializeIndexCallback,
+  indexerBatchSize, indexerTimeout — re-insert the current data. Expansion, selection, checks and
+  focus are kept by path; expandLevel / isExpandedMember / getIsExpandedCallback re-seed the
+  expansion, isCheckedMember / getIsCheckedCallback re-seed the checks.
+- undefined = the prop's default. treeId is init-only (a change is ignored with a warning) —
+  re-create the tree to rename it: {#key treeId}<Tree {treeId} ... />{/key}
+
+The same applies when a parent changes the prop on <Tree> — a new displayValueMember re-renders
+the labels, a new expandLevel re-seeds the expansion.
 
 LAZY LOADING CHILDREN
 ---------------------

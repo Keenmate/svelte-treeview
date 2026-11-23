@@ -293,3 +293,49 @@ test('one-entry drag manifest still leaves its hole behind (beforeDragStartCallb
 		// Solo moved under Target; Key stayed at the root (segment '1' was still taken → its id).
 		.toEqual({ Target: '2', Solo: '2.1', Key: '11' });
 });
+
+test.describe('props after init (§3.1)', () => {
+	test('B17: a member prop changed by the parent re-inserts the data, state kept', async ({ page }) => {
+		await box(page, '2.1').click();
+		await label(page, '1.1.1').click();
+		await call(page, '__main', 'collapseNodes', '2');
+		await expect(row(page, '2.1')).toHaveCount(0);
+
+		await page.evaluate(() => (window as any).__setDisplayMember('path'));
+		await expect(label(page, '1.1.1')).toHaveText('1.1.1');
+		// Expansion, selection and checks follow the re-inserted nodes by path.
+		await expect(row(page, '2.1')).toHaveCount(0);
+		await expect(row(page, '1.1.1').locator('.stv__node-content')).toHaveClass(/stv__node-content--selected/);
+		expect(await page.evaluate(() => (window as any).__checked())).toEqual(['2', '2.1']);
+		await expect(box(page, '2')).toBeChecked();
+	});
+
+	test('B17: update() applies a get*Callback mapping and expandLevel (used to do nothing)', async ({ page }) => {
+		await page.evaluate(() =>
+			(window as any).__main.update({
+				// The member wins over the callback — clear it in the same update.
+				displayValueMember: null,
+				getDisplayValueCallback: ({ node }: any) => String(node.data.name).toUpperCase()
+			})
+		);
+		await expect(label(page, '1.1.1')).toHaveText('GAMMA');
+
+		// expandLevel re-seeds the expansion: level 1 open, everything deeper closed.
+		await call(page, '__main', 'update', { expandLevel: 1 });
+		await expect(row(page, '1.1')).toBeVisible();
+		await expect(row(page, '1.1.1')).toHaveCount(0);
+	});
+
+	test('B16: treeId is init-only — a change warns and leaves the tree alone', async ({ page }) => {
+		const warnings: string[] = [];
+		page.on('console', (msg) => {
+			if (msg.type() === 'warning') warnings.push(msg.text());
+		});
+		await call(page, '__main', 'update', { treeId: 'renamed' });
+		expect(await page.evaluate(() => (window as any).__main.getNodeByPath('1').treeId)).toBe('main');
+		await expect.poll(() => warnings.some((w) => w.includes('treeId is init-only'))).toBe(true);
+		// Same-tree drag/clipboard still resolve the tree by its id.
+		await call(page, '__main', 'copyNodes', ['2.1']);
+		expect(await call(page, '__main', 'pasteNodes', '1')).toMatchObject({ success: true, count: 1 });
+	});
+});

@@ -38,8 +38,8 @@
 	} from '../ltree/types.js';
 	import { setContext, onDestroy, untrack, type Snippet } from 'svelte';
 	import type { RenderStats } from '../ltree/types.js';
-	import { DEFAULT_INDEXER_BATCH_SIZE } from '../ltree/indexer.js';
-	import { TreeController } from '../core/TreeController.svelte.js';
+	import { TreeController, type TreeControllerProps } from '../core/TreeController.svelte.js';
+	import { TREE_OPTION_KEYS } from '../core/tree-props.js';
 	import type { TranslateCallback, TreeLabelsInput } from '../core/labels.js';
 	import type {
 		NodeEventContext,
@@ -517,50 +517,24 @@
 		navigationOverrides?: TreeNavigationOverrides<T>;
 	}
 
+	/** What `update()` takes: every prop but the snippets. */
+	type TreeUpdateProps = Partial<
+		Omit<Props, 'nodeTemplate' | 'tooltip' | 'icon' | 'treeHeader' | 'treeBody' | 'treeFooter' | 'noData' | 'contextMenu' | 'dropPlaceholder' | 'loadingPlaceholder'>
+	>;
+
 	let {
-		treeId,
-		treePathSeparator = '.',
-
-		// MAPPINGS
-		idMember,
-		pathMember,
-		parentPathMember,
-		levelMember,
-		hasChildrenMember,
-
-		isExpandedMember,
-		getIsExpandedCallback,
-		isSelectableMember,
-		getIsSelectableCallback,
-		isCheckedMember,
-		getIsCheckedCallback,
-		isDraggableMember,
-		getIsDraggableCallback,
-		isDropAllowedMember,
-		getIsDropAllowedCallback,
-		allowedDropPositionsMember,
-		getAllowedDropPositionsCallback,
-		isCollapsibleMember,
-		getIsCollapsibleCallback,
-
-		displayValueMember,
-		getDisplayValueCallback,
-		searchValueMember,
-		getSearchValueCallback,
-		orderMember,
-		isSorted,
-		isSortingEnabled,
-		sortCallback,
-
-		// DATA
+		// STATE (bindable) — synced both ways below
 		nodes = $bindable(),
 		focusedNode = $bindable(),
 		selectedPaths = $bindable(new Set<string>()),
 		checkedPaths = $bindable(new Set<string>()),
 		expandedPaths = $bindable(new Set<string>()),
+		searchTerm = $bindable(),
 		insertResult = $bindable(),
+		isRendering = $bindable(false),
+		containerSize = $bindable(),
 
-		// SLOTS
+		// SNIPPETS
 		nodeTemplate = undefined,
 		treeHeader = undefined,
 		treeFooter = undefined,
@@ -568,306 +542,38 @@
 		contextMenu = undefined,
 		dropPlaceholder = undefined,
 		loadingPlaceholder = undefined,
-		labels = undefined,
-		translateCallback = undefined,
+		tooltip,
+		icon,
 
-		// BEHAVIOUR
-		expandLevel = 0,
-
-		clickBehavior = 'expand-and-focus',
-		selectionMode = 'single',
-		isCheckboxesShown = false,
-		checkboxMode = 'independent',
-		cascadeCheckPolicy = 'rolled-up',
-		filterScope = 'matches',
-		filterDescendantDepth = 1,
-		shouldExpandFilterDescendants = true,
-		searchResultLimit,
-		shouldClickToggleCheckbox = false,
-		beforeCheckboxToggleCallback,
-		rangeSelectionMode = 'visual',
-		shouldUseInternalSearchIndex = true,
-		initializeIndexCallback,
-		searchTerm = $bindable(),
-		indexerBatchSize = DEFAULT_INDEXER_BATCH_SIZE,
-		indexerTimeout = 50,
-		isLoading = false,
-
-		// Progressive rendering (exponential batching: 20 → 40 → 80 → 160...)
-		isProgressiveRenderEnabled = true,
-		initialBatchSize = 20,
-		maxBatchSize = 500,
-		isRendering = $bindable(false),
-		rowAnimationLimit = 50,
-		onRenderStart,
-		onRenderProgress,
-		onRenderComplete,
-		onIndexProgress,
-		onSearchStatusChange,
-
-		// Flat rendering mode
-
-		// Virtual scrolling (flat mode only)
-		isVirtualScrollEnabled = false,
-		virtualScrollItemHeight = undefined,
-		virtualScrollOverscan = 5,
-		virtualScrollContainerHeight = undefined,
-
-		// DRAG AND DROP
-		dragDropMode = 'none',
-		dropZoneMode = 'glow',
-		dropZoneLayout = 'around',
-		dropZoneStart = 33,
-		dropZoneMaxWidth = 120,
-		isEmptyDropPlaceholderShown = false,
-		isTreeDropZoneEnabled = false,
-		isCopyAllowed = false,
-		shouldAutoHandleCopy = true,
-		shouldAutoHandleMove = true,
-		shouldAutoHandlePaste = true,
-		shouldHandleKeyboardShortcuts = true,
-		shouldExpandAsAccordion = false,
-
-		// EVENTS
-		onNodeClick,
-		onNodeDoubleClick,
-		onSelectionChange,
-		onCheckedChange,
-		onNodeExpand,
-		onNodeCollapse,
-		onExpandedChange,
-		beforeExpandCallback,
-		onFocusChange,
-		onTreeChange,
-		onNodesReorder,
-		onNodeDragStart,
-		onNodeDragOver,
-		onNodeDrop,
-		onNodeDragReject,
-		onNodeDropReject,
-		onNodeCopy,
-		onNodeCut,
-		onNodePaste,
-		onNodeDelete,
-		onContainerResize,
-		containerSize = $bindable(),
-		// INTERCEPTORS
-		beforeDragStartCallback,
-		beforeDropCallback,
-		beforeCopyCallback,
-		beforeCutCallback,
-		beforePasteCallback,
-		beforeDeleteCallback,
-		nodeOutputTransformationCallback,
-		nodeInputTransformationCallback,
-		// DATA PROVIDERS
-		getContextMenuItemsCallback,
-		beforeActionCallback,
-		onAction,
-
-		// VISUALS
+		// Props of the component itself (not the controller's)
 		theme,
 		themeSource,
 		motion = 'auto',
-		bodyClass,
 		iconSet = 'chevron',
-		leafIconClass = 'stv__toggle-icon--leaf',
-		toggleIconMode = 'rotate',
-		nodeTitleOverflow = 'ellipsis',
-		flatIndentSize,
-		isNodeTooltipsShown = false,
-		getNodeTooltipCallback,
-		tooltipPlacement = 'top-start',
-		tooltipDelay,
-		tooltipOffset = 8,
-		shouldTooltipFollowCursor = false,
-		tooltip,
-		iconMember,
-		getIconCallback,
-		renderIconCallback,
-		iconColorMember,
-		getIconColorCallback,
-		shouldAlignNodeIcons = true,
-		icon,
-		selectedNodeClass,
-		focusedNodeClass,
-		checkedNodeClass,
-		getNodeClassCallback,
-		getNodeContentClassCallback,
-		dragOverNodeClass,
-		draggedNodeClass,
-		scrollHighlightTimeout = 4000,
-		scrollHighlightClass = 'stv__node-content--scroll-highlight',
-		contextMenuXOffset = 8,
-		contextMenuYOffset = 0,
+		isEmptyDropPlaceholderShown = false,
 		menuPresentation = 'auto',
 		menuSide = 'start',
-		touchDragDelay = 300,
-		shouldIndicateUndraggable = true,
+		onContainerResize,
 		beforeKeydownCallback,
-		navigationOverrides
+
+		// Every other prop is a controller option (core/tree-props.ts: defaults + how a change applies)
+		...options
 	}: Props = $props();
 
 	// ── Create controller ───────────────────────────────────────────────
-	// Each prop here captures its INITIAL value only — that's intentional. Every
-	// reactive prop is re-synced into the controller via $effect blocks below
-	// (search for "Sync props → controller"), so the controller stays in step
-	// with parent changes. The svelte-ignore suppresses the 80+ warnings the
-	// compiler would otherwise fire for each non-closure prop reference here.
+	// Initial values only — every option is re-synced by the per-key effects below (search for
+	// "Sync props → controller"); the svelte-ignore covers reading the props here.
 	// svelte-ignore state_referenced_locally
 	const controller = createTreeController<T>({
-		idMember,
-		pathMember,
-		parentPathMember,
-		levelMember,
-		hasChildrenMember,
-		isExpandedMember,
-		getIsExpandedCallback,
-		isSelectableMember,
-		getIsSelectableCallback,
-		isCheckedMember,
-		getIsCheckedCallback,
-		isDraggableMember,
-		getIsDraggableCallback,
-		isDropAllowedMember,
-		getIsDropAllowedCallback,
-		allowedDropPositionsMember,
-		getAllowedDropPositionsCallback,
-		isCollapsibleMember,
-		getIsCollapsibleCallback,
-		displayValueMember,
-		getDisplayValueCallback,
-		labels,
-		translateCallback,
-		searchValueMember,
-		getSearchValueCallback,
-		orderMember,
-		isSorted,
-		isSortingEnabled,
-		sortCallback,
-		treeId,
-		treePathSeparator,
+		...(options as Partial<TreeControllerProps<T>>),
 		nodes,
 		focusedNode,
 		selectedPaths,
 		checkedPaths,
 		expandedPaths,
-		expandLevel,
-		clickBehavior,
-		selectionMode,
-		isCheckboxesShown,
-		checkboxMode,
-		cascadeCheckPolicy,
-		filterScope,
-		filterDescendantDepth,
-		shouldExpandFilterDescendants,
-		searchResultLimit,
-		shouldClickToggleCheckbox,
-		beforeCheckboxToggleCallback,
-		rangeSelectionMode,
-		shouldUseInternalSearchIndex,
-		initializeIndexCallback,
 		searchTerm,
-		indexerBatchSize,
-		indexerTimeout,
-		isLoading,
-		isProgressiveRenderEnabled,
-		initialBatchSize,
-		maxBatchSize,
-		rowAnimationLimit,
-		onRenderStart,
-		onRenderProgress,
-		onRenderComplete,
-		onIndexProgress,
-		onSearchStatusChange,
-		isVirtualScrollEnabled,
-		virtualScrollItemHeight,
-		virtualScrollOverscan,
-		virtualScrollContainerHeight,
-		dragDropMode,
-		dropZoneMode,
-		dropZoneLayout,
-		dropZoneStart,
-		dropZoneMaxWidth,
-		isCopyAllowed,
-		shouldAutoHandleCopy,
-		shouldAutoHandleMove,
-		shouldAutoHandlePaste,
-		shouldHandleKeyboardShortcuts,
-		shouldExpandAsAccordion,
-		onNodeClick,
-		onNodeDoubleClick,
-		onSelectionChange,
-		onCheckedChange,
-		onNodeExpand,
-		onNodeCollapse,
-		onExpandedChange,
-		beforeExpandCallback,
-		onFocusChange,
-		onTreeChange,
-		onNodesReorder,
-		onNodeDragStart,
-		onNodeDragOver,
-		onNodeDrop,
-		onNodeDragReject,
-		onNodeDropReject,
-		onNodeCopy,
-		onNodeCut,
-		onNodePaste,
-		onNodeDelete,
-		beforeDragStartCallback,
-		beforeDropCallback,
-		beforeCopyCallback,
-		beforeCutCallback,
-		beforePasteCallback,
-		beforeDeleteCallback,
-		nodeOutputTransformationCallback,
-		nodeInputTransformationCallback,
-		getContextMenuItemsCallback,
-		beforeActionCallback,
-		onAction,
-		hasContextMenuSnippet: !!contextMenu,
-		bodyClass,
-		selectedNodeClass,
-		focusedNodeClass,
-		checkedNodeClass,
-		getNodeClassCallback,
-		getNodeContentClassCallback,
-		dragOverNodeClass,
-		draggedNodeClass,
-		leafIconClass,
-		toggleIconMode,
-		nodeTitleOverflow,
-		flatIndentSize,
-		isNodeTooltipsShown,
-		getNodeTooltipCallback,
-		tooltipPlacement,
-		tooltipDelay,
-		tooltipOffset,
-		shouldTooltipFollowCursor,
-		iconMember,
-		getIconCallback,
-		renderIconCallback,
-		iconColorMember,
-		getIconColorCallback,
-		shouldAlignNodeIcons,
-		scrollHighlightTimeout,
-		scrollHighlightClass,
-		contextMenuXOffset,
-		contextMenuYOffset,
-		touchDragDelay,
-		shouldIndicateUndraggable
-	});
-
-	// ── Apply navigation overrides if provided ─────────────────────────
-	// Snapshot at init only — navigation handlers aren't expected to swap mid-
-	// lifetime. Consumers passing a new object on rerender would not see it
-	// applied; if that becomes a need, hoist into an $effect.
-	// svelte-ignore state_referenced_locally
-	if (navigationOverrides) {
-		// svelte-ignore state_referenced_locally
-		controller.navigation = { ...controller.createDefaultNavigation(), ...navigationOverrides };
-	}
+		hasContextMenuSnippet: !!contextMenu
+	} as TreeControllerProps<T>);
 
 	// Reactive render environment shared with every Node — device class + the tree's
 	// container box. Mutated (not replaced) in an $effect below so the context reference
@@ -990,7 +696,8 @@
 		const host = controller.containerElement;
 		// contextMenuX/Y already include contextMenuXOffset/YOffset (controller.openContextMenu).
 		const at = { x: controller.contextMenuX, y: controller.contextMenuY };
-		const isSnippet = !getContextMenuItemsCallback && !!contextMenu;
+		const getItems = controller.getContextMenuItemsHandler;
+		const isSnippet = !getItems && !!contextMenu;
 		const snippetHost = snippetMenuHost;
 		if (!controller.contextMenuVisible || !node || !host) return;
 		if (isSnippet && !snippetHost) return; // the snippet renders first, then moves into the menu
@@ -1000,7 +707,7 @@
 			// One surface ctx per open: every item callback, onClick and submenu share it.
 			const ctx = controller.menuContext(node);
 			const menu: MenuHandle = openMenu<TreeMenuContext<T>, TreeAction>(
-				isSnippet ? [] : (getContextMenuItemsCallback?.(ctx) ?? []),
+				isSnippet ? [] : (getItems?.(ctx) ?? []),
 				ctx,
 				{
 					at,
@@ -1044,7 +751,7 @@
 
 	/** Shift+F10 / the ContextMenu key: the focused node's menu, below its row, first item focused. */
 	function openContextMenuFromKeyboard(): boolean {
-		if (!contextMenu && !getContextMenuItemsCallback) return false;
+		if (!contextMenu && !controller.getContextMenuItemsHandler) return false;
 		const node = controller.focusedNode;
 		if (!node || !treeContainerRef) return false;
 		const row = treeContainerRef.querySelector(
@@ -1076,325 +783,23 @@
 		controller.nodes = incoming;
 	});
 	$effect(() => {
-		controller.searchTerm = searchTerm;
-	});
-	$effect(() => {
-		if (treeId) controller.treeId = treeId;
-	});
-	$effect(() => {
-		controller.treePathSeparator = treePathSeparator ?? '.';
-	});
-	$effect(() => {
-		controller.isLoading = isLoading ?? false;
-	});
-	$effect(() => {
-		controller.bodyClass = bodyClass;
-	});
-	$effect(() => {
-		controller.isTreeDropZoneEnabled = isTreeDropZoneEnabled;
-	});
-	$effect(() => {
-		controller.isVirtualScrollEnabled = isVirtualScrollEnabled ?? false;
-	});
-	$effect(() => {
-		controller.virtualScrollItemHeight = virtualScrollItemHeight;
-	});
-	$effect(() => {
-		controller.virtualScrollOverscan = virtualScrollOverscan ?? 5;
-	});
-	$effect(() => {
-		controller.virtualScrollContainerHeight = virtualScrollContainerHeight;
-	});
-	$effect(() => {
-		controller.isProgressiveRenderEnabled = isProgressiveRenderEnabled ?? true;
-	});
-	$effect(() => {
-		controller.rowAnimationLimit = rowAnimationLimit ?? 50;
-	});
-	$effect(() => {
-		controller.initialBatchSize = initialBatchSize ?? 20;
-	});
-	$effect(() => {
-		controller.maxBatchSize = maxBatchSize ?? 500;
-	});
-	$effect(() => {
-		controller.dragDropMode = dragDropMode ?? 'none';
-	});
-	$effect(() => {
-		controller.isCopyAllowed = isCopyAllowed ?? false;
-	});
-	$effect(() => {
-		controller.shouldAutoHandleCopy = shouldAutoHandleCopy ?? true;
-	});
-	$effect(() => {
-		controller.shouldAutoHandleMove = shouldAutoHandleMove ?? true;
-	});
-	$effect(() => {
-		controller.shouldAutoHandlePaste = shouldAutoHandlePaste ?? true;
-	});
-	$effect(() => {
-		controller.shouldHandleKeyboardShortcuts = shouldHandleKeyboardShortcuts ?? true;
-	});
-	$effect(() => {
-		controller.shouldExpandAsAccordion = shouldExpandAsAccordion ?? false;
-	});
-	$effect(() => {
-		controller.hasContextMenuSnippet = !!contextMenu;
-	});
-
-	// Visual config sync (drives nodeConfig update via controller's internal effect)
-	$effect(() => {
-		controller.clickBehavior = clickBehavior ?? 'expand-and-focus';
-	});
-	$effect(() => {
-		controller.selectionMode = selectionMode ?? 'single';
-	});
-	$effect(() => {
-		controller.isCheckboxesShown = isCheckboxesShown ?? false;
-	});
-	$effect(() => {
-		controller.checkboxMode = checkboxMode ?? 'independent';
-	});
-	$effect(() => {
-		controller.cascadeCheckPolicy = cascadeCheckPolicy ?? 'rolled-up';
-	});
-	$effect(() => {
-		controller.filterScope = filterScope ?? 'matches';
-	});
-	$effect(() => {
-		controller.filterDescendantDepth = filterDescendantDepth ?? 1;
-	});
-	$effect(() => {
-		controller.shouldExpandFilterDescendants = shouldExpandFilterDescendants ?? true;
-	});
-	$effect(() => {
-		controller.shouldClickToggleCheckbox = shouldClickToggleCheckbox ?? false;
-	});
-	$effect(() => {
-		controller.beforeCheckboxToggleHandler = beforeCheckboxToggleCallback;
-	});
-	$effect(() => {
-		controller.rangeSelectionMode = rangeSelectionMode ?? 'visual';
-	});
-	$effect(() => {
-		controller.leafIconClass = leafIconClass ?? 'stv__toggle-icon--leaf';
-	});
-	$effect(() => {
-		controller.toggleIconMode = toggleIconMode ?? 'rotate';
-	});
-	$effect(() => {
-		controller.nodeTitleOverflow = nodeTitleOverflow ?? 'ellipsis';
-		controller.flatIndentSize = flatIndentSize || 'var(--stv-indent-size)';
-	});
-	$effect(() => {
-		controller.isNodeTooltipsShown = isNodeTooltipsShown ?? false;
-	});
-	$effect(() => {
-		controller.getNodeTooltipCallback = getNodeTooltipCallback;
-	});
-	$effect(() => {
-		controller.tooltipPlacement = tooltipPlacement ?? 'top-start';
-	});
-	$effect(() => {
-		controller.tooltipDelay = tooltipDelay ?? { show: 400, hide: 100 };
-	});
-	$effect(() => {
-		controller.tooltipOffset = tooltipOffset ?? 8;
-	});
-	$effect(() => {
-		controller.shouldTooltipFollowCursor = shouldTooltipFollowCursor ?? false;
-	});
-	$effect(() => {
-		controller.iconMember = iconMember;
-	});
-	$effect(() => {
-		controller.getIconCallback = getIconCallback;
-	});
-	$effect(() => {
-		controller.renderIconCallback = renderIconCallback;
-	});
-	$effect(() => {
-		controller.iconColorMember = iconColorMember;
-	});
-	$effect(() => {
-		controller.getIconColorCallback = getIconColorCallback;
-	});
-	$effect(() => {
-		controller.shouldAlignNodeIcons = shouldAlignNodeIcons ?? true;
-	});
-	$effect(() => {
-		controller.selectedNodeClass = selectedNodeClass;
-	});
-	$effect(() => {
-		controller.getNodeClassCallback = getNodeClassCallback;
-	});
-	$effect(() => {
-		controller.getNodeContentClassCallback = getNodeContentClassCallback;
-	});
-	$effect(() => {
-		controller.focusedNodeClass = focusedNodeClass;
-	});
-	$effect(() => {
-		controller.checkedNodeClass = checkedNodeClass;
-	});
-	$effect(() => {
-		controller.dragOverNodeClass = dragOverNodeClass;
-	});
-	$effect(() => {
-		controller.draggedNodeClass = draggedNodeClass;
-	});
-	$effect(() => {
-		controller.dropZoneMode = dropZoneMode ?? 'glow';
-	});
-	$effect(() => {
-		controller.dropZoneLayout = dropZoneLayout ?? 'around';
-	});
-	$effect(() => {
-		controller.dropZoneStart = dropZoneStart ?? 33;
-	});
-	$effect(() => {
-		controller.dropZoneMaxWidth = dropZoneMaxWidth ?? 120;
-	});
-	$effect(() => {
-		controller.scrollHighlightTimeout = scrollHighlightTimeout ?? 4000;
-	});
-	$effect(() => {
-		controller.scrollHighlightClass = scrollHighlightClass ?? 'stv__node-content--scroll-highlight';
-	});
-	$effect(() => {
-		controller.contextMenuXOffset = contextMenuXOffset ?? 8;
-	});
-	$effect(() => {
-		controller.contextMenuYOffset = contextMenuYOffset ?? 0;
-	});
-	$effect(() => {
-		controller.touchDragDelay = touchDragDelay ?? 300;
-	});
-	$effect(() => {
-		controller.shouldIndicateUndraggable = shouldIndicateUndraggable ?? true;
-	});
-	$effect(() => {
-		controller.labels = labels;
-	});
-	$effect(() => {
-		controller.translateCallback = translateCallback;
-	});
-
-	// Callback sync
-	$effect(() => {
-		controller.onNodeClickHandler = onNodeClick;
-	});
-	$effect(() => {
-		controller.onNodeDoubleClickHandler = onNodeDoubleClick;
-	});
-	$effect(() => {
-		controller.onSelectionChangeHandler = onSelectionChange;
-	});
-	$effect(() => {
-		controller.onCheckedChangeHandler = onCheckedChange;
-	});
-	$effect(() => {
-		controller.onNodesReorderHandler = onNodesReorder;
-	});
-	$effect(() => {
-		controller.onNodeExpandHandler = onNodeExpand;
-	});
-	$effect(() => {
-		controller.onNodeCollapseHandler = onNodeCollapse;
-	});
-	$effect(() => {
-		controller.onExpandedChangeHandler = onExpandedChange;
-	});
-	$effect(() => {
-		controller.beforeExpandHandler = beforeExpandCallback;
-	});
-	$effect(() => {
-		controller.onFocusChangeHandler = onFocusChange;
-	});
-	$effect(() => {
-		controller.beforeActionHandler = beforeActionCallback;
-	});
-	$effect(() => {
-		controller.onActionHandler = onAction;
-	});
-	$effect(() => {
-		controller.onTreeChangeHandler = onTreeChange;
-	});
-	$effect(() => {
-		controller.isSortingEnabled = isSortingEnabled ?? true;
-	});
-	$effect(() => {
-		controller.onNodeDragStartHandler = onNodeDragStart;
-	});
-	$effect(() => {
-		controller.onNodeDragOverHandler = onNodeDragOver;
-	});
-	$effect(() => {
-		controller.onNodeDropHandler = onNodeDrop;
-	});
-	$effect(() => {
-		controller.onNodeDragRejectHandler = onNodeDragReject;
-	});
-	$effect(() => {
-		controller.onNodeDropRejectHandler = onNodeDropReject;
-	});
-	$effect(() => {
-		controller.onNodeCopyHandler = onNodeCopy;
-	});
-	$effect(() => {
-		controller.onNodeCutHandler = onNodeCut;
-	});
-	$effect(() => {
-		controller.onNodePasteHandler = onNodePaste;
-	});
-	$effect(() => {
-		controller.onNodeDeleteHandler = onNodeDelete;
-	});
-	$effect(() => {
-		controller.beforeDragStartHandler = beforeDragStartCallback;
-	});
-	$effect(() => {
-		controller.beforeDropHandler = beforeDropCallback;
-	});
-	$effect(() => {
-		controller.beforeCopyHandler = beforeCopyCallback;
-	});
-	$effect(() => {
-		controller.beforeCutHandler = beforeCutCallback;
-	});
-	$effect(() => {
-		controller.beforePasteHandler = beforePasteCallback;
-	});
-	$effect(() => {
-		controller.beforeDeleteHandler = beforeDeleteCallback;
-	});
-	$effect(() => {
-		controller.outputTransformHandler = nodeOutputTransformationCallback;
-	});
-	$effect(() => {
-		controller.inputTransformHandler = nodeInputTransformationCallback;
-	});
-	$effect(() => {
-		controller.getContextMenuItemsHandler = getContextMenuItemsCallback;
-	});
-	$effect(() => {
-		controller.onRenderStartHandler = onRenderStart;
-	});
-	$effect(() => {
-		controller.onRenderProgressHandler = onRenderProgress;
-	});
-	$effect(() => {
-		controller.onRenderCompleteHandler = onRenderComplete;
-	});
-	$effect(() => {
-		controller.onIndexProgressHandler = onIndexProgress;
-	});
-	$effect(() => {
-		controller.onSearchStatusChangeHandler = onSearchStatusChange;
-	});
-	$effect(() => {
-		controller.searchResultLimit = searchResultLimit ?? undefined;
-	});
+		const term = searchTerm;
+		untrack(() => controller.updateProps({ searchTerm: term }));
+	});
+	$effect(() => {
+		const hasSnippet = !!contextMenu;
+		untrack(() => controller.updateProps({ hasContextMenuSnippet: hasSnippet }));
+	});
+	// One effect per option: a changed prop goes through updateProps (which skips an unchanged
+	// value, applies the default for undefined, re-inserts the data for an ltree option and warns
+	// for the init-only treeId).
+	for (const key of TREE_OPTION_KEYS) {
+		if (key === 'searchTerm' || key === 'hasContextMenuSnippet') continue;
+		$effect(() => {
+			const value = (options as Record<string, unknown>)[key];
+			untrack(() => controller.updateProps({ [key]: value }));
+		});
+	}
 
 	// ── Sync controller → bindable props (outputs flow back to parent) ──
 	$effect(() => {
@@ -1817,315 +1222,34 @@
 		return controller.scrollToPath(path, options);
 	}
 
-	// External update method for HTML/JavaScript usage
-	export function update(
-		updates: Partial<
-			Pick<
-				Props,
-				| 'treeId'
-				| 'treePathSeparator'
-				| 'idMember'
-				| 'pathMember'
-				| 'parentPathMember'
-				| 'levelMember'
-				| 'hasChildrenMember'
-				| 'isExpandedMember'
-				| 'getIsExpandedCallback'
-				| 'isSelectableMember'
-				| 'getIsSelectableCallback'
-				| 'isCheckedMember'
-				| 'getIsCheckedCallback'
-				| 'isDraggableMember'
-				| 'getIsDraggableCallback'
-				| 'isDropAllowedMember'
-				| 'getIsDropAllowedCallback'
-				| 'displayValueMember'
-				| 'getDisplayValueCallback'
-				| 'searchValueMember'
-				| 'getSearchValueCallback'
-				| 'isCollapsibleMember'
-				| 'getIsCollapsibleCallback'
-				| 'orderMember'
-				| 'isSorted'
-				| 'isSortingEnabled'
-				| 'sortCallback'
-				| 'nodes'
-				| 'focusedNode'
-				| 'selectedPaths'
-				| 'checkedPaths'
-				| 'expandedPaths'
-				| 'expandLevel'
-				| 'clickBehavior'
-				| 'selectionMode'
-				| 'isCheckboxesShown'
-				| 'checkboxMode'
-				| 'cascadeCheckPolicy'
-				| 'filterScope'
-				| 'filterDescendantDepth'
-				| 'shouldExpandFilterDescendants'
-				| 'searchResultLimit'
-				| 'rowAnimationLimit'
-				| 'shouldClickToggleCheckbox'
-				| 'beforeCheckboxToggleCallback'
-				| 'rangeSelectionMode'
-				| 'shouldUseInternalSearchIndex'
-				| 'initializeIndexCallback'
-				| 'searchTerm'
-				| 'indexerBatchSize'
-				| 'indexerTimeout'
-				| 'onNodeClick'
-				| 'onNodeDoubleClick'
-				| 'onSelectionChange'
-				| 'onCheckedChange'
-				| 'onNodeExpand'
-				| 'onNodeCollapse'
-				| 'onExpandedChange'
-				| 'beforeExpandCallback'
-				| 'onFocusChange'
-				| 'onTreeChange'
-				| 'onNodesReorder'
-				| 'onNodeDragStart'
-				| 'onNodeDragOver'
-				| 'onNodeDrop'
-				| 'onNodeDragReject'
-				| 'onNodeDropReject'
-				| 'onNodeCopy'
-				| 'onNodeCut'
-				| 'onNodePaste'
-				| 'onNodeDelete'
-				| 'onContainerResize'
-				| 'beforeDragStartCallback'
-				| 'beforeDropCallback'
-				| 'beforeCopyCallback'
-				| 'beforeCutCallback'
-				| 'beforePasteCallback'
-				| 'beforeDeleteCallback'
-				| 'shouldHandleKeyboardShortcuts'
-				| 'nodeOutputTransformationCallback'
-				| 'nodeInputTransformationCallback'
-				| 'getContextMenuItemsCallback'
-				| 'beforeActionCallback'
-				| 'onAction'
-				| 'isVirtualScrollEnabled'
-				| 'virtualScrollItemHeight'
-				| 'virtualScrollOverscan'
-				| 'virtualScrollContainerHeight'
-				| 'dragDropMode'
-				| 'dropZoneMode'
-				| 'isEmptyDropPlaceholderShown'
-				| 'isTreeDropZoneEnabled'
-				| 'labels'
-				| 'translateCallback'
-				| 'bodyClass'
-				| 'theme'
-				| 'themeSource'
-				| 'motion'
-				| 'iconSet'
-				| 'leafIconClass'
-				| 'toggleIconMode'
-				| 'nodeTitleOverflow'
-				| 'flatIndentSize'
-				| 'isNodeTooltipsShown'
-				| 'getNodeTooltipCallback'
-				| 'tooltipPlacement'
-				| 'tooltipDelay'
-				| 'tooltipOffset'
-				| 'shouldTooltipFollowCursor'
-				| 'iconMember'
-				| 'getIconCallback'
-				| 'renderIconCallback'
-				| 'iconColorMember'
-				| 'getIconColorCallback'
-				| 'shouldAlignNodeIcons'
-				| 'selectedNodeClass'
-				| 'getNodeClassCallback'
-				| 'getNodeContentClassCallback'
-				| 'focusedNodeClass'
-				| 'checkedNodeClass'
-				| 'dragOverNodeClass'
-				| 'draggedNodeClass'
-				| 'scrollHighlightTimeout'
-				| 'scrollHighlightClass'
-				| 'contextMenuXOffset'
-				| 'contextMenuYOffset'
-				| 'menuPresentation'
-				| 'menuSide'
-				| 'touchDragDelay'
-				| 'shouldIndicateUndraggable'
-				| 'shouldExpandAsAccordion'
-			>
-		>
-	) {
-		// Update local props (triggers $effect syncs to controller)
-		if (updates.treeId !== undefined) treeId = updates.treeId;
-		if (updates.treePathSeparator !== undefined) treePathSeparator = updates.treePathSeparator;
-		if (updates.idMember !== undefined) idMember = updates.idMember;
-		if (updates.pathMember !== undefined) pathMember = updates.pathMember;
-		if (updates.parentPathMember !== undefined) parentPathMember = updates.parentPathMember;
-		if (updates.levelMember !== undefined) levelMember = updates.levelMember;
-		if (updates.hasChildrenMember !== undefined) hasChildrenMember = updates.hasChildrenMember;
-		if (updates.isExpandedMember !== undefined) isExpandedMember = updates.isExpandedMember;
-		if (updates.getIsExpandedCallback !== undefined)
-			getIsExpandedCallback = updates.getIsExpandedCallback;
-		if (updates.isSelectableMember !== undefined) isSelectableMember = updates.isSelectableMember;
-		if (updates.getIsSelectableCallback !== undefined)
-			getIsSelectableCallback = updates.getIsSelectableCallback;
-		if (updates.isCheckedMember !== undefined) isCheckedMember = updates.isCheckedMember;
-		if (updates.getIsCheckedCallback !== undefined)
-			getIsCheckedCallback = updates.getIsCheckedCallback;
-		if (updates.isDraggableMember !== undefined) isDraggableMember = updates.isDraggableMember;
-		if (updates.getIsDraggableCallback !== undefined)
-			getIsDraggableCallback = updates.getIsDraggableCallback;
-		if (updates.isDropAllowedMember !== undefined)
-			isDropAllowedMember = updates.isDropAllowedMember;
-		if (updates.getIsDropAllowedCallback !== undefined)
-			getIsDropAllowedCallback = updates.getIsDropAllowedCallback;
-		if (updates.displayValueMember !== undefined) displayValueMember = updates.displayValueMember;
-		if (updates.getDisplayValueCallback !== undefined)
-			getDisplayValueCallback = updates.getDisplayValueCallback;
-		if (updates.searchValueMember !== undefined) searchValueMember = updates.searchValueMember;
-		if (updates.getSearchValueCallback !== undefined)
-			getSearchValueCallback = updates.getSearchValueCallback;
-		if (updates.isCollapsibleMember !== undefined)
-			isCollapsibleMember = updates.isCollapsibleMember;
-		if (updates.getIsCollapsibleCallback !== undefined)
-			getIsCollapsibleCallback = updates.getIsCollapsibleCallback;
-		if (updates.orderMember !== undefined) orderMember = updates.orderMember;
-		if (updates.isSorted !== undefined) isSorted = updates.isSorted;
-		if (updates.isSortingEnabled !== undefined) isSortingEnabled = updates.isSortingEnabled;
-		if (updates.sortCallback !== undefined) sortCallback = updates.sortCallback;
+	/**
+	 * Change props from vanilla JavaScript (`tree.update({ searchTerm: 'x', expandLevel: 3 })`).
+	 * Every prop but the snippets. Bindable state and the component's own props are assigned here
+	 * (a parent's `bind:` sees them); every other prop goes to `controller.updateProps`.
+	 */
+	export function update(updates: TreeUpdateProps) {
 		if (updates.nodes !== undefined) nodes = updates.nodes;
 		if (updates.focusedNode !== undefined) focusedNode = updates.focusedNode;
 		if (updates.selectedPaths !== undefined) selectedPaths = updates.selectedPaths;
 		if (updates.checkedPaths !== undefined) checkedPaths = updates.checkedPaths;
 		if (updates.expandedPaths !== undefined) expandedPaths = updates.expandedPaths;
-		if (updates.expandLevel !== undefined) expandLevel = updates.expandLevel;
-		if (updates.clickBehavior !== undefined) clickBehavior = updates.clickBehavior;
-		if (updates.selectionMode !== undefined) selectionMode = updates.selectionMode;
-		if (updates.isCheckboxesShown !== undefined)
-			isCheckboxesShown = updates.isCheckboxesShown;
-		if (updates.checkboxMode !== undefined) checkboxMode = updates.checkboxMode;
-		if (updates.cascadeCheckPolicy !== undefined)
-			cascadeCheckPolicy = updates.cascadeCheckPolicy;
-		if (updates.filterScope !== undefined) filterScope = updates.filterScope;
-		if (updates.filterDescendantDepth !== undefined)
-			filterDescendantDepth = updates.filterDescendantDepth;
-		if (updates.shouldExpandFilterDescendants !== undefined)
-			shouldExpandFilterDescendants = updates.shouldExpandFilterDescendants;
-		if (updates.searchResultLimit !== undefined) searchResultLimit = updates.searchResultLimit;
-		if (updates.rowAnimationLimit !== undefined) rowAnimationLimit = updates.rowAnimationLimit;
-		if (updates.shouldClickToggleCheckbox !== undefined)
-			shouldClickToggleCheckbox = updates.shouldClickToggleCheckbox;
-		if (updates.beforeCheckboxToggleCallback !== undefined)
-			beforeCheckboxToggleCallback = updates.beforeCheckboxToggleCallback;
-		if (updates.rangeSelectionMode !== undefined) rangeSelectionMode = updates.rangeSelectionMode;
-		if (updates.shouldUseInternalSearchIndex !== undefined)
-			shouldUseInternalSearchIndex = updates.shouldUseInternalSearchIndex;
-		if (updates.initializeIndexCallback !== undefined)
-			initializeIndexCallback = updates.initializeIndexCallback;
-		if (updates.searchTerm !== undefined) searchTerm = updates.searchTerm;
-		if (updates.indexerBatchSize !== undefined) indexerBatchSize = updates.indexerBatchSize;
-		if (updates.indexerTimeout !== undefined) indexerTimeout = updates.indexerTimeout;
-		if (updates.onNodeClick !== undefined) onNodeClick = updates.onNodeClick;
-		if (updates.onNodeDoubleClick !== undefined) onNodeDoubleClick = updates.onNodeDoubleClick;
-		if (updates.onSelectionChange !== undefined) onSelectionChange = updates.onSelectionChange;
-		if (updates.onCheckedChange !== undefined) onCheckedChange = updates.onCheckedChange;
-		if (updates.onNodesReorder !== undefined) onNodesReorder = updates.onNodesReorder;
-		if (updates.onNodeExpand !== undefined) onNodeExpand = updates.onNodeExpand;
-		if (updates.onNodeCollapse !== undefined) onNodeCollapse = updates.onNodeCollapse;
-		if (updates.onExpandedChange !== undefined) onExpandedChange = updates.onExpandedChange;
-		if (updates.beforeExpandCallback !== undefined) beforeExpandCallback = updates.beforeExpandCallback;
-		if (updates.onFocusChange !== undefined) onFocusChange = updates.onFocusChange;
-		if (updates.onTreeChange !== undefined) onTreeChange = updates.onTreeChange;
-		if (updates.onNodeDragStart !== undefined) onNodeDragStart = updates.onNodeDragStart;
-		if (updates.onNodeDragOver !== undefined) onNodeDragOver = updates.onNodeDragOver;
-		if (updates.onNodeDrop !== undefined) onNodeDrop = updates.onNodeDrop;
-		if (updates.onNodeDragReject !== undefined) onNodeDragReject = updates.onNodeDragReject;
-		if (updates.onNodeDropReject !== undefined) onNodeDropReject = updates.onNodeDropReject;
-		if (updates.onNodeCopy !== undefined) onNodeCopy = updates.onNodeCopy;
-		if (updates.onNodeCut !== undefined) onNodeCut = updates.onNodeCut;
-		if (updates.onNodePaste !== undefined) onNodePaste = updates.onNodePaste;
-		if (updates.onNodeDelete !== undefined) onNodeDelete = updates.onNodeDelete;
-		if (updates.onContainerResize !== undefined) onContainerResize = updates.onContainerResize;
-		if (updates.beforeDragStartCallback !== undefined)
-			beforeDragStartCallback = updates.beforeDragStartCallback;
-		if (updates.beforeDropCallback !== undefined) beforeDropCallback = updates.beforeDropCallback;
-		if (updates.beforeCopyCallback !== undefined) beforeCopyCallback = updates.beforeCopyCallback;
-		if (updates.beforeCutCallback !== undefined) beforeCutCallback = updates.beforeCutCallback;
-		if (updates.beforePasteCallback !== undefined)
-			beforePasteCallback = updates.beforePasteCallback;
-		if (updates.beforeDeleteCallback !== undefined)
-			beforeDeleteCallback = updates.beforeDeleteCallback;
-		if (updates.shouldHandleKeyboardShortcuts !== undefined)
-			shouldHandleKeyboardShortcuts = updates.shouldHandleKeyboardShortcuts;
-		if (updates.nodeOutputTransformationCallback !== undefined)
-			nodeOutputTransformationCallback = updates.nodeOutputTransformationCallback;
-		if (updates.nodeInputTransformationCallback !== undefined)
-			nodeInputTransformationCallback = updates.nodeInputTransformationCallback;
-		if (updates.getContextMenuItemsCallback !== undefined)
-			getContextMenuItemsCallback = updates.getContextMenuItemsCallback;
-		if (updates.beforeActionCallback !== undefined) beforeActionCallback = updates.beforeActionCallback;
-		if (updates.onAction !== undefined) onAction = updates.onAction;
-		if (updates.isVirtualScrollEnabled !== undefined)
-			isVirtualScrollEnabled = updates.isVirtualScrollEnabled;
-		if (updates.virtualScrollItemHeight !== undefined) virtualScrollItemHeight = updates.virtualScrollItemHeight;
-		if (updates.virtualScrollOverscan !== undefined) virtualScrollOverscan = updates.virtualScrollOverscan;
-		if (updates.virtualScrollContainerHeight !== undefined)
-			virtualScrollContainerHeight = updates.virtualScrollContainerHeight;
-		if (updates.dragDropMode !== undefined) dragDropMode = updates.dragDropMode;
-		if (updates.dropZoneMode !== undefined) dropZoneMode = updates.dropZoneMode;
-		if (updates.isEmptyDropPlaceholderShown !== undefined)
-			isEmptyDropPlaceholderShown = updates.isEmptyDropPlaceholderShown;
-		if (updates.isTreeDropZoneEnabled !== undefined)
-			isTreeDropZoneEnabled = updates.isTreeDropZoneEnabled;
-		if (updates.labels !== undefined) labels = updates.labels;
-		if (updates.translateCallback !== undefined) translateCallback = updates.translateCallback;
-		if (updates.bodyClass !== undefined) bodyClass = updates.bodyClass;
-		if (updates.theme !== undefined) theme = updates.theme;
-		if (updates.themeSource !== undefined) themeSource = updates.themeSource;
-		if (updates.motion !== undefined) motion = updates.motion;
-		if (updates.iconSet !== undefined) iconSet = updates.iconSet;
-		if (updates.leafIconClass !== undefined) leafIconClass = updates.leafIconClass;
-		if (updates.toggleIconMode !== undefined) toggleIconMode = updates.toggleIconMode;
-		if (updates.nodeTitleOverflow !== undefined) nodeTitleOverflow = updates.nodeTitleOverflow;
-		if (updates.flatIndentSize !== undefined) flatIndentSize = updates.flatIndentSize;
-		if (updates.isNodeTooltipsShown !== undefined)
-			isNodeTooltipsShown = updates.isNodeTooltipsShown;
-		if (updates.getNodeTooltipCallback !== undefined)
-			getNodeTooltipCallback = updates.getNodeTooltipCallback;
-		if (updates.tooltipPlacement !== undefined) tooltipPlacement = updates.tooltipPlacement;
-		if (updates.tooltipDelay !== undefined) tooltipDelay = updates.tooltipDelay;
-		if (updates.tooltipOffset !== undefined) tooltipOffset = updates.tooltipOffset;
-		if (updates.shouldTooltipFollowCursor !== undefined)
-			shouldTooltipFollowCursor = updates.shouldTooltipFollowCursor;
-		if (updates.iconMember !== undefined) iconMember = updates.iconMember;
-		if (updates.getIconCallback !== undefined) getIconCallback = updates.getIconCallback;
-		if (updates.renderIconCallback !== undefined) renderIconCallback = updates.renderIconCallback;
-		if (updates.iconColorMember !== undefined) iconColorMember = updates.iconColorMember;
-		if (updates.getIconColorCallback !== undefined)
-			getIconColorCallback = updates.getIconColorCallback;
-		if (updates.shouldAlignNodeIcons !== undefined)
-			shouldAlignNodeIcons = updates.shouldAlignNodeIcons;
-		if (updates.selectedNodeClass !== undefined)
-			selectedNodeClass = updates.selectedNodeClass;
-		if (updates.getNodeClassCallback !== undefined) getNodeClassCallback = updates.getNodeClassCallback;
-		if (updates.getNodeContentClassCallback !== undefined) getNodeContentClassCallback = updates.getNodeContentClassCallback;
-		if (updates.focusedNodeClass !== undefined) focusedNodeClass = updates.focusedNodeClass;
-		if (updates.checkedNodeClass !== undefined) checkedNodeClass = updates.checkedNodeClass;
-		if (updates.dragOverNodeClass !== undefined) dragOverNodeClass = updates.dragOverNodeClass;
-		if (updates.draggedNodeClass !== undefined) draggedNodeClass = updates.draggedNodeClass;
-		if (updates.scrollHighlightTimeout !== undefined)
-			scrollHighlightTimeout = updates.scrollHighlightTimeout;
-		if (updates.scrollHighlightClass !== undefined)
-			scrollHighlightClass = updates.scrollHighlightClass;
-		if (updates.contextMenuXOffset !== undefined) contextMenuXOffset = updates.contextMenuXOffset;
-		if (updates.contextMenuYOffset !== undefined) contextMenuYOffset = updates.contextMenuYOffset;
-		if (updates.menuPresentation !== undefined) menuPresentation = updates.menuPresentation;
-		if (updates.menuSide !== undefined) menuSide = updates.menuSide;
-		if (updates.touchDragDelay !== undefined) touchDragDelay = updates.touchDragDelay;
-		if (updates.shouldIndicateUndraggable !== undefined)
-			shouldIndicateUndraggable = updates.shouldIndicateUndraggable;
-		if (updates.shouldExpandAsAccordion !== undefined) shouldExpandAsAccordion = updates.shouldExpandAsAccordion;
+		if ('searchTerm' in updates) searchTerm = updates.searchTerm;
+		if ('theme' in updates) theme = updates.theme;
+		if ('themeSource' in updates) themeSource = updates.themeSource;
+		if ('motion' in updates) motion = updates.motion ?? 'auto';
+		if ('iconSet' in updates) iconSet = updates.iconSet ?? 'chevron';
+		if ('isEmptyDropPlaceholderShown' in updates)
+			isEmptyDropPlaceholderShown = updates.isEmptyDropPlaceholderShown ?? false;
+		if ('menuPresentation' in updates) menuPresentation = updates.menuPresentation ?? 'auto';
+		if ('menuSide' in updates) menuSide = updates.menuSide ?? 'start';
+		if ('onContainerResize' in updates) onContainerResize = updates.onContainerResize;
+		if ('beforeKeydownCallback' in updates) beforeKeydownCallback = updates.beforeKeydownCallback;
+
+		const optionUpdates: Record<string, unknown> = {};
+		for (const key of TREE_OPTION_KEYS) {
+			if (key !== 'searchTerm' && key in updates) optionUpdates[key] = (updates as Record<string, unknown>)[key];
+		}
+		controller.updateProps(optionUpdates as Partial<TreeControllerProps<T>>);
 	}
 
 	// ── Arrow key navigation ─────────────────────────────────────────────
@@ -2279,14 +1403,14 @@
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
 	class="stv__container"
-	class:stv__tree-drop-zone--active={isTreeDropZoneEnabled && controller.isDropPlaceholderActive}
+	class:stv__tree-drop-zone--active={controller.isTreeDropZoneEnabled && controller.isDropPlaceholderActive}
 	tabindex="0"
 	data-theme={theme}
 	data-context-theme={contextTheme}
 	data-motion={motionLevel === 'auto' ? undefined : motionLevel}
-	data-node-title-overflow={nodeTitleOverflow}
+	data-node-title-overflow={controller.nodeTitleOverflow}
 	data-icon-set={iconSet}
-	data-toggle-icon-mode={toggleIconMode}
+	data-toggle-icon-mode={controller.toggleIconMode}
 	data-tree-id={controller.treeId}
 	bind:this={treeContainerRef}
 	onkeydown={handleTreeKeydown}
@@ -2414,7 +1538,7 @@
 
 	<!-- Context menu snippet: rendered here, moved into core's custom-menu element (openMenu's
 	     renderMenuCallback, the effect above) — the callback menu is all core's. -->
-	{#if controller.contextMenuVisible && controller.contextMenuNode && contextMenu && !getContextMenuItemsCallback}
+	{#if controller.contextMenuVisible && controller.contextMenuNode && contextMenu && !controller.getContextMenuItemsHandler}
 		<div bind:this={snippetMenuHost} class="stv__context-menu-content" role="menu">
 			{@render contextMenu(
 				controller.contextMenuNode,

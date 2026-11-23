@@ -62,8 +62,8 @@ RECOMMENDED PROPS
 |------|------|---------|-------------|
 | displayValueMember | string | null | Property for display text |
 | sortCallback | function | built-in | Custom sort function |
-| expandLevel | number | 2 | Auto-expand nodes to this depth |
-| treeId | string | auto | Stable id (needed for cross-tree clipboard/drag) |
+| expandLevel | number | 0 | Auto-expand nodes to this depth (0 = roots only) |
+| treeId | string | auto | Stable id (needed for cross-tree clipboard/drag); init-only — a later change is ignored with a warning |
 | clickBehavior | string | 'expand-and-focus' | 'select' \| 'expand' \| 'expand-and-focus' |
 | isCheckboxesShown | boolean | false | Render a selection checkbox per node |
 | checkboxMode | string | 'independent' | 'independent' \| 'cascade' |

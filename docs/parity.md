@@ -14,6 +14,8 @@ attribute in parentheses); svelte names are `<Tree>` props / exports. Decided 20
 | web | svelte | status |
 |---|---|---|
 | `treeId`, `idMember`, `pathMember`, `displayValueMember`, `parentPathMember`, `levelMember`, `isExpandedMember`, `isCheckedMember`, `isDraggableMember`, `isDropAllowedMember`, `hasChildrenMember`, `searchValueMember`, `isSelectableMember`, `isCollapsibleMember`, `orderMember`, `allowedDropPositionsMember`, `iconMember`, `iconColorMember` | same | same |
+| changing an option built into the LTree after setup (every `*Member`, the `get*Callback` mappings, `orderMember`, `isSorted`, `sortCallback`, `treePathSeparator`, `expandLevel`, the search-index options) — rebuilds it from the current data; expansion / selection / checks / focus kept by path, re-seeded by a new `expandLevel` / `isExpandedMember` / `getIsExpandedCallback` (expansion) or `isCheckedMember` / `getIsCheckedCallback` (checks) | same (`ltree.reconfigure` + re-insert; `update()` and `<Tree>` props) | same (2026-11-23, svelte REVIEW §3.1 B17) |
+| changing `treeId` after setup — renames the tree (registry, nodes) | init-only: the change is ignored with a warning (re-create the tree: `{#key treeId}`) | intentional (2026-11-23, svelte B16) — a Svelte component is re-created with `{#key}`; the element lives on and renames |
 | `treePathSeparator` (`'.'`), `clickBehavior` (`'expand-and-focus'`), `shouldExpandAsAccordion`, `isSortingEnabled` (`true`), `isSorted` | same | same |
 | `expandLevel` (`expand-level`, default `0` = roots only) | `expandLevel` (`0`) | same |
 | `shouldUseInternalSearchIndex` (`use-internal-search-index`, default `true`) | same (`true`) | same |

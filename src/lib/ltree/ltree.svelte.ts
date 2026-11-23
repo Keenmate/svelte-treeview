@@ -14,7 +14,7 @@ import {
 	bumpRev
 } from '../helpers/ltree-helpers.js';
 
-import type { Ltree, InsertArrayResult, InsertBranchResult, ReplaceBranchResult, RemoveBranchResult, NodeContext, SortContext, ExpandOptions, InsertPosition, SortOptions, NodesReorderContext } from './types.js';
+import type { Ltree, LTreeConfig, InsertArrayResult, InsertBranchResult, ReplaceBranchResult, RemoveBranchResult, NodeContext, SortContext, ExpandOptions, InsertPosition, SortOptions, NodesReorderContext } from './types.js';
 import { createSearchIndex } from './flex.js';
 import { Indexer, DEFAULT_INDEXER_BATCH_SIZE } from './indexer.js';
 
@@ -72,18 +72,35 @@ export function createLTree<T>(
 
 	opts?: Partial<Ltree<T>>
 ): Ltree<T> {
-	let shouldCalculateParentPath: boolean = isEmptyString(_parentPathMember);
-	let shouldCalculateLevel: boolean = isEmptyString(_levelMember);
-	let shouldCalculateHasChildren: boolean = isEmptyString(_hasChildrenMember);
-	let shouldCalculateIsExpanded: boolean = isEmptyString(_isExpandedMember);
-	let shouldCalculateIsSelectable: boolean = isEmptyString(_isSelectableMember);
-	let shouldCalculateIsChecked: boolean = isEmptyString(_isCheckedMember);
-	let shouldCalculateIsDraggable: boolean = isEmptyString(_isDraggableMember);
-	let shouldCalculateIsDropAllowed: boolean = isEmptyString(_isDropAllowedMember);
-	let shouldCalculateAllowedDropPositions: boolean = isEmptyString(_allowedDropPositionsMember);
-	let shouldCalculateIsCollapsible: boolean = isEmptyString(_isCollapsibleMember);
-	let shouldCalculateDisplayValue: boolean = isEmptyString(_displayValueMember);
-	let shouldCalculateSearchValue: boolean = isEmptyString(_searchValueMember);
+	// Which node fields come from the data (a member is set) and which are calculated.
+	// Re-derived by reconfigure().
+	let shouldCalculateParentPath = false;
+	let shouldCalculateLevel = false;
+	let shouldCalculateHasChildren = false;
+	let shouldCalculateIsExpanded = false;
+	let shouldCalculateIsSelectable = false;
+	let shouldCalculateIsChecked = false;
+	let shouldCalculateIsDraggable = false;
+	let shouldCalculateIsDropAllowed = false;
+	let shouldCalculateAllowedDropPositions = false;
+	let shouldCalculateIsCollapsible = false;
+	let shouldCalculateDisplayValue = false;
+	let shouldCalculateSearchValue = false;
+	function deriveCalculatedFields() {
+		shouldCalculateParentPath = isEmptyString(_parentPathMember);
+		shouldCalculateLevel = isEmptyString(_levelMember);
+		shouldCalculateHasChildren = isEmptyString(_hasChildrenMember);
+		shouldCalculateIsExpanded = isEmptyString(_isExpandedMember);
+		shouldCalculateIsSelectable = isEmptyString(_isSelectableMember);
+		shouldCalculateIsChecked = isEmptyString(_isCheckedMember);
+		shouldCalculateIsDraggable = isEmptyString(_isDraggableMember);
+		shouldCalculateIsDropAllowed = isEmptyString(_isDropAllowedMember);
+		shouldCalculateAllowedDropPositions = isEmptyString(_allowedDropPositionsMember);
+		shouldCalculateIsCollapsible = isEmptyString(_isCollapsibleMember);
+		shouldCalculateDisplayValue = isEmptyString(_displayValueMember);
+		shouldCalculateSearchValue = isEmptyString(_searchValueMember);
+	}
+	deriveCalculatedFields();
 
 	// Reactive so a runtime change (Tree prop / update()) re-renders the fallback labels.
 	let displayValueFallbackState = $state<string>(opts?.displayValueFallback ?? '[N/A]');
@@ -132,9 +149,6 @@ export function createLTree<T>(
 	let filteredRoot = createLTreeNode<T>();
 	let searchIndex: Index | null | undefined = null;
 
-	if (_shouldUseInternalSearchIndex)
-		searchIndex = _initializeIndexCallback ? _initializeIndexCallback() : createSearchIndex();
-
 	let changeTracker = $state(Symbol());
 	let nodeCount = 0;
 	let maxLevel = 0;
@@ -176,8 +190,14 @@ export function createLTree<T>(
 	let _isRefilterScheduled = false;
 	let _lastFilterSearchOptions: SearchOptions | undefined = undefined;
 
-	// Initialize indexer when search index is available
-	if (_shouldUseInternalSearchIndex && searchIndex) {
+	/** (Re)create the search index + its async indexer from the current options. */
+	function setUpSearch() {
+		indexer?.clearQueue();
+		indexer = null;
+		searchIndex = null;
+		if (!_shouldUseInternalSearchIndex) return;
+		searchIndex = _initializeIndexCallback ? _initializeIndexCallback() : createSearchIndex();
+		if (!searchIndex) return;
 		indexer = new Indexer<T>(
 			_treeId || 'unknown',
 			searchIndex,
@@ -188,6 +208,7 @@ export function createLTree<T>(
 			_indexerTimeout || 50 // timeout with fallback
 		);
 	}
+	setUpSearch();
 
 	return {
 		// Properties
@@ -230,6 +251,77 @@ export function createLTree<T>(
 		orderMember: _orderMember,
 		isSorted: false,
 		isSortingEnabled: true,
+
+		reconfigure(config: LTreeConfig<T>) {
+			_idMember = config.idMember ?? '';
+			_pathMember = config.pathMember ?? '';
+			_parentPathMember = config.parentPathMember;
+			_levelMember = config.levelMember;
+			_hasChildrenMember = config.hasChildrenMember;
+			_isExpandedMember = config.isExpandedMember;
+			_getIsExpandedCallback = config.getIsExpandedCallback;
+			_isSelectableMember = config.isSelectableMember;
+			_getIsSelectableCallback = config.getIsSelectableCallback;
+			_isCheckedMember = config.isCheckedMember;
+			_getIsCheckedCallback = config.getIsCheckedCallback;
+			_isDraggableMember = config.isDraggableMember;
+			_getIsDraggableCallback = config.getIsDraggableCallback;
+			_isDropAllowedMember = config.isDropAllowedMember;
+			_getIsDropAllowedCallback = config.getIsDropAllowedCallback;
+			_allowedDropPositionsMember = config.allowedDropPositionsMember;
+			_getAllowedDropPositionsCallback = config.getAllowedDropPositionsCallback;
+			_isCollapsibleMember = config.isCollapsibleMember;
+			_getIsCollapsibleCallback = config.getIsCollapsibleCallback;
+			_displayValueMember = config.displayValueMember;
+			_getDisplayValueCallback = config.getDisplayValueCallback;
+			_searchValueMember = config.searchValueMember;
+			_getSearchValueCallback = config.getSearchValueCallback;
+			_orderMember = config.orderMember;
+			_treePathSeparator = config.treePathSeparator;
+			_expandLevel = config.expandLevel;
+			_shouldUseInternalSearchIndex = config.shouldUseInternalSearchIndex;
+			_initializeIndexCallback = config.initializeIndexCallback;
+			_indexerBatchSize = config.indexerBatchSize;
+			_indexerTimeout = config.indexerTimeout;
+			deriveCalculatedFields();
+
+			// The same settings the methods read off the object.
+			this.treePathSeparator = _treePathSeparator || '.';
+			this.idMember = _idMember;
+			this.pathMember = _pathMember;
+			this.parentPathMember = _parentPathMember;
+			this.levelMember = _levelMember;
+			this.hasChildrenMember = _hasChildrenMember;
+			this.isExpandedMember = _isExpandedMember;
+			this.getIsExpandedCallback = _getIsExpandedCallback;
+			this.isSelectableMember = _isSelectableMember;
+			this.getIsSelectableCallback = _getIsSelectableCallback;
+			this.isCheckedMember = _isCheckedMember;
+			this.getIsCheckedCallback = _getIsCheckedCallback;
+			this.isDraggableMember = _isDraggableMember;
+			this.getIsDraggableCallback = _getIsDraggableCallback;
+			this.isDropAllowedMember = _isDropAllowedMember;
+			this.getIsDropAllowedCallback = _getIsDropAllowedCallback;
+			this.allowedDropPositionsMember = _allowedDropPositionsMember;
+			this.getAllowedDropPositionsCallback = _getAllowedDropPositionsCallback;
+			this.isCollapsibleMember = _isCollapsibleMember;
+			this.getIsCollapsibleCallback = _getIsCollapsibleCallback;
+			this.displayValueMember = _displayValueMember;
+			this.getDisplayValueCallback = _getDisplayValueCallback;
+			this.searchValueMember = _searchValueMember;
+			this.getSearchValueCallback = _getSearchValueCallback;
+			this.orderMember = _orderMember;
+			this.isSorted = config.isSorted;
+			this.sortCallback = config.sortCallback;
+			setUpSearch();
+			dataLogger.debug(`[${_treeId}] ltree reconfigured`, {
+				idMember: _idMember,
+				pathMember: _pathMember,
+				treePathSeparator: this.treePathSeparator,
+				expandLevel: _expandLevel,
+				hasSearchIndex: !!searchIndex
+			});
+		},
 
 		// Properties for filtering
 		filteredTree,

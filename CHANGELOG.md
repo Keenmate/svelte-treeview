@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.0.0-rc18] - 2026-11-22
 
+### Fixed — props changed after init apply (2026-11-23)
+
+- Every `*Member` prop, the `get*Callback` mappings (`getIsExpandedCallback`, `getDisplayValueCallback`, `getIsDraggableCallback`, …), `orderMember`, `isSorted`, `sortCallback`, `treePathSeparator`, `expandLevel` and the search-index options (`shouldUseInternalSearchIndex`, `initializeIndexCallback`, `indexerBatchSize`, `indexerTimeout`) were read once, when the tree was built — a later change on `<Tree>` or through `update()` did nothing. Now the tree re-inserts its current data with the new settings; expansion, selection, checks and focus are kept by path (a new `expandLevel` / `isExpandedMember` / `getIsExpandedCallback` re-seeds the expansion, a new `isCheckedMember` / `getIsCheckedCallback` the checks). A changed `treePathSeparator` used to switch the separator without rebuilding the paths. Guarded by `e2e/regressions.spec.ts` "B17" (fails on the old code).
+- `update()` covers every prop but the snippets — `isProgressiveRenderEnabled`, `initialBatchSize`, `maxBatchSize`, `onRenderStart` / `onRenderProgress` / `onRenderComplete`, `onIndexProgress`, `onSearchStatusChange`, `navigationOverrides` and the rest that it silently skipped. `navigationOverrides` is live on `<Tree>` too (it was read once).
+
+### Changed — `treeId` is init-only (2026-11-23)
+
+- Changing `treeId` after the tree was built half-applied it (the cross-tree registry kept the old id, the nodes kept the old id, row ids diverged from `scrollToPath`); now the change is ignored and logged as a warning. Re-create the tree to rename it (`{#key treeId}`). web-treeview renames live — recorded in `docs/parity.md`. Guarded by `e2e/regressions.spec.ts` "B16".
+- `controller.updateProps(updates)`: a key that is present applies, and `undefined` means the prop's default (it used to mean "leave it"). State props (`nodes`, `focusedNode`, `selectedPaths`, `checkedPaths`, `expandedPaths`) still ignore `undefined`. New `controller.getOption(key)` returns the last applied value.
+- `Ltree.reconfigure(config)` (type `LTreeConfig`, exported) swaps the node-building settings in place; re-insert the data to rebuild the nodes with them.
+
+### Internal — one prop table (2026-11-23)
+
+- `core/tree-props.ts` lists every controller prop with its default, which ones are built into the ltree, which are init-only and which controller field each is stored in. The controller constructor and `updateProps` iterate it; `<Tree>` keeps only bindables, snippets and its own view props and syncs the rest with one effect per key; `update()` routes through `controller.updateProps`. Replaces four hand-written prop lists in `Tree.svelte` (~85 sync effects, the 130-branch `update()`) and three in the controller — about 800 lines less. Defaults now agree everywhere (`shouldAlignNodeIcons`; the docs' `expandLevel` 2 / `shouldHandleKeyboardShortcuts` false were stale — the defaults are 0 and true). (REVIEW-2026-11-19 §3.1.)
+
 ### Removed — the HTML5 drag API: `startDrag` / `dragOver` / `dragLeave` / `drop` / `dropAt` (2026-11-22)
 
 - The tree drags with pointer events (mouse, pen, touch) since rc15; these controller methods were the leftover native-drag path for custom renderers and ran a second drag implementation next to it. A custom renderer now calls `controller.attachPointerDrag(container)` (below). `_onNodeDragEnd` is gone with them; `cancelDrag()` stays and aborts a pointer drag. The drag contexts' `event` is now typed `PointerEvent` (was `DragEvent | TouchEvent | PointerEvent`) — nothing produced the other two any more. No alias.
