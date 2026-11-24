@@ -3,7 +3,7 @@
 	// R1… / B1… are that report's). Targeted by e2e/regressions.spec.ts, which drives the trees
 	// through window.__main / __snippet / __input (the Tree instance exports) + a few setters.
 	import Tree from '$lib/components/Tree.svelte';
-	import ContextMenuItemC from '$lib/components/ContextMenuItem.svelte';
+	import ContextMenuItem from '$lib/components/ContextMenuItem.svelte';
 	import type { LTreeNode } from '$lib/ltree/types.js';
 
 	type Item = { id: number; path: string; name: string };
@@ -135,7 +135,7 @@ shortcuts: <span data-testid="shortcut-hits">{shortcutHits}</span></pre>
 				displayValueMember="name"
 			>
 				{#snippet contextMenu(node: LTreeNode<Item>, close: () => void)}
-					<ContextMenuItemC text="Open" onClick={() => close()} />
+					<ContextMenuItem text="Open" onClick={() => close()} />
 				{/snippet}
 			</Tree>
 		</div>

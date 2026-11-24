@@ -6,7 +6,7 @@ import { test, expect, Page, Locator } from '@playwright/test';
  *   - NodeRef (onNodeClick/onNodeDoubleClick): path, node, parent, siblings.
  *   - NodeDragContext (onNodeDragStart/onNodeDragOver): NodeRef + event + dragged[].
  *   - NodeDropContext (onNodeDrop): source, target, dragged[], dropped[]|null, position, operation.
- *   - ClipboardEventContext (onNodeCopy/onNodeCut/onNodeDelete) + SelectionChangeContext (onHighlight/Selection).
+ *   - NodeCopyContext / NodeCutContext / NodeDeleteContext + SelectionChangeContext / CheckedChangeContext.
  *   - single-fire semantics: a drag fires once; `dragged` carries the full multi-set.
  *   - `dropped` is populated for auto-handled same-tree ops, null cross-tree.
  */

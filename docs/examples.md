@@ -312,23 +312,23 @@ The tree supports two context-menu styles: **callback-based** (imperative, share
 
 ```svelte
 <script lang="ts">
-  import { Tree, ContextMenuItemC, ContextMenuDividerC } from '@keenmate/svelte-treeview';
+  import { Tree, ContextMenuItem, ContextMenuDivider } from '@keenmate/svelte-treeview';
 </script>
 
 <Tree nodes={data} idMember="path" pathMember="path">
   {#snippet contextMenu(node, close)}
-    <ContextMenuItemC text="Copy" icon="📋" shortcut="C"
+    <ContextMenuItem text="Copy" icon="📋" shortcut="C"
       onClick={() => { copy(node); close(); }} />
     {#if node.data?.type === 'folder'}
-      <ContextMenuItemC text="Export As..." icon="📤">
-        <ContextMenuItemC text="JSON" shortcut="J"
+      <ContextMenuItem text="Export As..." icon="📤">
+        <ContextMenuItem text="JSON" shortcut="J"
           onClick={() => { exportAs(node, 'json'); close(); }} />
-        <ContextMenuItemC text="XML" shortcut="X"
+        <ContextMenuItem text="XML" shortcut="X"
           onClick={() => { exportAs(node, 'xml'); close(); }} />
-      </ContextMenuItemC>
+      </ContextMenuItem>
     {/if}
-    <ContextMenuDividerC text="Danger zone" />
-    <ContextMenuItemC text="Delete" icon="🗑️" isDanger
+    <ContextMenuDivider text="Danger zone" />
+    <ContextMenuItem text="Delete" icon="🗑️" isDanger
       isDisabled={!!node.data?.readonly}
       onClick={() => { del(node); close(); }} />
   {/snippet}

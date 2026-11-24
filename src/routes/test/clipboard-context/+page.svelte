@@ -2,7 +2,7 @@
 	// Deterministic e2e fixture that captures the EXACT context object each clipboard
 	// callback receives, serialized to the DOM so a spec can assert field-by-field:
 	//   - nodeOutputTransformationCallback / nodeInputTransformationCallback (NodeTransformContext)
-	//   - beforeCopyCallback / beforeCutCallback (BeforeCopyContext)
+	//   - beforeCopyCallback / beforeCutCallback (BeforeCopyContext / BeforeCutContext)
 	//   - beforePasteCallback (BeforePasteContext) / beforeDeleteCallback (BeforeDeleteContext)
 	//   - beforeKeydownCallback ({ event, focusedNode, selectedNodes, controller })
 	// Two trees (treeA source / treeB target) exercise same-tree vs cross-tree source refs.
@@ -13,6 +13,7 @@
 		NodeTransformContext,
 		NodeTransformCallbackContext,
 		BeforeCopyContext,
+		BeforeCutContext,
 		BeforePasteContext,
 		BeforeDeleteContext,
 		LTreeNode
@@ -114,7 +115,7 @@
 	function beforeCopy(ctx: BeforeCopyContext<Item>) {
 		beforeCopyLog = [...beforeCopyLog, { operation: ctx.operation, paths: ctx.paths, nodes: ctx.nodes.map((n) => n.path) }];
 	}
-	function beforeCut(ctx: BeforeCopyContext<Item>) {
+	function beforeCut(ctx: BeforeCutContext<Item>) {
 		beforeCutLog = [...beforeCutLog, { operation: ctx.operation, paths: ctx.paths, nodes: ctx.nodes.map((n) => n.path) }];
 	}
 	function beforePaste(ctx: BeforePasteContext<Item>) {

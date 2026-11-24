@@ -3,7 +3,7 @@ CONTEXT MENU
 Same model as @keenmate/web-treeview (core /actions, vendored in src/lib/vendor/actions).
 Two approaches:
 - Callback-based (recommended): getContextMenuItemsCallback prop → entries
-- Snippet-based: contextMenu snippet with ContextMenuItemC / ContextMenuDividerC components
+- Snippet-based: contextMenu snippet with ContextMenuItem / ContextMenuDivider components
 No menu is shown by default — the menu is whatever the callback returns.
 
 TYPES
@@ -72,21 +72,21 @@ CALLBACK-BASED EXAMPLE
 SNIPPET-BASED CONTEXT MENU
 ---------------------------
 <script>
-  import { ContextMenuItemC, ContextMenuDividerC } from '@keenmate/svelte-treeview';
+  import { ContextMenuItem, ContextMenuDivider } from '@keenmate/svelte-treeview';
 </script>
 
 <Tree nodes={data}>
   {#snippet contextMenu(node, closeMenu)}
-    <ContextMenuItemC
+    <ContextMenuItem
       text="Open"
       icon="📂"
       shortcut="Enter"
       onClick={() => { openItem(node.data); closeMenu(); }}
     />
-    <ContextMenuDividerC text="Edit" />
-    <ContextMenuItemC text="Rename" icon="✏️" shortcut="F2" onClick={() => rename(node)} />
+    <ContextMenuDivider text="Edit" />
+    <ContextMenuItem text="Rename" icon="✏️" shortcut="F2" onClick={() => rename(node)} />
     {#if node.data?.canDelete}
-      <ContextMenuItemC
+      <ContextMenuItem
         text="Delete"
         icon="🗑️"
         isDanger
@@ -151,7 +151,7 @@ Hide items dynamically (callback approach):
 
 In snippet approach, use {#if}:
 {#if user.isAdmin}
-  <ContextMenuItemC text="Admin Panel" onClick={() => openAdmin()} />
+  <ContextMenuItem text="Admin Panel" onClick={() => openAdmin()} />
 {/if}
 
 POSITION OFFSET

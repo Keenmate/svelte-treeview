@@ -313,23 +313,27 @@ export interface NodeDropContext<T> extends TreeCallbackContext<T> {
 	event: PointerEvent;
 }
 
-/**
- * Context for the set-oriented clipboard/delete events (onNodeCopy / onNodeCut / onNodeDelete), mirroring
- * the BeforeCopyContext/BeforeDeleteContext shape of their before* twins. `nodes` are the
- * resolved live nodes for `paths`; for onNodeCut/onNodeDelete they are pre-removal snapshots captured
- * before the nodes left the tree (the tree no longer holds them by the time the event fires).
- */
-export interface ClipboardEventContext<T> extends TreeCallbackContext<T> {
-	/** Present for copy/cut; omitted for delete (which has no copy/cut operation). */
-	operation?: 'copy' | 'cut';
+/** ctx of `onNodeCopy` — fires after a copy; `nodes` are the live nodes of `paths`. */
+export interface NodeCopyContext<T> extends TreeCallbackContext<T> {
+	operation: 'copy';
 	paths: string[];
 	nodes: LTreeNode<T>[];
 }
 
-/**
- * Context for the selection-change events (onSelectionChange = UI multi-select set;
- * onCheckedChange = checkbox set). `paths` is the new set, `nodes` its resolved live nodes.
- */
+/** ctx of `onNodeCut` — fires after a cut; `nodes` are still live (a cut only dims until the paste). */
+export interface NodeCutContext<T> extends TreeCallbackContext<T> {
+	operation: 'cut';
+	paths: string[];
+	nodes: LTreeNode<T>[];
+}
+
+/** ctx of `onNodeDelete` — fires after the Delete command; `nodes` are PRE-REMOVAL snapshots
+ *  (the tree no longer holds them by the time the event fires). */
+export interface NodeDeleteContext<T> extends TreeCallbackContext<T> {
+	paths: string[];
+	nodes: LTreeNode<T>[];
+}
+
 /** ctx of `beforeKeydownCallback` — return `false` to suppress the built-in handling. Synchronous. */
 export interface KeydownContext<T> {
 	event: KeyboardEvent;
@@ -338,7 +342,15 @@ export interface KeydownContext<T> {
 	controller: TreeController<T>;
 }
 
+/** ctx of `onSelectionChange` — the new click selection (`selectedPaths`) and its live nodes. */
 export interface SelectionChangeContext<T> extends TreeCallbackContext<T> {
+	paths: Set<string>;
+	nodes: LTreeNode<T>[];
+}
+
+/** ctx of `onCheckedChange` — the new checked set as emitted (`checkedPaths`, projected through
+ *  `cascadeCheckPolicy`) and its live nodes. */
+export interface CheckedChangeContext<T> extends TreeCallbackContext<T> {
 	paths: Set<string>;
 	nodes: LTreeNode<T>[];
 }
@@ -383,13 +395,21 @@ export interface ExpandedChangeContext<T> extends TreeCallbackContext<T> {
 export type BeforeExpandContext<T> = NodeRef<T> & TreeCallbackContext<T>;
 
 /**
- * Context for beforeCopyCallback / beforeCutCallback — batch policy, runs before the
- * snapshot is taken. Return a new path list to rewrite the set, false to block, or nothing
- * to proceed.
+ * ctx of `beforeCopyCallback` — batch policy, runs before the snapshot is taken. Return a new
+ * path list to rewrite the set, false to block, or nothing to proceed.
  */
 export interface BeforeCopyContext<T> extends TreeCallbackContext<T> {
-	operation: 'copy' | 'cut';
-	/** The paths about to be copied/cut (the selection, or the explicit paths arg). */
+	operation: 'copy';
+	/** The paths about to be copied (the selection, or the explicit paths arg). */
+	paths: string[];
+	/** The resolved live nodes for those paths (missing paths are dropped). */
+	nodes: LTreeNode<T>[];
+}
+
+/** ctx of `beforeCutCallback` — same as `BeforeCopyContext`, for a cut. */
+export interface BeforeCutContext<T> extends TreeCallbackContext<T> {
+	operation: 'cut';
+	/** The paths about to be cut (the selection, or the explicit paths arg). */
 	paths: string[];
 	/** The resolved live nodes for those paths (missing paths are dropped). */
 	nodes: LTreeNode<T>[];
@@ -398,7 +418,7 @@ export interface BeforeCopyContext<T> extends TreeCallbackContext<T> {
 /**
  * Context for beforeDeleteCallback — batch policy before the built-in Delete removes nodes.
  * Return a narrowed path list to delete only those, false to block entirely, or nothing to
- * proceed. Mirrors BeforeCopyContext's paths/nodes shape (delete has no copy/cut operation).
+ * proceed. Same paths/nodes shape as BeforeCopyContext (delete has no copy/cut operation).
  */
 export interface BeforeDeleteContext<T> extends TreeCallbackContext<T> {
 	/** The top-level paths about to be deleted. */
@@ -721,7 +741,7 @@ export interface TreeEngineProps<T> {
 	 *  node's NodeRef. Not fired when a tree-drop-zone catches the forwarded drop instead. */
 	onNodeDropReject?: (ctx: NodeEventContext<T>) => void;
 	onSelectionChange?: (ctx: SelectionChangeContext<T>) => void;
-	onCheckedChange?: (ctx: SelectionChangeContext<T>) => void;
+	onCheckedChange?: (ctx: CheckedChangeContext<T>) => void;
 	/** A node expanded (toggle, keyboard, `expandNodes`, after any `beforeExpandCallback`
 	 *  load; NOT `expandAll` / expand-level seeding). Skipped with `isSilent`. */
 	onNodeExpand?: (ctx: NodeEventContext<T>) => void;
@@ -751,12 +771,12 @@ export interface TreeEngineProps<T> {
 	// Post-operation clipboard notifications (fired AFTER the op succeeds). Symmetric
 	// with the before*Callback interceptors: onNodeCopy/onNodeCut/onNodeDelete carry the final paths
 	// plus resolved nodes (pre-removal snapshots for cut/delete); onNodePaste the PasteResult.
-	onNodeCopy?: (ctx: ClipboardEventContext<T>) => void;
-	onNodeCut?: (ctx: ClipboardEventContext<T>) => void;
+	onNodeCopy?: (ctx: NodeCopyContext<T>) => void;
+	onNodeCut?: (ctx: NodeCutContext<T>) => void;
 	onNodePaste?: (result: PasteResult<T> & TreeCallbackContext<T>) => void;
 	/** Fired after `deleteNodes` removes nodes (built-in Delete key or the public method),
 	 *  with the top-level paths that were actually removed plus their pre-removal nodes. */
-	onNodeDelete?: (ctx: ClipboardEventContext<T>) => void;
+	onNodeDelete?: (ctx: NodeDeleteContext<T>) => void;
 
 	/**
 	 * Built-in keyboard shortcuts (default true; false = opt out): Ctrl/Cmd+C/X/V (copy/cut/paste),
@@ -802,7 +822,7 @@ export interface TreeEngineProps<T> {
 	 */
 	beforeDragStartCallback?: (ctx: DragStartContext<T>) => string[] | false | void;
 	beforeCopyCallback?: (ctx: BeforeCopyContext<T>) => string[] | false | void;
-	beforeCutCallback?: (ctx: BeforeCopyContext<T>) => string[] | false | void;
+	beforeCutCallback?: (ctx: BeforeCutContext<T>) => string[] | false | void;
 	beforePasteCallback?: (
 		ctx: BeforePasteContext<T>
 	) => { targetPath?: string; position?: 'child' | 'before' | 'after' } | false | void;
@@ -3322,12 +3342,12 @@ export class TreeEngine<T> {
 			list.map((p) => this.tree.getNodeByPath(p)).filter((n): n is LTreeNode<T> => n !== null);
 
 		// Interceptor: can modify paths or block
-		const before = operation === 'copy' ? this.beforeCopyHandler : this.beforeCutHandler;
-		if (before) {
-			const result = before(this._ctx({ operation, paths: pathsToUse, nodes: nodesOf(pathsToUse) }));
-			if (result === false) return;
-			if (Array.isArray(result)) pathsToUse = result;
-		}
+		const result =
+			operation === 'copy'
+				? this.beforeCopyHandler?.(this._ctx({ operation, paths: pathsToUse, nodes: nodesOf(pathsToUse) }))
+				: this.beforeCutHandler?.(this._ctx({ operation, paths: pathsToUse, nodes: nodesOf(pathsToUse) }));
+		if (result === false) return;
+		if (Array.isArray(result)) pathsToUse = result;
 
 		const entries: ClipboardEntry<T>[] = [];
 		const cutSet = new Set<string>();
@@ -3347,8 +3367,8 @@ export class TreeEngine<T> {
 		if (operation === 'copy') uiLogger.debug(`[clipboard] Copied ${entries.length} node(s)`);
 		else uiLogger.debug(`[clipboard] Cut ${entries.length} node(s), dimming ${cutSet.size} paths`);
 		// Cut only dims — nodes aren't removed until paste — so they're still live here.
-		const handler = operation === 'copy' ? this.onNodeCopyHandler : this.onNodeCutHandler;
-		handler?.(this._ctx({ operation, paths: pathsToUse, nodes: nodesOf(pathsToUse) }));
+		if (operation === 'copy') this.onNodeCopyHandler?.(this._ctx({ operation, paths: pathsToUse, nodes: nodesOf(pathsToUse) }));
+		else this.onNodeCutHandler?.(this._ctx({ operation, paths: pathsToUse, nodes: nodesOf(pathsToUse) }));
 	}
 
 	/**

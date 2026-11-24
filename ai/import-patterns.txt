@@ -22,8 +22,8 @@ Named exports from the package:
 import {
   Tree,
   TreeProvider,
-  ContextMenuItemC,
-  ContextMenuDividerC
+  ContextMenuItem,
+  ContextMenuDivider
 } from '@keenmate/svelte-treeview';
 
 // Core: the engine (for your own renderer) + the public controller type every ctx carries
@@ -40,8 +40,11 @@ import type {
   NodeRef,
   NodeDropContext,
   NodeDragContext,
-  ClipboardEventContext,
+  NodeCopyContext,
+  NodeCutContext,
+  NodeDeleteContext,
   SelectionChangeContext,
+  CheckedChangeContext,
   PasteResult,
   NodeTransformContext
 } from '@keenmate/svelte-treeview';
@@ -133,8 +136,8 @@ import type {
   NodeRef,               // { path, node, parent, siblings } — shared event shape
   NodeDropContext,       // onNodeDrop context object
   NodeDragContext,       // onNodeDragStart / onNodeDragOver context
-  ClipboardEventContext, // onNodeCopy / onNodeCut / onNodeDelete context
-  SelectionChangeContext,// onSelectionChange / onCheckedChange context
+  NodeCopyContext,       // onNodeCopy context (NodeCutContext / NodeDeleteContext for cut / delete)
+  SelectionChangeContext,// onSelectionChange context (CheckedChangeContext for onCheckedChange)
   PasteResult,           // onNodePaste result
   NodeTransformContext   // copy/paste transformation callback context
 } from '@keenmate/svelte-treeview';

@@ -53,8 +53,8 @@ ContextMenuDivider → context-menu.txt, typescript-types.txt
 TreeMenuEntry / TreeMenuContext / TreeAction → context-menu.txt, typescript-types.txt
 menuDivider → context-menu.txt
 beforeActionCallback / onAction → context-menu.txt, events-callbacks.txt
-ContextMenuItemC → context-menu.txt
-ContextMenuDividerC → context-menu.txt
+ContextMenuItem → context-menu.txt
+ContextMenuDivider → context-menu.txt
 copyNodes → tree-editing.txt
 cutNodes → tree-editing.txt
 cutPaths → tree-editing.txt

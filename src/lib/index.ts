@@ -1,14 +1,14 @@
 // Reexport your entry components here
 export {default as Tree} from "./components/Tree.svelte"
 export {default as TreeProvider} from "./components/TreeProvider.svelte"
-export {default as ContextMenuItemC} from "./components/ContextMenuItem.svelte"
-export {default as ContextMenuDividerC} from "./components/ContextMenuDivider.svelte"
+export {default as ContextMenuItem} from "./components/ContextMenuItem.svelte"
+export {default as ContextMenuDivider} from "./components/ContextMenuDivider.svelte"
 
 // Core layer: the engine (for renderers) + the public controller every ctx carries
 export { TreeEngine } from "./core/TreeEngine.svelte.js"
 export type { TreeController } from "./core/tree-controller.js"
 export { TREE_CONTROLLER_METHODS } from "./core/tree-controller.js"
-export type { TreeEngineProps, PasteResult, NodeTransformContext, NodeTransformCallbackContext, NodeTransformCallback, BeforeCheckboxToggleContext, KeydownContext, BeforePasteContext, BeforeCopyContext, BeforeDeleteContext, NodeRef, NodeEventContext, NodeDragContext, DragStartContext, BeforeDropContext, DropGroup, NodeDropContext, ClipboardEventContext, SelectionChangeContext, ExpandedChangeContext, BeforeExpandContext, TreeCallbackContext, FocusChangeContext, NodesChangeContext, ScrollToPathOptions, NodeIconRenderContext, TreeRenderIconCallback } from "./core/TreeEngine.svelte.js"
+export type { TreeEngineProps, PasteResult, NodeTransformContext, NodeTransformCallbackContext, NodeTransformCallback, BeforeCheckboxToggleContext, KeydownContext, BeforePasteContext, BeforeCopyContext, BeforeCutContext, BeforeDeleteContext, NodeRef, NodeEventContext, NodeDragContext, DragStartContext, BeforeDropContext, DropGroup, NodeDropContext, NodeCopyContext, NodeCutContext, NodeDeleteContext, SelectionChangeContext, CheckedChangeContext, ExpandedChangeContext, BeforeExpandContext, TreeCallbackContext, FocusChangeContext, NodesChangeContext, ScrollToPathOptions, NodeIconRenderContext, TreeRenderIconCallback } from "./core/TreeEngine.svelte.js"
 export { createTreeEngine } from "./core/createTreeEngine.js"
 
 // Export types

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.0.0-rc18] - 2026-11-22
 
+### Changed — one context type per event; `ContextMenuItem` / `ContextMenuDivider` (2026-11-24)
+
+- One context type per event, no shared names: `onCheckedChange` takes `CheckedChangeContext` (was `SelectionChangeContext`, which stays for `onSelectionChange`), `beforeCutCallback` takes `BeforeCutContext` (was `BeforeCopyContext`, which now says `operation: 'copy'`), `onNodeCopy` / `onNodeCut` / `onNodeDelete` take `NodeCopyContext` / `NodeCutContext` / `NodeDeleteContext` (`ClipboardEventContext` is gone; delete's ctx has no `operation`). Same fields as before — only the type names change. (REVIEW-2026-11-19 §2b.) Same in web-treeview.
+- The menu components are exported as `ContextMenuItem` / `ContextMenuDivider` (were `ContextMenuItemC` / `ContextMenuDividerC`).
+
 ### Changed — `removeNode(path)`, `removeBranch(path, { shouldKeepParent })`; the toggle's `--expanded` modifier (2026-11-24)
 
 - `removeNode(path)` — its second parameter `includeDescendants` is gone: it never did anything (the node always left with its whole subtree). `removeBranch(path, options?)` takes `RemoveBranchOptions` `{ shouldKeepParent? }` instead of a bare boolean `keepParent` (no positional booleans — REVIEW-2026-11-19 §2b); a boolean still works and logs a deprecation warning, so a JS caller passing `true` keeps the node instead of losing it. Same in web-treeview.

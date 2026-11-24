@@ -62,12 +62,12 @@ import type {
   NodeEventContext,        // = NodeRef<T> (onNodeClick / onNodeDoubleClick)
   NodeDragContext,         // NodeRef + { event, dragged }
   NodeDropContext,         // { source, target, dragged, dropped, position, operation, event }
-  ClipboardEventContext,   // { operation?, paths, nodes } (onNodeCopy/onNodeCut/onNodeDelete)
-  SelectionChangeContext,  // { paths: Set<string>, nodes }
+  NodeCopyContext, NodeCutContext, NodeDeleteContext,   // { operation, paths, nodes } (no operation on delete)
+  SelectionChangeContext, CheckedChangeContext,         // { paths: Set<string>, nodes }
 
   // Clipboard / transform callback context types
   NodeTransformContext,    // copy/paste transform context (source/target symmetric)
-  BeforeCopyContext,       // { operation, paths, nodes }
+  BeforeCopyContext, BeforeCutContext,   // { operation, paths, nodes }
   BeforeDeleteContext,     // { paths, nodes }
   BeforePasteContext,      // { operation, target: { path, node }, entries }
   PasteResult,             // pasteNodes() / onNodePaste result
@@ -274,10 +274,10 @@ onNodeDragStart?: (ctx: NodeDragContext<T>) => void;     // grabbed node + event
 onNodeDragOver?: (ctx: NodeDragContext<T>) => void;      // hovered node + event + dragged set
 onNodeDrop?: (ctx: NodeDropContext<T>) => void;          // source/target/dragged/dropped/...
 onSelectionChange?: (ctx: SelectionChangeContext<T>) => void;  // UI multi-select (selectedPaths)
-onCheckedChange?: (ctx: SelectionChangeContext<T>) => void;  // checkbox set (checkedPaths)
-onNodeCopy?: (ctx: ClipboardEventContext<T>) => void;
-onNodeCut?: (ctx: ClipboardEventContext<T>) => void;
-onNodeDelete?: (ctx: ClipboardEventContext<T>) => void;      // ctx.operation omitted for delete
+onCheckedChange?: (ctx: CheckedChangeContext<T>) => void;  // checkbox set (checkedPaths)
+onNodeCopy?: (ctx: NodeCopyContext<T>) => void;
+onNodeCut?: (ctx: NodeCutContext<T>) => void;
+onNodeDelete?: (ctx: NodeDeleteContext<T>) => void;
 onNodePaste?: (result: PasteResult<T>) => void;
 
 // Interceptor: return false to suppress (synchronous) default + built-in shortcuts.
@@ -302,7 +302,7 @@ beforeDropCallback?: (
 // Clipboard batch-policy interceptors (single context object).
 // Return a new path[] to rewrite the set, false to block, or nothing to proceed.
 beforeCopyCallback?: (ctx: BeforeCopyContext<T>) => string[] | false | void;
-beforeCutCallback?: (ctx: BeforeCopyContext<T>) => string[] | false | void;
+beforeCutCallback?: (ctx: BeforeCutContext<T>) => string[] | false | void;
 beforeDeleteCallback?: (ctx: BeforeDeleteContext<T>) => string[] | false | void;
 // Return { targetPath?, position? } to redirect, false to block, or nothing.
 beforePasteCallback?: (ctx: BeforePasteContext<T>) => { targetPath?: string; position?: DropPosition } | false | void;
@@ -371,20 +371,16 @@ interface NodeDropContext<T> {
   event: PointerEvent;
 }
 
-// onNodeCopy / onNodeCut / onNodeDelete. operation omitted for delete. For cut/delete,
-// nodes are PRE-REMOVAL snapshots (the tree no longer holds them at fire time).
-interface ClipboardEventContext<T> {
-  operation?: 'copy' | 'cut';
-  paths: string[];
-  nodes: LTreeNode<T>[];
-}
+// One ctx type per event. onNodeCopy / onNodeCut: nodes live (a cut only dims until paste).
+// onNodeDelete: no operation; nodes are PRE-REMOVAL snapshots.
+interface NodeCopyContext<T>   { operation: 'copy'; paths: string[]; nodes: LTreeNode<T>[]; }
+interface NodeCutContext<T>    { operation: 'cut';  paths: string[]; nodes: LTreeNode<T>[]; }
+interface NodeDeleteContext<T> { paths: string[]; nodes: LTreeNode<T>[]; }
 
-// onSelectionChange (selectedPaths) / onCheckedChange (checkedPaths).
+// onSelectionChange (selectedPaths) / onCheckedChange (checkedPaths, as emitted).
 // Suppressed by { isSilent: true } mutations.
-interface SelectionChangeContext<T> {
-  paths: Set<string>;
-  nodes: LTreeNode<T>[];
-}
+interface SelectionChangeContext<T> { paths: Set<string>; nodes: LTreeNode<T>[]; }
+interface CheckedChangeContext<T>   { paths: Set<string>; nodes: LTreeNode<T>[]; }
 
 TRANSFORM / CLIPBOARD CONTEXT TYPES
 -----------------------------------
@@ -400,10 +396,15 @@ interface NodeTransformContext<T> {
   target: NodeRef<T> | null;                     // destination side (null during output phase)
 }
 
-interface BeforeCopyContext<T> {
-  operation: 'copy' | 'cut';
+interface BeforeCopyContext<T> {   // beforeCopyCallback
+  operation: 'copy';
   paths: string[];
   nodes: LTreeNode<T>[];  // resolved live nodes (missing paths dropped)
+}
+interface BeforeCutContext<T> {    // beforeCutCallback — same, operation: 'cut'
+  operation: 'cut';
+  paths: string[];
+  nodes: LTreeNode<T>[];
 }
 
 interface BeforeDeleteContext<T> {

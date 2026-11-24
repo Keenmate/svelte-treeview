@@ -13,8 +13,11 @@
 		NodeRef,
 		NodeDragContext,
 		NodeDropContext,
-		ClipboardEventContext,
+		NodeCopyContext,
+		NodeCutContext,
+		NodeDeleteContext,
 		SelectionChangeContext,
+		CheckedChangeContext,
 		LTreeNode
 	} from '$lib/index.js';
 
@@ -116,17 +119,17 @@
 	function logSelection(ctx: SelectionChangeContext<Item>) {
 		selectionLog = [...selectionLog, { paths: [...ctx.paths], nodes: ctx.nodes.map((n) => n.path) }];
 	}
-	function logChecked(ctx: SelectionChangeContext<Item>) {
+	function logChecked(ctx: CheckedChangeContext<Item>) {
 		checkedLog = [...checkedLog, { paths: [...ctx.paths], nodes: ctx.nodes.map((n) => n.path) }];
 	}
-	function logCopy(ctx: ClipboardEventContext<Item>) {
+	function logCopy(ctx: NodeCopyContext<Item>) {
 		copyLog = [...copyLog, { operation: ctx.operation, paths: ctx.paths, nodes: ctx.nodes.map((n) => n.path) }];
 	}
-	function logCut(ctx: ClipboardEventContext<Item>) {
+	function logCut(ctx: NodeCutContext<Item>) {
 		cutLog = [...cutLog, { operation: ctx.operation, paths: ctx.paths, nodes: ctx.nodes.map((n) => n.path) }];
 	}
-	function logDelete(ctx: ClipboardEventContext<Item>) {
-		deleteLog = [...deleteLog, { operation: ctx.operation ?? null, paths: ctx.paths, nodes: ctx.nodes.map((n) => n.path) }];
+	function logDelete(ctx: NodeDeleteContext<Item>) {
+		deleteLog = [...deleteLog, { operation: (ctx as { operation?: string }).operation ?? null, paths: ctx.paths, nodes: ctx.nodes.map((n) => n.path) }];
 	}
 </script>
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Tree from '$lib/components/Tree.svelte';
 	import type { LTreeNode } from '$lib/ltree/types.js';
-	import ContextMenuItemC from '$lib/components/ContextMenuItem.svelte';
+	import ContextMenuItem from '$lib/components/ContextMenuItem.svelte';
 	import type { TreeMenuEntry, TreeRenderIconCallback } from '$lib/index.js';
 
 	// Fixture for per-node icons (iconMember/getIconCallback + iconColorMember +
@@ -126,8 +126,8 @@
 		{renderIconCallback}
 	>
 		{#snippet contextMenu(node: LTreeNode<Item>, close: () => void)}
-			<ContextMenuItemC id="hooked" text="Hooked" icon="both" onClick={() => close()} />
-			<ContextMenuItemC id="font" text="Font" icon="fa-solid fa-star" onClick={() => close()} />
+			<ContextMenuItem id="hooked" text="Hooked" icon="both" onClick={() => close()} />
+			<ContextMenuItem id="font" text="Font" icon="fa-solid fa-star" onClick={() => close()} />
 		{/snippet}
 	</Tree>
 </div>

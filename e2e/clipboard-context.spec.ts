@@ -5,7 +5,7 @@ import { test, expect, Page } from '@playwright/test';
  * /test/clipboard-context — the field-level contract of the unified vocabulary:
  *   - NodeTransformContext (output + input transforms): operation, phase, isRoot, index,
  *     position, and the symmetric source/target groups ({ path, node, parent, siblings }).
- *   - BeforeCopyContext / BeforeDeleteContext ({ paths, nodes }), BeforePasteContext
+ *   - BeforeCopyContext / BeforeCutContext / BeforeDeleteContext ({ paths, nodes }), BeforePasteContext
  *     ({ operation, target: { path, node }, entries }).
  *   - beforeKeydownCallback ({ event, focusedNode, selectedNodes, controller }).
  *   - same-tree source refs are LIVE; cross-tree source refs are null/[].

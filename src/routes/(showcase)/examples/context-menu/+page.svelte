@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Tree from '$lib/components/Tree.svelte';
-	import ContextMenuItemC from '$lib/components/ContextMenuItem.svelte';
-	import ContextMenuDividerC from '$lib/components/ContextMenuDivider.svelte';
+	import ContextMenuItem from '$lib/components/ContextMenuItem.svelte';
+	import ContextMenuDivider from '$lib/components/ContextMenuDivider.svelte';
 	import type { LTreeNode } from '$lib/ltree/types.js';
 	import type { TreeMenuContext, TreeMenuEntry } from '$lib/core/menu.js';
 	import RenderModeSwitch from '../RenderModeSwitch.svelte';
@@ -212,7 +212,7 @@
 <!-- Snippet Approach -->
 <div class="card">
 	<h2>CM02 · Snippet + Component Approach</h2>
-	<p class="description">Uses <code>ContextMenuItemC</code> and <code>ContextMenuDividerC</code> Svelte components inside a <code>contextMenu</code> snippet for declarative menus with conditional rendering.</p>
+	<p class="description">Uses <code>ContextMenuItem</code> and <code>ContextMenuDivider</code> Svelte components inside a <code>contextMenu</code> snippet for declarative menus with conditional rendering.</p>
 
 	<div class="controls">
 		<button class="secondary" onclick={clearSnippetLog}>Clear Log</button>
@@ -237,16 +237,16 @@
 				</span>
 			{/snippet}
 			{#snippet contextMenu(node: LTreeNode<FileItem>, close: () => void)}
-				<ContextMenuItemC text="Copy" icon="📋" shortcut="C" onClick={() => { addSnippetLog('Copy', `"${node.data?.name}"`); close(); }} />
-				<ContextMenuItemC text="Cut" icon="✂️" shortcut="X" isDisabled={!!node.data?.readonly} onClick={() => { addSnippetLog('Cut', `"${node.data?.name}"`); close(); }} />
+				<ContextMenuItem text="Copy" icon="📋" shortcut="C" onClick={() => { addSnippetLog('Copy', `"${node.data?.name}"`); close(); }} />
+				<ContextMenuItem text="Cut" icon="✂️" shortcut="X" isDisabled={!!node.data?.readonly} onClick={() => { addSnippetLog('Cut', `"${node.data?.name}"`); close(); }} />
 				{#if node.data?.type === 'folder'}
-					<ContextMenuItemC text="Export As..." icon="📤">
-						<ContextMenuItemC text="JSON" shortcut="J" onClick={() => { addSnippetLog('Export', `"${node.data?.name}" as JSON`); close(); }} />
-						<ContextMenuItemC text="XML" shortcut="X" onClick={() => { addSnippetLog('Export', `"${node.data?.name}" as XML`); close(); }} />
-					</ContextMenuItemC>
+					<ContextMenuItem text="Export As..." icon="📤">
+						<ContextMenuItem text="JSON" shortcut="J" onClick={() => { addSnippetLog('Export', `"${node.data?.name}" as JSON`); close(); }} />
+						<ContextMenuItem text="XML" shortcut="X" onClick={() => { addSnippetLog('Export', `"${node.data?.name}" as XML`); close(); }} />
+					</ContextMenuItem>
 				{/if}
-				<ContextMenuDividerC text="Danger zone" />
-				<ContextMenuItemC text="Delete" icon="🗑️" isDanger isDisabled={!!node.data?.readonly} onClick={() => { addSnippetLog('Delete', `"${node.data?.name}"`, 'danger'); close(); }} />
+				<ContextMenuDivider text="Danger zone" />
+				<ContextMenuItem text="Delete" icon="🗑️" isDanger isDisabled={!!node.data?.readonly} onClick={() => { addSnippetLog('Delete', `"${node.data?.name}"`, 'danger'); close(); }} />
 			{/snippet}
 		</Tree>
 	</div>
@@ -286,27 +286,27 @@ function getContextMenu({ node }: TreeMenuContext<FileItem>): TreeMenuEntry<File
 <!-- Snippet API Reference -->
 <div class="card">
 	<h2>CM04 · Snippet + Component API</h2>
-	<p class="description">Use <code>ContextMenuItemC</code> and <code>ContextMenuDividerC</code> components inside the <code>contextMenu</code> snippet.</p>
+	<p class="description">Use <code>ContextMenuItem</code> and <code>ContextMenuDivider</code> components inside the <code>contextMenu</code> snippet.</p>
 
 	<div class="code-block" data-language="svelte">
 		<pre>{`${'<'}script>
-  import { ContextMenuItemC, ContextMenuDividerC } from '@keenmate/svelte-treeview';
+  import { ContextMenuItem, ContextMenuDivider } from '@keenmate/svelte-treeview';
 ${'<'}/script>
 
 <Tree nodes={data} ...>
   {#snippet contextMenu(node, close)}
-    <ContextMenuItemC text="Copy" icon="📋" shortcut="C"
+    <ContextMenuItem text="Copy" icon="📋" shortcut="C"
       onClick={() => { copy(node); close(); }} />
     {#if node.data.canExport}
-      <ContextMenuItemC text="Export As..." icon="📤">
-        <ContextMenuItemC text="JSON"
+      <ContextMenuItem text="Export As..." icon="📤">
+        <ContextMenuItem text="JSON"
           onClick={() => { exportAs(node, 'json'); close(); }} />
-        <ContextMenuItemC text="XML"
+        <ContextMenuItem text="XML"
           onClick={() => { exportAs(node, 'xml'); close(); }} />
-      </ContextMenuItemC>
+      </ContextMenuItem>
     {/if}
-    <ContextMenuDividerC text="Danger zone" />
-    <ContextMenuItemC text="Delete" isDanger
+    <ContextMenuDivider text="Danger zone" />
+    <ContextMenuItem text="Delete" isDanger
       isDisabled={node.data.readonly}
       onClick={() => { del(node); close(); }} />
   {/snippet}

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Tree from '$lib/components/Tree.svelte';
-	import ContextMenuItemC from '$lib/components/ContextMenuItem.svelte';
-	import ContextMenuDividerC from '$lib/components/ContextMenuDivider.svelte';
+	import ContextMenuItem from '$lib/components/ContextMenuItem.svelte';
+	import ContextMenuDivider from '$lib/components/ContextMenuDivider.svelte';
 	import type { LTreeNode } from '$lib/ltree/types.js';
 	import type { TreeMenuContext, TreeMenuEntry } from '$lib/core/menu.js';
 
@@ -205,13 +205,13 @@
 					<span>{node.data?.icon} {node.data?.name}</span>
 				{/snippet}
 				{#snippet contextMenu(node: LTreeNode<FileItem>, close: () => void)}
-					<ContextMenuItemC
+					<ContextMenuItem
 						text="Copy"
 						icon="📋"
 						shortcut="C"
 						onClick={() => { addSnippetLog(`Copied "${node.data?.name}"`); close(); }}
 					/>
-					<ContextMenuItemC
+					<ContextMenuItem
 						text="Cut"
 						icon="✂️"
 						shortcut="X"
@@ -219,21 +219,21 @@
 						onClick={() => { addSnippetLog(`Cut "${node.data?.name}"`); close(); }}
 					/>
 					{#if node.data?.type === 'folder'}
-						<ContextMenuItemC text="Export As..." icon="📤">
-							<ContextMenuItemC
+						<ContextMenuItem text="Export As..." icon="📤">
+							<ContextMenuItem
 								text="JSON"
 								shortcut="J"
 								onClick={() => { addSnippetLog(`Export "${node.data?.name}" as JSON`); close(); }}
 							/>
-							<ContextMenuItemC
+							<ContextMenuItem
 								text="XML"
 								shortcut="X"
 								onClick={() => { addSnippetLog(`Export "${node.data?.name}" as XML`); close(); }}
 							/>
-						</ContextMenuItemC>
+						</ContextMenuItem>
 					{/if}
-					<ContextMenuDividerC text="Danger zone" />
-					<ContextMenuItemC
+					<ContextMenuDivider text="Danger zone" />
+					<ContextMenuItem
 						text="Delete"
 						icon="🗑️"
 						isDanger
