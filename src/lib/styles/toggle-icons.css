@@ -10,11 +10,11 @@
    (--expand-alt / --expand-plus / --collapse-arrow / …), which offered four
    parallel shapes for one slot.
 
-   Both toggle modes keep the SAME `--expand` class + an `.expanded` state marker:
+   Both toggle modes keep the SAME `--expand` class + an `--expanded` state marker:
    - rotate (default): the glyph rotates between --stv-icon-rotate-collapsed and
-     --stv-icon-rotate-expanded when `.expanded` is applied.
+     --stv-icon-rotate-expanded when `--expanded` is applied.
    - swap: rotation is cancelled and the ::before mask flips to --stv-icon-collapse
-     when `.expanded` (gated on data-toggle-icon-mode="swap").
+     when `--expanded` (gated on data-toggle-icon-mode="swap").
 */
 
 .stv__toggle-icon {
@@ -32,7 +32,7 @@
 	flex-shrink: 0;
 }
 
-/* Collapsed / expanded orientation. The `.expanded` marker is applied by
+/* Collapsed / expanded orientation. The `--expanded` marker is applied by
    Node.svelte for BOTH modes; swap just doesn't rotate (see below). Keyed on
    `.stv__toggle-icon.stv__clickable` (every expandable toggle carries it) rather
    than `--expand`, so a custom escape-hatch glyph class (e.g. FontAwesome, which
@@ -40,7 +40,7 @@
 .stv__toggle-icon.stv__clickable {
 	transform: rotate(var(--stv-icon-rotate-collapsed, 0deg));
 }
-.stv__toggle-icon.stv__clickable.expanded {
+.stv__toggle-icon.stv__clickable.stv__toggle-icon--expanded {
 	transform: rotate(var(--stv-icon-rotate-expanded, 90deg));
 }
 
@@ -73,14 +73,14 @@
 }
 
 /* Swap mode — show the collapse glyph when expanded instead of rotating. For the
-   built-in glyph Node.svelte keeps the single `--expand` class + `.expanded` and only
+   built-in glyph Node.svelte keeps the single `--expand` class + `--expanded` and only
    the pictured mask changes (below); for a custom escape-hatch glyph Node.svelte swaps
    the class name itself. Either way rotation is cancelled. Gated on
    data-toggle-icon-mode so rotate sets are unaffected. */
 .stv__container[data-toggle-icon-mode='swap'] .stv__toggle-icon.stv__clickable {
 	transform: none;
 }
-.stv__container[data-toggle-icon-mode='swap'] .stv__toggle-icon--expand.expanded::before {
+.stv__container[data-toggle-icon-mode='swap'] .stv__toggle-icon--expand.stv__toggle-icon--expanded::before {
 	-webkit-mask-image: var(--stv-icon-collapse);
 	mask-image: var(--stv-icon-collapse);
 }
@@ -90,7 +90,7 @@
 .stv__container[data-icon-set='plus-minus'] .stv__toggle-icon.stv__clickable {
 	transform: none;
 }
-.stv__container[data-icon-set='plus-minus'] .stv__toggle-icon--expand.expanded::before {
+.stv__container[data-icon-set='plus-minus'] .stv__toggle-icon--expand.stv__toggle-icon--expanded::before {
 	-webkit-mask-image: var(--stv-icon-collapse);
 	mask-image: var(--stv-icon-collapse);
 }

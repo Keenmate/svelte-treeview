@@ -31,18 +31,18 @@ export interface TreeNavigation<T> {
 	/** PageUp — jump back ~10 visible nodes */
 	focusPreviousPage(): void;
 
-	// ── Shift+navigation: extend highlight range ────────────────────
-	/** Shift+ArrowDown — extend highlight to next visible node */
+	// ── Shift+navigation: extend the selection range ────────────────────
+	/** Shift+ArrowDown — extend the selection to next visible node */
 	extendSelectionNext(): void;
-	/** Shift+ArrowUp — extend highlight to previous visible node */
+	/** Shift+ArrowUp — extend the selection to previous visible node */
 	extendSelectionPrevious(): void;
-	/** Shift+Home — extend highlight to first visible node */
+	/** Shift+Home — extend the selection to first visible node */
 	extendSelectionToFirst(): void;
-	/** Shift+End — extend highlight to last visible node */
+	/** Shift+End — extend the selection to last visible node */
 	extendSelectionToLast(): void;
-	/** Shift+PageDown — extend highlight forward ~10 visible nodes */
+	/** Shift+PageDown — extend the selection forward ~10 visible nodes */
 	extendSelectionNextPage(): void;
-	/** Shift+PageUp — extend highlight back ~10 visible nodes */
+	/** Shift+PageUp — extend the selection back ~10 visible nodes */
 	extendSelectionPreviousPage(): void;
 }
 

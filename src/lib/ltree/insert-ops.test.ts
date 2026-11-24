@@ -143,7 +143,7 @@ describe('insert / remove bookkeeping (review 2026-11-19 B19 / B20)', () => {
 			{ id: 4, path: '2', name: 'B' }
 		]);
 		expect(tree.statistics.nodeCount).toBe(4);
-		tree.removeNode('1', false);
+		tree.removeNode('1');
 		expect(tree.statistics.nodeCount).toBe(1);
 	});
 });

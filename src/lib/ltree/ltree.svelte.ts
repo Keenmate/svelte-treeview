@@ -15,7 +15,7 @@ import {
 	getDescendantPaths
 } from '../helpers/ltree-helpers.js';
 
-import type { Ltree, LTreeConfig, InsertArrayResult, InsertBranchResult, ReplaceBranchResult, RemoveBranchResult, NodeContext, SortContext, ExpandOptions, InsertPosition, SortOptions, NodesSortContext, DropPosition } from './types.js';
+import type { Ltree, LTreeConfig, InsertArrayResult, InsertBranchResult, ReplaceBranchResult, RemoveBranchResult, RemoveBranchOptions, NodeContext, SortContext, ExpandOptions, InsertPosition, SortOptions, NodesSortContext, DropPosition } from './types.js';
 import { createSearchIndex } from './flex.js';
 import { Indexer, DEFAULT_INDEXER_BATCH_SIZE } from './indexer.js';
 
@@ -1019,7 +1019,7 @@ export function createLTree<T>(
 				// Bumping _rev on each mutation forces the flat-mode keyed {#each} to
 				// re-mount the affected Node component so its toggle-icon class
 				// reflects the new isExpanded value. Without the bump the row is
-				// reused, and `class:expanded` on the toggle icon ends up stale.
+				// reused, and the toggle's `--expanded` modifier ends up stale.
 				const trim = (node: LTreeNode<T>) => {
 					for (const key in node.children) {
 						const child = node.children[key];
@@ -1066,7 +1066,7 @@ export function createLTree<T>(
 				if (node && node.isExpanded && this.getNodeIsCollapsible(node)) {
 					node.isExpanded = false;
 					// Bump _rev for the same reason as expandNodes — without it the
-					// keyed {#each} reuses the row and class:expanded stays stale.
+					// keyed {#each} reuses the row and the toggle's `--expanded` modifier stays stale.
 					bumpRev(node);
 					hasChanges = true;
 				}
@@ -1372,15 +1372,11 @@ export function createLTree<T>(
 		},
 
 		/**
-		 * Remove a node from the tree
+		 * Remove a node and its whole subtree from the tree
 		 * @param path - Path of the node to remove
-		 * @param includeDescendants - If true, removes all descendants (default: true)
 		 * @returns Object with success status and the removed node
 		 */
-		removeNode(
-			path: string,
-			includeDescendants: boolean = true
-		): { success: boolean; node?: LTreeNode<T>; error?: string } {
+		removeNode(path: string): { success: boolean; node?: LTreeNode<T>; error?: string } {
 			this._scheduleRefilter();
 			const node = this.getNodeByPath(path, root);
 			if (!node) {
@@ -1726,7 +1722,7 @@ export function createLTree<T>(
 			const pathSet = new Set(paths);
 			const traverse = (node: LTreeNode<T>) => {
 				// Bump _rev on change: rows are keyed on it, so a visible row would otherwise keep
-				// its old expanded arrow (class:expanded) after an `expandedPaths` assignment.
+				// its old expanded arrow (the toggle's `--expanded` modifier) after an `expandedPaths` assignment.
 				if (node.path && node.isExpanded !== pathSet.has(node.path)) {
 					node.isExpanded = pathSet.has(node.path);
 					bumpRev(node);
@@ -1984,9 +1980,15 @@ export function createLTree<T>(
 			return { ...result, removed: removedCount, added: result.count };
 		},
 
-		removeBranch(path: string, keepParent: boolean = false): RemoveBranchResult<T> {
+		removeBranch(path: string, options?: RemoveBranchOptions): RemoveBranchResult<T> {
+			// The pre-rc18 boolean `keepParent` still works — a JS caller passing `true` must not lose the node too.
+			if (typeof options === 'boolean') {
+				dataLogger.warn('removeBranch(path, boolean) is deprecated — use removeBranch(path, { shouldKeepParent })');
+				options = { shouldKeepParent: options };
+			}
+			const shouldKeepParent = !!options?.shouldKeepParent;
 			this._scheduleRefilter();
-			if (keepParent) {
+			if (shouldKeepParent) {
 				// Keep the node, clear its children
 				const node = path ? this.getNodeByPath(path, root) : root;
 				if (!node) return { success: false, count: 0, error: `Node not found: ${path}` };

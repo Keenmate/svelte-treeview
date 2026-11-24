@@ -9,6 +9,7 @@
 		type InsertArrayResult,
 		type InsertBranchResult,
 		type RemoveBranchResult,
+		type RemoveBranchOptions,
 		type ReplaceBranchResult,
 		type NodeRenderContext,
 		type SelectMode,
@@ -631,11 +632,8 @@
 		return engine.duplicateNodes(paths, targetPath, position, transform, sourceTree);
 	}
 
-	export function removeNode(
-		path: string,
-		includeDescendants: boolean = true
-	): { success: boolean; node?: LTreeNode<T>; error?: string } {
-		return engine.removeNode(path, includeDescendants);
+	export function removeNode(path: string): { success: boolean; node?: LTreeNode<T>; error?: string } {
+		return engine.removeNode(path);
 	}
 
 	/** The user's Delete command on `paths` (default: the selection, else the focused node):
@@ -692,8 +690,8 @@
 		return engine.replaceBranch(parentPath, data);
 	}
 
-	export function removeBranch(path: string, keepParent?: boolean): RemoveBranchResult<T> {
-		return engine.removeBranch(path, keepParent);
+	export function removeBranch(path: string, options?: RemoveBranchOptions): RemoveBranchResult<T> {
+		return engine.removeBranch(path, options);
 	}
 
 	export function duplicateNode(

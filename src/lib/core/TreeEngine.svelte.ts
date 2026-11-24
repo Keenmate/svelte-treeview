@@ -7,6 +7,7 @@ import {
 	type InsertArrayResult,
 	type InsertBranchResult,
 	type RemoveBranchResult,
+	type RemoveBranchOptions,
 	type ReplaceBranchResult,
 	type DropPosition,
 	type DragDropMode,
@@ -235,7 +236,7 @@ export interface NodeDragContext<T> extends NodeRef<T>, TreeCallbackContext<T> {
  * Context for beforeDragStartCallback — the set-level pre-drag interceptor. Fires ONCE at
  * drag start (a drag is single-origin at the DOM level), BEFORE onNodeDragStart and before
  * anything is published cross-tree. `lead` is the node physically grabbed; `dragged` is the
- * tree's default top-level set (the isDraggable-filtered highlight, or just `lead`).
+ * tree's default top-level set (the isDraggable-filtered selection, or just `lead`).
  *
  * The callback returns the set the tree should ACTUALLY drag:
  *  - `string[]` — an authoritative REPLACEMENT list of top-level paths, in landing order. It
@@ -388,7 +389,7 @@ export type BeforeExpandContext<T> = NodeRef<T> & TreeCallbackContext<T>;
  */
 export interface BeforeCopyContext<T> extends TreeCallbackContext<T> {
 	operation: 'copy' | 'cut';
-	/** The paths about to be copied/cut (the highlight set, or the explicit paths arg). */
+	/** The paths about to be copied/cut (the selection, or the explicit paths arg). */
 	paths: string[];
 	/** The resolved live nodes for those paths (missing paths are dropped). */
 	nodes: LTreeNode<T>[];
@@ -433,15 +434,15 @@ export interface SelectionModifiers {
 
 export interface NodeCallbacks<T> {
 	/** A click on a row's content — {@link TreeEngine.handleNodeClick} (checkbox / clickBehavior routing). */
-	onNodeContentClicked: (node: LTreeNode<T>, event?: MouseEvent) => void;
-	onNodeClicked: (node: LTreeNode<T>, modifiers?: SelectionModifiers) => void;
-	onCheckboxToggle: (node: LTreeNode<T>, options?: { skipFocus?: boolean }) => void;
-	onNodeRightClicked: (node: LTreeNode<T>, event: MouseEvent) => void;
+	handleNodeContentClick: (node: LTreeNode<T>, event?: MouseEvent) => void;
+	handleNodeSelectClick: (node: LTreeNode<T>, modifiers?: SelectionModifiers) => void;
+	handleCheckboxToggle: (node: LTreeNode<T>, options?: { skipFocus?: boolean }) => void;
+	handleNodeContextMenu: (node: LTreeNode<T>, event: MouseEvent) => void;
 	/** Unified pointer-driven drag entry (mouse/pen/touch). Replaces the native
 	 *  draggable/dragstart + touchstart handlers on the node row. */
 	/** The toggle glyph / click-to-expand: goes through `toggleNodeExpanded` (accordion,
 	 *  `beforeExpandCallback`, expand events). */
-	onToggleExpanded: (node: LTreeNode<T>) => void;
+	handleToggleClick: (node: LTreeNode<T>) => void;
 }
 
 export interface NodeConfig {
@@ -613,7 +614,7 @@ export interface TreeEngineProps<T> {
 	 * toggles the checkbox instead of running the normal click flow — `focusedNode` and
 	 * `selectedPaths` are NOT updated. Expand-on-click still happens if `clickBehavior`
 	 * is `'expand'` or `'expand-and-focus'`. Modified clicks (Ctrl/Shift) fall through to
-	 * the normal multi-highlight path.
+	 * the normal multi-selection path.
 	 */
 	shouldClickToggleCheckbox?: boolean | null | undefined;
 	/**
@@ -1702,13 +1703,13 @@ export class TreeEngine<T> {
 
 		// ── Create stable nodeCallbacks ─────────────────────────────────
 		this.nodeCallbacks = {
-			onNodeContentClicked: (node: LTreeNode<T>, event?: MouseEvent) => this.handleNodeClick(node, event),
-			onNodeClicked: (node: LTreeNode<T>, modifiers?: SelectionModifiers) =>
-				this._onNodeClicked(node, modifiers, { uiClick: true }),
-			onCheckboxToggle: (node: LTreeNode<T>, options?: { skipFocus?: boolean }) =>
-				this._onCheckboxToggle(node, options),
-			onNodeRightClicked: this._onNodeRightClicked.bind(this),
-			onToggleExpanded: (node: LTreeNode<T>) => {
+			handleNodeContentClick: (node: LTreeNode<T>, event?: MouseEvent) => this.handleNodeClick(node, event),
+			handleNodeSelectClick: (node: LTreeNode<T>, modifiers?: SelectionModifiers) =>
+				this._handleNodeSelectClick(node, modifiers, { uiClick: true }),
+			handleCheckboxToggle: (node: LTreeNode<T>, options?: { skipFocus?: boolean }) =>
+				this._handleCheckboxToggle(node, options),
+			handleNodeContextMenu: this._handleNodeContextMenu.bind(this),
+			handleToggleClick: (node: LTreeNode<T>) => {
 				void this.toggleNodeExpanded(node.path);
 			}
 		};
@@ -2541,9 +2542,9 @@ export class TreeEngine<T> {
 
 	/**
 	 * The effective top-level set being dragged: when the grabbed node is part of a
-	 * same-tree multi-highlight, the draggable top-level highlighted subtrees (the same set
+	 * same-tree multi-selection, the draggable top-level selected subtrees (the same set
 	 * the multi-drag move loop uses); otherwise just the grabbed node. Used to populate
-	 * `dragged` on the drag/drop event contexts. Call BEFORE a move mutates the highlight set.
+	 * `dragged` on the drag/drop event contexts. Call BEFORE a move mutates the selection.
 	 */
 	private _draggedTopLevel(draggedNode: LTreeNode<T>): LTreeNode<T>[] {
 		const isSameTree = draggedNode.treeId === this.treeId;
@@ -2563,17 +2564,17 @@ export class TreeEngine<T> {
 	/**
 	 * The full top-level dragged set as NodeRefs, correct for BOTH same-tree and
 	 * cross-tree drags — the single source of `ctx.dragged` on drag start/over/drop.
-	 * Same-tree reads the live highlight set (nodes resolve). Cross-tree can't see the
-	 * source's highlight, so it reads the paths the source published on drag start
+	 * Same-tree reads the live selection (nodes resolve). Cross-tree can't see the
+	 * source's selection, so it reads the paths the source published on drag start
 	 * (getDragSet) and builds path-only refs (node/parent null cross-tree, as documented);
 	 * falls back to the lead node alone when no set was published (e.g. touch). Call
-	 * BEFORE a move mutates the highlight set.
+	 * BEFORE a move mutates the selection.
 	 */
 	private _draggedRefs(draggedNode: LTreeNode<T> | null): NodeRef<T>[] {
 		if (!draggedNode) return [];
 		if (draggedNode.treeId === this.treeId) {
 			// A beforeDragStartCallback override is authoritative: resolve its paths directly
-			// (bypassing the highlight-derived set AND the per-node isDraggable gate, since a
+			// (bypassing the selection-derived set AND the per-node isDraggable gate, since a
 			// forced-in node is the whole point). Skips paths that no longer resolve.
 			if (this._dragSetOverride) {
 				return this._dragSetOverride
@@ -2710,7 +2711,7 @@ export class TreeEngine<T> {
 		targetPath: string,
 		position: 'before' | 'after' | 'child'
 	): { success: boolean; error?: string } {
-		// Capture the affected path set BEFORE the move: any highlighted /
+		// Capture the affected path set BEFORE the move: any selected /
 		// selected path that is the source itself or a descendant of it needs
 		// to be remapped onto the new location. Without this the path Sets
 		// keep stale strings after a multi-drag, so subsequent operations work
@@ -2737,7 +2738,7 @@ export class TreeEngine<T> {
 		// LTreeNode reference "auto-recovering" via in-place .path mutation: a tree
 		// rebuild between selection and move orphans focusedNode (a stale object the
 		// move never touches), so its .path stays at the old location and the focus
-		// styling vanishes. Remap by path like highlight/selected, re-fetching the
+		// styling vanishes. Remap by path like the selection, re-fetching the
 		// live node afterwards.
 		const focusedSuffix =
 			this.focusedNode &&
@@ -2831,7 +2832,7 @@ export class TreeEngine<T> {
 	 * Cross-tree nodes (treeId mismatch) are skipped for the consumer to place. Roots (manifest
 	 * entries whose parent is not itself in the manifest) are the subtrees physically moved:
 	 * the first lands at target/position, the rest chain 'after' to preserve source order.
-	 * Highlight/selection/focus remap happens per-move inside moveNode().
+	 * Selection / checked / focus remap happens per-move inside moveNode().
 	 */
 	moveNodes(
 		paths: string[],
@@ -3088,12 +3089,9 @@ export class TreeEngine<T> {
 		return { copied, count, skipped, lastError };
 	}
 
-	removeNode(
-		path: string,
-		includeDescendants: boolean = true
-	): { success: boolean; node?: LTreeNode<T>; error?: string } {
+	removeNode(path: string): { success: boolean; node?: LTreeNode<T>; error?: string } {
 		return this._mutate(() => {
-			const result = this.tree?.removeNode(path, includeDescendants) || {
+			const result = this.tree?.removeNode(path) || {
 				success: false,
 				error: 'Tree not initialized'
 			};
@@ -3214,9 +3212,9 @@ export class TreeEngine<T> {
 		});
 	}
 
-	removeBranch(path: string, keepParent?: boolean): RemoveBranchResult<T> {
+	removeBranch(path: string, options?: RemoveBranchOptions): RemoveBranchResult<T> {
 		return this._mutate(() => {
-			const result = this.tree?.removeBranch(path, keepParent) || {
+			const result = this.tree?.removeBranch(path, options) || {
 				success: false,
 				count: 0,
 				error: 'Tree not initialized'
@@ -3500,11 +3498,11 @@ export class TreeEngine<T> {
 			// ride along), so includeDescendants=true.
 			if (operation === 'cut') {
 				if (sameTree) {
-					for (const src of pastedSourcePaths) this.tree.removeNode(src, true);
+					for (const src of pastedSourcePaths) this.tree.removeNode(src);
 				} else {
 					const source = getClipboardTree(clip.sourceTreeId);
 					if (source && source !== this) {
-						for (const src of pastedSourcePaths) source.removeNode(src, true);
+						for (const src of pastedSourcePaths) source.removeNode(src);
 					}
 				}
 			}
@@ -3566,7 +3564,7 @@ export class TreeEngine<T> {
 		return getClipboardOp();
 	}
 
-	/** Paths a keyboard shortcut should act on: the highlight set if any, else the
+	/** Paths a keyboard shortcut should act on: the selection if any, else the
 	 *  focused node, else empty. Shared by the built-in copy/cut/delete handling. */
 	private _shortcutSelectionPaths(): string[] {
 		if (this.selectedPaths.size > 0) return [...this.selectedPaths];
@@ -3585,7 +3583,7 @@ export class TreeEngine<T> {
 		// One bracket: the clear runs before the reconcile, so the selection event fires once.
 		this._mutate(() => {
 			for (const p of targets) {
-				if (this.removeNode(p, true).success) removed++;
+				if (this.removeNode(p).success) removed++;
 				else failed++;
 			}
 			if (removed > 0) {
@@ -3625,7 +3623,7 @@ export class TreeEngine<T> {
 		const removedPaths: string[] = [];
 		this._mutate(() => {
 			for (const p of targets) {
-				if (this.removeNode(p, true).success) removedPaths.push(p);
+				if (this.removeNode(p).success) removedPaths.push(p);
 			}
 			if (removedPaths.length > 0) {
 				this.clearSelection();
@@ -3745,7 +3743,7 @@ export class TreeEngine<T> {
 				// checkbox; multiple mode: the focused node in the selection; single mode:
 				// selects the focused node (Enter expands / collapses).
 				if (this.isCheckboxesShown && this.focusedNode?.isSelectable) {
-					this.nodeCallbacks.onCheckboxToggle(this.focusedNode);
+					this.nodeCallbacks.handleCheckboxToggle(this.focusedNode);
 				} else if (this.selectionMode === 'multiple') {
 					this.toggleFocusedSelect();
 				} else if (this.focusedNode?.isSelectable) {
@@ -3980,8 +3978,8 @@ export class TreeEngine<T> {
 	/** Cancel current drag and reset all state. */
 	cancelDrag(): void {
 		dragLogger.debug('Drag cancelled via public API');
-		for (const drag of this.#pointerDrags) drag.cancel(); // core: onCancel → _onPointerCancel
-		this._onPointerCancel();
+		for (const drag of this.#pointerDrags) drag.cancel(); // core: onCancel → _handlePointerCancel
+		this._handlePointerCancel();
 	}
 
 	/** @internal Get allowed drop positions for a node (proxies LTree method). */
@@ -4009,7 +4007,7 @@ export class TreeEngine<T> {
 	/** Calculate drop position from cursor location within an element (before/after/child).
 	 * @internal
 	 *  Same logic as Node.svelte's calculateGlowPosition, respecting allowed positions. */
-	calculateDropPositionFromEvent(
+	computeDropPositionFromEvent(
 		event: MouseEvent,
 		element: HTMLElement,
 		allowedPositions?: DropPosition[] | null
@@ -4411,7 +4409,7 @@ export class TreeEngine<T> {
 		};
 
 		if (this.shouldClickToggleCheckbox && this.isCheckboxesShown && node.isSelectable && !hasModifiers) {
-			this._onCheckboxToggle(node, { skipFocus: true });
+			this._handleCheckboxToggle(node, { skipFocus: true });
 			if (this.clickBehavior !== 'select') toggleExpanded();
 			return;
 		}
@@ -4420,11 +4418,11 @@ export class TreeEngine<T> {
 			if (!hasModifiers) toggleExpanded();
 			return;
 		}
-		this._onNodeClicked(node, modifiers, { uiClick: true });
+		this._handleNodeSelectClick(node, modifiers, { uiClick: true });
 		if (this.clickBehavior === 'expand-and-focus' && !hasModifiers) toggleExpanded();
 	}
 
-	private async _onNodeClicked(
+	private async _handleNodeSelectClick(
 		node: LTreeNode<T>,
 		modifiers?: SelectionModifiers,
 		options?: { isSilent?: boolean; forceMultiSemantics?: boolean; uiClick?: boolean }
@@ -4441,7 +4439,7 @@ export class TreeEngine<T> {
 		// other modes already toggle on single click). On a detected double we consume
 		// the 2nd click (return early) so the gesture is a single open, not a re-toggle.
 		// Threshold = 400ms, a touch tighter than Windows' 500ms default to avoid
-		// coupling unrelated clicks. Gated on uiClick so programmatic highlight/select
+		// coupling unrelated clicks. Gated on uiClick so programmatic selection
 		// API calls never get mistaken for a double-click.
 		if (options?.uiClick && !modifiers?.isCtrlPressed && !modifiers?.isShiftPressed) {
 			const now = Date.now();
@@ -4467,7 +4465,7 @@ export class TreeEngine<T> {
 		const shift = isMulti && (modifiers?.isShiftPressed ?? false);
 		const silent = options?.isSilent ?? false;
 
-		uiLogger.debug(`[highlight] Click on ${node.path}`, {
+		uiLogger.debug(`[select] Click on ${node.path}`, {
 			ctrl,
 			shift,
 			mode: this.selectionMode,
@@ -4475,7 +4473,7 @@ export class TreeEngine<T> {
 			prevCount: this.selectedPaths.size
 		});
 
-		// !isSelectable blocks highlight (and therefore the mirror in no-checkbox mode).
+		// !isSelectable blocks selection (and therefore the mirror in no-checkbox mode).
 		// Focus still moves so consumers can show detail panels for unselectable rows.
 		const canSelect = node.isSelectable;
 
@@ -4512,7 +4510,7 @@ export class TreeEngine<T> {
 		this.tree.refresh();
 
 		// Focus the tree container so keyboard navigation works after clicking a node.
-		// Skip in silent mode — programmatic highlight (e.g. from URL params) shouldn't
+		// Skip in silent mode — programmatic selection (e.g. from URL params) shouldn't
 		// steal focus from whatever the user is currently interacting with.
 		if (!silent) {
 			this.containerElement?.focus();
@@ -4520,8 +4518,8 @@ export class TreeEngine<T> {
 	}
 
 	/**
-	 * Top-level paths within `selectedPaths` — paths whose nearest highlighted
-	 * ancestor is NOT in the highlighted set. Used by multi-drag to figure out
+	 * Top-level paths within `selectedPaths` — paths whose nearest selected
+	 * ancestor is NOT in the selected set. Used by multi-drag to figure out
 	 * which subtrees actually need to move (descendants ride along inside).
 	 */
 	private _getTopLevelSelectedPaths(): string[] {
@@ -4567,7 +4565,7 @@ export class TreeEngine<T> {
 	}
 
 	/** Handle checkbox toggle with cascade and interceptor support */
-	private _onCheckboxToggle(node: LTreeNode<T>, options?: { skipFocus?: boolean }) {
+	private _handleCheckboxToggle(node: LTreeNode<T>, options?: { skipFocus?: boolean }) {
 		// While a filter is active, a cascade click acts on the VISIBLE matches only
 		// (the filtered copy's children), not the hidden real descendants. The parent's
 		// own box still reflects ALL its real children, so it can stay [-] after the
@@ -4872,7 +4870,7 @@ export class TreeEngine<T> {
 	/**
 	 * Mirror selectedPaths → checkedPaths when checkboxes are off.
 	 * Decision 1 + 10 from selection-highlight-model.md: in no-checkbox mode the
-	 * highlight set IS the form selection, so writes to selectedPaths cascade
+	 * click selection IS the checked set, so writes to selectedPaths cascade
 	 * to checkedPaths and fire onCheckedChange alongside onSelectionChange.
 	 */
 	private _reconcileCheckedFromSelection() {
@@ -5155,34 +5153,34 @@ export class TreeEngine<T> {
 		return result;
 	}
 
-	// ── Public highlight methods (UI selection) ────────────────────────
+	// ── Public selection methods (the UI click selection) ──────────────────
 
-	/** Highlight a single node. `mode` mirrors the click gestures:
+	/** Select a single node. `mode` mirrors the click gestures:
 	 *  'replace' (plain click) replaces the set, 'toggle' (Ctrl+click) adds/removes
-	 *  just this node, 'range' (Shift+click) highlights from the shift-cursor to here.
+	 *  just this node, 'range' (Shift+click) selects from the shift-cursor to here.
 	 *  Pass `{ isSilent: true }` to update state without firing `onNodeClick` / `onSelectionChange`. */
 	selectNode(path: string, mode: SelectMode = 'replace', options?: TreeMutationOptions) {
 		const node = this.tree.getNodeByPath(path);
 		if (!node) return;
 
 		if (mode === 'toggle') {
-			this._onNodeClicked(
+			this._handleNodeSelectClick(
 				node,
 				{ isCtrlPressed: true, isShiftPressed: false },
 				{ ...options, forceMultiSemantics: true }
 			);
 		} else if (mode === 'range') {
-			this._onNodeClicked(
+			this._handleNodeSelectClick(
 				node,
 				{ isCtrlPressed: false, isShiftPressed: true },
 				{ ...options, forceMultiSemantics: true }
 			);
 		} else {
-			this._onNodeClicked(node, undefined, options);
+			this._handleNodeSelectClick(node, undefined, options);
 		}
 	}
 
-	/** Add nodes to the highlight set (additive — existing highlights are kept).
+	/** Add nodes to the selection (additive — the existing selection is kept).
 	 *  To replace the whole set, assign `selectedPaths` (the bindable prop / `updateProps`).
 	 *  Pass `{ isSilent: true }` to skip `onSelectionChange`. */
 	selectNodes(paths: string[], options?: TreeMutationOptions) {
@@ -5239,7 +5237,7 @@ export class TreeEngine<T> {
 		this.tree.refresh();
 	}
 
-	/** Get all highlighted nodes */
+	/** Get all selected nodes */
 	getSelectedNodes(): LTreeNode<T>[] {
 		const nodes: LTreeNode<T>[] = [];
 		for (const path of this.selectedPaths) {
@@ -5249,19 +5247,19 @@ export class TreeEngine<T> {
 		return nodes;
 	}
 
-	/** Check if a specific node path is highlighted */
+	/** Check if a specific node path is selected */
 	isNodeSelected(path: string): boolean {
 		return this.selectedPaths.has(path);
 	}
 
-	/** Toggle the focused node in/out of the highlight set. Multi-mode only. */
+	/** Toggle the focused node in / out of the selection. Multi-mode only. */
 	toggleFocusedSelect(): void {
 		if (this.selectionMode !== 'multiple') return;
 		// The bound focusedNode can be a $state clone — toggle the tree's canonical node.
 		const focused = this.focusedNode;
 		const node = focused ? (this.tree?.getNodeByPath(focused.path) ?? null) : null;
 		if (!node || !node.isSelectable) return;
-		this._onNodeClicked(node, { isCtrlPressed: true, isShiftPressed: false }, { forceMultiSemantics: true });
+		this._handleNodeSelectClick(node, { isCtrlPressed: true, isShiftPressed: false }, { forceMultiSemantics: true });
 	}
 
 	// ── Public selection methods (checkbox data state) ───────────────
@@ -5395,14 +5393,14 @@ export class TreeEngine<T> {
 		this.tree.refresh();
 	}
 
-	private _onNodeRightClicked(node: LTreeNode<T>, event: MouseEvent) {
+	private _handleNodeContextMenu(node: LTreeNode<T>, event: MouseEvent) {
 		if (!this.hasContextMenuSnippet && !this.getContextMenuItemsHandler) {
 			return;
 		}
 
-		// Decision 12: right-click does NOT move focus or highlight. It only opens
+		// Decision 12: right-click does NOT move focus or the selection. It only opens
 		// the context menu at the right-clicked node. If the consumer needs the
-		// menu to act on something other than the highlight set, they can read
+		// menu to act on something other than the selection, they can read
 		// the node passed to their getContextMenuItemsCallback.
 		uiLogger.debug(`Context menu opened: ${node.path}`);
 		event.preventDefault();
@@ -5460,7 +5458,7 @@ export class TreeEngine<T> {
 
 		const isSameTreeDrag = draggedNodeRef.treeId === this.treeId;
 
-		// Capture the full dragged set BEFORE any move mutates the highlight set, so the
+		// Capture the full dragged set BEFORE any move mutates the selection, so the
 		// event's `dragged` reflects what the user picked up (not the post-move remap).
 		// _draggedRefs is cross-tree-aware: same-tree resolves live nodes, cross-tree pulls
 		// the top-level paths the source published on drag start (getDragSet).
@@ -5505,8 +5503,8 @@ export class TreeEngine<T> {
 		}
 
 		// Multi-drag (Decision 6 in selection-highlight-model.md):
-		// When the dragged node is part of a multi-highlight, move the whole highlight
-		// set as top-level-selected subtrees. Descendants whose nearest highlighted
+		// When the dragged node is part of a multi-selection, move the whole selection
+		// as top-level-selected subtrees. Descendants whose nearest selected
 		// ancestor is in the set are absorbed (ride along inside the subtree).
 		// A beforeDragStartCallback override takes over as the authoritative set and ALWAYS
 		// goes through moveNodes — even a ONE-entry override: ['folder'] with the folder's only
@@ -5591,7 +5589,7 @@ export class TreeEngine<T> {
 	}
 
 	// Floating drop zone: overlay before/after/child buttons rendered at Tree level (position:fixed
-	// over the hovered row). Pointer drops on them are handled in _onPointerDrop; this predicate just
+	// over the hovered row). Pointer drops on them are handled in _handlePointerDrop; this predicate just
 	// gates which buttons render for the hovered node.
 	/** @internal Whether the floating drop zone may offer `position` for the hovered target. */
 	_isFloatingPositionAllowed(position: DropPosition): boolean {
@@ -5684,9 +5682,9 @@ export class TreeEngine<T> {
 				if (this._lastPointerEvent) this._updatePointerHover(target, this._lastPointerEvent);
 			},
 			onDrop: ({ target, event }) => {
-				void this._onPointerDrop(target, event as PointerEvent);
+				void this._handlePointerDrop(target, event as PointerEvent);
 			},
-			onCancel: () => this._onPointerCancel()
+			onCancel: () => this._handlePointerCancel()
 		});
 		this.#pointerDrags.add(drag);
 		return () => {
@@ -5730,8 +5728,8 @@ export class TreeEngine<T> {
 		this.createGhostElement(node, x, y);
 		this.onNodeDragStartHandler?.(this._ctx({ ...this.getNodeRef(node), event, dragged: draggedRefs }));
 
-		// OS-convention selection sync: grabbing a node OUTSIDE the current highlight replaces
-		// the highlight with just it (Explorer/Finder mousedown-selects). Done synchronously —
+		// OS-convention selection sync: grabbing a node OUTSIDE the current selection replaces
+		// the selection with just it (Explorer/Finder mousedown-selects). Done synchronously —
 		// unlike the native path (which had to defer to rAF so re-rendering the source row
 		// wouldn't abort the browser drag image), the pointer drag has no drag image to lose.
 		if (node.isSelectable && !this.selectedPaths.has(node.path)) {
@@ -5750,7 +5748,7 @@ export class TreeEngine<T> {
 		}
 	}
 
-	/** Restore the highlight captured at drag start (Esc-cancel / invalid drop). */
+	/** Restore the selection captured at drag start (Esc-cancel / invalid drop). */
 	private _restorePreDragSelection() {
 		const prior = this._preDragSelectionSnapshot;
 		if (!prior) return;
@@ -5843,7 +5841,7 @@ export class TreeEngine<T> {
 
 	/** The pointer was released over `dropEl` (core onDrop; core has already let go of the gesture,
 	 *  so an async beforeDropCallback can't see a second release / Escape re-enter the drop). */
-	private async _onPointerDrop(dropEl: Element | null, event: PointerEvent) {
+	private async _handlePointerDrop(dropEl: Element | null, event: PointerEvent) {
 		const st = this.touchDragState;
 
 		if (st.isDragging && this.draggedNode) {
@@ -5900,9 +5898,9 @@ export class TreeEngine<T> {
 		this._resetPointerState();
 	}
 
-	private _onPointerCancel() {
+	private _handlePointerCancel() {
 		// Esc / pointercancel while dragging = abort. Nothing was mutated (commit-on-drop),
-		// so just restore the highlight the grab replaced and tear down.
+		// so just restore the selection the grab replaced and tear down.
 		if (this.touchDragState.isDragging) this._restorePreDragSelection();
 		this.removeGhostElement();
 		this._resetPointerState();
@@ -5949,7 +5947,7 @@ export class TreeEngine<T> {
 		if (ctx.position) return ctx.controller.tree.isDropPositionAllowed(ctx.node!, ctx.position) ? ctx.position : null;
 		const positions = ctx.controller.getNodeAllowedDropPositions(ctx.node!);
 		const rowEl = (el.closest('.stv__node-content') as HTMLElement | null) ?? ctx.nodeEl;
-		return rowEl ? ctx.controller.calculateDropPositionFromEvent(event, rowEl, positions) : 'child';
+		return rowEl ? ctx.controller.computeDropPositionFromEvent(event, rowEl, positions) : 'child';
 	}
 
 	private _resetPointerState() {
@@ -6272,28 +6270,28 @@ export class TreeEngine<T> {
 		this.navigation.focusPreviousPage();
 	}
 
-	// ── Shift+navigation: extend highlight range ────────────────────
-	/** Shift+ArrowDown — extend highlight to next visible node */
+	// ── Shift+navigation: extend the selection range ────────────────────
+	/** Shift+ArrowDown — extend the selection to next visible node */
 	extendSelectionNext(): void {
 		this.navigation.extendSelectionNext();
 	}
-	/** Shift+ArrowUp — extend highlight to previous visible node */
+	/** Shift+ArrowUp — extend the selection to previous visible node */
 	extendSelectionPrevious(): void {
 		this.navigation.extendSelectionPrevious();
 	}
-	/** Shift+Home — extend highlight to first visible node */
+	/** Shift+Home — extend the selection to first visible node */
 	extendSelectionToFirst(): void {
 		this.navigation.extendSelectionToFirst();
 	}
-	/** Shift+End — extend highlight to last visible node */
+	/** Shift+End — extend the selection to last visible node */
 	extendSelectionToLast(): void {
 		this.navigation.extendSelectionToLast();
 	}
-	/** Shift+PageDown — extend highlight forward ~10 visible nodes */
+	/** Shift+PageDown — extend the selection forward ~10 visible nodes */
 	extendSelectionNextPage(): void {
 		this.navigation.extendSelectionNextPage();
 	}
-	/** Shift+PageUp — extend highlight back ~10 visible nodes */
+	/** Shift+PageUp — extend the selection back ~10 visible nodes */
 	extendSelectionPreviousPage(): void {
 		this.navigation.extendSelectionPreviousPage();
 	}
@@ -6461,7 +6459,7 @@ export class TreeEngine<T> {
 		};
 	}
 
-	/** Extend highlight to target path (Shift+nav) — uses range from the shift cursor
+	/** Extend the selection to target path (Shift+nav) — uses range from the shift cursor
 	 *  (or current focus if no cursor yet), moves focus. No-op in single mode. */
 	private _extendSelectionTo(path: string) {
 		if (this.selectionMode !== 'multiple') return;
@@ -6469,13 +6467,13 @@ export class TreeEngine<T> {
 		if (!this._shiftCursor && this.focusedNode) {
 			const anchorNode = this.focusedNode;
 			this._shiftCursor = anchorNode.path;
-			// Ensure anchor is highlighted so range computation has a starting point visible
+			// Ensure the anchor is selected so range computation has a starting point visible
 			if (anchorNode.isSelectable && !anchorNode.isSelected) {
 				this._setSelection([anchorNode.path]);
 			}
 		}
 		this.selectNode(path, 'range');
-		// Move focus to the target without clearing highlights
+		// Move focus to the target without clearing the selection
 		const node = this.tree.getNodeByPath(path);
 		if (node) this._setFocusedNode(node);
 		this._scrollToPath(path, { shouldExpandAncestors: false, block: 'nearest', behavior: 'auto' }, true);

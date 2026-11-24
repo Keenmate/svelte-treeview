@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.0.0-rc18] - 2026-11-22
 
+### Changed — `removeNode(path)`, `removeBranch(path, { shouldKeepParent })`; the toggle's `--expanded` modifier (2026-11-24)
+
+- `removeNode(path)` — its second parameter `includeDescendants` is gone: it never did anything (the node always left with its whole subtree). `removeBranch(path, options?)` takes `RemoveBranchOptions` `{ shouldKeepParent? }` instead of a bare boolean `keepParent` (no positional booleans — REVIEW-2026-11-19 §2b); a boolean still works and logs a deprecation warning, so a JS caller passing `true` keeps the node instead of losing it. Same in web-treeview.
+- The expanded toggle glyph carries `stv__toggle-icon--expanded` (BEM modifier, as web-treeview's `wtv__toggle-icon--expanded`) instead of a bare `.expanded` class — update a stylesheet that targeted `.stv__toggle-icon.expanded`.
+
+### Internal — handler names (2026-11-24)
+
+- Private handlers are `_handle*` (`_handleNodeSelectClick`, `_handleCheckboxToggle`, `_handleNodeContextMenu`, `_handlePointerDrop`, `_handlePointerCancel`); the renderer plumbing `NodeCallbacks` members are `handleNodeContentClick` / `handleNodeSelectClick` / `handleCheckboxToggle` / `handleNodeContextMenu` / `handleToggleClick` (were past-tense `on*Clicked`); `calculateDropPositionFromEvent` → `computeDropPositionFromEvent`. ~55 comments / JSDoc that said "highlight" for the click selection now say "selection" (highlight = visual emphasis only, since rc16). Same handler names in web-treeview. (REVIEW-2026-11-19 §2b C-NC-9.)
+
 ### Added — ARIA tree semantics and screen-reader announcements (2026-11-24)
 
 - The tree is now a WAI-ARIA tree, like web-treeview: the focused `.stv__container` is `role="tree"` (`aria-label` = the new label `ariaLabels.tree`, "Tree"; `aria-multiselectable` in `selectionMode: 'multiple'`), every row is a `role="treeitem"` with `aria-level`, `aria-posinset` / `aria-setsize` (over the visible siblings — the whole list, not the virtual-scroll window), `aria-expanded` (parents only), `aria-selected` and, when checkboxes are shown, `aria-checked` (`mixed` = indeterminate). Focus stays on the container; `aria-activedescendant` follows the focused node's row through core `createActiveDescendant` (vendored, ARIA-only — the tree keeps its own keys). (REVIEW-2026-11-19 B22.)

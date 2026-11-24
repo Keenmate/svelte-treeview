@@ -122,7 +122,7 @@ Every web event has an `on<Name>` twin receiving the detail; every detail / ctx 
 | `isNodeDropAllowed(path): boolean` | same | same |
 | `addNode`, `insertNode`, `updateNode`, `removeNode`, `removeNodes`, `moveNode`, `moveNodes`, `duplicateNodes(…, transform?, sourceTree?)`, `processChanges`, `duplicateNode` | same | same |
 | `deleteNodes(paths?)` — the user's Delete command (beforeDeleteCallback → remove → `onNodeDelete` / `node-delete`); default = the selection, else the focused node (was `runDeleteCommand`, renamed 2026-11-23) | same (element + controller, 2026-11-23) | same |
-| `addBranch` / `insertBranch` → `InsertBranchResult`; `replaceBranch` → `ReplaceBranchResult`; `removeBranch` → `RemoveBranchResult` (`{ success, count, error? }`) | same (exported types identical) | same |
+| `addBranch` / `insertBranch` → `InsertBranchResult`; `replaceBranch` → `ReplaceBranchResult`; `removeBranch(path, { shouldKeepParent? })` → `RemoveBranchResult` (`{ success, count, error? }`; 2026-11-24: options object, was a bare `keepParent` boolean — still honoured + warned); `removeNode(path)` (the dead `includeDescendants` dropped) | same (exported types identical) | same |
 | `selectNode`, `selectNodes`, `selectAll`, `clearSelection`, `getSelectedNodes`, `isNodeSelected`, `toggleFocusedSelect()` | same | same |
 | `checkNode(s)`, `checkAll`, `uncheckNode(s)`, `uncheckAll`, `getCheckedNodes`, `isNodeChecked` | same | same |
 | `focusNode`, `clearFocus` (honour `isSilent`) | same | same |

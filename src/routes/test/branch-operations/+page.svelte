@@ -129,7 +129,7 @@
 	}
 
 	function doDelete(path: string, keepParent = false) {
-		const result = treeRef.removeBranch(path, keepParent);
+		const result = treeRef.removeBranch(path, { shouldKeepParent: keepParent });
 		recordDeleteResult(keepParent ? 'removeBranch(keepParent)' : 'removeBranch', result);
 	}
 

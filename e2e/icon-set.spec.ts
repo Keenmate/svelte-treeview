@@ -28,7 +28,7 @@ function iconVar(page: Page, id: string, name: string) {
 function toggleMask(page: Page, id: string) {
 	return container(page, id).evaluate((el) => {
 		const toggle =
-			el.querySelector('.stv__toggle-icon--expand.expanded') ??
+			el.querySelector('.stv__toggle-icon--expand.stv__toggle-icon--expanded') ??
 			el.querySelector('.stv__toggle-icon--expand');
 		return getComputedStyle(toggle as Element, '::before').maskImage;
 	});

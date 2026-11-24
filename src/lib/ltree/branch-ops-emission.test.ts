@@ -89,13 +89,22 @@ describe('branch operations — single-emission guarantee', () => {
 		expect(spy).toHaveBeenCalledTimes(1);
 	});
 
-	it('removeBranch with keepParent=true still fires exactly once', () => {
+	it('removeBranch with a legacy boolean `true` keeps the node (no silent data loss)', () => {
+		const tree = createTree();
+		tree.insertArray(seed);
+		const result = tree.removeBranch('2.1', true as any);
+		expect(result.success).toBe(true);
+		expect(tree.getNodeByPath('2.1')).not.toBeNull();
+		expect(Object.keys(tree.getNodeByPath('2.1')!.children)).toHaveLength(0);
+	});
+
+	it('removeBranch with shouldKeepParent still fires exactly once', () => {
 		const tree = createTree();
 		tree.insertArray(seed);
 
 		const spy = vi.spyOn(tree, 'refresh');
 
-		const result = tree.removeBranch('2.1', true);
+		const result = tree.removeBranch('2.1', { shouldKeepParent: true });
 
 		expect(result.success).toBe(true);
 		expect(result.count).toBe(2);

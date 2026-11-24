@@ -60,7 +60,7 @@
 	}
 
 	// ── Branch Operations demo ─────────────────────────────────────────
-	// addBranch(parentPath, nodes) and removeBranch(path[, childrenOnly]) mutate a
+	// addBranch(parentPath, nodes) and removeBranch(path[, { shouldKeepParent }]) mutate a
 	// whole subtree in one call, each emitting a single change. This org-chart demo
 	// wires them to a context-menu cut/paste with a simulated server round-trip that
 	// recalculates paths + IDs before the branch lands at its new home.
@@ -343,7 +343,7 @@
 				text: 'Clear children only',
 				isDisabled: isProcessing,
 				onClick: () => {
-					const result = treeRef.removeBranch(node.path, true);
+					const result = treeRef.removeBranch(node.path, { shouldKeepParent: true });
 					addLog('removeBranch', `Cleared ${result.count} children from "${node.data?.name}"`);
 					close();
 				}
@@ -684,7 +684,7 @@ ${"<"}/script>
 
 	<div class="code-block" data-language="ts">
 		<pre>{`// addBranch(parentPath, nodes)  → { success, count }
-// removeBranch(path, childrenOnly?) → { success, count }
+// removeBranch(path, { shouldKeepParent? }) → { success, count }
 // replaceBranch(path, nodes)        → swap a subtree's contents in place
 
 // 1. User cuts a branch via context menu

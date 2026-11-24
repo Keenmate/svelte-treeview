@@ -279,7 +279,7 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `moveNode` | `sourcePath: string, targetPath: string, position: 'before' \| 'after' \| 'child'` | Move a node to a new location |
 | `moveNodes` | `paths: string[], targetPath: string, position: DropPosition` | Batch-move a complete manifest; a descendant omitted from the manifest is left behind (re-homed to its moved root's old parent). Returns `{ success, movedNodes, leftBehind }` |
 | `duplicateNodes` | `paths: string[], targetPath: string, position: DropPosition, transform?, sourceTree?` | Batch-copy the copy-side twin of `moveNodes`; an omitted descendant is simply not copied. `sourceTree` copies another tree's nodes in (cross-tree). Returns `{ success, copiedNodes, skipped }` |
-| `removeNode` | `path: string, includeDescendants?: boolean` | Remove a node (and optionally its descendants) |
+| `removeNode` | `path: string` | Remove a node and its subtree |
 | `removeNodes` | `paths: string[]` | Remove several subtrees programmatically (no `beforeDeleteCallback`, no `onNodeDelete`). The user Delete command is `controller.deleteNodes(paths?)` (veto + event) |
 | `getNodeByPath` | `path: string` | Get a node by its path |
 | `getChildren` | `parentPath: string` | Get direct children of a node |

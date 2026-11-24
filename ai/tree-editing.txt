@@ -85,7 +85,7 @@ REMOVE NODE
 -----------
 <script>
   function deleteNode(path) {
-    const result = treeRef.removeNode(path, true);
+    const result = treeRef.removeNode(path);
 
     if (result.success) {
       console.log('Removed:', result.node?.path);
@@ -96,10 +96,9 @@ REMOVE NODE
 <button onclick={() => deleteNode('1.2')}>Delete 1.2</button>
 
 removeNode signature:
-removeNode(path: string, includeDescendants?: boolean)
+removeNode(path: string)
 
-- path: Node to remove
-- includeDescendants: Remove children too (default: true)
+- path: Node to remove — always together with its whole subtree
 
 Returns: { success: boolean, node?: LTreeNode<T>, error?: string }
 
@@ -421,9 +420,9 @@ replaceBranch(parentPath: string, data: T[]): ReplaceBranchResult<T>   // + remo
 - Useful for server-driven updates where a subtree is replaced wholesale
 - Returns { success, count, failed, parentNode }
 
-removeBranch(path: string, keepParent?: boolean): RemoveBranchResult<T>
+removeBranch(path: string, options?: RemoveBranchOptions): RemoveBranchResult<T>
 - Removes the node at path and all its descendants in one operation
-- keepParent: keep the node itself, remove only its descendants
+- options.shouldKeepParent: keep the node itself, remove only its descendants
 - Returns { success, count, error? }  (count = nodes removed)
 
 Example: server-driven cut/paste

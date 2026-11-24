@@ -24,7 +24,7 @@
 
 <h1>iconSet test — one glyph variable set, reconfigured per set</h1>
 
-<!-- Each tree is expandLevel=1 so the root's toggle renders `.expanded`, exposing
+<!-- Each tree is expandLevel=1 so the root's toggle renders `stv__toggle-icon--expanded`, exposing
 	 the resolved ::before mask. -->
 
 <div data-testid="tree-chevron">

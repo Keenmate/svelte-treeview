@@ -26,7 +26,7 @@ let _clipboard: TreeClipboard<any> | null = null;
 // cross-tree CUT (a same-tree cut removes them directly). Kept to a tiny surface
 // (just removeNode) to avoid a circular type dependency on TreeEngine.
 export interface ClipboardSourceTree {
-	removeNode(path: string, includeDescendants?: boolean): unknown;
+	removeNode(path: string): unknown;
 	/** Resolve a live node by path in the SOURCE tree — needed for a cross-tree COPY that
 	 *  the library auto-handles (it reads the source subtree to duplicate it into the dest). */
 	getNodeByPath(path: string): unknown;
@@ -58,12 +58,12 @@ export function getRegisteredTrees(): ClipboardSourceTree[] {
 // ─── Cross-tree drag set ──────────────────────────────────────────────────
 // Published by the SOURCE tree on drag start so a CROSS-TREE drop/dragover can see
 // what's moving (the target controller only gets ONE reconstituted node from
-// dataTransfer and can't read the source's highlight set). Two views:
+// dataTransfer and can't read the source's selection). Two views:
 //  - `paths`: the TOP-LEVEL dragged set → exposed via ctx.dragged on the on* events.
 //  - `manifest`: the PLACEMENT manifest the library feeds to duplicateNodes/moveNodes —
 //    a curated beforeDragStart override AS-IS (holes preserved) or, for a plain drag, the
 //    COMPLETE set (every descendant) so whole subtrees copy. Cross-tree auto-copy reads this.
-// Same-tree drops don't need this — they compute the set from their own live highlight.
+// Same-tree drops don't need this — they compute the set from their own live selection.
 let _dragSet: { sourceTreeId: string; paths: string[]; manifest: string[] } | null = null;
 
 export function setDragSet(sourceTreeId: string, paths: string[], manifest: string[]): void {

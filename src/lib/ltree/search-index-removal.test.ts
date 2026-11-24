@@ -76,7 +76,7 @@ describe('search index stays correct across removals', () => {
 		ltree.insertArray(fixture);
 		await waitFor(() => ltree.searchNodes('foxtrot').length > 0);
 
-		ltree.removeBranch('2', true);
+		ltree.removeBranch('2', { shouldKeepParent: true });
 
 		expect(ltree.searchNodes('echo')).toEqual([]);
 		expect(names(ltree.searchNodes('delta'))).toEqual(['delta']);

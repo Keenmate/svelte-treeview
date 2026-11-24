@@ -47,7 +47,7 @@
 	// For the BUILT-IN glyph, which picture the disclosure shows (and whether it
 	// rotates or swaps on expand) is decided by CSS via the --stv-icon-* variables +
 	// data-icon-set / data-toggle-icon-mode on .stv__container — the template just
-	// renders the single `stv__toggle-icon--expand` class + an `.expanded` marker.
+	// renders the single `stv__toggle-icon--expand` class + the `stv__toggle-icon--expanded` modifier.
 	const leafIconClass = $derived(config.leafIconClass);
 	const selectedNodeClass = $derived(config.selectedNodeClass);
 	const focusedNodeClass = $derived(config.focusedNodeClass);
@@ -255,13 +255,13 @@
 	function toggleExpanded() {
 		// Accordion, beforeExpandCallback (lazy loading) and the expand events live in the
 		// controller (toggleNodeExpanded) — the same path the API and keyboard take.
-		if (node.hasChildren && isCollapsible) callbacks.onToggleExpanded(node)
+		if (node.hasChildren && isCollapsible) callbacks.handleToggleClick(node)
 	}
 
 
 	// Click routing (checkbox-on-click, clickBehavior) is the engine's handleNodeClick.
-	function _onNodeClicked(event?: MouseEvent) {
-		callbacks.onNodeContentClicked(node, event)
+	function _handleNodeSelectClick(event?: MouseEvent) {
+		callbacks.handleNodeContentClick(node, event)
 	}
 
 	// Note: double-click in clickBehavior='select' is detected on the controller
@@ -300,7 +300,7 @@
 			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 			<span
 				class="stv__toggle-icon stv__clickable stv__toggle-icon--expand"
-				class:expanded={node.isExpanded}
+				class:stv__toggle-icon--expanded={node.isExpanded}
 				class:stv__toggle-icon--loading={isExpandPending}
 				onclick={toggleExpanded}
 			></span>
@@ -326,7 +326,7 @@
 				onclick={(e) => {
 					e.preventDefault();
 					e.stopPropagation();
-					callbacks.onCheckboxToggle(node);
+					callbacks.handleCheckboxToggle(node);
 				}}
 			/>
 		{/if}
@@ -356,11 +356,11 @@
 			class:stv__node-content--drop-copy={isDragInProgress && isHoveredForDrop && dropOperation === 'copy'}
 			onclick={(e) => {
 				e.stopPropagation();
-				_onNodeClicked(e);
+				_handleNodeSelectClick(e);
 			}}
 			oncontextmenu={(e) => {
 				e.stopPropagation();
-				callbacks.onNodeRightClicked(node, e);
+				callbacks.handleNodeContextMenu(node, e);
 			}}
 			use:tooltip={{
 				enabled: tooltipEnabled,

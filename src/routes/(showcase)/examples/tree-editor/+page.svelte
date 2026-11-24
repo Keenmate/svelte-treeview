@@ -1241,7 +1241,7 @@
 				<td>Move a node to a new location ('before', 'after', 'child')</td>
 			</tr>
 			<tr>
-				<td><code>removeNode(path, includeDescendants?)</code></td>
+				<td><code>removeNode(path)</code></td>
 				<td>Remove a node (and optionally its descendants)</td>
 			</tr>
 			<tr>

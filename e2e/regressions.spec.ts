@@ -177,8 +177,8 @@ test.describe('while filtered', () => {
 test('R4: assigning expandedPaths updates the expand arrow of a still-visible row', async ({ page }) => {
 	await page.evaluate(() => (window as any).__setExpanded(['2']));
 	await expect(row(page, '1.1')).toHaveCount(0);
-	await expect(row(page, '1').locator('.expanded')).toHaveCount(0);
-	await expect(row(page, '2').locator('.expanded')).toHaveCount(1);
+	await expect(row(page, '1').locator('.stv__toggle-icon--expanded')).toHaveCount(0);
+	await expect(row(page, '2').locator('.stv__toggle-icon--expanded')).toHaveCount(1);
 });
 
 test.describe('context menu', () => {

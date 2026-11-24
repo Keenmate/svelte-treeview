@@ -190,6 +190,12 @@ export interface ReplaceBranchResult<T> extends InsertBranchResult<T> {
 	added: number;
 }
 
+/** Options of `removeBranch`. */
+export interface RemoveBranchOptions {
+	/** Keep the node itself and remove only its descendants (default `false` = the node and its subtree). */
+	shouldKeepParent?: boolean;
+}
+
 /** Result of `removeBranch`: `count` = nodes removed. Same as web-treeview. */
 export interface RemoveBranchResult<T = any> {
 	success: boolean;
@@ -412,10 +418,7 @@ export interface Ltree<T> {
 		targetPath: string,
 		position: 'before' | 'after' | 'child'
 	): { success: boolean; error?: string };
-	removeNode(
-		path: string,
-		includeDescendants?: boolean
-	): { success: boolean; node?: LTreeNode<T>; error?: string };
+	removeNode(path: string): { success: boolean; node?: LTreeNode<T>; error?: string };
 	addNode(
 		parentPath: string,
 		data: T,
@@ -436,7 +439,7 @@ export interface Ltree<T> {
 		position: InsertPosition
 	): { success: boolean; node?: LTreeNode<T>; error?: string };
 	replaceBranch(parentPath: string, data: T[]): ReplaceBranchResult<T>;
-	removeBranch(path: string, keepParent?: boolean): RemoveBranchResult<T>;
+	removeBranch(path: string, options?: RemoveBranchOptions): RemoveBranchResult<T>;
 
 	// Duplicate one subtree (also from another tree — duplicateNodes runs it per root)
 	duplicateNode(
