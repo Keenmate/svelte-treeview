@@ -151,6 +151,8 @@ Both resolve every key through core `/locale` `createLabels` (SPEC §12.24): the
 
 ## 8. Exports
 
+`VisualState` (2026-11-24, both): `'checked' | 'unchecked' | 'indeterminate'` — computed, never read from data.
+
 Event ctx types (2026-11-24, both): one type per event — `SelectionChangeContext` / `CheckedChangeContext`, `BeforeCopyContext` / `BeforeCutContext`, `NodeCopyContext` / `NodeCutContext` / `NodeDeleteContext` (no shared `ClipboardEventContext`); web adds the `…EventDetail` / `…CallbackContext` twins (`& { controller, element }`).
 
 | web | svelte | status |

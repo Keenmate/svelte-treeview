@@ -270,7 +270,7 @@ interface LTreeNode<T> {
   isCollapsible: boolean;
   isDropAllowed: boolean;
   allowedDropPositions: DropPosition[] | null;
-  visualState: VisualState;  // "indeterminate" | "true" | "false"
+  visualState: VisualState;  // "indeterminate" | "checked" | "unchecked" — computed, never read from data
   isExpanded: boolean;
   isFocused: boolean;        // single focused node
   isSelected: boolean;    // UI multi-select set

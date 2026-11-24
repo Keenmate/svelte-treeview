@@ -7,8 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.0.0-rc18] - 2026-11-22
 
-### Changed — one context type per event; `ContextMenuItem` / `ContextMenuDivider` (2026-11-24)
+### Changed — one context type per event; `ContextMenuItem` / `ContextMenuDivider`; `VisualState` values (2026-11-24)
 
+- `VisualState` values are `'checked'` / `'unchecked'` / `'indeterminate'` (were `'true'` / `'false'`, which read like the node's `isChecked` boolean in a log). It is the checkbox look the tree computes — data still feeds `isChecked` through `isCheckedMember`, so a `true` / `false` / `null` column is unaffected; only code comparing `node.visualState` to the raw strings `'true'` / `'false'` needs `VisualState.checked` / `.unchecked`. Same in web-treeview.
 - One context type per event, no shared names: `onCheckedChange` takes `CheckedChangeContext` (was `SelectionChangeContext`, which stays for `onSelectionChange`), `beforeCutCallback` takes `BeforeCutContext` (was `BeforeCopyContext`, which now says `operation: 'copy'`), `onNodeCopy` / `onNodeCut` / `onNodeDelete` take `NodeCopyContext` / `NodeCutContext` / `NodeDeleteContext` (`ClipboardEventContext` is gone; delete's ctx has no `operation`). Same fields as before — only the type names change. (REVIEW-2026-11-19 §2b.) Same in web-treeview.
 - The menu components are exported as `ContextMenuItem` / `ContextMenuDivider` (were `ContextMenuItemC` / `ContextMenuDividerC`).
 

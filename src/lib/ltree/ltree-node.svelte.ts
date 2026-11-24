@@ -1,10 +1,12 @@
 export type NodeId = string | number;
 export type DropPosition = 'before' | 'after' | 'child';
 
+/** The checkbox look the tree COMPUTES for a node (from isChecked and, in cascade mode, its
+ *  descendants). Never read from data — a data column feeds `isChecked` via isCheckedMember. */
 export enum VisualState {
 	indeterminate = "indeterminate",
-	checked = "true",
-	unchecked = "false",
+	checked = "checked",
+	unchecked = "unchecked",
 }
 
 export interface LTreeNode<T> {
