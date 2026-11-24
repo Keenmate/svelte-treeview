@@ -65,6 +65,8 @@ import { ICON_CSS, renderIcon, type IconRenderContext, type RenderIconCallback }
 import { adoptStyles } from '../vendor/core/dom/adopt-styles.js';
 import { createPointerDrag, type PointerDrag } from '../vendor/core/dom/pointer-drag.js';
 import { findScrollContainer } from '../vendor/core/dom/scroll-container.js';
+import { announce } from '../vendor/core/dom/announce.js';
+import { rowDomId } from '../helpers/string-helpers.js';
 
 // Re-register global API (safe to import multiple times)
 import {
@@ -491,6 +493,9 @@ export interface NodeConfig {
 	closingPaths: Set<string>;
 	/** Nodes whose async `beforeExpandCallback` is in flight (the loading state). */
 	expandPendingPaths: Set<string>;
+	/** `[aria-posinset, aria-setsize]` per visible path (ARIA tree; built over every visible
+	 *  node, not just the rendered virtual window). */
+	ariaPositions: Map<string, [number, number]>;
 	// Data-driven per-row class hooks. Applied to .stv__node (getNodeClassCallback) and
 	// .stv__node-content (getNodeContentClassCallback). Typed LTreeNode<any> here because
 	// NodeConfig is non-generic plumbing; the public Tree props are LTreeNode<T>.
@@ -548,7 +553,13 @@ export interface TreeEngineProps<T> {
 	 *  `labels.dropAfter` / `labels.dropChild` ("Before" / "After" / "Child" — the floating drop
 	 *  pads), `ariaLabels.loading` ("Loading…" — `isLoading` overlay aria-label),
 	 *  `ariaLabels.showFullLabel` ("Show full label" — `nodeTitleOverflow: 'info'` button),
-	 *  `menuItems.copy` … `menuItems.sortAll` (built-in context-menu items). `{name}` placeholders.
+	 *  `menuItems.copy` … `menuItems.sortAll` (built-in context-menu items), `ariaLabels.tree`
+	 *  ("Tree" — aria-label of the `role="tree"` container); screen-reader announcements (core
+	 *  `announce()`, `''` silences one): `ariaLabels.searchResults` ("Results: {count}"),
+	 *  `ariaLabels.searchNoResults`, `ariaLabels.movedInto|Before|After` /
+	 *  `ariaLabels.copiedInto|Before|After` ("{name} moved into {target}" — a drop the tree placed),
+	 *  `ariaLabels.dropItems` ("Items ({count})"), `ariaLabels.dropTreeRoot` ("the tree"),
+	 *  `ariaLabels.dropDenied` ("Cannot drop here: {target} does not accept dropped items"). `{name}` placeholders.
 	 *  The `noData` / `dropPlaceholder` snippets still replace the markup. */
 	labels?: TreeLabelsInput;
 	/** This tree's own translation seam (i18next / ICU / the app's lookup): gets
@@ -1005,6 +1016,7 @@ export class TreeEngine<T> {
 		revealedPaths: new Set(),
 		closingPaths: new Set(),
 		expandPendingPaths: new Set(),
+		ariaPositions: new Map(),
 		dropZoneMode: 'glow',
 		dropZoneLayout: 'around',
 		dropZoneStart: 33,
@@ -1487,6 +1499,27 @@ export class TreeEngine<T> {
 	/** @internal */
 	vsContainerStyle = $derived(this.virtualScrollContainerHeight ?? this.vsDetectedHeight ?? '400px');
 	allFlatNodes = $derived(this.tree?.visibleFlatNodes ?? []);
+	/**
+	 * ARIA tree: `[posinset, setsize]` per visible path — siblings are the visible children of the
+	 * same parent (search-filter aware), over every visible node (not just the rendered virtual
+	 * window). Same as web-treeview's renderer `_ariaPositionMap`.
+	 * @internal
+	 */
+	ariaPositions = $derived.by(() => {
+		const counts = new Map<string, number>();
+		const map = new Map<string, [number, number]>();
+		for (const n of this.allFlatNodes) {
+			const parent = n.parentPath ?? '';
+			const pos = (counts.get(parent) ?? 0) + 1;
+			counts.set(parent, pos);
+			map.set(n.path, [pos, 0]);
+		}
+		for (const n of this.allFlatNodes) {
+			const entry = map.get(n.path)!;
+			entry[1] = counts.get(n.parentPath ?? '') ?? entry[0];
+		}
+		return map;
+	});
 	/** @internal */
 	vsTotalCount = $derived(this.allFlatNodes.length);
 	/** @internal */
@@ -1656,6 +1689,14 @@ export class TreeEngine<T> {
 		this.tree.onSearchStatus = (status) =>
 			untrack(() => {
 				this.searchStatus = status;
+				// A settled search is announced (not while the index still fills — a fresh status
+				// follows when it completes; a cleared search is silent).
+				if (status.searchTerm && !status.isIndexing) {
+					this._announce(status.matchCount === 0 ? 'ariaLabels.searchNoResults' : 'ariaLabels.searchResults', {
+						count: status.matchCount,
+						searchTerm: status.searchTerm
+					});
+				}
 				this.onSearchStatusChangeHandler?.(this._ctx(status));
 			});
 
@@ -1705,6 +1746,7 @@ export class TreeEngine<T> {
 			revealedPaths: this.revealedPaths,
 			closingPaths: this.closingPaths,
 			expandPendingPaths: this.expandPendingPaths,
+			ariaPositions: this.ariaPositions,
 			dropZoneMode: this.dropZoneMode,
 			dropZoneLayout: this.dropZoneLayout,
 			dropZoneStart: this.dropZoneStart,
@@ -1766,6 +1808,7 @@ export class TreeEngine<T> {
 			revealedPaths: this.revealedPaths,
 			closingPaths: this.closingPaths,
 			expandPendingPaths: this.expandPendingPaths,
+			ariaPositions: this.ariaPositions,
 				dropZoneMode: this.dropZoneMode,
 				dropZoneLayout: this.dropZoneLayout,
 				dropZoneStart: this.dropZoneStart,
@@ -4095,7 +4138,7 @@ export class TreeEngine<T> {
 			await new Promise((r) => requestAnimationFrame(r));
 
 			if (highlight && this.scrollHighlightClass) {
-				const elementId = `${this.treeId}-${node.id}`;
+				const elementId = rowDomId(this.treeId, node.path);
 				if (!this._highlightRow(elementId)) {
 					// Element might not be rendered yet — retry after another frame
 					await tick();
@@ -4108,7 +4151,7 @@ export class TreeEngine<T> {
 			return true;
 		}
 
-		const elementId = `${this.treeId}-${node.id}`;
+		const elementId = rowDomId(this.treeId, node.path);
 		const rootEl = this.containerElement;
 		const findContent = (): HTMLElement | null => {
 			const el = rootEl
@@ -5426,6 +5469,9 @@ export class TreeEngine<T> {
 		// (null when it didn't — cross-tree or shouldAutoHandle*=false). NodeRefs are built
 		// at fire time so parent/siblings reflect the final tree.
 		const dispatchDrop = (dropped: LTreeNode<T>[] | null) => {
+			// The tree placed the nodes itself → say where (a consumer-owned drop — dropped null —
+			// is the consumer's to announce).
+			if (dropped?.length) this._announceDrop(dropped, draggedRefs.length, dropNode, position, operation);
 			this.onNodeDropHandler?.(this._ctx({
 				source: this.getNodeRef(draggedNodeRef),
 				target: dropNode ? this.getNodeRef(dropNode) : null,
@@ -5983,6 +6029,39 @@ export class TreeEngine<T> {
 		}
 	}
 
+	// ── Screen-reader announcements (core `announce()`) ─────────────────
+
+	/** Announce a label through the page's polite live region; a label set to `''` stays silent.
+	 *  The params also travel as `{ ctx }` — a `translateCallback` reads `params.ctx`, as in web-treeview. */
+	private _announce(key: keyof TreeLabels, params: Record<string, unknown>): void {
+		const text = this.getLabel(key, { ...params, ctx: params });
+		uiLogger.debug('[announce]', { key, text });
+		if (text) announce(text, { document: this.containerElement?.ownerDocument });
+	}
+
+	/** A node's display text for an announcement. */
+	private _getAnnouncedName(node: LTreeNode<any> | null | undefined): string {
+		return node ? (this.tree?.getNodeDisplayValue(node) || String(node.id)) : '';
+	}
+
+	/** "Item moved into Folder" — the outcome of a drop the tree placed itself. */
+	private _announceDrop(
+		dropped: LTreeNode<T>[],
+		count: number,
+		target: LTreeNode<T> | null,
+		position: DropPosition,
+		operation: DropOperation
+	): void {
+		const name = count > 1 ? this.getLabel('ariaLabels.dropItems', { count, ctx: { count } }) : this._getAnnouncedName(dropped[0]);
+		const targetName = target ? this._getAnnouncedName(target) : this.getLabel('ariaLabels.dropTreeRoot');
+		const where = !target || position === 'child' ? 'Into' : position === 'before' ? 'Before' : 'After';
+		this._announce(`ariaLabels.${operation === 'copy' ? 'copied' : 'moved'}${where}` as keyof TreeLabels, {
+			name,
+			target: targetName,
+			count
+		});
+	}
+
 	/**
 	 * "Can't drop here" feedback — the target-side twin of _showDragBlockedIndicator. Fires the
 	 * onNodeDropReject consumer hook always; the built-in indicator (haptic + a brief no-entry
@@ -5992,6 +6071,7 @@ export class TreeEngine<T> {
 	private _showDropBlockedIndicator(node: LTreeNode<any>) {
 		dragLogger.debug('[drop-denied] target refused drop', { path: node?.path });
 
+		this._announce('ariaLabels.dropDenied', { target: this._getAnnouncedName(node) });
 		this.onNodeDropRejectHandler?.(this._ctx(this.getNodeRef(node)));
 
 		if (!this.shouldIndicateUndraggable) return;

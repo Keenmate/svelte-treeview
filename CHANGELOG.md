@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.0.0-rc18] - 2026-11-22
 
+### Added — ARIA tree semantics and screen-reader announcements (2026-11-24)
+
+- The tree is now a WAI-ARIA tree, like web-treeview: the focused `.stv__container` is `role="tree"` (`aria-label` = the new label `ariaLabels.tree`, "Tree"; `aria-multiselectable` in `selectionMode: 'multiple'`), every row is a `role="treeitem"` with `aria-level`, `aria-posinset` / `aria-setsize` (over the visible siblings — the whole list, not the virtual-scroll window), `aria-expanded` (parents only), `aria-selected` and, when checkboxes are shown, `aria-checked` (`mixed` = indeterminate). Focus stays on the container; `aria-activedescendant` follows the focused node's row through core `createActiveDescendant` (vendored, ARIA-only — the tree keeps its own keys). (REVIEW-2026-11-19 B22.)
+- Screen-reader announcements through core `announce()` (vendored; the page's one polite live region, shared with every Keenmate component): a settled search ("Results: 12" / "No results found"), a drop the tree placed ("Apricot moved into Banana", "Items (3) copied before Veg"), a refused drop ("Cannot drop here: Locked does not accept dropped items"). New labels `ariaLabels.searchResults`, `ariaLabels.searchNoResults`, `ariaLabels.movedInto|Before|After`, `ariaLabels.copiedInto|Before|After`, `ariaLabels.dropItems`, `ariaLabels.dropTreeRoot`, `ariaLabels.dropDenied` — the same keys as web-treeview; `''` silences one. Placeholders `{count}` / `{name}` / `{target}` / `{searchTerm}`; the params also travel as `ctx`, so a `translateCallback` reads `params.ctx` as in web-treeview.
+- Row DOM ids are `{treeId}-{path}` (escaped; web-treeview's `rowDomId`) instead of `{treeId}-{node.id}`: a pasted copy keeps its source id, so two rows could share a DOM id and `aria-activedescendant` / `scrollToPath` hit the wrong one.
+
 ### Fixed — a node moved between two adjacent order values no longer duplicates one (2026-11-23)
 
 - With `orderMember`, `moveNode` (and a drag-move before / after a node) gave the moved node `floor((prev + target) / 2)`: between siblings ordered 3 and 4 that is 3 again, so the next re-sort could put it on the wrong side. It now uses the same rule as `insertNode` / `insertBranch` / paste: whole numbers while the gap allows, else a fraction (3.5). (REVIEW-2026-11-19 §3.7.)

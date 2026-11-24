@@ -38,8 +38,12 @@ last synced against is listed in [`scripts/core-sync.json`](../../../../scripts/
   It brings `overlay/` (one overlay open at a time, sheet session + chrome, scroll lock, keyboard
   inset, phone Back), `positioning/` (anchor, scroll close, containing block, theme inherit) and
   `dom/active-element`, `dom/direction`.
+- `a11y/active-descendant.ts` + `dom/announce.ts` — the ARIA tree (SPEC §12.25 / §12.23, REVIEW B22):
+  `createActiveDescendant` (ARIA-only: the `role="tree"` `.stv__container` owns `aria-activedescendant`)
+  and `announce()` (search results, drop outcome, refused drop). One local edit in active-descendant:
+  it imports `callSafely as runSafely` (the vendored `logging/safe-call.ts` predates core's rename).
 - `global/` (`shared-state`, `page-setting`), `dom/` (`composed-tree`, `once`, `throttle`,
-  `frame-scheduler`, `adopt-styles`, `escape-html`) — the helpers the above import.
+  `frame-scheduler`, `adopt-styles`, `escape-html`, `create-id`) — the helpers the above import.
 
 Kept byte-for-byte so a later switch to a shared package is a move, not a rewrite. The
 page-wide state sits on `globalThis[Symbol.for('@keenmate/web-components-core…')]`, so this

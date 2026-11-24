@@ -66,6 +66,26 @@
 			]
 		},
 		{
+			"name": "a11y",
+			"description": "ARIA tree (REVIEW B22, same as web-treeview's renderer): createActiveDescendant (SPEC §12.25, ARIA-only — the focused role=\"tree\" .stv__container owns aria-activedescendant, the tree keeps its own keys) + announce() (SPEC §12.23, the page's one polite live region: search results, drop outcome, refused drop). create-id is active-descendant's import.",
+			"mode": "identical",
+			"baseline": "60953d9",
+			"files": [
+				["src/dom/announce.ts", "src/lib/vendor/core/dom/announce.ts"],
+				["src/dom/create-id.ts", "src/lib/vendor/core/dom/create-id.ts"]
+			]
+		},
+		{
+			"name": "a11y active descendant",
+			"description": "createActiveDescendant (SPEC §12.25) — see the a11y group.",
+			"mode": "adapted",
+			"baseline": "60953d9",
+			"note": "One local edit: imports `callSafely as runSafely` — the vendored logging/safe-call.ts predates core's runSafely rename (25593da). Drop the edit when the logging group is re-synced (REVIEW §4).",
+			"files": [
+				["src/a11y/active-descendant.ts", "src/lib/vendor/core/a11y/active-descendant.ts"]
+			]
+		},
+		{
 			"name": "locale",
 			"description": "Labels + page-wide locale (SPEC §12.24): flat <elementType>.<name> keys; createLabels = labels prop → the tree's translateCallback → window.components.locale.translateCallback → the flat page dictionary labels['svelte-treeview.<key>'] → English. src/lib/core/labels.ts is the seam.",
 			"mode": "identical",

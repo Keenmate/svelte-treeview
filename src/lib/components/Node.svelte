@@ -6,6 +6,7 @@
 	import { observeElementSize } from "../vendor/core/environment/element-size.js"
 	import { computePosition, autoUpdate, offset, flip, shift } from "@floating-ui/dom"
 	import { tooltip } from "../actions/tooltip.js"
+	import { rowDomId } from "../helpers/string-helpers.js"
 
 	// Define component props interface
 	// Callbacks and config come from context, drag state comes as props
@@ -238,6 +239,13 @@
 	const isCollapsible = $derived(tree.getNodeIsCollapsible(node));
 
 	const hasChildren = $derived(node?.hasChildren || false)
+
+	// ARIA tree (role="treeitem"): set position over the visible siblings, and the checked
+	// state only on a row that shows a checkbox (mixed = indeterminate). Same as web-treeview.
+	const ariaPosition = $derived(config.ariaPositions?.get(node.path))
+	const ariaChecked = $derived(
+		!isCheckboxesShown || !node.isSelectable ? undefined : isIndeterminate ? ('mixed' as const) : !!node.isChecked
+	)
 	// Root nodes (level 1) sit flush against the left edge; only descendants indent,
 	// so the offset is (level - 1) × indent (matches web-treeview's root-at-zero math).
 	const indentStyle = $derived(
@@ -264,13 +272,22 @@
 	// dblclick. Manual detection on the (stable) controller avoids that.
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
+<!-- The tree (.stv__container, role="tree") keeps focus and points aria-activedescendant at
+     the focused row — a treeitem is never focused itself, so it carries no tabindex. -->
+<!-- svelte-ignore a11y_role_has_required_aria_props, a11y_interactive_supports_focus -->
 <div
 	class="stv__node {customNodeClass}"
 	class:stv__node--opening={isOpening}
 	class:stv__node--closing={isClosing}
 	inert={isClosing || undefined}
-	id="{node.treeId}-{node.id}"
+	id={rowDomId(node.treeId, node.path)}
+	role="treeitem"
+	aria-level={node.level ?? undefined}
+	aria-posinset={ariaPosition?.[0]}
+	aria-setsize={ariaPosition?.[1]}
+	aria-expanded={hasChildren ? !!node.isExpanded : undefined}
+	aria-selected={!!node.isSelected}
+	aria-checked={ariaChecked}
 	data-tree-path="{node.path}"
 	data-loading={isExpandPending ? '' : undefined}
 	aria-busy={isExpandPending ? 'true' : undefined}
@@ -278,8 +295,9 @@
 >
 	<div class="stv__node-row">
 		<!-- Toggle icon with its own click handler -->
-		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		{#if hasChildren && isCollapsible}
+			<!-- Pointer-only: the keyboard expands through the tree (ArrowRight / ArrowLeft / Enter). -->
+			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 			<span
 				class="stv__toggle-icon stv__clickable stv__toggle-icon--expand"
 				class:expanded={node.isExpanded}

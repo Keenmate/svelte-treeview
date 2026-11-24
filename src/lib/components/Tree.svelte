@@ -20,6 +20,8 @@
 		type ProcessChangesResult
 	} from '../ltree/types.js';
 	import { setContext, onDestroy, untrack, type Snippet } from 'svelte';
+	import { createActiveDescendant, type ActiveDescendant } from '../vendor/core/a11y/active-descendant.js';
+	import { rowDomId } from '../helpers/string-helpers.js';
 	import type { TreeEngineProps } from '../core/TreeEngine.svelte.js';
 	import { TREE_OPTION_KEYS } from '../core/tree-props.js';
 	import type {
@@ -240,6 +242,38 @@
 		if (!treeContainerRef) return;
 		const el = treeContainerRef;
 		return untrack(() => engine._attachPointerDrag(el, true));
+	});
+
+	// ── ARIA tree (core /a11y createActiveDescendant, ARIA-only — same as web-treeview) ──
+	// Focus stays on the role="tree" container (rows are virtual / re-keyed and may not exist);
+	// the tree keeps all its own keys (engine.handleKeydown). Core owns aria-activedescendant;
+	// it follows the focused node's row, none when that row isn't rendered (a virtual row
+	// scrolled out, a collapsed branch, the empty tree). No core scroll: keyboard moves already
+	// reveal the row through the engine.
+	let activeDescendant: ActiveDescendant | null = null;
+	$effect(() => {
+		if (!treeContainerRef) return;
+		const el = treeContainerRef;
+		activeDescendant = createActiveDescendant(el, el, {
+			getItems: () => Array.from(el.querySelectorAll<HTMLElement>('.stv__node')),
+			shouldHandleKeys: false,
+			shouldScroll: false
+		});
+		return () => {
+			activeDescendant?.destroy();
+			activeDescendant = null;
+		};
+	});
+	$effect(() => {
+		// Re-run when the focus moves, the rendered rows change, or the focused row re-keys (_rev).
+		const focused = engine.focusedNode;
+		void engine.flatNodesToRender;
+		void focused?._rev;
+		const ad = activeDescendant;
+		if (!ad || !treeContainerRef) return;
+		const row = focused ? treeContainerRef.querySelector<HTMLElement>(`#${CSS.escape(rowDomId(engine.treeId, focused.path))}`) : null;
+		const next = row?.isConnected ? row : null;
+		if (next !== ad.active) ad.setActive(next);
 	});
 
 	// ── Theme context (core SPEC §12.10, vendored) ─────────────────────────
@@ -924,12 +958,15 @@
 	</div>
 {/snippet}
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<!-- The focused container IS the ARIA tree (it owns aria-activedescendant — see the
+     createActiveDescendant $effect); the rows are its treeitems. -->
 <div
 	class="stv__container"
 	class:stv__tree-drop-zone--active={engine.isTreeDropZoneEnabled && engine.isDropPlaceholderActive}
 	tabindex="0"
+	role="tree"
+	aria-label={engine.getLabel('ariaLabels.tree') || undefined}
+	aria-multiselectable={engine.selectionMode === 'multiple' ? 'true' : undefined}
 	data-theme={theme}
 	data-context-theme={contextTheme}
 	data-motion={motionLevel === 'auto' ? undefined : motionLevel}
