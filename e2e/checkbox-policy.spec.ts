@@ -49,6 +49,28 @@ test.describe('Cascade select policy', () => {
 		await expect(selection(page)).toHaveText('1,2.1');
 	});
 
+	test('checkedPaths / getCheckedNodes are folded; allCheckedPaths / getAllCheckedNodes list every ticked node (D-NC-14)', async ({
+		page
+	}) => {
+		await buildScenario(page);
+		const r = await page.evaluate(() => {
+			const t = (window as any).__policyTree;
+			const paths = (ns: any[]) => ns.map((n) => n.path).sort();
+			return {
+				nodes: paths(t.getCheckedNodes()),
+				allNodes: paths(t.getAllCheckedNodes()),
+				// The public controllers (the facade every ctx.controller is).
+				ctls: (window as any).components['svelte-treeview'].getInstances().map((c: any) => ({ checked: [...c.checkedPaths].sort(), all: [...c.allCheckedPaths].sort() }))
+			};
+		});
+		// rolled-up: Fruits folds to 1; Vegetables is partial (only Carrot).
+		await expect(selection(page)).toHaveText('1,2.1');
+		expect(r.nodes).toEqual(['1', '2.1']);
+		expect(r.allNodes).toEqual(['1', '1.1', '1.2', '2.1']);
+		// The public controller agrees with the prop (was: the full set — REVIEW D-NC-14).
+		expect(r.ctls).toContainEqual({ checked: ['1', '2.1'], all: ['1', '1.1', '1.2', '2.1'] });
+	});
+
 	test('leaves policy emits only checked leaf nodes', async ({ page }) => {
 		await buildScenario(page);
 		await page.getByTestId('policy-leaves').click();

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.0.0-rc18] - 2026-11-22
 
+### Changed — `controller.checkedPaths` / `getCheckedNodes()` are the folded set; new `allCheckedPaths` / `getAllCheckedNodes()` (2026-11-24)
+
+- **One name per meaning for the checked set (REVIEW-2026-11-19 D-NC-14).** `checkedPaths` / `getCheckedNodes()` are the checked set as the tree reports it — folded by `cascadeCheckPolicy` — on every surface; the new read-only `allCheckedPaths` / `getAllCheckedNodes()` list every node that shows a tick (folders and their children), never folded. Before, svelte's public `controller.checkedPaths` and `getCheckedNodes()` returned the unfolded set while `bind:checkedPaths` / `onCheckedChange` were folded — in cascade mode with `'rolled-up'` / `'leaves'` a callback reading `ctx.controller.checkedPaths` saw a different set than the prop. Need every ticked node? Read `allCheckedPaths` / `getAllCheckedNodes()`. Same in independent mode or under `'all'` (nothing changes there). Engine internals: `#allCheckedPaths` (was `#checkedPaths`) / `#checkedPaths` (was `#emittedPaths`); the `emittedPaths` getter is gone. Same in web-treeview.
+
 ### Changed — one context type per event; `ContextMenuItem` / `ContextMenuDivider`; `VisualState` values (2026-11-24)
 
 - `VisualState` values are `'checked'` / `'unchecked'` / `'indeterminate'` (were `'true'` / `'false'`, which read like the node's `isChecked` boolean in a log). It is the checkbox look the tree computes — data still feeds `isChecked` through `isCheckedMember`, so a `true` / `false` / `null` column is unaffected; only code comparing `node.visualState` to the raw strings `'true'` / `'false'` needs `VisualState.checked` / `.unchecked`. Same in web-treeview.

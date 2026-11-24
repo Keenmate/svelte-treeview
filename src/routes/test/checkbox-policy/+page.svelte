@@ -29,6 +29,11 @@
 	}
 
 	let cascadeCheckPolicy = $state<CascadeCheckPolicy>('rolled-up');
+	// D-NC-14: exposed so the spec can compare the folded pair with the all* pair.
+	let policyTree = $state<any>();
+	$effect(() => {
+		(window as any).__policyTree = policyTree;
+	});
 	let checkedPaths = $state(new Set<string>());
 	// Filter regression: while filtered, a parent with one visible match must still
 	// cascade against ALL its real children (Fruits → Apple only ≠ Fruits fully checked).
@@ -71,6 +76,7 @@
 
 	<div class="tree-container">
 		<Tree
+			bind:this={policyTree}
 			nodes={sampleData}
 			idMember="id"
 			pathMember="path"

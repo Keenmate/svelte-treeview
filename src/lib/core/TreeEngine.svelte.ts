@@ -1155,29 +1155,27 @@ export class TreeEngine<T> {
 	private _lastClickPath: string | null = null;
 	private _lastClickTime: number = 0;
 	/**
-	 * CANONICAL checkbox state: every fully-checked node (leaves + fully-checked
-	 * branches). This is what every internal mutation reads/writes. The PUBLIC
-	 * `checkedPaths` getter still returns this (back-compat: "all checked nodes"),
-	 * but the value that flows OUT through the bindable prop + `onCheckedChange`
-	 * is the policy PROJECTION (`#emittedPaths`, see `cascadeCheckPolicy`).
+	 * Every node that shows a tick (leaves + fully-checked branches; never an indeterminate
+	 * branch) — never folded. Every internal mutation reads / writes this set.
 	 */
+	#allCheckedPaths = $state.raw<Set<string>>(new Set());
+	/** `#allCheckedPaths` folded by `cascadeCheckPolicy` (rolled-up | leaves | all). Kept in
+	 *  sync by the `allCheckedPaths` setter and the `cascadeCheckPolicy` / `checkboxMode` setters. */
 	#checkedPaths = $state.raw<Set<string>>(new Set());
-	/** Policy-projected view of `#checkedPaths` (rolled-up | leaves | all). Kept in
-	 *  sync by the `checkedPaths` setter and the `cascadeCheckPolicy`/`checkboxMode`
-	 *  setters. This is the emitted selection surface. */
-	#emittedPaths = $state.raw<Set<string>>(new Set());
+	/** Every node that shows a tick, folders AND their children — never folded by
+	 *  `cascadeCheckPolicy`. Assigning sets the state (and re-folds `checkedPaths`). */
+	get allCheckedPaths(): Set<string> {
+		return this.#allCheckedPaths;
+	}
+	set allCheckedPaths(value: Set<string>) {
+		this.#allCheckedPaths = value;
+		this.#checkedPaths = this._computeEmittedCheckedPaths(value);
+	}
+	/** The checked set as the tree reports it — folded by `cascadeCheckPolicy` (in cascade mode
+	 *  `'rolled-up'` gives a fully-checked folder instead of its children). What `bind:checkedPaths`
+	 *  and `onCheckedChange` carry. Equals `allCheckedPaths` in independent mode or under `'all'`. */
 	get checkedPaths(): Set<string> {
 		return this.#checkedPaths;
-	}
-	set checkedPaths(value: Set<string>) {
-		this.#checkedPaths = value;
-		this.#emittedPaths = this._computeEmittedCheckedPaths(value);
-	}
-	/** The emitted (policy-projected) selection set — what `bind:checkedPaths` and
-	 *  `onCheckedChange` expose. Equals the canonical set in independent mode or
-	 *  under the `'all'` policy. */
-	get emittedPaths(): Set<string> {
-		return this.#emittedPaths;
 	}
 	insertResult = $state.raw<InsertArrayResult<T> | null | undefined>(null);
 	searchTerm = $state<string | null | undefined>(undefined);
@@ -1313,8 +1311,8 @@ export class TreeEngine<T> {
 		this.#checkboxMode = value;
 		this._reconcileVisualStatesForMode();
 		// Switching independent⇄cascade changes whether the policy applies, so the
-		// emitted projection can change even when the canonical set is untouched.
-		this.#emittedPaths = this._computeEmittedCheckedPaths(this.#checkedPaths);
+		// folded set can change even when allCheckedPaths is untouched.
+		this.#checkedPaths = this._computeEmittedCheckedPaths(this.#allCheckedPaths);
 	}
 	#cascadeCheckPolicy = $state<CascadeCheckPolicy>('rolled-up');
 	get cascadeCheckPolicy(): CascadeCheckPolicy {
@@ -1323,8 +1321,8 @@ export class TreeEngine<T> {
 	set cascadeCheckPolicy(value: CascadeCheckPolicy) {
 		if (this.#cascadeCheckPolicy === value) return;
 		this.#cascadeCheckPolicy = value;
-		// Re-project the (unchanged) canonical set through the new policy and notify.
-		this.#emittedPaths = this._computeEmittedCheckedPaths(this.#checkedPaths);
+		// Re-fold the (unchanged) allCheckedPaths through the new policy and notify.
+		this.#checkedPaths = this._computeEmittedCheckedPaths(this.#allCheckedPaths);
 		this._dispatchCheckedChange();
 	}
 	shouldClickToggleCheckbox = $state(false);
@@ -1694,7 +1692,7 @@ export class TreeEngine<T> {
 		this.#nodes = props.nodes;
 		this.focusedNode = props.focusedNode ?? null;
 		this.selectedPaths = props.selectedPaths ?? new Set();
-		this.checkedPaths = props.checkedPaths ?? new Set();
+		this.allCheckedPaths = props.checkedPaths ?? new Set();
 		if (props.expandedPaths?.size) {
 			this.expandedPaths = props.expandedPaths;
 			this.#pendingExpanded = props.expandedPaths;
@@ -1996,7 +1994,7 @@ export class TreeEngine<T> {
 			forEachDescendant(this.tree.root, (node) => {
 				if (node.isChecked) seeded.add(node.path);
 			});
-			this.checkedPaths = seeded;
+			this.allCheckedPaths = seeded;
 		}
 		if (this.#pendingExpanded && nodes.length) {
 			this.tree.setExpandedPaths([...this.#pendingExpanded]);
@@ -2749,7 +2747,7 @@ export class TreeEngine<T> {
 			return m;
 		};
 		const selectionAffected = collect(this.selectedPaths);
-		const checkedAffected = collect(this.checkedPaths);
+		const checkedAffected = collect(this.allCheckedPaths);
 		const shiftCursorSuffix =
 			this._shiftCursor && selectionAffected.has(this._shiftCursor)
 				? selectionAffected.get(this._shiftCursor)
@@ -2782,12 +2780,12 @@ export class TreeEngine<T> {
 				this.selectedPaths = next; // reassign for $state.raw reactivity
 			}
 			if (checkedAffected.size > 0) {
-				const next = new Set(this.checkedPaths);
+				const next = new Set(this.allCheckedPaths);
 				for (const [oldP, suffix] of checkedAffected) {
 					next.delete(oldP);
 					next.add(newPath + suffix);
 				}
-				this.checkedPaths = next;
+				this.allCheckedPaths = next;
 			}
 			if (shiftCursorSuffix !== undefined) {
 				this._shiftCursor = newPath + shiftCursorSuffix;
@@ -4385,7 +4383,7 @@ export class TreeEngine<T> {
 		const isExpansionReseeded = changed.some((key) => TREE_EXPANSION_SEED_OPTIONS.has(key));
 		const isCheckedReseeded = changed.some((key) => TREE_CHECKED_SEED_OPTIONS.has(key));
 		const expanded = isExpansionReseeded ? null : this.tree.getExpandedPaths();
-		const checked = this.#checkedPaths;
+		const checked = this.#allCheckedPaths;
 		const data = this.nodes;
 		uiLogger.debug(`[${this.treeId}] ltree options changed — re-inserting the data`, {
 			changed,
@@ -4665,7 +4663,7 @@ export class TreeEngine<T> {
 	 * filtered copies. Returns whether the canonical set changed. No event, no refresh.
 	 */
 	private _setChecked(paths: string[], isChecked: boolean, isAffectedSynced = false): boolean {
-		const prev = this.#checkedPaths;
+		const prev = this.#allCheckedPaths;
 		const next = new Set(prev);
 		for (const path of paths) {
 			const n = this._getRealNode(path);
@@ -4679,7 +4677,7 @@ export class TreeEngine<T> {
 		// must not be auto-checked just because their descendants are.
 		if (this.checkboxMode === 'cascade') this._reconcileCascadeStates(paths, next, isAffectedSynced);
 		const isChanged = next.size !== prev.size || [...next].some((p) => !prev.has(p));
-		this.checkedPaths = next;
+		this.allCheckedPaths = next;
 		this._reconcileFilteredCheckState();
 		return isChanged;
 	}
@@ -4744,7 +4742,7 @@ export class TreeEngine<T> {
 	private _reconcileVisualStatesForMode() {
 		if (!this.tree?.root) return;
 		const cascade = this.#checkboxMode === 'cascade';
-		const newPaths = new Set<string>(this.checkedPaths);
+		const newPaths = new Set<string>(this.allCheckedPaths);
 		let anyChanged = false;
 		let checkedChanged = false;
 		const visit = (node: LTreeNode<T>) => {
@@ -4782,7 +4780,7 @@ export class TreeEngine<T> {
 			for (const key in node.children) visit(node.children[key]!);
 		};
 		for (const key in this.tree.root.children) visit(this.tree.root.children[key]!);
-		if (checkedChanged) this.checkedPaths = newPaths;
+		if (checkedChanged) this.allCheckedPaths = newPaths;
 		if (anyChanged) {
 			this._reconcileFilteredCheckState();
 			this.tree.refresh();
@@ -4899,7 +4897,7 @@ export class TreeEngine<T> {
 		const next = new Set(this.selectedPaths);
 		// Sync the per-node isChecked flag with the mirrored set.
 		// First clear isChecked on anything currently in checkedPaths but not in next.
-		for (const path of this.checkedPaths) {
+		for (const path of this.allCheckedPaths) {
 			if (!next.has(path)) {
 				const n = this._getRealNode(path);
 				if (n) {
@@ -4916,7 +4914,7 @@ export class TreeEngine<T> {
 				bumpRev(n);
 			}
 		}
-		this.checkedPaths = next;
+		this.allCheckedPaths = next;
 		this._reconcileFilteredCheckState();
 		this._dispatchCheckedChange();
 	}
@@ -4983,7 +4981,7 @@ export class TreeEngine<T> {
 			if (cut.length !== this.cutPaths.size) this.cutPaths = new Set(cut);
 		}
 
-		const prevChecked = this.#checkedPaths;
+		const prevChecked = this.#allCheckedPaths;
 		const checked = new Set([...prevChecked].filter(isLive));
 		// No checkboxes = the checked set is the selection mirror (_reconcileCheckedFromSelection),
 		// which has no cascade.
@@ -4992,7 +4990,7 @@ export class TreeEngine<T> {
 		const isCheckedChanged =
 			checked.size !== prevChecked.size || [...checked].some((p) => !prevChecked.has(p));
 		if (isCheckedChanged) {
-			this.checkedPaths = checked;
+			this.allCheckedPaths = checked;
 			this._reconcileFilteredCheckState();
 		}
 
@@ -5080,16 +5078,15 @@ export class TreeEngine<T> {
 		}
 	}
 
-	/** Notify listeners about checkbox selection change. Emits the POLICY-PROJECTED
-	 *  set (`#emittedPaths`), matching what the bindable `checkedPaths` prop exposes. */
+	/** Fire `onCheckedChange` with the folded set (`checkedPaths`, as the bindable prop exposes). */
 	private _dispatchCheckedChange() {
 		if (this.onCheckedChangeHandler) {
 			const nodes: LTreeNode<T>[] = [];
-			for (const path of this.#emittedPaths) {
+			for (const path of this.#checkedPaths) {
 				const node = this.tree.getNodeByPath(path);
 				if (node) nodes.push(node);
 			}
-			this.onCheckedChangeHandler(this._ctx({ paths: this.#emittedPaths, nodes }));
+			this.onCheckedChangeHandler(this._ctx({ paths: this.#checkedPaths, nodes }));
 		}
 	}
 
@@ -5284,19 +5281,28 @@ export class TreeEngine<T> {
 
 	// ── Public selection methods (checkbox data state) ───────────────
 
-	/** Get all selected (checked) nodes */
+	/** The nodes of `checkedPaths` — the checked set as reported, folded by `cascadeCheckPolicy`. */
 	getCheckedNodes(): LTreeNode<T>[] {
+		return this._getNodesOf(this.#checkedPaths);
+	}
+
+	/** The nodes of `allCheckedPaths` — every node that shows a tick, never folded. */
+	getAllCheckedNodes(): LTreeNode<T>[] {
+		return this._getNodesOf(this.#allCheckedPaths);
+	}
+
+	private _getNodesOf(paths: Iterable<string>): LTreeNode<T>[] {
 		const nodes: LTreeNode<T>[] = [];
-		for (const path of this.checkedPaths) {
+		for (const path of paths) {
 			const node = this.tree.getNodeByPath(path);
 			if (node) nodes.push(node);
 		}
 		return nodes;
 	}
 
-	/** Check if a specific node path is selected (checked) */
+	/** Whether the node shows a tick (fully checked; an indeterminate branch is not). */
 	isNodeChecked(path: string): boolean {
-		return this.checkedPaths.has(path);
+		return this.#allCheckedPaths.has(path);
 	}
 
 	/** checkNode(s) / uncheckNode(s) / an assigned checkedPaths: `paths` plus (cascade
@@ -5328,7 +5334,7 @@ export class TreeEngine<T> {
 	 *  intent; it is expanded (cascade-down) into the canonical checked state. No event. */
 	_replaceCheckedPaths(paths: Iterable<string>) {
 		this._clearAllCheckedFlags();
-		this.#checkedPaths = new Set(); // _setChecked assigns (and projects) once
+		this.#allCheckedPaths = new Set(); // _setChecked assigns (and projects) once
 		this._setCheckedWithCascade([...paths], true);
 		this.tree.refresh();
 	}
@@ -5337,7 +5343,7 @@ export class TreeEngine<T> {
 	checkAll(options?: TreeMutationOptions) {
 		// While filtered only the visible matches are checked — keep hidden checks.
 		const isFiltered = !!this.tree.isFiltered;
-		const newPaths = isFiltered ? new Set(this.checkedPaths) : new Set<string>();
+		const newPaths = isFiltered ? new Set(this.allCheckedPaths) : new Set<string>();
 		const traverse = (node: LTreeNode<T>) => {
 			if (node.path && node.isSelectable) {
 				const real = this._getRealNode(node.path) ?? node;
@@ -5349,7 +5355,7 @@ export class TreeEngine<T> {
 			for (const child of Object.values(node.children)) traverse(child);
 		};
 		for (const root of this.tree.tree) traverse(root);
-		this.checkedPaths = newPaths;
+		this.allCheckedPaths = newPaths;
 		// Branches with hidden unchecked children must fall back to [-] in cascade.
 		if (isFiltered && this.checkboxMode === 'cascade') this._reconcileVisualStatesForMode();
 		this._reconcileFilteredCheckState();
@@ -5377,7 +5383,7 @@ export class TreeEngine<T> {
 	 *  Pass `{ isSilent: true }` to skip `onCheckedChange`. */
 	uncheckAll(options?: TreeMutationOptions) {
 		this._clearAllCheckedFlags();
-		this.checkedPaths = new Set();
+		this.allCheckedPaths = new Set();
 		this._reconcileFilteredCheckState();
 		if (!options?.isSilent) this._dispatchCheckedChange();
 		this.tree.refresh();

@@ -24,7 +24,7 @@ export const TREE_CONTROLLER_METHODS = [
 	'replaceBranch', 'removeBranch',
 	// selection / checked / focus
 	'selectNode', 'selectNodes', 'selectAll', 'clearSelection', 'getSelectedNodes', 'isNodeSelected',
-	'checkNode', 'checkNodes', 'checkAll', 'uncheckNode', 'uncheckNodes', 'uncheckAll', 'getCheckedNodes',
+	'checkNode', 'checkNodes', 'checkAll', 'uncheckNode', 'uncheckNodes', 'uncheckAll', 'getCheckedNodes', 'getAllCheckedNodes',
 	'isNodeChecked', 'focusNode', 'clearFocus',
 	// keyboard navigation
 	'focusAndSelectNode', 'focusNext', 'focusPrevious', 'focusNextAtLevel', 'focusPreviousAtLevel',
@@ -40,7 +40,7 @@ export const TREE_CONTROLLER_METHODS = [
 
 /** Read-only state the controller answers live from the engine. */
 export const TREE_CONTROLLER_STATE = [
-	'treeId', 'nodes', 'focusedNode', 'selectedPaths', 'checkedPaths', 'expandedPaths', 'cutPaths',
+	'treeId', 'nodes', 'focusedNode', 'selectedPaths', 'checkedPaths', 'allCheckedPaths', 'expandedPaths', 'cutPaths',
 	'insertResult', 'searchTerm', 'searchStatus', 'indexProgress', 'isRendering'
 ] as const satisfies readonly (keyof TreeEngine<unknown>)[];
 

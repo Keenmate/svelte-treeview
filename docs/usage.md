@@ -350,7 +350,7 @@ Three independent concerns, each with the same method shape. `opts` is always `T
 | `focusNode` | `path: string, opts?` | Move focus to a node (fires `onFocusChange` unless `{ isSilent: true }`) |
 | `clearFocus` | `opts?` | Clear the focused node |
 
-Read-side helpers: `getSelectedNodes()` / `isNodeSelected(path)` / `getCheckedNodes()` / `isNodeChecked(path)`.
+Read-side helpers: `getSelectedNodes()` / `isNodeSelected(path)` / `getCheckedNodes()` / `getAllCheckedNodes()` / `isNodeChecked(path)`. `checkedPaths` / `getCheckedNodes()` are the checked set as reported — folded by `cascadeCheckPolicy` (cascade `'rolled-up'`: a fully-checked folder instead of its children), the same set the bindable prop and `onCheckedChange` carry; `controller.allCheckedPaths` / `getAllCheckedNodes()` list every node that shows a tick, never folded. They're equal in independent mode or under `'all'`.
 
 ### ScrollToPath options
 

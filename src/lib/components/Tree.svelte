@@ -472,9 +472,8 @@
 		}
 	});
 	$effect(() => {
-		// The bindable prop exposes the POLICY-PROJECTED selection (rolled-up /
-		// leaves / all), not the internal canonical set. See cascadeCheckPolicy.
-		checkedPaths = engine.emittedPaths;
+		// The bindable prop exposes the folded set (cascadeCheckPolicy), not allCheckedPaths.
+		checkedPaths = engine.checkedPaths;
 	});
 	$effect(() => {
 		expandedPaths = engine.expandedPaths;
@@ -504,10 +503,9 @@
 	});
 	$effect(() => {
 		const sp = checkedPaths;
-		const cp = engine.emittedPaths;
+		const cp = engine.checkedPaths;
 		if (sp.size !== cp.size || [...sp].some((p) => !cp.has(p))) {
-			// Incoming set is a projection; expand it (cascade-down) into the canonical
-			// checked state. Silent — the parent set this, so don't echo onCheckedChange.
+			// Incoming set is folded; expand it (cascade-down) into allCheckedPaths. Silent — the parent set this, so don't echo onCheckedChange.
 			engine._replaceCheckedPaths(sp);
 		}
 	});
@@ -863,6 +861,10 @@
 
 	export function getCheckedNodes(): LTreeNode<T>[] {
 		return engine.getCheckedNodes();
+	}
+
+	export function getAllCheckedNodes(): LTreeNode<T>[] {
+		return engine.getAllCheckedNodes();
 	}
 
 	export function isNodeChecked(path: string): boolean {

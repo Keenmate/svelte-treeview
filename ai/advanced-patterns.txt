@@ -160,7 +160,8 @@ CHECKED (checkbox data set = checkedPaths):
 - treeRef.uncheckNode(path, opts?)
 - treeRef.uncheckNodes(paths, opts?)
 - treeRef.uncheckAll(opts?)
-- treeRef.getCheckedNodes()
+- treeRef.getCheckedNodes() — folded by cascadeCheckPolicy (= bind:checkedPaths)
+- treeRef.getAllCheckedNodes() / controller.allCheckedPaths — every ticked node, never folded
 - treeRef.isNodeChecked(path)
 
 FOCUS (single = focusedNode):
