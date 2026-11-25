@@ -1685,7 +1685,7 @@ export class TreeEngine<T> {
 		// Every live option (after the tree: isSortingEnabled lives on it).
 		for (const key of TREE_OPTION_KEYS) {
 			if (!TREE_LTREE_OPTIONS.has(key) && !TREE_INIT_ONLY_OPTIONS.has(key))
-				this._applyOption(key, props[key]);
+				this._setOption(key, props[key]);
 		}
 
 		// State
@@ -4291,7 +4291,7 @@ export class TreeEngine<T> {
 			}
 			this.#options[option] = value;
 			if (TREE_LTREE_OPTIONS.has(option)) changedLtreeOptions.push(option);
-			else this._applyOption(option, value);
+			else this._setOption(option, value);
 		}
 
 		// State, after the options (a new checkboxMode / policy shapes how checkedPaths applies).
@@ -4317,8 +4317,8 @@ export class TreeEngine<T> {
 		return this.#options[key] as TreeEngineProps<T>[K];
 	}
 
-	/** Apply one live option (not built into the ltree) — default resolved, field per tree-props.ts. */
-	private _applyOption(key: TreeOptionKey, raw: unknown) {
+	/** Set one live option (not built into the ltree) — default resolved, field per tree-props.ts. */
+	private _setOption(key: TreeOptionKey, raw: unknown) {
 		const value = resolveTreeOption(key, raw);
 		if (key === 'navigationOverrides') {
 			this.navigation = value

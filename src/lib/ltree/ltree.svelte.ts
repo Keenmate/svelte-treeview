@@ -193,7 +193,7 @@ export function createLTree<T>(
 	}
 
 	/** Set `hasChildren` on `node` from its children (and the data's `hasChildrenMember`). */
-	function syncHasChildren(node: LTreeNode<T>): void {
+	function reconcileHasChildren(node: LTreeNode<T>): void {
 		node.hasChildren = Object.keys(node.children).length > 0;
 		if (config.hasChildrenMember && node.data) (node.data as any)[config.hasChildrenMember] = node.hasChildren;
 	}
@@ -203,7 +203,7 @@ export function createLTree<T>(
 		const removed = new Set(getDescendantPaths(node));
 		dropFromSearch(removed);
 		node.children = {};
-		syncHasChildren(node);
+		reconcileHasChildren(node);
 		nodeCount -= removed.size;
 		return removed.size;
 	}
@@ -213,7 +213,7 @@ export function createLTree<T>(
 		const removed = new Set([node.path, ...getDescendantPaths(node)]);
 		dropFromSearch(removed);
 		delete parent.children[segmentPrefix + node.pathSegment];
-		if (Object.keys(parent.children).length === 0) syncHasChildren(parent);
+		if (Object.keys(parent.children).length === 0) reconcileHasChildren(parent);
 		nodeCount -= removed.size;
 		return removed.size;
 	}
@@ -1931,7 +1931,7 @@ export function createLTree<T>(
 			// Update hasChildren + config.hasChildrenMember on EVERY parent that received children
 			for (const pp of affectedParents) {
 				const parent = pp ? this.getNodeByPath(pp, root) : root;
-				if (parent) syncHasChildren(parent);
+				if (parent) reconcileHasChildren(parent);
 			}
 
 			// Bump _rev on all affected parents AND their ancestors up to root
