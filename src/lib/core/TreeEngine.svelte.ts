@@ -149,25 +149,6 @@ export interface NodeRef<T> {
 	siblings: LTreeNode<T>[];
 }
 
-/**
- * Context passed per node to BOTH direction transforms — nodeOutputTransformationCallback
- * (egress: as a node LEAVES the source into a clipboard buffer or a drag) and
- * nodeInputTransformationCallback (ingress: as a duplicate LANDS in a destination). `phase`
- * says which direction is running; `target` is null during the 'output' phase (no destination
- * chosen yet) and populated during 'input'. `source` is the origin side — always carries the
- * path; node/parent/siblings are live when reachable (same-tree) and null/[] cross-tree or
- * once a cut source has been removed.
- *
- * These fire for BOTH clipboard and drag: 'output' on Ctrl+C/X + the capture side of a
- * copy-drop; 'input' on Ctrl+V paste + the insert side of a copy-drop. A plain MOVE fires
- * neither (nothing is duplicated).
- *
- * Symmetric by design: the same field means the same thing in both directions, so a naming/id
- * derivation reads identically whether you clean data on egress or derive it on ingress. Return
- * new data to derive ids/values/names; from the INPUT transform return null to skip a node
- * (skipping a root skips its whole subtree). Pure — reads the pristine snapshot, never mutates
- * it, so repeat inserts stay clean.
- */
 /** ctx of `beforeCheckboxToggleCallback`. */
 export interface BeforeCheckboxToggleContext<T> extends TreeCallbackContext<T> {
 	node: LTreeNode<T>;
@@ -187,6 +168,25 @@ export type NodeTransformCallbackContext<T> = NodeTransformContext<T> & TreeCall
 /** A node transform taking one ctx. */
 export type NodeTransformCallback<T> = (ctx: NodeTransformCallbackContext<T>) => T | null;
 
+/**
+ * Context passed per node to BOTH direction transforms — nodeOutputTransformationCallback
+ * (egress: as a node LEAVES the source into a clipboard buffer or a drag) and
+ * nodeInputTransformationCallback (ingress: as a duplicate LANDS in a destination). `phase`
+ * says which direction is running; `target` is null during the 'output' phase (no destination
+ * chosen yet) and populated during 'input'. `source` is the origin side — always carries the
+ * path; node/parent/siblings are live when reachable (same-tree) and null/[] cross-tree or
+ * once a cut source has been removed.
+ *
+ * These fire for BOTH clipboard and drag: 'output' on Ctrl+C/X + the capture side of a
+ * copy-drop; 'input' on Ctrl+V paste + the insert side of a copy-drop. A plain MOVE fires
+ * neither (nothing is duplicated).
+ *
+ * Symmetric by design: the same field means the same thing in both directions, so a naming/id
+ * derivation reads identically whether you clean data on egress or derive it on ingress. Return
+ * new data to derive ids/values/names; from the INPUT transform return null to skip a node
+ * (skipping a root skips its whole subtree). Pure — reads the pristine snapshot, never mutates
+ * it, so repeat inserts stay clean.
+ */
 export interface NodeTransformContext<T> {
 	operation: 'copy' | 'cut';
 	/** Direction: 'output' as a node leaves the source (egress), 'input' as a duplicate lands
@@ -237,26 +237,27 @@ export interface NodeDragContext<T> extends NodeRef<T>, TreeCallbackContext<T> {
 
 /**
  * Context for beforeDragStartCallback — the set-level pre-drag interceptor. Fires ONCE at
- * drag start (a drag is single-origin at the DOM level), BEFORE onNodeDragStart and before
- * anything is published cross-tree. `lead` is the node physically grabbed; `dragged` is the
- * tree's default top-level set (the isDraggable-filtered selection, or just `lead`).
+ * drag start (a drag is single-origin), BEFORE onNodeDragStart and before anything is
+ * published cross-tree. `lead` is the node physically grabbed; `dragged` is the COMPLETE
+ * flattened set — the grabbed subtree(s) AND every descendant — so the callback can filter
+ * descendants too (unlike the on* events' top-level `dragged`).
  *
  * The callback returns the set the tree should ACTUALLY drag:
- *  - `string[]` — an authoritative REPLACEMENT list of top-level paths, in landing order. It
- *    may drop members of `dragged` AND add paths that weren't in it (even paths a
- *    getIsDraggableCallback would reject — forcing them in is the point). The tree normalizes
- *    the result (dedupe + drop any path that is a descendant of another path in the set) so an
- *    injected parent+child can't move the same node twice.
- *  - `false` — cancel the drag entirely.
- *  - `void`/`undefined` — keep the default `dragged` set.
+ *  - `string[]` — the AUTHORITATIVE MANIFEST, in landing order. A kept node moves; a
+ *    descendant of a moved node you OMIT becomes a HOLE the tree leaves behind (moveNodes
+ *    re-homes it to the moved root's old parent; a copy simply doesn't duplicate it). Return
+ *    `dragged` unchanged and whole subtrees move. You may also add paths that weren't in it
+ *    (even ones getIsDraggableCallback rejects). Normalized: deduped, the lead kept.
+ *  - `false` — cancel the drag entirely (onNodeDragStart doesn't fire).
+ *  - `void`/`undefined` — keep the default.
  *
- * Synchronous only: it runs inside the native `dragstart`, so a returned Promise cannot veto
- * (the browser has already committed the drag by the next tick).
+ * Synchronous only: the pointer drag starts in the same tick, so a returned Promise cannot
+ * veto (ignored with a warning — core's before-callback runner).
  */
 export interface DragStartContext<T> extends TreeCallbackContext<T> {
 	/** The node physically grabbed (the drag's lead / anchor). */
 	lead: NodeRef<T>;
-	/** The tree's default top-level dragged set before the callback (isDraggable-filtered). */
+	/** The complete dragged set before the callback: the grabbed subtree(s) + every descendant. */
 	dragged: NodeRef<T>[];
 	/** The originating event — the pointer drag (mouse / pen / touch) is all PointerEvents. */
 	event: PointerEvent;
@@ -491,8 +492,6 @@ export interface NodeCallbacks<T> {
 	handleNodeSelectClick: (node: LTreeNode<T>, modifiers?: SelectionModifiers) => void;
 	handleCheckboxToggle: (node: LTreeNode<T>, options?: { skipFocus?: boolean }) => void;
 	handleNodeContextMenu: (node: LTreeNode<T>, event: MouseEvent) => void;
-	/** Unified pointer-driven drag entry (mouse/pen/touch). Replaces the native
-	 *  draggable/dragstart + touchstart handlers on the node row. */
 	/** The toggle glyph / click-to-expand: goes through `toggleNodeExpanded` (accordion,
 	 *  `beforeExpandCallback`, expand events). */
 	handleToggleClick: (node: LTreeNode<T>) => void;
@@ -851,10 +850,10 @@ export interface TreeEngineProps<T> {
 				boolean | { position?: DropPosition; operation?: DropOperation } | DropGroup[] | void
 		  >;
 	/**
-	 * Set-level pre-drag interceptor. Runs once at drag start, before onNodeDragStart. Return
-	 * an authoritative `string[]` of top-level paths to REPLACE the dragged set (prune members
-	 * and/or force-add nodes that can't be omitted), `false` to cancel the drag, or `void` to
-	 * keep the default. Synchronous (native dragstart — a Promise cannot veto). See
+	 * Set-level pre-drag interceptor. Runs once at drag start, before onNodeDragStart, with the
+	 * complete dragged set (descendants included). Return the authoritative `string[]` manifest
+	 * (an omitted descendant stays behind as a hole; added paths travel too), `false` to cancel
+	 * the drag, or `void` to keep the default. Synchronous (a Promise cannot veto). See
 	 * DragStartContext for the full contract.
 	 */
 	beforeDragStartCallback?: (ctx: DragStartContext<T>) => string[] | false | void;
@@ -972,11 +971,6 @@ interface ClosingEntry {
 }
 
 /**
- * The tree's engine: state, behaviour and the wiring a renderer needs (`<Tree>`, `TreeProvider`,
- * svelte-treeview-canvas, a custom layout via `createTreeEngine`). Callbacks never see it — their
- * ctx carries {@link TreeEngine.controller}, the public facade (core/tree-controller.ts).
- */
-/**
  * The built-in context-menu actions (REVIEW §3.8 — one table instead of four switches): the
  * `menuItems.<label>` text, whether it also runs on a menu over empty space (`isNodeFree`; the
  * others are disabled there), `isDanger`, when it is disabled on a node (`branches` = the
@@ -1044,14 +1038,17 @@ function getBuiltInAction(action: string | undefined) {
 		: undefined;
 }
 
+/**
+ * The tree's engine: state, behaviour and the wiring a renderer needs (`<Tree>`, `TreeProvider`,
+ * svelte-treeview-canvas, a custom layout via `createTreeEngine`). Callbacks never see it — their
+ * ctx carries {@link TreeEngine.controller}, the public facade (core/tree-controller.ts).
+ */
 export class TreeEngine<T> {
 	/** The public controller (frozen facade, core SPEC §12.34) — what every ctx carries. */
 	readonly controller: TreeController<T> = createTreeController(this);
 
 	// ── LTree instance ──────────────────────────────────────────────────
 	tree!: Ltree<T>;
-
-	// ── Render coordinator ──────────────────────────────────────────────
 
 	// ── Stable callback & config objects for Node context ───────────────
 	/** @internal */
@@ -6350,7 +6347,6 @@ export class TreeEngine<T> {
 	focusAndSelectNode(path: string): void {
 		this.navigation.focusAndSelectNode(path);
 	}
-	/** Move to next visible node at the same level */
 	/** Move to the next visible node (flat order). */
 	focusNext(): void {
 		this.navigation.focusNext();

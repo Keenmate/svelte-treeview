@@ -24,7 +24,7 @@ For live demos, see [svelte-treeview.keenmate.dev](https://svelte-treeview.keenm
   idMember="path"
   pathMember="path"
   checkedNodeClass="stv__selected--bold"
-  onNodeClicked={(node) => console.log('Clicked:', node.data?.name)}
+  onNodeClick={(ctx) => console.log('Clicked:', ctx.node?.data?.name)}
 >
   {#snippet nodeTemplate(node)}
     <div class="d-flex align-items-center">
@@ -133,15 +133,17 @@ Full reference: [FlexSearch options](https://github.com/nextapps-de/flexsearch#o
     { path: '2', name: 'Folder 2' }
   ];
 
-  function onDragStart(node, event) {
-    console.log('Dragging:', node.data?.name);
+  // ctx = NodeDragContext: the grabbed node's NodeRef + { event, dragged }
+  function onDragStart(ctx) {
+    console.log('Dragging:', ctx.node?.data?.name, `(${ctx.dragged.length} node(s))`);
   }
 
-  // Same-tree moves are auto-handled — this callback is for notification/custom logic
-  function onDrop(dropNode, draggedNode, position, event, operation) {
-    console.log(`Dropped ${draggedNode.data?.name} ${position} ${dropNode?.data?.name}`);
-    // position is 'before', 'after', or 'child'
-    // operation is 'move' or 'copy' (Ctrl+drag)
+  // Same-tree moves are auto-handled — this event is for notification / custom logic.
+  // ctx = NodeDropContext: { source, target, dragged, dropped, position, operation, event }
+  function onDrop(ctx) {
+    console.log(`Dropped ${ctx.source.node?.data?.name} ${ctx.position} ${ctx.target?.node?.data?.name ?? 'the root'}`);
+    // position is 'before', 'after', or 'child'; operation is 'move' or 'copy' (Ctrl+drag)
+    // dropped = the nodes the tree placed (null when the consumer places them, e.g. cross-tree)
   }
 </script>
 
@@ -151,6 +153,8 @@ Full reference: [FlexSearch options](https://github.com/nextapps-de/flexsearch#o
   idMember="path"
   pathMember="path"
   dragDropMode="both"
+  getIsDraggableCallback={() => true}
+  getIsDropAllowedCallback={() => true}
   orderMember="sortOrder"
   dragOverNodeClass="stv__dragover--highlight"
   onNodeDragStart={onDragStart}

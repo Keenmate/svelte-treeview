@@ -32,21 +32,11 @@ The fix does NOT affect reactivity:
 
 FLAT RENDERING MODE
 -------------------
-Default mode (v4.6+) - significantly faster:
-
-<Tree isFlatRenderingEnabled={true} />  <!-- Default -->
-
-Flat mode benefits:
-- Single {#each} loop instead of recursive components
-- ~12x faster initial render (300ms → 25ms for 5500 nodes)
+The tree always renders flat (since 5.0.0-rc16 — the recursive renderer and the
+isFlatRenderingEnabled prop are gone):
+- Single {#each} loop over the visible nodes, one row per node
+- Rows re-key on node._rev: an update re-renders only the changed rows
 - Better memory usage
-
-Legacy recursive mode:
-<Tree isFlatRenderingEnabled={false} />
-
-Use recursive mode only if:
-- Very small trees (<100 nodes)
-- Need {#key changeTracker} behavior
 
 PROGRESSIVE RENDERING
 ---------------------
@@ -104,7 +94,7 @@ How it works:
 - rAF-throttled scroll handler prevents excessive updates
 - Auto-measures row height from first rendered node
 
-Virtual scroll requires flat rendering (isFlatRenderingEnabled=true, the default).
+Virtual scroll renders the same flat rows, only the visible window of them.
 
 scrollToPath in virtual mode:
 - Uses index-based scrolling (finds node in flat array)
@@ -330,7 +320,6 @@ BEST PRACTICES
 --------------
 ✅ Use $state.raw() for 1000+ items
 ✅ Keep isProgressiveRenderEnabled={true}
-✅ Keep isFlatRenderingEnabled={true}
 ✅ Limit expandLevel for large trees
 ✅ Debounce search input
 ✅ Use isSorted={true} for pre-sorted data

@@ -120,7 +120,6 @@ export type CascadeCheckPolicy = 'rolled-up' | 'leaves' | 'all';
 export type SelectionMode = 'single' | 'multiple';
 /** Gesture mode for selectNode(): replace = plain click, toggle = Ctrl+click, range = Shift+click. */
 export type SelectMode = 'replace' | 'toggle' | 'range';
-/** Options shared by every imperative selection/checked/focus mutator. */
 /** Options of the expand / collapse methods (`expandNodes`, `collapseNodes`, `toggleNodeExpanded`,
  *  `expandAll`, `collapseAll`). */
 export interface ExpandOptions {
@@ -132,6 +131,7 @@ export interface ExpandOptions {
 	isSilent?: boolean;
 }
 
+/** Options shared by every imperative selection/checked/focus mutator. */
 export interface TreeMutationOptions {
 	/** Change the state without firing the change callbacks (onSelectionChange /
 	 *  onCheckedChange / onFocusChange / onNodeClick) — for changes your own code makes and

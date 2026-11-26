@@ -1173,7 +1173,7 @@ export function createLTree<T>(
 		 * @returns Array of child nodes
 		 */
 		getChildren(parentPath: string): LTreeNode<T>[] {
-			// Read changeTracker to create reactive dependency for custom recursive renderers
+			// Read changeTracker to create a reactive dependency (custom renderers / layouts read this)
 			const _tracker = changeTracker;
 			const parent = this.getNodeByPath(parentPath);
 			if (!parent || !_tracker) return [];
@@ -1186,7 +1186,7 @@ export function createLTree<T>(
 		 * @returns Array of sibling nodes (nodes with same parent)
 		 */
 		getSiblings(path: string): LTreeNode<T>[] {
-			// Read changeTracker to create reactive dependency for custom recursive renderers
+			// Read changeTracker to create a reactive dependency (custom renderers / layouts read this)
 			const _tracker = changeTracker;
 			const node = this.getNodeByPath(path);
 			if (!node || !_tracker) return [];
