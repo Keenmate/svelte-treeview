@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.0.0-rc18] - 2026-11-22
 
+### Fixed — four of the review's "plausible" bugs, reproduced and fixed (2026-11-25)
+
+- **Filtered rows kept search-relevance order.** While a search filter was on, siblings came out in FlexSearch's ranking (an exact match jumped ahead of the siblings above it). The filtered view now keeps the tree's own order. (web-treeview already did.)
+- **`checkedPaths` / `selectedPaths` bound at mount set no node flags.** The paths were stored before the rows existed, so nothing showed ticked / selected until the next change. They are applied after the first insert (a bound `checkedPaths` wins over the data's `isCheckedMember` seed).
+- **A sibling-only `sortCallback` lost children on the initial load.** It receives the whole flat dataset there, so sorting by name could put a child before its parent — the child then failed to insert as an orphan. A stable parents-first pass now follows the callback (its sibling order is kept).
+- **`moveNode` could overwrite a node in a batch.** When both the segment and the id collided, the `<segment>_<timestamp>` fallback wasn't re-checked, so two moves in the same millisecond landed on the same key. Same fix in web-treeview (there the two nodes shared a path).
+- Not reproduced: a `nodes` array assigned inside `onNodesChange` is applied (e2e/plausible.spec.ts guards it).
+
 ### Changed — core re-synced to web-components-core rc26 (+ c2f5f83); core adoption (2026-11-24, REVIEW §4)
 
 - Every vendored core module is re-synced to core `c2f5f83` (rc26 "the naming release" + its internal verbs): logging, environment, dom helpers, pointer drag, locale, icons, the context menu (`openMenu` — its phone sheet is now a modal session; `overlay/modal-session`, `dom/focus-trap`, `dom/z-index` vendored with it), actions / shortcut. `npm run check:core-sync`: everything in sync except the two hand-ported positioning mirrors (tooltip action, info popover). Public renames that follow core: the export `observeLocale` → `observePageLocale`, `getMenuChildren` → `loadMenuChildren` (web-treeview gets them with its core upgrade).

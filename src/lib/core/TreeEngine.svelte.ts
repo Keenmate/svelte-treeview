@@ -1168,6 +1168,10 @@ export class TreeEngine<T> {
 	#lastExpandedKey: string | undefined = undefined;
 	/** `expandedPaths` given before the data — applied after the first non-empty insert. */
 	#pendingExpanded: Set<string> | null = null;
+	/** `selectedPaths` / `checkedPaths` given before the first build (bound at mount): the rows don't
+	 *  exist yet, so their flags are applied after the first non-empty insert. */
+	#pendingSelected: Set<string> | null = null;
+	#pendingChecked: Set<string> | null = null;
 	/** Hidden internal cursor used by Shift+Arrow / Shift+click to extend ranges
 	 *  from the focused node. Set on first Shift action, advances on subsequent
 	 *  Shift actions, cleared on any plain navigation. Not exposed via props. */
@@ -1732,6 +1736,8 @@ export class TreeEngine<T> {
 		this.focusedNode = props.focusedNode ?? null;
 		this.selectedPaths = props.selectedPaths ?? new Set();
 		this.allCheckedPaths = props.checkedPaths ?? new Set();
+		if (props.selectedPaths?.size) this.#pendingSelected = props.selectedPaths;
+		if (props.checkedPaths?.size) this.#pendingChecked = props.checkedPaths;
 		if (props.expandedPaths?.size) {
 			this.expandedPaths = props.expandedPaths;
 			this.#pendingExpanded = props.expandedPaths;
@@ -2038,6 +2044,23 @@ export class TreeEngine<T> {
 		if (this.#pendingExpanded && nodes.length) {
 			this.tree.setExpandedPaths([...this.#pendingExpanded]);
 			this.#pendingExpanded = null;
+		}
+		// Sets bound at mount (bind:selectedPaths / bind:checkedPaths): the paths were stored before
+		// the rows existed, so no node flag followed — no tick, no selected row (REVIEW "plausible"
+		// list, e2e/plausible.spec.ts). Apply them now through the silent writers; a bound
+		// checkedPaths wins over the data's isCheckedMember seed (as an assigned one does).
+		if (nodes.length && (this.#pendingSelected || this.#pendingChecked)) {
+			const selected = this.#pendingSelected;
+			const checked = this.#pendingChecked;
+			this.#pendingSelected = null;
+			this.#pendingChecked = null;
+			// untrack: this runs inside the nodes effect — the writers READ selectedPaths /
+			// allCheckedPaths, which must not become its dependencies (a later sync of the bound
+			// sets would re-insert the data and drop every flag again).
+			untrack(() => {
+				if (selected) this._replaceSelectedPaths(selected);
+				if (checked) this._replaceCheckedPaths(checked);
+			});
 		}
 	}
 

@@ -800,6 +800,23 @@ export function createLTree<T>(
 				}
 			});
 
+			// 2b. Siblings in the REAL tree's order. The required set arrives in search-relevance
+			// order (FlexSearch ranks an exact match first) and the 'x'-prefixed child keys keep
+			// insertion order, so without this a better-ranked match jumped ahead of its siblings.
+			const inTreeOrder = (
+				realChildren: Record<string, LTreeNode<T>>,
+				copies: Record<string, LTreeNode<T>>
+			): Record<string, LTreeNode<T>> => {
+				const ordered: Record<string, LTreeNode<T>> = {};
+				for (const key of Object.keys(realChildren)) if (key in copies) ordered[key] = copies[key];
+				return ordered;
+			};
+			pathToNode.forEach((copy, path) => {
+				if (!copy.hasChildren) return;
+				const real = this.getNodeByPath(path, root);
+				if (real) copy.children = inTreeOrder(real.children, copy.children);
+			});
+
 			// 3. Extract root level nodes for filteredTree
 			const rootNodes: LTreeNode<T>[] = [];
 
@@ -816,8 +833,9 @@ export function createLTree<T>(
 			rootNodes.forEach((node) => {
 				filteredRoot.children[segmentPrefix + node.path] = node;
 			});
+			filteredRoot.children = inTreeOrder(root.children, filteredRoot.children);
 
-			filteredTree = rootNodes;
+			filteredTree = Object.values(filteredRoot.children);
 			this.isFiltered = true;
 			this.refresh();
 
@@ -1291,8 +1309,12 @@ export function createLTree<T>(
 				if (sourceId && !newParent.children[segmentPrefix + sourceId]) {
 					newSegment = sourceId;
 				} else {
-					// Generate unique segment with timestamp
-					newSegment = `${newSegment}_${Date.now()}`;
+					// Generate a unique segment with a timestamp — checked again, so two moves in the
+					// same millisecond (a batch) don't land on the same key and overwrite each other.
+					const base = `${newSegment}_${Date.now()}`;
+					let candidate = base;
+					for (let n = 2; newParent.children[segmentPrefix + candidate]; n++) candidate = `${base}_${n}`;
+					newSegment = candidate;
 				}
 			}
 
@@ -2020,7 +2042,10 @@ export function createLTree<T>(
 		_sortForInsert(nodes: LTreeNode<T>[]): LTreeNode<T>[] {
 			if (this.isSorted) return nodes;
 			if (!this.isSortingEnabled) return this._sortByLevel(nodes);
-			if (this.sortCallback) return this.sortCallback({ nodes });
+			// The callback orders siblings; it gets the whole flat dataset here, so a sibling-only
+			// comparator (by name) could put a child before its parent — which then fails to insert
+			// as an orphan. A stable level pass after it keeps its sibling order, parents first.
+			if (this.sortCallback) return this._sortByLevel(this.sortCallback({ nodes }));
 			return this._defaultSort(this, nodes);
 		},
 
