@@ -322,32 +322,22 @@
 			]
 		},
 		{
-			"name": "tooltip action",
-			"description": "use:tooltip mirrors core createTooltip (portal, autoUpdate, followCursor, theme inherit) on @floating-ui/dom.",
-			"mode": "mirror",
-			"note": "baseline estimated from the local file's last change (2026-10-13).",
-			"baseline": "74d6609",
+			"name": "positioning",
+			"description": "Tooltip + popover (SPEC §12.2): use:tooltip (src/lib/actions/tooltip.ts) is a thin Svelte action over core createTooltip (node tooltips — exit fade, hide on scroll, Escape, modal-dialog mount); the nodeTitleOverflow='info' full-label reveal is core createPopover (Escape / outside press via the overlay tree, close on a scroll that moves the row). Same as web-treeview's renderer. overlay-container is their import; anchor / scroll-close / active-overlay are in 'menu helpers'.",
+			"mode": "identical",
+			"baseline": "a23b258",
 			"files": [
 				[
 					"src/positioning/tooltip.ts",
-					"src/lib/actions/tooltip.ts"
-				]
-			]
-		},
-		{
-			"name": "info popover",
-			"description": "nodeTitleOverflow='info' full-label popover mirrors core createPopover (+ shouldCloseOnScroll).",
-			"mode": "mirror",
-			"note": "baseline = just before core's 2026-11-07 scroll-close change, which parity.md lists as 'to mirror' (svelte closes on any page scroll).",
-			"baseline": "ca759bd",
-			"files": [
-				[
-					"src/positioning/popover.ts",
-					"src/lib/components/Node.svelte"
+					"src/lib/vendor/core/positioning/tooltip.ts"
 				],
 				[
-					"src/positioning/scroll-close.ts",
-					"src/lib/components/Node.svelte"
+					"src/positioning/popover.ts",
+					"src/lib/vendor/core/positioning/popover.ts"
+				],
+				[
+					"src/positioning/overlay-container.ts",
+					"src/lib/vendor/core/positioning/overlay-container.ts"
 				]
 			]
 		},

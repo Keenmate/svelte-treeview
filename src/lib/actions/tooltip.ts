@@ -1,24 +1,24 @@
 /**
- * `tooltip` — a Svelte action that mirrors the Keenmate core `createTooltip`
- * preset (web-components-core `positioning/tooltip.ts`, as used by
- * web-multiselect's option tooltips) but built on the `@floating-ui/dom` this
- * package already ships — no vanilla-DOM helper vendored in.
+ * `tooltip` — a Svelte action over the Keenmate core `createTooltip` preset (vendored
+ * `src/lib/vendor/core/positioning/tooltip.ts`, core-sync group "positioning") — the same
+ * tooltip web-treeview's rows and web-multiselect's options use.
  *
- * Behaviour parity with core createTooltip:
- *  - shows on `mouseenter` / `focusin`, hides on `mouseleave` / `focusout`
- *  - independent show / hide delays
- *  - portals a `role="tooltip"` element to `document.body` (escapes the tree's
- *    overflow clip), positioned via `computePosition` + `autoUpdate`
- *  - `followCursor`: anchors to a virtual element tracking the pointer
- *  - inherits `data-theme` from the nearest themed ancestor so a portaled
- *    tooltip stays dark/light-correct
- *  - a CSS-class contract (`.stv__tooltip` + `--visible`) themed via `--stv-*`
+ * Core owns the behaviour: show on hover / focus with delays, `autoUpdate` positioning,
+ * follow-cursor, `data-theme` inherit, the exit fade (`km-tooltip--hiding`, `data-placement`),
+ * hide on a scroll that moves the row, the first Escape hiding a focus-shown tooltip (WCAG
+ * 1.4.13), mounting inside an open modal `<dialog>`, and `aria-describedby` on the target.
  *
- * Content is either a string (rendered as text) or an `HTMLElement` (adopted
- * into the tooltip — this is how the `tooltip` snippet is supported: Node.svelte
- * renders the snippet into a hidden host element and hands it over here).
+ * What this wrapper adds:
+ *  - the tree's defaults (placement `'top-start'`, delay `{ show: 400, hide: 100 }`);
+ *  - mounting INSIDE the tree's `.stv__container` (not `document.body` — the `--stv-*` /
+ *    `--base-*` variables only resolve there; `position: fixed` still escapes its overflow);
+ *  - the `.stv__tooltip` / `--visible` class contract themed via `--stv-tooltip-*`;
+ *  - `enabled` + live `content`: content is read at each show, so an `update()` only refreshes
+ *    a visible tooltip. An `HTMLElement` (the `tooltip` snippet's hidden host in Node.svelte) is
+ *    adopted into the tooltip and un-hidden — Svelte keeps updating it by reference.
+ * A change of placement / offset / delay / follow-cursor / classes re-creates the core tooltip.
  */
-import { computePosition, autoUpdate, offset as offsetMw, flip, shift } from '@floating-ui/dom';
+import { createTooltip, type TooltipHandle } from '../vendor/core/positioning/tooltip.js';
 import type { TooltipPlacement, TooltipDelay } from '../ltree/types.js';
 
 export type { TooltipPlacement, TooltipDelay };
@@ -26,7 +26,7 @@ export type { TooltipPlacement, TooltipDelay };
 export interface TooltipParams {
 	/** Text, or an element to adopt as the tooltip body. Null / empty disables. */
 	content?: string | HTMLElement | null;
-	/** Master switch — when false the tooltip never shows (listeners detached). */
+	/** Master switch — when false the tooltip never shows. */
 	enabled?: boolean;
 	/** Preferred placement. Default `'top-start'`. */
 	placement?: TooltipPlacement;
@@ -53,178 +53,54 @@ function hasContent(c: TooltipParams['content']): boolean {
 	return true; // HTMLElement
 }
 
+/** The options that need a new core tooltip when they change (content / enabled don't). */
+function structuralKey(p: TooltipParams): string {
+	const d = normalizeDelay(p.delay);
+	return [p.placement ?? 'top-start', p.offset ?? 8, d.show, d.hide, !!p.followCursor, p.cssClass ?? '', p.visibleClass ?? ''].join('|');
+}
+
 export function tooltip(trigger: HTMLElement, initial: TooltipParams) {
 	let params: TooltipParams = initial;
-	let el: HTMLElement | null = null;
-	let visible = false;
-	let showTimer: ReturnType<typeof setTimeout> | undefined;
-	let hideTimer: ReturnType<typeof setTimeout> | undefined;
-	let stopAutoUpdate: (() => void) | undefined;
-	let cursorRect: DOMRect | undefined;
+	let handle: TooltipHandle | null = null;
+	let key = '';
 
-	const cursorReference = {
-		getBoundingClientRect: () => cursorRect ?? trigger.getBoundingClientRect(),
-		// So Floating UI's autoUpdate can still attach scroll/resize observers to a
-		// real ancestor while we anchor to the moving pointer rect.
-		contextElement: trigger
-	};
+	const isActive = (): boolean => params.enabled !== false && hasContent(params.content);
 
-	function active(): boolean {
-		return params.enabled !== false && hasContent(params.content);
-	}
-
-	function ensureEl(): HTMLElement {
-		if (el) return el;
-		el = document.createElement('div');
-		el.setAttribute('role', 'tooltip');
-		el.className = params.cssClass ?? 'stv__tooltip';
-		el.style.position = 'fixed';
-		el.style.top = '0';
-		el.style.left = '0';
-		el.style.margin = '0';
-		return el;
-	}
-
-	function renderContent(): void {
-		const root = ensureEl();
-		const c = params.content;
-		if (typeof c === 'string') {
-			root.textContent = c;
-		} else if (c instanceof HTMLElement) {
-			// Adopt the (snippet) host element; make it visible in case the caller
-			// kept it display:none in place. Svelte keeps updating it by reference.
-			root.replaceChildren(c);
-			c.style.display = '';
-		}
-	}
-
-	function inheritTheme(root: HTMLElement): void {
-		const themed = trigger.closest('[data-theme]');
-		const theme = themed?.getAttribute('data-theme');
-		if (theme) root.setAttribute('data-theme', theme);
-		else root.removeAttribute('data-theme');
-	}
-
-	function position(): void {
-		if (!el) return;
-		const reference = params.followCursor ? cursorReference : trigger;
-		computePosition(reference, el, {
-			strategy: 'fixed',
+	function create(): void {
+		handle?.destroy();
+		key = structuralKey(params);
+		handle = createTooltip({
+			trigger,
+			// Resolved at create: the row is already inside its tree when the action runs.
+			container: trigger.closest<HTMLElement>('.stv__container') ?? undefined,
+			content: () => {
+				if (!isActive()) return null;
+				const c = params.content!;
+				// The snippet host stays display:none in place; shown once adopted.
+				if (c instanceof HTMLElement) c.style.display = '';
+				return c;
+			},
 			placement: params.placement ?? 'top-start',
-			middleware: [offsetMw(params.offset ?? 8), flip(), shift({ padding: 8 })]
-		}).then(({ x, y }) => {
-			if (!el) return;
-			el.style.left = `${x}px`;
-			el.style.top = `${y}px`;
+			offset: params.offset ?? 8,
+			delay: normalizeDelay(params.delay),
+			shouldFollowCursor: !!params.followCursor,
+			cssClass: params.cssClass ?? 'stv__tooltip',
+			visibleClass: params.visibleClass ?? 'stv__tooltip--visible'
 		});
 	}
 
-	const onMouseMove = (e: MouseEvent): void => {
-		cursorRect = new DOMRect(e.clientX, e.clientY, 0, 0);
-		if (visible) position();
-	};
-
-	// Begin following the pointer the moment it ENTERS the trigger — seed the rect
-	// from the enter event and attach the move listener NOW, not in show(). show()
-	// runs after the show-delay (default 400ms); if the pointer is stationary during
-	// that window (the normal "hover to read" case) no mousemove fires, so cursorRect
-	// would still be undefined at show time and the virtual element falls back to the
-	// trigger's full-row rect → tooltip pins to the row's top-left (the "random"
-	// placement bug). Seeding here guarantees a cursor rect before the first position().
-	function startTrackingCursor(e: MouseEvent): void {
-		cursorRect = new DOMRect(e.clientX, e.clientY, 0, 0);
-		trigger.addEventListener('mousemove', onMouseMove);
-	}
-	function stopTrackingCursor(): void {
-		trigger.removeEventListener('mousemove', onMouseMove);
-	}
-
-	function clearTimers(): void {
-		if (showTimer) clearTimeout(showTimer);
-		if (hideTimer) clearTimeout(hideTimer);
-		showTimer = hideTimer = undefined;
-	}
-
-	function show(): void {
-		clearTimers();
-		if (visible || !active()) return;
-		visible = true;
-		const root = ensureEl();
-		renderContent();
-		inheritTheme(root);
-		// Mount INSIDE the tree's .stv__container, not document.body: the library
-		// declares its --stv-* tokens (and inherits the theme's --base-*) on
-		// .stv__container, so a body-level portal renders with NO background/colour
-		// (every var() empty). position:fixed still escapes the container's overflow.
-		// Mirrors web-multiselect portaling into its shadow root for the same reason.
-		const container = trigger.closest<HTMLElement>('.stv__container') ?? document.body;
-		container.appendChild(root);
-		// mousemove is already attached from the mouseenter handler for a pointer show;
-		// for a focus-triggered show there's no cursor, so follow-cursor correctly
-		// falls back to the trigger rect. (addEventListener is idempotent on same ref.)
-		const reference = params.followCursor ? cursorReference : trigger;
-		stopAutoUpdate = autoUpdate(reference as Element, root, position);
-		// Next frame so the transition (if any) runs from the hidden state.
-		requestAnimationFrame(() => root.classList.add(params.visibleClass ?? 'stv__tooltip--visible'));
-	}
-
-	function hide(): void {
-		clearTimers();
-		// Always detach cursor tracking — the listener may have been attached on
-		// mouseenter while the show-delay was still pending (never became visible).
-		stopTrackingCursor();
-		if (!visible) return;
-		visible = false;
-		stopAutoUpdate?.();
-		stopAutoUpdate = undefined;
-		if (el) {
-			el.classList.remove(params.visibleClass ?? 'stv__tooltip--visible');
-			el.remove();
-		}
-	}
-
-	function scheduleShow(): void {
-		clearTimers();
-		if (!active()) return;
-		const { show: d } = normalizeDelay(params.delay);
-		if (d > 0) showTimer = setTimeout(show, d);
-		else show();
-	}
-	function scheduleHide(): void {
-		clearTimers();
-		const { hide: d } = normalizeDelay(params.delay);
-		if (d > 0) hideTimer = setTimeout(hide, d);
-		else hide();
-	}
-
-	const onMouseEnter = (e: MouseEvent): void => {
-		if (params.followCursor) startTrackingCursor(e);
-		scheduleShow();
-	};
-
-	trigger.addEventListener('mouseenter', onMouseEnter);
-	trigger.addEventListener('mouseleave', scheduleHide);
-	trigger.addEventListener('focusin', scheduleShow);
-	trigger.addEventListener('focusout', scheduleHide);
+	create();
 
 	return {
 		update(next: TooltipParams) {
 			params = next;
-			if (!active()) {
-				hide();
-			} else if (visible) {
-				// Live content / placement change while shown.
-				renderContent();
-				position();
-			}
+			if (structuralKey(params) !== key) create();
+			else if (!isActive()) handle?.hide();
+			else handle?.refresh(); // live content change while shown (no-op when hidden)
 		},
 		destroy() {
-			trigger.removeEventListener('mouseenter', onMouseEnter);
-			trigger.removeEventListener('mouseleave', scheduleHide);
-			trigger.removeEventListener('focusin', scheduleShow);
-			trigger.removeEventListener('focusout', scheduleHide);
-			hide();
-			el = null;
+			handle?.destroy();
+			handle = null;
 		}
 	};
 }

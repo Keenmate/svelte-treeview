@@ -20,8 +20,8 @@ The manifest's three modes:
 - **adapted** — copies with documented local edits (`vendor/actions`, the vendored tests). Flagged
   when core changed the source since `baseline`. Fix = re-copy, re-apply the edits in the group's
   `note`.
-- **mirror** — Svelte re-implementations with no shared file (tooltip action, info popover,
-  loader hook, global API, context menu). Flagged when the core source changed since
+- **mirror** — Svelte re-implementations with no shared file (loader hook, global API,
+  context menu). Flagged when the core source changed since
   `baseline`. Fix = read the listed core commits, port what applies (or record in
   [`parity.md`](parity.md) why not).
 
@@ -38,6 +38,15 @@ The manifest's three modes:
 4. Public API changes that come with it follow the parity rule (CLAUDE.md): update
    `docs/parity.md`, CHANGELOG.
 5. Adding a new vendored file or mirror: add it to the manifest in the same commit.
+
+## Status (2026-11-25, core rc26 @ cf20659)
+
+- **In sync:** everything but `menu helpers`, which waits for core's fix of the `--base-overlay-bg`
+  fallback in `menu/styles.ts` / `overlay/modal-session.ts` (uncommitted in core; the
+  contract check rejects the copy until then).
+- The **tooltip action** and the **info popover** are no longer mirrors: core `positioning/tooltip.ts`,
+  `popover.ts`, `overlay-container.ts` are vendored (group `positioning`, identical); `use:tooltip`
+  wraps `createTooltip`, Node.svelte's ⓘ reveal is `createPopover`.
 
 ## Status (2026-11-14, core 1.0.0-rc23 @ dd29c43)
 

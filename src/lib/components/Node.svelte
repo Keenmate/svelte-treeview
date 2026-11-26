@@ -4,7 +4,7 @@
 	import type {Ltree, DropPosition, DropOperation, NodeRenderContext} from "../ltree/types.js"
 	import type {NodeCallbacks, NodeConfig} from "../core/TreeEngine.svelte.js"
 	import { observeElementSize } from "../vendor/core/environment/element-size.js"
-	import { computePosition, autoUpdate, offset, flip, shift } from "@floating-ui/dom"
+	import { createPopover } from "../vendor/core/positioning/popover.js"
 	import { tooltip } from "../actions/tooltip.js"
 	import { rowDomId } from "../helpers/string-helpers.js"
 
@@ -183,9 +183,12 @@
 		return observeElementSize(el, measure)
 	})
 
-	// Full-label reveal popover (info mode). One per node, opened on ⓘ click. A manual
-	// floating panel (not a hover tooltip, which never fires on touch); dismissed by a
-	// second click, an outside pointer, a scroll, or Escape.
+	// Full-label reveal popover (info mode). One per node, opened on ⓘ click — a click panel
+	// (not a hover tooltip, which never fires on touch). Core createPopover (same as
+	// web-treeview): a second click toggles it; Escape / an outside press close it through
+	// core's overlay tree (one level per Escape, focus back on the ⓘ); a scroll that MOVES the
+	// row closes it (a scroll inside the panel doesn't). The panel stays where Svelte renders
+	// it (shouldKeepMounted — position: fixed escapes the tree's overflow clip).
 	let infoBtnEl: HTMLElement | undefined = $state()
 	let revealEl: HTMLElement | undefined = $state()
 	let isRevealOpen = $state(false)
@@ -197,33 +200,19 @@
 
 	$effect(() => {
 		if (!isRevealOpen || !infoBtnEl || !revealEl) return
-		const btn = infoBtnEl
-		const panel = revealEl
-		const stopAutoUpdate = autoUpdate(btn, panel, () => {
-			computePosition(btn, panel, {
-				strategy: 'fixed',
-				placement: 'top-end',
-				middleware: [offset(6), flip(), shift({ padding: 8 })]
-			}).then(({ x, y }) => {
-				panel.style.left = `${x}px`
-				panel.style.top = `${y}px`
-			})
+		const handle = createPopover({
+			reference: infoBtnEl,
+			panel: revealEl,
+			shouldKeepMounted: true,
+			placement: 'top-end',
+			offset: 6,
+			shouldCloseOnEscape: true,
+			shouldCloseOnOutsideClick: true,
+			shouldCloseOnScroll: true,
+			closeCallback: () => { isRevealOpen = false }
 		})
-		const onOutside = (ev: Event) => {
-			const t = ev.target as HTMLElement | null
-			if (t !== btn && !panel.contains(t)) isRevealOpen = false
-		}
-		const onScroll = () => { isRevealOpen = false }
-		const onKey = (ev: KeyboardEvent) => { if (ev.key === 'Escape') isRevealOpen = false }
-		document.addEventListener('pointerdown', onOutside, true)
-		window.addEventListener('scroll', onScroll, true)
-		document.addEventListener('keydown', onKey, true)
-		return () => {
-			stopAutoUpdate()
-			document.removeEventListener('pointerdown', onOutside, true)
-			window.removeEventListener('scroll', onScroll, true)
-			document.removeEventListener('keydown', onKey, true)
-		}
+		handle.open()
+		return () => handle.destroy()
 	})
 
 	// Glow/drop position is owned by the controller now (pointer-driven drag) and arrives
@@ -395,7 +384,7 @@
 	</div>
 
 	<!-- Full-label reveal (info mode). position: fixed → escapes the tree's overflow clip;
-	     placed by @floating-ui relative to the ⓘ button. -->
+	     placed by core createPopover relative to the ⓘ button. -->
 	{#if isRevealOpen}
 		<div class="stv__node-info-reveal" role="tooltip" bind:this={revealEl}>{displayValue}</div>
 	{/if}

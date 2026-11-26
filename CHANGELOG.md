@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.0.0-rc18] - 2026-11-22
 
+### Changed — node tooltips and the ⓘ full-label popover are core's `createTooltip` / `createPopover` (2026-11-25)
+
+- The `use:tooltip` action (node tooltips) is now a thin wrapper over core `createTooltip`, and the `nodeTitleOverflow: 'info'` reveal is core `createPopover` — the same ones web-treeview uses (they were hand-written copies that had fallen behind). New behaviour that comes with them:
+  - **Tooltip:** fades out (`km-tooltip--hiding`, `data-placement` on the element); hides when a scroll moves its row; the first Escape hides a tooltip shown by keyboard focus (WCAG 1.4.13); the row gets `aria-describedby` while it shows; a follow-cursor tooltip scrolls with its row; mounts inside an open modal `<dialog>`.
+  - **ⓘ popover:** closes on a scroll only when its row actually moved (not on a scroll inside it or of an unrelated scroller); Escape / an outside press go through core's overlay tree (one level per Escape, focus back on the ⓘ); closes when its row leaves the page.
+  - `use:tooltip`'s parameters, the `.stv__tooltip` / `--visible` classes and the `--stv-tooltip-*` variables are unchanged.
+- Fixed: **Enter / Space on a focused ⓘ** (or a button / link a `nodeTemplate` draws) were taken by the tree (expand / select) and never reached the button — keyboard users couldn't open the full label. They go to the control now. Same fix in web-treeview.
+- Core `runAction`'s `emitAction` option is `dispatchAction` (core cf20659); internal.
+
 ### Fixed — four of the review's "plausible" bugs, reproduced and fixed (2026-11-25)
 
 - **Filtered rows kept search-relevance order.** While a search filter was on, siblings came out in FlexSearch's ranking (an exact match jumped ahead of the siblings above it). The filtered view now keeps the tree's own order. (web-treeview already did.)
@@ -17,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed — core re-synced to web-components-core rc26 (+ c2f5f83); core adoption (2026-11-24, REVIEW §4)
 
-- Every vendored core module is re-synced to core `c2f5f83` (rc26 "the naming release" + its internal verbs): logging, environment, dom helpers, pointer drag, locale, icons, the context menu (`openMenu` — its phone sheet is now a modal session; `overlay/modal-session`, `dom/focus-trap`, `dom/z-index` vendored with it), actions / shortcut. `npm run check:core-sync`: everything in sync except the two hand-ported positioning mirrors (tooltip action, info popover). Public renames that follow core: the export `observeLocale` → `observePageLocale`, `getMenuChildren` → `loadMenuChildren` (web-treeview gets them with its core upgrade).
+- Every vendored core module is re-synced to core `c2f5f83` (rc26 "the naming release" + its internal verbs): logging, environment, dom helpers, pointer drag, locale, icons, the context menu (`openMenu` — its phone sheet is now a modal session; `overlay/modal-session`, `dom/focus-trap`, `dom/z-index` vendored with it), actions / shortcut. `npm run check:core-sync`: everything in sync (the tooltip action and the info popover followed on 2026-11-25, above). Public renames that follow core: the export `observeLocale` → `observePageLocale`, `getMenuChildren` → `loadMenuChildren` (web-treeview gets them with its core upgrade).
 - `beforeScrollCallback` (new, = web-treeview): runs before the tree scrolls a node into view on its own — `source` `'keyboard'` / `'scroll-to-path'` / `'paste'`, the scroll container core found, the options it will use; `false` skips, a partial replaces them. `scrollToPath` gains `shouldRevealContainer` (default `true`) and now scrolls the row's scroll container through core `scrollIntoContainer` (the page when there's none) instead of `scrollIntoView`; keyboard moves and the paste reveal use the same path (`scrollContainerToBox` in virtual scroll). A visible row no longer triggers a no-op `scrollTo`.
 - Every `before*Callback` (copy, cut, paste, delete, checkbox toggle, drag start, drop, keydown, scroll) runs through core's before-callback runner: a hook that THROWS now rejects (logged) instead of crashing the operation half-way — a crashed `beforeDeleteCallback` no longer lets the delete through.
 - Search: the built-in index folds text with core `normalizeSearchText` — `lodz` finds `Łódź`, `strasse` finds `Hauptstraße` (FlexSearch's `Charset.Normalize` left `ł` / `ß` / `æ` unfolded). Same as web-treeview.

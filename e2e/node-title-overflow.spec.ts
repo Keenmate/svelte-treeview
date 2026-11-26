@@ -71,4 +71,26 @@ test.describe('nodeTitleOverflow', () => {
 		// dismiss so state is clean
 		await page.keyboard.press('Escape');
 	});
+
+	// Core createPopover (since the 2026-11-25 re-sync): Escape + outside press via the overlay tree.
+	test('info: Escape closes the reveal and returns focus to the ⓘ', async ({ page }) => {
+		await page.getByTestId('mode-info').click();
+		const info = node(page, '1.1').locator('.stv__node-info');
+		await info.focus();
+		await page.keyboard.press('Enter');
+		const reveal = page.locator('.stv__node-info-reveal');
+		await expect(reveal).toBeVisible();
+		await page.keyboard.press('Escape');
+		await expect(reveal).toHaveCount(0);
+		await expect(info).toBeFocused();
+	});
+
+	test('info: a press outside closes the reveal', async ({ page }) => {
+		await page.getByTestId('mode-info').click();
+		await node(page, '1.1').locator('.stv__node-info').click();
+		const reveal = page.locator('.stv__node-info-reveal');
+		await expect(reveal).toBeVisible();
+		await page.locator('h1').first().click();
+		await expect(reveal).toHaveCount(0);
+	});
 });

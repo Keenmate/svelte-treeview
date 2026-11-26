@@ -63,6 +63,32 @@ test.describe('node tooltip', () => {
 		await page.waitForTimeout(100);
 		await expect(page.locator('.stv__tooltip')).toHaveCount(0);
 	});
+
+	// Core createTooltip behaviour (the action wraps it since the 2026-11-25 re-sync).
+	test('core: Escape hides a hover-shown tooltip; it describes its row while shown', async ({ page }) => {
+		const target = row(page, 'tree-callback', '1');
+		await target.hover();
+		const tip = page.locator('.stv__tooltip.stv__tooltip--visible');
+		await expect(tip).toBeVisible();
+		const id = await tip.getAttribute('id');
+		await expect(target).toHaveAttribute('aria-describedby', id!);
+		await page.keyboard.press('Escape');
+		await expect(page.locator('.stv__tooltip')).toHaveCount(0);
+		await expect(target).not.toHaveAttribute('aria-describedby', /./);
+	});
+
+	test('core: a page scroll that moves the row hides the tooltip', async ({ page }) => {
+		await page.evaluate(() => {
+			const spacer = document.createElement('div');
+			spacer.style.height = '3000px';
+			document.body.append(spacer);
+		});
+		await row(page, 'tree-callback', '1').hover();
+		await expect(page.locator('.stv__tooltip.stv__tooltip--visible')).toBeVisible();
+		await page.evaluate(() => window.scrollBy(0, 40));
+		// Row 1's tooltip goes (the row now under the resting pointer may show its own).
+		await expect(page.locator('.stv__tooltip', { hasText: 'Sweet edible plant fruits' })).toHaveCount(0);
+	});
 });
 
 // The width vars size the CONTENT box (padding outside) — the Keenmate tooltip contract

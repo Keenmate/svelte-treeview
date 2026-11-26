@@ -33,7 +33,7 @@ attribute in parentheses); svelte names are `<Tree>` props / exports. Decided 20
 | `iconSet`, `leafIconClass`, `toggleIconMode` | same | same |
 | — (`expandIconClass` / `collapseIconClass` removed) | — (removed) | same |
 | `scrollHighlightClass` (null → built-in `wtv__…`), `scrollHighlightTimeout` | `scrollHighlightClass` (`'stv__…'`), same | intentional — class prefix |
-| `nodeTitleOverflow` (`node-title-overflow`: `wrap` \| `ellipsis` \| `info`, default `ellipsis`) | `nodeTitleOverflow` (default `ellipsis`) | same. The `info` popover closes on a scroll: web (2026-11-08, core `createPopover({ shouldCloseOnScroll })`) on one that moves its row — the tree body, an outer scroller or the page — but not on a scroll inside the popover or of an unrelated scroller; svelte on any scroll on the page (window capture). **to mirror**: svelte keeps it open for a scroll that doesn't move the row |
+| `nodeTitleOverflow` (`node-title-overflow`: `wrap` \| `ellipsis` \| `info`, default `ellipsis`) | `nodeTitleOverflow` (default `ellipsis`) | same. The `info` popover is core `createPopover` in both (svelte since 2026-11-25): closes on a scroll that moves its row (not one inside the popover or of an unrelated scroller), Escape / an outside press via core's overlay tree; Enter / Space on the focused ⓘ open it (the tree keydown leaves them to a row control) |
 | `flatIndentSize` | `flatIndentSize` | same |
 | `contextMenuXOffset`, `contextMenuYOffset`, `isLoading` | same | same |
 | `menuPresentation` (`menu-presentation`: `auto` \| `floating` \| `sheet` \| `drawer`, default `auto`), `menuSide` (`menu-side`: `start` \| `end`) — core `menuPresentationInputs()` | `menuPresentation`, `menuSide` props (2026-11-21) | same — both menus are core `openMenu()` |

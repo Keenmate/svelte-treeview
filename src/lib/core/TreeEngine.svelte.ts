@@ -970,6 +970,12 @@ interface ClosingEntry {
 	targets: string[];
 }
 
+/** A keydown from a button / link inside the tree (the ⓘ, a nodeTemplate control) — Enter / Space are its. */
+function isRowControlTarget(event: Event): boolean {
+	const t = (event.composedPath?.()[0] ?? event.target) as Element | null;
+	return t instanceof Element && !!t.closest('button, a[href], [role="button"]');
+}
+
 /**
  * The built-in context-menu actions (REVIEW §3.8 — one table instead of four switches): the
  * `menuItems.<label>` text, whether it also runs on a menu over empty space (`isNodeFree`; the
@@ -3763,6 +3769,9 @@ export class TreeEngine<T> {
 		// A key typed into a field inside a row (an <input> in a nodeTemplate) belongs to that
 		// field — no built-in shortcut (Delete, Ctrl+C/V) and no navigation (arrows, Backspace).
 		if (isTypingTarget(event)) return;
+		// Enter / Space on a focused control inside a row (the ⓘ full-label button, a button or
+		// link a nodeTemplate drew) activate THAT control — not the tree's expand / select.
+		if ((event.key === 'Enter' || event.key === ' ') && isRowControlTarget(event)) return;
 
 		// Shift+F10 / the ContextMenu key open the focused node's context menu.
 		if (matchesShortcut(event, 'ContextMenu') || matchesShortcut(event, 'Shift+F10')) {
