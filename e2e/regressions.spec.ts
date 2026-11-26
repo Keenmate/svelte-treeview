@@ -365,3 +365,25 @@ test.describe('before*Callback runner (REVIEW §4)', () => {
 		expect(errors.some((e) => e.includes('beforeDeleteCallback threw'))).toBe(true);
 	});
 });
+
+test.describe('selection = core createSelection (REVIEW §4)', () => {
+	const selected = (page: Page) => page.evaluate(() => (window as any).__selected());
+
+	test('Ctrl+Shift+click ADDS the anchor…node range (it used to toggle one node)', async ({ page }) => {
+		// Visible order: 1, 1.1, 1.1.1, 1.1.2, 1.2, 2, 2.1
+		await label(page, '1.1.1').click();
+		await label(page, '2').click({ modifiers: ['ControlOrMeta'] }); // anchor = 2
+		await label(page, '1.1.2').click({ modifiers: ['ControlOrMeta', 'Shift'] });
+		await expect.poll(() => selected(page)).toEqual(['1.1.1', '1.1.2', '1.2', '2']);
+	});
+
+	test('single mode holds one node whatever writes it (selectNodes / selectAll / toggle)', async ({ page }) => {
+		await call(page, '__main', 'update', { selectionMode: 'single' });
+		await call(page, '__main', 'selectNodes', ['1.1.2', '2']);
+		await expect.poll(() => selected(page)).toEqual(['1.1.2']);
+		await call(page, '__main', 'selectAll');
+		await expect.poll(() => selected(page)).toEqual(['1.1.2']);
+		await call(page, '__main', 'selectNode', '2', 'toggle');
+		await expect.poll(() => selected(page)).toEqual(['2']);
+	});
+});

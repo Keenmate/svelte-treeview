@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.0.0-rc18] - 2026-11-22
 
+### Changed — the selection is core's `createSelection` (2026-11-26, REVIEW §4)
+
+- The UI selection (`selectedPaths`, `selectionAnchor`, click / Ctrl / Shift handling, Shift+Arrow ranges) now runs on core's selection model — the same one web-treeview uses — instead of the tree's own copy. What changes:
+  - **Ctrl+Shift+click** adds the anchor … node range to the selection (was: toggled the one node, like Ctrl+click).
+  - **A plain click on an unselectable node** leaves the selection as it is (was: cleared it). Focus still moves there; Ctrl+click on it does nothing.
+  - **Single selection mode holds at most one node, whoever writes it**: `selectNodes(paths)` selects the first of `paths` (replacing the old one), `selectAll()` does nothing, `selectNode(path, 'toggle' | 'range')` follows the single-mode rules (Ctrl on the selected node clears it, Shift is ignored). Before, the methods ignored `selectionMode` and could select several nodes in a single-mode tree.
+  - `onSelectionChange` fires on a click only when the selection changed (was: on every click).
+- Unchanged: `rangeSelectionMode` ('visual' ranges over the visible rows, 'logical' over every node depth-first), the first Shift action ranges from the focused node, `selectionAnchor` get / set.
+
 ### Changed — `sortCallback` gets one parent's children, on the initial load too (2026-11-26)
 
 - `sortCallback` is the sibling rule everywhere: the tree calls it once per parent with that parent's children — on the initial load (was: once with the whole flat dataset), after a drop / `addNode` / move, and in `sortNodes` / `sortAll`. It only has to order siblings; the tree keeps parents before children itself, so the README's old "sort by level first" comparator isn't needed (it still works — inside one parent every node has the same level). Same as web-treeview.

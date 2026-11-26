@@ -70,6 +70,7 @@ import { computeVirtualRange } from '../vendor/core/dom/virtual-window.js';
 import { readCssDurationMs, readScrollBehavior } from '../vendor/core/dom/css-values.js';
 import { announce } from '../vendor/core/dom/announce.js';
 import { runBeforeCallback, runBeforeCallbackSync } from '../vendor/actions/before-callback.js';
+import { createSelection } from '../vendor/core/selection/selection.js';
 import { rowDomId } from '../helpers/string-helpers.js';
 
 // Re-register global API (safe to import multiple times)
@@ -1175,19 +1176,26 @@ export class TreeEngine<T> {
 	 *  exist yet, so their flags are applied after the first non-empty insert. */
 	#pendingSelected: Set<string> | null = null;
 	#pendingChecked: Set<string> | null = null;
-	/** Hidden internal cursor used by Shift+Arrow / Shift+click to extend ranges
-	 *  from the focused node. Set on first Shift action, advances on subsequent
-	 *  Shift actions, cleared on any plain navigation. Not exposed via props. */
-	private _shiftCursor: string | null = null;
-	/** Public accessor for the Shift-range anchor (`_shiftCursor`). Lets alternative
-	 *  renderers (e.g. the canvas package) read the current anchor to build their own
-	 *  range selection (2D bounding-box hit-test) and write it back so subsequent
-	 *  logical Shift+click ranges stay in sync. Mirrors `focusedNode` as public state. */
+	/** The UI selection = core `createSelection` (SPEC §12.27, same as web-treeview): it owns the
+	 *  selected paths, the Shift-range anchor and the click / Ctrl / Shift / Ctrl+Shift rules.
+	 *  `selectedPaths` is its reactive mirror and the nodes' `isSelected` flags follow it — both
+	 *  re-synced by `_reconcileSelection()` after every write. Keys come in `_selectionOrder()`
+	 *  (rangeSelectionMode), so a range is what the user sees between two rows. */
+	#selection = createSelection<string>({
+		mode: () => this.selectionMode,
+		getOrderedKeys: () => this._selectionOrder(),
+		isSelectable: (path) => this.tree?.getNodeByPath(path)?.isSelectable === true,
+		logSource: 'svelte-treeview'
+	});
+	/** The Shift-range anchor (core selection's). Set by a plain / Ctrl click, kept by Shift, seeded
+	 *  from the focused node on the first Shift action. Writable so alternative renderers (e.g. the
+	 *  canvas package) can build their own range selection (2D bounding-box hit-test) and keep later
+	 *  Shift+click ranges in sync. */
 	get selectionAnchor(): string | null {
-		return this._shiftCursor;
+		return this.#selection.anchor;
 	}
 	set selectionAnchor(path: string | null) {
-		this._shiftCursor = path;
+		this.#selection.setAnchor(path ?? null);
 	}
 	/** Manual double-click detection state. We can't rely on the browser's native
 	 *  dblclick event because the first click triggers focus → _setFocusedNode bumps
@@ -1738,6 +1746,7 @@ export class TreeEngine<T> {
 		this.#nodes = props.nodes;
 		this.focusedNode = props.focusedNode ?? null;
 		this.selectedPaths = props.selectedPaths ?? new Set();
+		this.#selection.set(this.selectedPaths, { isSilent: true });
 		this.allCheckedPaths = props.checkedPaths ?? new Set();
 		if (props.selectedPaths?.size) this.#pendingSelected = props.selectedPaths;
 		if (props.checkedPaths?.size) this.#pendingChecked = props.checkedPaths;
@@ -2811,10 +2820,8 @@ export class TreeEngine<T> {
 		};
 		const selectionAffected = collect(this.selectedPaths);
 		const checkedAffected = collect(this.allCheckedPaths);
-		const shiftCursorSuffix =
-			this._shiftCursor && selectionAffected.has(this._shiftCursor)
-				? selectionAffected.get(this._shiftCursor)
-				: undefined;
+		const anchor = this.#selection.anchor;
+		const anchorSuffix = anchor && selectionAffected.has(anchor) ? selectionAffected.get(anchor) : undefined;
 		// Capture the focused node's relative offset too. We can't rely on the held
 		// LTreeNode reference "auto-recovering" via in-place .path mutation: a tree
 		// rebuild between selection and move orphans focusedNode (a stale object the
@@ -2840,7 +2847,9 @@ export class TreeEngine<T> {
 					next.delete(oldP);
 					next.add(newPath + suffix);
 				}
-				this.selectedPaths = next; // reassign for $state.raw reactivity
+				// The moved nodes keep their isSelected flags (same objects) — only the paths change.
+				this.#selection.set(next, { isSilent: true });
+				this._reconcileSelection(false);
 			}
 			if (checkedAffected.size > 0) {
 				const next = new Set(this.allCheckedPaths);
@@ -2850,9 +2859,7 @@ export class TreeEngine<T> {
 				}
 				this.allCheckedPaths = next;
 			}
-			if (shiftCursorSuffix !== undefined) {
-				this._shiftCursor = newPath + shiftCursorSuffix;
-			}
+			if (anchorSuffix !== undefined) this.#selection.setAnchor(newPath + anchorSuffix);
 			// Re-point focus at the live node now sitting at the new path. Reassigning
 			// (rather than trusting in-place mutation) both refreshes a stale orphan
 			// reference and triggers $state.raw reactivity so the focus styling and
@@ -4524,7 +4531,7 @@ export class TreeEngine<T> {
 	private async _handleNodeSelectClick(
 		node: LTreeNode<T>,
 		modifiers?: SelectionModifiers,
-		options?: { isSilent?: boolean; forceMultiSemantics?: boolean; uiClick?: boolean }
+		options?: { isSilent?: boolean; uiClick?: boolean }
 	) {
 		if (this.isContextMenuOpen) {
 			this.closeContextMenu();
@@ -4556,55 +4563,36 @@ export class TreeEngine<T> {
 			this._lastClickTime = now;
 		}
 
-		// In single mode, mouse Ctrl/Shift+click degrade to plain click. Programmatic
-		// callers (selectNode with mode='toggle'/'range') pass forceMultiSemantics
-		// to opt out of the gate — the API contract should not depend on selectionMode.
-		const isMulti = options?.forceMultiSemantics || this.selectionMode === 'multiple';
-		const ctrl = isMulti && (modifiers?.isCtrlPressed ?? false);
-		const shift = isMulti && (modifiers?.isShiftPressed ?? false);
+		const ctrl = modifiers?.isCtrlPressed ?? false;
+		const shift = modifiers?.isShiftPressed ?? false;
 		const silent = options?.isSilent ?? false;
 
 		uiLogger.debug(`[select] Click on ${node.path}`, {
 			ctrl,
 			shift,
 			mode: this.selectionMode,
-			shiftCursor: this._shiftCursor,
+			anchor: this.#selection.anchor,
 			prevCount: this.selectedPaths.size
 		});
 
-		// !isSelectable blocks selection (and therefore the mirror in no-checkbox mode).
-		// Focus still moves so consumers can show detail panels for unselectable rows.
-		const canSelect = node.isSelectable;
+		// Ctrl+click on an unselectable node: nothing (not even focus) — = web-treeview.
+		if (ctrl && !shift && !node.isSelectable) return;
 
-		if (ctrl && canSelect) {
-			// Toggle this node in/out of the selection
-			const newPaths = new Set(this.selectedPaths);
-			if (newPaths.has(node.path)) newPaths.delete(node.path);
-			else newPaths.add(node.path);
-			this._setSelection(newPaths, node.path);
-		} else if (shift && canSelect && (this._shiftCursor || this.focusedNode)) {
-			// Range from the shift cursor (or focused node if no cursor yet) to this node.
-			// The anchor stays put on shift+click.
-			const anchor = this._shiftCursor ?? this.focusedNode!.path;
-			const rangePaths = this._getNodesBetween(anchor, node.path).filter(
-				(path) => this.tree.getNodeByPath(path)?.isSelectable
-			);
-			this._setSelection(rangePaths);
-		} else if (canSelect) {
-			// Plain click (or Ctrl/Shift+click in single mode → treated as plain):
-			// select only this node.
-			this._setSelection([node.path], node.path);
-		} else {
-			// Not selectable: clear any prior selection but don't select this row.
-			this._setSelection([], null);
-		}
+		// Core click() rules (SPEC §12.27): plain → only this node, Ctrl → toggle, Shift → anchor…node
+		// range, Ctrl+Shift → range added; single mode ignores Shift and Ctrl only clears a selected
+		// node; an unselectable node leaves the selection as it is (focus still moves, so consumers can
+		// show detail panels for unselectable rows). The first Shift action ranges from the focused node.
+		if (shift && this.#selection.anchor === null && this.focusedNode)
+			this.#selection.setAnchor(this.focusedNode.path);
+		this.#selection.click(node.path, { ctrlKey: ctrl, shiftKey: shift });
+		const isSelectionChanged = this._reconcileSelection();
 
 		// Update focus (always — focus is independent of selectability; silent = no onFocusChange)
 		this._setFocusedNode(node, silent);
 
 		if (!silent) {
 			this.onNodeClickHandler?.(this._ctx(this.getNodeRef(node)));
-			this._dispatchSelectionChange();
+			if (isSelectionChanged) this._dispatchSelectionChange();
 		}
 		this.tree.refresh();
 
@@ -5001,26 +4989,37 @@ export class TreeEngine<T> {
 	}
 
 	/**
-	 * THE writer of the UI selection: `selectedPaths` plus every row's isSelected flag (real
-	 * node + filtered copy, see _setNodeFlag). Diffs against the current set, so only rows
-	 * whose membership changed re-render. `anchor` moves the Shift-range anchor (undefined =
-	 * leave it). No event, no refresh — follow with _dispatchSelectionChange() when not silent.
+	 * Replace the UI selection (core `set`, silent): `selectedPaths` plus every row's isSelected
+	 * flag follow via _reconcileSelection. `anchor` moves the Shift-range anchor (undefined = leave
+	 * it). No event, no refresh — follow with _dispatchSelectionChange() when not silent.
 	 */
 	private _setSelection(paths: Iterable<string>, anchor?: string | null) {
+		this.#selection.set(paths, { isSilent: true });
+		if (anchor !== undefined) this.#selection.setAnchor(anchor);
+		this._reconcileSelection();
+	}
+
+	/**
+	 * Re-read the core selection into the `selectedPaths` mirror; with `isFlagSync`, write the
+	 * isSelected flag (real node + filtered copy, see _setNodeFlag) of every row whose membership
+	 * changed — so only those rows re-render. Returns whether the set changed.
+	 */
+	private _reconcileSelection(isFlagSync = true): boolean {
 		const prev = this.selectedPaths;
-		const next = new Set(paths);
-		for (const path of prev) {
-			if (!next.has(path)) this._setNodeFlag(path, 'isSelected', false);
-		}
-		for (const path of next) {
-			if (!prev.has(path) || !this._getRealNode(path)?.isSelected) {
-				this._setNodeFlag(path, 'isSelected', true);
+		const next = new Set(this.#selection.values());
+		if (isFlagSync) {
+			for (const path of prev) {
+				if (!next.has(path)) this._setNodeFlag(path, 'isSelected', false);
+			}
+			for (const path of next) {
+				if (!prev.has(path) || !this._getRealNode(path)?.isSelected) {
+					this._setNodeFlag(path, 'isSelected', true);
+				}
 			}
 		}
-		if (next.size !== prev.size || [...next].some((p) => !prev.has(p))) {
-			this.selectedPaths = next;
-		}
-		if (anchor !== undefined) this._shiftCursor = anchor;
+		const isChanged = next.size !== prev.size || [...next].some((p) => !prev.has(p));
+		if (isChanged) this.selectedPaths = next;
+		return isChanged;
 	}
 
 	/** onSelectionChange + the no-checkbox mirror into checkedPaths (onCheckedChange). */
@@ -5048,10 +5047,10 @@ export class TreeEngine<T> {
 		const isLive = (path: string) => this._getRealNode(path) !== null;
 
 		const selected = [...this.selectedPaths].filter(isLive);
-		const cursor = this._shiftCursor;
+		const cursor = this.#selection.anchor;
 		const isSelectionChanged = selected.length !== this.selectedPaths.size;
 		if (isSelectionChanged) this._setSelection(selected, cursor && !isLive(cursor) ? null : undefined);
-		else if (cursor && !isLive(cursor)) this._shiftCursor = null;
+		else if (cursor && !isLive(cursor)) this.#selection.setAnchor(null);
 
 		const focused = this.focusedNode;
 		const liveFocused = focused ? this._getRealNode(focused.path) : null;
@@ -5171,84 +5170,19 @@ export class TreeEngine<T> {
 		}
 	}
 
-	/** Get nodes between two paths for range selection, respecting rangeSelectionMode */
-	private _getNodesBetween(pathA: string, pathB: string): string[] {
-		uiLogger.debug(
-			`[multi-select] _getNodesBetween: ${pathA} → ${pathB}, mode=${this.rangeSelectionMode}`
-		);
-		if (this.rangeSelectionMode === 'logical') {
-			return this._getAllNodesBetween(pathA, pathB);
-		}
-		return this._getVisibleNodesBetween(pathA, pathB);
-	}
-
-	/** Get visible nodes between two paths (inclusive), in display order.
-	 *  Only includes expanded/visible nodes. */
-	private _getVisibleNodesBetween(pathA: string, pathB: string): string[] {
-		const flatNodes = this.tree.visibleFlatNodes;
-		let indexA = -1;
-		let indexB = -1;
-		for (let i = 0; i < flatNodes.length; i++) {
-			if (flatNodes[i].path === pathA) indexA = i;
-			if (flatNodes[i].path === pathB) indexB = i;
-			if (indexA !== -1 && indexB !== -1) break;
-		}
-		uiLogger.debug(
-			`[multi-select] _getVisibleNodesBetween: indexA=${indexA}, indexB=${indexB}, totalVisible=${flatNodes.length}`
-		);
-		if (indexA === -1 || indexB === -1) {
-			uiLogger.debug(
-				`[multi-select] _getVisibleNodesBetween: path not found in visible nodes, falling back to [${pathB}]`
-			);
-			return [pathB];
-		}
-		const start = Math.min(indexA, indexB);
-		const end = Math.max(indexA, indexB);
-		const result = flatNodes.slice(start, end + 1).map((n) => n.path);
-		uiLogger.debug(
-			`[multi-select] _getVisibleNodesBetween: selected ${result.length} visible nodes [${start}..${end}]`
-		);
-		return result;
-	}
-
-	/** Get ALL nodes between two paths (inclusive), in depth-first tree order.
-	 *  Includes collapsed/hidden nodes — "logical" range selection. */
-	private _getAllNodesBetween(pathA: string, pathB: string): string[] {
-		// Walk entire tree depth-first and collect paths between A and B
+	/** The selection's display order (core `getOrderedKeys`) — what a Shift range spans, per
+	 *  rangeSelectionMode. visual: the rendered rows (collapsed children excluded); logical: every
+	 *  node depth-first, collapsed descendants included. */
+	private _selectionOrder(): string[] {
+		uiLogger.debug(`[multi-select] _selectionOrder: mode=${this.rangeSelectionMode}`);
+		if (this.rangeSelectionMode !== 'logical') return this.tree.visibleFlatNodes.map((n) => n.path);
 		const allPaths: string[] = [];
 		const traverse = (node: LTreeNode<T>) => {
 			if (node.path) allPaths.push(node.path);
-			for (const child of Object.values(node.children)) {
-				traverse(child);
-			}
+			for (const child of Object.values(node.children)) traverse(child);
 		};
-		for (const rootChild of this.tree.tree) {
-			traverse(rootChild);
-		}
-
-		let indexA = -1;
-		let indexB = -1;
-		for (let i = 0; i < allPaths.length; i++) {
-			if (allPaths[i] === pathA) indexA = i;
-			if (allPaths[i] === pathB) indexB = i;
-			if (indexA !== -1 && indexB !== -1) break;
-		}
-		uiLogger.debug(
-			`[multi-select] _getAllNodesBetween: indexA=${indexA}, indexB=${indexB}, totalNodes=${allPaths.length}`
-		);
-		if (indexA === -1 || indexB === -1) {
-			uiLogger.debug(
-				`[multi-select] _getAllNodesBetween: path not found in tree, falling back to [${pathB}]`
-			);
-			return [pathB];
-		}
-		const start = Math.min(indexA, indexB);
-		const end = Math.max(indexA, indexB);
-		const result = allPaths.slice(start, end + 1);
-		uiLogger.debug(
-			`[multi-select] _getAllNodesBetween: selected ${result.length} nodes [${start}..${end}]`
-		);
-		return result;
+		for (const rootChild of this.tree.tree) traverse(rootChild);
+		return allPaths;
 	}
 
 	// ── Public selection methods (the UI click selection) ──────────────────
@@ -5262,40 +5196,37 @@ export class TreeEngine<T> {
 		if (!node) return;
 
 		if (mode === 'toggle') {
-			this._handleNodeSelectClick(
-				node,
-				{ isCtrlPressed: true, isShiftPressed: false },
-				{ ...options, forceMultiSemantics: true }
-			);
+			this._handleNodeSelectClick(node, { isCtrlPressed: true, isShiftPressed: false }, options);
 		} else if (mode === 'range') {
-			this._handleNodeSelectClick(
-				node,
-				{ isCtrlPressed: false, isShiftPressed: true },
-				{ ...options, forceMultiSemantics: true }
-			);
+			this._handleNodeSelectClick(node, { isCtrlPressed: false, isShiftPressed: true }, options);
 		} else {
 			this._handleNodeSelectClick(node, undefined, options);
 		}
 	}
 
-	/** Add nodes to the selection (additive — the existing selection is kept).
+	/** Add nodes to the selection (additive — the existing selection is kept; in single
+	 *  selection mode the first of `paths` replaces it).
 	 *  To replace the whole set, assign `selectedPaths` (the bindable prop / `updateProps`).
 	 *  Pass `{ isSilent: true }` to skip `onSelectionChange`. */
 	selectNodes(paths: string[], options?: TreeMutationOptions) {
 		const selectable = this._selectablePaths(paths);
-		this._selectAndFocusLast([...this.selectedPaths, ...selectable], selectable, options);
+		// Single mode: the new node replaces the old one (core `set` keeps the first path given).
+		const isSingle = this.selectionMode !== 'multiple';
+		this._selectAndFocusLast(isSingle ? selectable : [...this.selectedPaths, ...selectable], selectable, options);
 	}
 
 	/** @internal Replace the entire selection set (node flags included), silently — the
 	 *  path behind an assigned `selectedPaths` (bindable prop / `updateProps`). No event. */
 	_replaceSelectedPaths(paths: Iterable<string>) {
 		const selectable = this._selectablePaths(paths);
-		if (selectable.length === 0) this._shiftCursor = null;
+		if (selectable.length === 0) this.#selection.setAnchor(null);
 		this._selectAndFocusLast(selectable, selectable, { isSilent: true });
 	}
 
-	/** Select every visible node. Pass `{ isSilent: true }` to skip `onSelectionChange`. */
+	/** Select every visible selectable node (multiple selection mode only — core `selectAll` rule).
+	 *  Pass `{ isSilent: true }` to skip `onSelectionChange`. */
 	selectAll(options?: TreeMutationOptions) {
+		if (this.selectionMode !== 'multiple') return;
 		const selectable = this.tree.visibleFlatNodes.filter((n) => n.isSelectable).map((n) => n.path);
 		this._selectAndFocusLast(selectable, selectable, options);
 	}
@@ -5312,8 +5243,10 @@ export class TreeEngine<T> {
 	/** selectNodes / selectAll / an assigned selectedPaths: set the selection to `paths`;
 	 *  the last of `added` becomes the focused node + range anchor. */
 	private _selectAndFocusLast(paths: string[], added: string[], options?: TreeMutationOptions) {
-		const lastPath = added.at(-1);
-		this._setSelection(paths, lastPath);
+		this._setSelection(paths);
+		// Single mode keeps only the first path (core `set`) — focus / anchor the one that stayed.
+		const lastPath = added.findLast((path) => this.#selection.has(path));
+		if (lastPath) this.#selection.setAnchor(lastPath);
 		const lastNode = lastPath ? this.tree.getNodeByPath(lastPath) : null;
 		if (lastNode) this._setFocusedNode(lastNode, options?.isSilent);
 		if (!options?.isSilent) this._dispatchSelectionChange();
@@ -5326,7 +5259,7 @@ export class TreeEngine<T> {
 		if (paths && paths.length > 0) {
 			const removed = new Set(paths);
 			const next = [...this.selectedPaths].filter((p) => !removed.has(p));
-			const cursor = this._shiftCursor;
+			const cursor = this.#selection.anchor;
 			this._setSelection(next, cursor && !next.includes(cursor) ? null : undefined);
 		} else {
 			this._setSelection([], null);
@@ -5357,7 +5290,7 @@ export class TreeEngine<T> {
 		const focused = this.focusedNode;
 		const node = focused ? (this.tree?.getNodeByPath(focused.path) ?? null) : null;
 		if (!node || !node.isSelectable) return;
-		this._handleNodeSelectClick(node, { isCtrlPressed: true, isShiftPressed: false }, { forceMultiSemantics: true });
+		this._handleNodeSelectClick(node, { isCtrlPressed: true, isShiftPressed: false });
 	}
 
 	// ── Public selection methods (checkbox data state) ───────────────
@@ -6599,15 +6532,8 @@ export class TreeEngine<T> {
 	 *  (or current focus if no cursor yet), moves focus. No-op in single mode. */
 	private _extendSelectionTo(path: string) {
 		if (this.selectionMode !== 'multiple') return;
-		// Seed the shift cursor from the focused node on the first Shift+Arrow
-		if (!this._shiftCursor && this.focusedNode) {
-			const anchorNode = this.focusedNode;
-			this._shiftCursor = anchorNode.path;
-			// Ensure the anchor is selected so range computation has a starting point visible
-			if (anchorNode.isSelectable && !anchorNode.isSelected) {
-				this._setSelection([anchorNode.path]);
-			}
-		}
+		// The range runs from the anchor — seeded from the focused node on the first Shift+Arrow
+		// (_handleNodeSelectClick); the core range includes the anchor itself.
 		this.selectNode(path, 'range');
 		// Move focus to the target without clearing the selection
 		const node = this.tree.getNodeByPath(path);

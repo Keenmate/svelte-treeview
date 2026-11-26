@@ -339,8 +339,8 @@ Three independent concerns, each with the same method shape. `opts` is always `T
 | Method | Parameters | Description |
 |--------|------------|-------------|
 | `selectNode` | `path: string, mode?: SelectMode, opts?` | Select one node. `mode`: `'replace'` (plain click, default), `'toggle'` (Ctrl+click), `'range'` (Shift+click from cursor) |
-| `selectNodes` | `paths: string[], opts?` | Add nodes to the selection (**additive**) |
-| `selectAll` | `opts?` | Select every visible node (Ctrl+A) |
+| `selectNodes` | `paths: string[], opts?` | Add nodes to the selection (**additive**; in single selection mode the first path replaces the selection) |
+| `selectAll` | `opts?` | Select every visible selectable node (Ctrl+A); multiple selection mode only |
 | `clearSelection` | `paths?: string[], opts?` | Clear the given paths, or all when omitted |
 | `checkNode` | `path: string, opts?` | Check one node (cascades to descendants in cascade mode) |
 | `checkNodes` | `paths: string[], opts?` | Check nodes (**additive**) |

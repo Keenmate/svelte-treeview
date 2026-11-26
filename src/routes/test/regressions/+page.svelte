@@ -77,6 +77,7 @@
 				bind:selectedPaths
 				bind:checkedPaths
 				treeId="main"
+				selectionMode="multiple"
 				dragDropMode="both"
 				getIsDraggableCallback={() => true}
 				getIsDropAllowedCallback={() => true}

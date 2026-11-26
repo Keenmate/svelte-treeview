@@ -235,6 +235,22 @@
 			]
 		},
 		{
+			"name": "selection",
+			"description": "Selection model (SPEC §12.27): createSelection owns the UI selection (selectedPaths), the Shift-range anchor (selectionAnchor) and the click / Ctrl / Shift / Ctrl+Shift rules — TreeEngine.#selection, keys = paths in rangeSelectionMode order (_selectionOrder), isSelectable = the node's; the engine mirrors it into selectedPaths + the isSelected flags (_reconcileSelection). Same as web-treeview (REVIEW §4).",
+			"mode": "identical",
+			"baseline": "a23b258",
+			"files": [
+				[
+					"src/selection/selection.ts",
+					"src/lib/vendor/core/selection/selection.ts"
+				],
+				[
+					"src/selection/selection.test.ts",
+					"src/lib/vendor/core/selection/selection.test.ts"
+				]
+			]
+		},
+		{
 			"name": "vendored tests",
 			"description": "Core's unit tests for the vendored modules.",
 			"mode": "adapted",

@@ -108,6 +108,7 @@
 			sortCallback={sortByName}
 			isSorted={true}
 			expandLevel={3}
+			selectionMode="multiple"
 			isCheckboxesShown={true}
 			selectedNodeClass="test-highlighted"
 			bind:selectedPaths

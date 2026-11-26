@@ -127,11 +127,16 @@ Three independent state tracks:
 
 Events take ONE context object. SelectionChangeContext<T> = { paths: Set<string>, nodes }.
 
-Selection interactions:
-- Ctrl+click (Cmd on Mac): toggle individual node selection
-- Shift+click: range selection from anchor to target
+Selection interactions (core createSelection rules, same as web-treeview):
+- Plain click: clear the selection, select one (the anchor moves there)
+- Ctrl+click (Cmd on Mac): toggle individual node selection (the anchor moves there)
+- Shift+click: range from the anchor to the target replaces the selection (anchor stays; the first
+  Shift action starts from the focused node)
+- Ctrl+Shift+click: the range is ADDED to the selection
 - Shift+Arrow/Home/End/PageUp/PageDown: extend selection via keyboard
-- Plain click: clear the selection, select one
+- Unselectable node: a click moves focus but leaves the selection as it is
+- selectionMode 'single': at most one node, also through the API — selectNodes keeps the first
+  path, selectAll does nothing, Ctrl+click on the selected node clears it, Shift is ignored
 
 Checkbox interactions:
 - Click checkbox: toggle isChecked (independent of the selection)
@@ -147,9 +152,9 @@ Access via bind:this on <Tree> (treeRef) or ctx.controller in any callback — e
 
 SELECTION (UI multi-select set = selectedPaths):
 - treeRef.selectNode(path, mode?, opts?)   // mode: 'replace' | 'toggle' | 'range'
-- treeRef.selectNodes(paths, opts?)        // additive
+- treeRef.selectNodes(paths, opts?)        // additive (single mode: the first path replaces)
 - replace the whole set: assign bind:selectedPaths (silent, no event)
-- treeRef.selectAll(opts?)
+- treeRef.selectAll(opts?)                 // multiple mode only
 - treeRef.clearSelection(paths?, opts?)
 
 CHECKED (checkbox data set = checkedPaths):

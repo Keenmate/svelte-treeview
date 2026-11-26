@@ -39,6 +39,13 @@ The manifest's three modes:
    `docs/parity.md`, CHANGELOG.
 5. Adding a new vendored file or mirror: add it to the manifest in the same commit.
 
+## Status (2026-11-26, core @ a23b258)
+
+- **In sync:** everything (`menu helpers` re-vendored after core fixed its `--base-*` fallbacks).
+- **Selection** is core `selection/selection.ts` (group `selection`, identical, + its unit test):
+  `TreeEngine.#selection` owns the selected paths, the Shift anchor and the click rules; `selectedPaths`
+  and the `isSelected` flags mirror it (`_reconcileSelection`). Nothing from REVIEW §4 is left to adopt.
+
 ## Status (2026-11-25, core rc26 @ cf20659)
 
 - **In sync:** everything but `menu helpers`, which waits for core's fix of the `--base-overlay-bg`
