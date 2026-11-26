@@ -185,3 +185,34 @@ describe('sibling rule precedence', () => {
 		expect(names(tree)).toEqual(['C', 'B', 'A']);
 	});
 });
+
+describe('sortCallback = the sibling rule on the initial load too (= web-treeview)', () => {
+	it('is called once per parent with only that parent\'s children; a name-only comparator loads every row', () => {
+		const calls: string[][] = [];
+		const byName = ({ nodes }: any) => {
+			calls.push(nodes.map((n: any) => n.path));
+			return [...nodes].sort((a: any, b: any) => a.data.name.localeCompare(b.data.name));
+		};
+		const tree = createTree(undefined, { sortCallback: byName });
+		const result = tree.insertArray(unsorted());
+		expect(result.failed).toEqual([]);
+		// every call = one sibling group (same parent); single-child groups skip the callback
+		for (const paths of calls) {
+			const parents = new Set(paths.map((p) => p.split('.').slice(0, -1).join('.')));
+			expect(parents.size).toBe(1);
+		}
+		expect(calls.map((c) => [...c].sort())).toEqual([['1', '2', '3'], ['3.1', '3.2']]);
+		expect(names(tree)).toEqual(['A', 'B', 'C']);
+		expect(names(tree, '3')).toEqual(['Item 10', 'Item 2']); // plain localeCompare: '1' < '2'
+	});
+
+	it('the default rule (no callback) still orders by orderMember, then display value', () => {
+		const tree = createTree('order');
+		tree.insertArray(unsorted());
+		expect(names(tree)).toEqual(['A', 'B', 'C']);
+		expect(names(tree, '3')).toEqual(['Item 10', 'Item 2']); // order 10 before 20
+		const byName = createTree();
+		byName.insertArray(unsorted());
+		expect(names(byName, '3')).toEqual(['Item 2', 'Item 10']); // numeric collator
+	});
+});

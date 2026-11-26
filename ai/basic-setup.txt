@@ -61,7 +61,7 @@ RECOMMENDED PROPS
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | displayValueMember | string | null | Property for display text |
-| sortCallback | function | built-in | Custom sort function |
+| sortCallback | function | built-in | Orders one parent's children (called per parent) |
 | expandLevel | number | 0 | Auto-expand nodes to this depth (0 = roots only) |
 | treeId | string | auto | Stable id (needed for cross-tree clipboard/drag); init-only — a later change is ignored with a warning |
 | clickBehavior | string | 'expand-and-focus' | 'select' \| 'expand' \| 'expand-and-focus' |

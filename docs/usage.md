@@ -11,7 +11,7 @@ Full Props, Methods, Events, and Snippets reference for `@keenmate/svelte-treevi
 | `nodes` | `T[]` | **required** | The tree's data objects (flat, ltree paths). Bindable: input AND current state — after a mutation `bind:nodes` receives the tree's current data |
 | `idMember` | `string` | **required** | Property name for unique identifiers |
 | `pathMember` | `string` | **required** | Property name for hierarchical paths |
-| `sortCallback` | `(ctx: SortContext<T>) => LTreeNode<T>[]` (ctx = `{ nodes }`) | `undefined` | Function to sort tree nodes |
+| `sortCallback` | `(ctx: SortContext<T>) => LTreeNode<T>[]` (ctx = `{ nodes }`) | `undefined` | Orders the children of one parent (siblings) — called per parent, on the initial load too; the tree keeps parents before children |
 
 ### Data mapping properties
 

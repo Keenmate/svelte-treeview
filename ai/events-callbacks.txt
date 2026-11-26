@@ -233,20 +233,12 @@ Generate context menu items dynamically:
 
 SORT CALLBACK
 -------------
-Custom sorting for tree display:
+Orders the children of ONE parent (siblings) — the tree calls it per parent on the initial
+load, after drop / addNode / move, and in sortNodes / sortAll. No level-first sort needed.
 
 <Tree
-  sortCallback={(nodes) => {
-    return nodes.sort((a, b) => {
-      // Sort by level first (required for proper tree construction)
-      const aLevel = a.path.split('.').length;
-      const bLevel = b.path.split('.').length;
-      if (aLevel !== bLevel) return aLevel - bLevel;
-
-      // Then by your criteria
-      return (a.data?.name ?? '').localeCompare(b.data?.name ?? '');
-    });
-  }}
+  sortCallback={({ nodes }) =>
+    [...nodes].sort((a, b) => (a.data?.name ?? '').localeCompare(b.data?.name ?? ''))}
 />
 
 INITIALIZE INDEX CALLBACK
@@ -393,7 +385,7 @@ onAction:
   // detail = menu ctx + { action, id?, item, source: 'context-menu', sourceEvent?, triggerElement?, dataset }
 
 sortCallback:
-(nodes: LTreeNode<T>[]) => LTreeNode<T>[]
+(ctx: { nodes: LTreeNode<T>[] }) => LTreeNode<T>[]   // ctx.nodes = one parent's children
 
 initializeIndexCallback:
 () => Index

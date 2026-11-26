@@ -48,7 +48,7 @@ attribute in parentheses); svelte names are `<Tree>` props / exports. Decided 20
 | Empty drop zone look: icon above the label (`--wtv-drop-placeholder-icon` / `-icon-size`), thin dashed border, engaged = spotlight bg + lift shadow (no halo ring), `-border-style-hover`, `-accent` | old look | **to mirror** (2026-11-02) |
 | `isVirtualScrollEnabled`, `virtualScrollItemHeight`, `virtualScrollOverscan`, `virtualScrollContainerHeight` | same | same |
 | `selectionMode`, `rangeSelectionMode`, `navigationOverrides`, `isCheckboxesShown`, `checkboxMode`, `cascadeCheckPolicy`, `shouldClickToggleCheckbox` | same | same |
-| `sortCallback`, `nodeOutputTransformationCallback`, `nodeInputTransformationCallback` | same | same |
+| `sortCallback`, `nodeOutputTransformationCallback`, `nodeInputTransformationCallback` | same | same. `sortCallback` gets one parent's children per call — on the initial load too (svelte since 2026-11-26; it got the whole flat dataset there) |
 | `customStyles` (`custom-styles`), `getCustomStylesCallback` (wins) + page-wide `window.components['web-treeview'].customStyles` / `.getCustomStylesCallback(ctx)` (core `createCustomStyles()`, before the instance layer) | — | intentional — shadow-DOM style injection; svelte styles are global CSS |
 | `renderer` (pluggable `TreeViewRenderer`) | — | intentional — web-only DOM renderer swap |
 | core element plumbing: `defer` / `release()` / `whenReady()` / `whenSettled()` / `flush()` / `destroy()` / `isDisabled` | — | intentional — `BlissElement` lifecycle |

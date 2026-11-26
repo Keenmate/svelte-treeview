@@ -147,25 +147,20 @@ What gets indexed for search:
 
 SORTING DATA
 ------------
-IMPORTANT: For proper tree construction, parent nodes must be inserted before children.
+sortCallback = the SIBLING rule: ctx.nodes is always the children of ONE parent — on the
+initial load (called once per parent), after drop / addNode / move, and in sortNodes / sortAll.
+The tree keeps parents before children itself; do NOT sort by level.
 
-Default sort handles this automatically, but custom sorts must maintain this:
-
-const sortCallback = (nodes) => {
-  return nodes.sort((a, b) => {
-    // FIRST: Sort by level (parents before children)
-    const aLevel = a.path.split('.').length;
-    const bLevel = b.path.split('.').length;
-    if (aLevel !== bLevel) {
-      return aLevel - bLevel;
-    }
-
-    // THEN: Sort by your criteria
-    return (a.data?.name ?? '').localeCompare(b.data?.name ?? '');
-  });
-};
+const collator = new Intl.Collator(undefined, { numeric: true }); // once, outside the callback
+const sortCallback = ({ nodes }) =>
+  [...nodes].sort((a, b) => collator.compare(a.data?.name ?? '', b.data?.name ?? ''));
 
 <Tree nodes={data} sortCallback={sortCallback} />
+
+Without sortCallback: orderMember (numeric) → display value (Intl.Collator numeric).
+
+50k rows: fastest = DB returns tree order (ORDER BY level, parent_path, sort_order) + isSorted={true}
+(no sorting at all); next = a numeric orderMember (~5-8 ms).
 
 Pre-sorted data (skip internal sorting):
 
@@ -418,7 +413,7 @@ BEST PRACTICES
 --------------
 ✅ Use unique paths for each item
 ✅ Ensure parent nodes exist before children
-✅ Use sortCallback that sorts by level first
+✅ sortCallback only orders siblings (one parent per call) — no level-first sort
 ✅ Use $state.raw() for large datasets
 ✅ Use callbacks for computed values
 ✅ Handle insertResult errors gracefully

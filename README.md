@@ -178,27 +178,30 @@ interface NodeData {
 - Second level: `"1.1"`, `"1.2"`, `"2.1"`
 - Third level: `"1.1.1"`, `"1.2.1"`, `"2.1.1"`
 
-### Sorting Requirements
+### Sorting
 
-**Important:** For proper tree construction, your `sortCallback` must sort by **level first** to ensure parent nodes are inserted before their children:
+Siblings are ordered by one rule: `sortCallback` (if set) → `orderMember` → the display value
+(`Intl.Collator`, numeric: `'Item 2'` before `'Item 10'`). The tree applies it **one parent at a time** —
+on the initial load (each parent's children), after a drop / `addNode` / move (the affected parent),
+and in `sortNodes` / `sortAll`. So `sortCallback` only ever receives siblings and only has to order
+them; the tree itself keeps parents before children (no level-first comparator needed).
 
 ```typescript
-const sortCallback = (ctx: SortContext<T>) => {
-  return items.sort((a, b) => {
-    // First, sort by level (shallower levels first)
-    const aLevel = a.path.split('.').length;
-    const bLevel = b.path.split('.').length;
-    if (aLevel !== bLevel) {
-      return aLevel - bLevel;
-    }
+// ctx.nodes = the children of ONE parent
+const sortCallback = ({ nodes }: SortContext<Item>) =>
+  [...nodes].sort((a, b) => collator.compare(a.data?.name ?? '', b.data?.name ?? ''));
 
-    // Then sort by your custom criteria
-    return (a.data?.name ?? '').localeCompare(b.data?.name ?? '');
-  });
-};
+const collator = new Intl.Collator(undefined, { numeric: true }); // create once, not per call
 ```
 
-**Why this matters:** If deeper level nodes are processed before their parents, you'll get "Could not find parent node" errors during tree construction. Level-first sorting ensures hierarchical integrity and enables progressive rendering for large datasets.
+**Large datasets (50k rows):**
+
+- Fastest: let the database return the rows in tree order and pass `isSorted={true}` — the tree
+  skips sorting. The order it expects: parents before children, siblings in display order, e.g.
+  `ORDER BY level, parent_path, sort_order`.
+- Next: a numeric `orderMember` with the built-in rule (≈5–8 ms for 50k rows).
+- A `sortCallback` runs once per parent (thousands of calls on a deep tree) — keep per-call setup
+  (a new `Intl.Collator`, a lookup map) outside it.
 
 ### Insert Result Information
 

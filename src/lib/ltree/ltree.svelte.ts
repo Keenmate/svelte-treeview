@@ -221,6 +221,29 @@ export function createLTree<T>(
 	// Display-value comparison of the default sibling rule (numeric-aware: 'Item 2' < 'Item 10').
 	const displayCollator = new Intl.Collator(undefined, { numeric: true });
 
+	/**
+	 * The default sibling rule — `orderMember` (both nodes need data), then the display value with
+	 * `Intl.Collator(numeric)`. Each node's keys are read ONCE (decorate-sort): reading them inside the
+	 * comparator did it 2 · k · log k times. Stable, returns a new array.
+	 */
+	function sortByKeys(
+		nodes: LTreeNode<T>[],
+		orderMember: string | null | undefined,
+		getDisplayValue: (node: LTreeNode<T>) => string
+	): LTreeNode<T>[] {
+		const keyed = nodes.map((node) => ({
+			node,
+			hasOrder: !!orderMember && !!node.data,
+			order: orderMember && node.data ? ((getField(node.data, orderMember) as number | undefined) ?? 0) : 0,
+			display: getDisplayValue(node)
+		}));
+		keyed.sort((a, b) => {
+			if (a.hasOrder && b.hasOrder && a.order !== b.order) return a.order - b.order;
+			return displayCollator.compare(a.display, b.display);
+		});
+		return keyed.map((k) => k.node);
+	}
+
 	// Private state variables
 	let root = createLTreeNode<T>();
 	let filteredRoot = createLTreeNode<T>();
@@ -2038,14 +2061,11 @@ export function createLTree<T>(
 		},
 
 		/** Order freshly converted rows for insertion (parents before children): as given when the
-		 *  input is pre-sorted (`isSorted`), by level only when sorting is disabled, else the sibling rule. */
+		 *  input is pre-sorted (`isSorted`), by level only when sorting is disabled, else each
+		 *  parent's children by the sibling rule (`sortCallback` included — one call per parent). */
 		_sortForInsert(nodes: LTreeNode<T>[]): LTreeNode<T>[] {
 			if (this.isSorted) return nodes;
 			if (!this.isSortingEnabled) return this._sortByLevel(nodes);
-			// The callback orders siblings; it gets the whole flat dataset here, so a sibling-only
-			// comparator (by name) could put a child before its parent — which then fails to insert
-			// as an orphan. A stable level pass after it keeps its sibling order, parents first.
-			if (this.sortCallback) return this._sortByLevel(this.sortCallback({ nodes }));
 			return this._defaultSort(this, nodes);
 		},
 
@@ -2063,26 +2083,16 @@ export function createLTree<T>(
 			children: LTreeNode<T>[],
 			options?: Pick<SortOptions<T>, 'compareCallback' | 'direction'>
 		): LTreeNode<T>[] {
-			const byDisplay = (a: LTreeNode<T>, b: LTreeNode<T>) =>
-				displayCollator.compare(this.getNodeDisplayValue(a), this.getNodeDisplayValue(b));
-			const om = this.orderMember;
 			let sorted: LTreeNode<T>[];
-			if (options?.compareCallback) {
+			if (children.length < 2) {
+				sorted = [...children];
+			} else if (options?.compareCallback) {
 				const cb = options.compareCallback;
 				sorted = [...children].sort((a, b) => cb({ a, b }));
 			} else if (this.sortCallback) {
 				sorted = [...this.sortCallback({ nodes: [...children] })];
-			} else if (om) {
-				sorted = [...children].sort((a, b) => {
-					if (a.data && b.data) {
-						const aOrder = getField(a.data, om) ?? 0;
-						const bOrder = getField(b.data, om) ?? 0;
-						if (aOrder !== bOrder) return aOrder - bOrder;
-					}
-					return byDisplay(a, b);
-				});
 			} else {
-				sorted = [...children].sort(byDisplay);
+				sorted = sortByKeys(children, this.orderMember, (node) => this.getNodeDisplayValue(node));
 			}
 			if (options?.direction === 'desc') sorted.reverse();
 			return sorted;
@@ -2144,34 +2154,34 @@ export function createLTree<T>(
 			return out;
 		},
 
+		/**
+		 * Insert order for a flat batch: parents before children (by level, then parent path), each
+		 * sibling group ordered by `_sortSiblings` — so `sortCallback` only ever sees the children of
+		 * one parent (= web-treeview). Grouping is one pass; sorting k siblings costs k·log k, so 50k
+		 * rows need far fewer compares than one whole-set sort (and no level-first comparator).
+		 */
 		_defaultSort: function (self: Ltree<T>, items: LTreeNode<T>[]): LTreeNode<T>[] {
-			return items.sort((a, b) => {
-				// First, sort by level (shallower levels first)
-				const aLevel = a.level || 0;
-				const bLevel = b.level || 0;
-				if (aLevel !== bLevel) {
-					return aLevel - bLevel;
+			const groups = new Map<string, { level: number; items: LTreeNode<T>[] }>();
+			for (const node of items) {
+				const pp = node.parentPath ?? '';
+				let g = groups.get(pp);
+				if (!g) {
+					g = { level: node.level || 0, items: [] };
+					groups.set(pp, g);
 				}
-
-				// Then sort by parent path
-				if (a.parentPath !== b.parentPath) {
-					if (!a.parentPath) return -1;
-					if (!b.parentPath) return 1;
-					return a.parentPath.localeCompare(b.parentPath!);
-				}
-
-				// If orderMember is provided, use it for sibling ordering
-				if (self.orderMember && a.data && b.data) {
-					const aOrder = (a.data as any)[self.orderMember] ?? 0;
-					const bOrder = (b.data as any)[self.orderMember] ?? 0;
-					if (aOrder !== bOrder) {
-						return aOrder - bOrder;
-					}
-				}
-
-				// Finally sort by display value
-				return displayCollator.compare(self.getNodeDisplayValue(a), self.getNodeDisplayValue(b));
+				g.items.push(node);
+			}
+			const ordered = [...groups.entries()].sort(([aPath, a], [bPath, b]) => {
+				if (a.level !== b.level) return a.level - b.level;
+				if (!aPath) return -1;
+				if (!bPath) return 1;
+				return aPath.localeCompare(bPath);
 			});
+			const result: LTreeNode<T>[] = [];
+			for (const [, g] of ordered) {
+				for (const node of self._sortSiblings(g.items)) result.push(node);
+			}
+			return result;
 		},
 
 		/**

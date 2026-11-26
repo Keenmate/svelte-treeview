@@ -74,7 +74,7 @@ describe('plausible: filtered rows keep TREE order, not search relevance', () =>
 });
 
 describe('plausible: a sibling-only sortCallback on the initial load', () => {
-	it('sorting the whole flat dataset by name (child before its parent) still inserts every row', () => {
+	it('a name-only comparator (no level-first) still inserts every row — it only sees siblings', () => {
 		const rows: Row[] = [
 			{ id: 'z', path: '1', name: 'Zoo' },
 			{ id: 'a', path: '1.1', name: 'Apple' },

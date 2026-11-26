@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.0.0-rc18] - 2026-11-22
 
+### Changed — `sortCallback` gets one parent's children, on the initial load too (2026-11-26)
+
+- `sortCallback` is the sibling rule everywhere: the tree calls it once per parent with that parent's children — on the initial load (was: once with the whole flat dataset), after a drop / `addNode` / move, and in `sortNodes` / `sortAll`. It only has to order siblings; the tree keeps parents before children itself, so the README's old "sort by level first" comparator isn't needed (it still works — inside one parent every node has the same level). Same as web-treeview.
+- Faster initial sort: rows are grouped by parent and each group sorted (k · log k instead of one n · log n sort over everything), and the built-in rule reads each node's order / display value once instead of in every comparison. 50k rows, measured: ~28–90 ms by display value, ~5–8 ms with a numeric `orderMember` (a whole-set level-first comparator took ~240–300 ms).
+- README: the sorting section explains the rule and the 50k-row options (`isSorted` with a database `ORDER BY`, a numeric `orderMember`).
+
 ### Changed — `dragDropMode` alone makes the rows draggable (2026-11-26)
 
 - With `dragDropMode` on and no `isDraggableMember` / `getIsDraggableCallback` (or `isDropAllowedMember` / `getIsDropAllowedCallback`), every node can now be dragged and accepts drops — the node defaults are `isDraggable` / `isDropAllowed` `true`, as in web-treeview. Before, svelte also needed a member or callback saying yes, so `dragDropMode="self"` on its own did nothing. `dragDropMode` (default `'none'`) stays the switch; the members / callbacks now only say no per node. A member that is set but missing on a row still reads as not draggable (same as web-treeview).
@@ -24,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Filtered rows kept search-relevance order.** While a search filter was on, siblings came out in FlexSearch's ranking (an exact match jumped ahead of the siblings above it). The filtered view now keeps the tree's own order. (web-treeview already did.)
 - **`checkedPaths` / `selectedPaths` bound at mount set no node flags.** The paths were stored before the rows existed, so nothing showed ticked / selected until the next change. They are applied after the first insert (a bound `checkedPaths` wins over the data's `isCheckedMember` seed).
-- **A sibling-only `sortCallback` lost children on the initial load.** It receives the whole flat dataset there, so sorting by name could put a child before its parent — the child then failed to insert as an orphan. A stable parents-first pass now follows the callback (its sibling order is kept).
+- **A sibling-only `sortCallback` lost children on the initial load.** It received the whole flat dataset there, so sorting by name could put a child before its parent — the child then failed to insert as an orphan. Fixed by making `sortCallback` the sibling rule everywhere (below).
 - **`moveNode` could overwrite a node in a batch.** When both the segment and the id collided, the `<segment>_<timestamp>` fallback wasn't re-checked, so two moves in the same millisecond landed on the same key. Same fix in web-treeview (there the two nodes shared a path).
 - Not reproduced: a `nodes` array assigned inside `onNodesChange` is applied (e2e/plausible.spec.ts guards it).
 
