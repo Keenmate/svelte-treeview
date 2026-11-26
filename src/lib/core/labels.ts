@@ -5,7 +5,9 @@
  * `svelte-treeview.messages.noData`; a string — `''` included — wins) → the tree's own
  * `translateCallback` → the page-wide `window.components.locale.translateCallback` → the page-wide flat
  * dictionary `window.components.locale.labels['svelte-treeview.<key>']` → these English defaults.
- * `''` = deliberately empty (render nothing). Placeholders use `{name}`. Every label renders as text.
+ * `''` = deliberately empty (render nothing). Placeholders use `{name}`; a dynamic text reads its context as
+ * `{ctx.count}` (`ctx.count` = the number the noun agrees with — a `translateCallback` gets it as `params.ctx`).
+ * Every label renders as text.
  */
 import { createLabels, type Labels, type OwnLabels } from '../vendor/core/locale/labels.js';
 import type { TranslateCallback } from '../vendor/core/locale/page-locale.js';
@@ -60,26 +62,25 @@ export interface TreeLabels {
 
 	/**
 	 * Screen-reader announcements (core `announce()`, the page's one polite live region). `''` silences
-	 * one. A search settled with matches: `{count}` = the matches, `{searchTerm}`. Same keys as
-	 * web-treeview; the params also go as `{ ctx }` (a `translateCallback` reads `params.ctx`, as in
-	 * web-treeview — whose templates say `{ctx.count}`; these switch when the vendored labels are re-synced).
+	 * one. A search settled with matches: `{ctx.count}` = the matches, `{ctx.searchTerm}`. Same keys and
+	 * placeholders as web-treeview (a `translateCallback` reads `params.ctx`).
 	 */
 	'ariaLabels.searchResults': string;
 	/** A search settled with no matches. */
 	'ariaLabels.searchNoResults': string;
-	/** The tree placed dropped nodes: `{name}` = the node (or `ariaLabels.dropItems` for several),
-	 *  `{target}` = the drop target, `{count}` = the dropped nodes. */
+	/** The tree placed dropped nodes: `{ctx.name}` = the node (or `ariaLabels.dropItems` for several),
+	 *  `{ctx.target}` = the drop target, `{ctx.count}` = the dropped nodes. */
 	'ariaLabels.movedInto': string;
 	'ariaLabels.movedBefore': string;
 	'ariaLabels.movedAfter': string;
 	'ariaLabels.copiedInto': string;
 	'ariaLabels.copiedBefore': string;
 	'ariaLabels.copiedAfter': string;
-	/** The `{name}` of a drop that placed several nodes (`{count}` = the nodes). */
+	/** The `{ctx.name}` of a drop that placed several nodes (`{ctx.count}` = the nodes). */
 	'ariaLabels.dropItems': string;
-	/** The `{target}` of a drop onto the empty tree / the top level. */
+	/** The `{ctx.target}` of a drop onto the empty tree / the top level. */
 	'ariaLabels.dropTreeRoot': string;
-	/** A refused drop: `{target}` = the node that doesn't accept it. */
+	/** A refused drop: `{ctx.target}` = the node that doesn't accept it. */
 	'ariaLabels.dropDenied': string;
 }
 
@@ -111,17 +112,17 @@ export const DEFAULT_LABELS: Readonly<TreeLabels> = Object.freeze({
 	'menuItems.sortSubtree': 'Sort subtree',
 	'menuItems.sortAll': 'Sort all',
 	'menuItems.back': 'Back',
-	'ariaLabels.searchResults': 'Results: {count}',
+	'ariaLabels.searchResults': 'Results: {ctx.count}',
 	'ariaLabels.searchNoResults': 'No results found',
-	'ariaLabels.movedInto': '{name} moved into {target}',
-	'ariaLabels.movedBefore': '{name} moved before {target}',
-	'ariaLabels.movedAfter': '{name} moved after {target}',
-	'ariaLabels.copiedInto': '{name} copied into {target}',
-	'ariaLabels.copiedBefore': '{name} copied before {target}',
-	'ariaLabels.copiedAfter': '{name} copied after {target}',
-	'ariaLabels.dropItems': 'Items ({count})',
+	'ariaLabels.movedInto': '{ctx.name} moved into {ctx.target}',
+	'ariaLabels.movedBefore': '{ctx.name} moved before {ctx.target}',
+	'ariaLabels.movedAfter': '{ctx.name} moved after {ctx.target}',
+	'ariaLabels.copiedInto': '{ctx.name} copied into {ctx.target}',
+	'ariaLabels.copiedBefore': '{ctx.name} copied before {ctx.target}',
+	'ariaLabels.copiedAfter': '{ctx.name} copied after {ctx.target}',
+	'ariaLabels.dropItems': 'Items ({ctx.count})',
 	'ariaLabels.dropTreeRoot': 'the tree',
-	'ariaLabels.dropDenied': 'Cannot drop here: {target} does not accept dropped items'
+	'ariaLabels.dropDenied': 'Cannot drop here: {ctx.target} does not accept dropped items'
 });
 
 /** A tree's `labels` prop: short keys (`messages.noData`) and / or full keys (`svelte-treeview.messages.noData`). */

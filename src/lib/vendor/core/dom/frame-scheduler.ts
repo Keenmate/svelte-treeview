@@ -1,7 +1,8 @@
 /**
  * Coalesce bursts (resize, scroll, visualViewport) into one `fn` call per
  * animation frame. Where `requestAnimationFrame` is missing (SSR, old test
- * environments) `schedule()` runs `fn` synchronously. Internal.
+ * environments) `schedule()` runs `fn` synchronously.
+ * Main index (components use it instead of their own timers).
  */
 export interface FrameScheduler {
   /** Run `fn` on the next frame; repeated calls before then coalesce to one run. */

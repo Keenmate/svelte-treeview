@@ -6,8 +6,8 @@
  *   pattern). One `CSSStyleSheet` per unique string, cached and shared across
  *   ALL instances via `adoptedStyleSheets` (that's what constructable sheets are
  *   for); falls back to a `<style>` element where unsupported; SSR-safe.
- * - {@link createStyleSlot} — a PER-INSTANCE, replaceable `<style>` slot (the
- *   `customStylesCallback` pattern: user CSS that changes at runtime). It keeps
+ * - {@link createStyleElement} — a PER-INSTANCE, replaceable `<style>` element (the
+ *   `getCustomStylesCallback` pattern: user CSS that changes at runtime). It keeps
  *   ONE element at a consistent position, so re-setting replaces rather than
  *   stacking, fixing the prepend-on-init / append-on-update drift components
  *   have today. `<style>`-based because user CSS may use `@import` (which
@@ -124,9 +124,9 @@ export function __resetAdoptedStyles(): void {
   s.isConstructableByWindow = new WeakMap();
 }
 
-/** A single replaceable `<style>` slot (see {@link createStyleSlot}). */
-export interface StyleSlot {
-  /** Set the slot's CSS (creating/inserting the element on first non-empty value); falsy clears it. */
+/** A single replaceable `<style>` element (see {@link createStyleElement}). */
+export interface StyleElement {
+  /** Set the element's CSS (creating/inserting the element on first non-empty value); falsy clears it. */
   set(css: string | null | undefined): void;
   /** Remove the element from the DOM (a later {@link set} re-inserts it). */
   clear(): void;
@@ -136,8 +136,8 @@ export interface StyleSlot {
   readonly element: HTMLStyleElement | null;
 }
 
-/** Options for {@link createStyleSlot}. */
-export interface StyleSlotOptions {
+/** Options for {@link createStyleElement}. */
+export interface StyleElementOptions {
   /**
    * Insert at the start (`'first'`) or end (`'last'`) of the root. Default `'last'`: it wins
    * over the root's other `<style>` elements — but adopted stylesheets (`adoptStyles`) always
@@ -149,15 +149,15 @@ export interface StyleSlotOptions {
 }
 
 /**
- * Create a per-instance, replaceable style slot in `root`. Backs the
- * `customStylesCallback` pattern: call the callback, `slot.set(result)`; on the
+ * Create a per-instance, replaceable `<style>` element in `root`. Backs the
+ * `getCustomStylesCallback` pattern: call the callback, `style.set(result)`; on the
  * next value, `set` again — the same element is reused at the same position, so
  * there is no stacking or prepend/append inconsistency. No-op during SSR.
  */
-export function createStyleSlot(
+export function createStyleElement(
   root: ShadowRoot | Document | HTMLElement,
-  opts: StyleSlotOptions = {},
-): StyleSlot {
+  opts: StyleElementOptions = {},
+): StyleElement {
   const position = opts.position ?? 'last';
   const target: Node = (root as Document).head ?? root;
   let element: HTMLStyleElement | null = null;

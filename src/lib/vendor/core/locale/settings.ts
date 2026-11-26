@@ -119,7 +119,7 @@ const isSeparator = (v: unknown): v is string => typeof v === 'string';
  * setting applies to every element, also one with its own `locale` (the user's preference — a US
  * user on a German browser), unless the element sets that key itself.
  */
-export function getLocaleSettings(instance: LocaleSettings = {}, source?: unknown): ResolvedLocaleSettings {
+export function resolveLocaleSettings(instance: LocaleSettings = {}, source?: unknown): ResolvedLocaleSettings {
   const page = getPageLocale() ?? {};
   const locale = resolveLocale(instance.locale, source);
   const pick = <T>(key: keyof LocaleSettings, isValid: (v: unknown) => v is T, derive: () => T): T => {

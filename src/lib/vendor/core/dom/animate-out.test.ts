@@ -49,13 +49,13 @@ describe('readAnimationMs', () => {
 });
 
 describe('animateOut', () => {
-  it('with no animation: class + inert on, onDone at once, inert put back, finished true', async () => {
+  it('with no animation: class + inert on, doneCallback at once, inert put back, finished true', async () => {
     const el = div();
     let inertDuringDone: boolean | undefined;
-    const onDone = vi.fn(() => (inertDuringDone = el.inert));
-    const handle = animateOut(el, { className: 'x--closing', onDone });
-    expect(onDone).toHaveBeenCalledTimes(1);
-    expect(inertDuringDone).toBe(true); // still inert while onDone runs
+    const doneCallback = vi.fn(() => (inertDuringDone = el.inert));
+    const handle = animateOut(el, { className: 'x--closing', doneCallback });
+    expect(doneCallback).toHaveBeenCalledTimes(1);
+    expect(inertDuringDone).toBe(true); // still inert while doneCallback runs
     expect(el.classList.contains('x--closing')).toBe(true); // stays: the caller removes / resets
     expect(el.inert).toBe(false);
     await expect(handle.finished).resolves.toBe(true);
@@ -69,15 +69,15 @@ describe('animateOut', () => {
       [a, { animationName: 'out', animationDuration: '0.2s' }],
       [b, { animationName: 'out', animationDuration: '0.2s' }],
     ]));
-    const onDone = vi.fn();
-    const handle = animateOut([a, b], { className: 'x--closing', onDone });
+    const doneCallback = vi.fn();
+    const handle = animateOut([a, b], { className: 'x--closing', doneCallback });
     end(child);
     end(a);
-    expect(onDone).not.toHaveBeenCalled();
+    expect(doneCallback).not.toHaveBeenCalled();
     end(b);
-    expect(onDone).toHaveBeenCalledTimes(1);
+    expect(doneCallback).toHaveBeenCalledTimes(1);
     end(b); // a late event changes nothing
-    expect(onDone).toHaveBeenCalledTimes(1);
+    expect(doneCallback).toHaveBeenCalledTimes(1);
     await expect(handle.finished).resolves.toBe(true);
   });
 
@@ -85,21 +85,21 @@ describe('animateOut', () => {
     vi.useFakeTimers();
     const el = div();
     fakeAnimation(new Map([[el, { animationName: 'out', animationDuration: '0.2s' }]]));
-    const onDone = vi.fn();
-    animateOut(el, { className: 'x--closing', onDone });
+    const doneCallback = vi.fn();
+    animateOut(el, { className: 'x--closing', doneCallback });
     vi.advanceTimersByTime(249);
-    expect(onDone).not.toHaveBeenCalled();
+    expect(doneCallback).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1);
-    expect(onDone).toHaveBeenCalledTimes(1);
+    expect(doneCallback).toHaveBeenCalledTimes(1);
   });
 
-  it('cancel(): class, inert and height var come off, onDone never runs, finished false', async () => {
+  it('cancel(): class, inert and height var come off, doneCallback never runs, finished false', async () => {
     vi.useFakeTimers();
     const el = div();
     el.inert = false;
     fakeAnimation(new Map([[el, { animationName: 'out', animationDuration: '0.2s' }]]));
-    const onDone = vi.fn();
-    const handle = animateOut(el, { className: 'x--closing', onDone, shouldSetHeightVar: true });
+    const doneCallback = vi.fn();
+    const handle = animateOut(el, { className: 'x--closing', doneCallback, shouldSetHeightVar: true });
     expect(el.style.getPropertyValue(EXIT_HEIGHT_VAR)).toBe('0px'); // jsdom: no layout
     handle.cancel();
     expect(el.classList.contains('x--closing')).toBe(false);
@@ -107,7 +107,7 @@ describe('animateOut', () => {
     expect(el.style.getPropertyValue(EXIT_HEIGHT_VAR)).toBe('');
     end(el);
     vi.advanceTimersByTime(1000);
-    expect(onDone).not.toHaveBeenCalled();
+    expect(doneCallback).not.toHaveBeenCalled();
     await expect(handle.finished).resolves.toBe(false);
     handle.cancel(); // idempotent
   });
@@ -133,11 +133,11 @@ describe('animateOut', () => {
     expect(a.inert).toBe(true);
     const b = div();
     let inertDuringDone: boolean | undefined;
-    animateOut(b, { className: 'x--closing', shouldSetInert: false, onDone: () => (inertDuringDone = b.inert) });
+    animateOut(b, { className: 'x--closing', shouldSetInert: false, doneCallback: () => (inertDuringDone = b.inert) });
     expect(inertDuringDone).toBeFalsy(); // never set (jsdom: undefined)
   });
 
-  it('className as a function: one class per element, onDone waits for all, cancel removes each own class', async () => {
+  it('className as a function: one class per element, doneCallback waits for all, cancel removes each own class', async () => {
     vi.useFakeTimers();
     const panel = div();
     const backdrop = div();
@@ -146,27 +146,27 @@ describe('animateOut', () => {
       [backdrop, { animationName: 'fade', animationDuration: '0.3s' }],
     ]));
     const className = (el: Element): string => (el === backdrop ? 'x__backdrop--closing' : 'x__panel--closing');
-    const onDone = vi.fn();
-    animateOut([panel, backdrop], { className, onDone });
+    const doneCallback = vi.fn();
+    animateOut([panel, backdrop], { className, doneCallback });
     expect(panel.classList.contains('x__panel--closing')).toBe(true);
     expect(backdrop.classList.contains('x__backdrop--closing')).toBe(true);
     expect(panel.classList.contains('x__backdrop--closing')).toBe(false);
     expect(backdrop.inert).toBe(true);
     end(panel);
-    expect(onDone).not.toHaveBeenCalled(); // the longer backdrop fade still runs
+    expect(doneCallback).not.toHaveBeenCalled(); // the longer backdrop fade still runs
     end(backdrop);
-    expect(onDone).toHaveBeenCalledTimes(1);
+    expect(doneCallback).toHaveBeenCalledTimes(1);
 
-    const again = animateOut([panel, backdrop], { className, onDone: vi.fn() });
+    const again = animateOut([panel, backdrop], { className, doneCallback: vi.fn() });
     again.cancel();
     expect(panel.classList.contains('x__panel--closing')).toBe(false);
     expect(backdrop.classList.contains('x__backdrop--closing')).toBe(false);
     await expect(again.finished).resolves.toBe(false);
   });
 
-  it('a throwing onDone is logged, and finished still resolves true', async () => {
+  it('a throwing doneCallback is logged, and finished still resolves true', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const handle = animateOut(div(), { className: 'x--closing', onDone: () => { throw new Error('boom'); } });
+    const handle = animateOut(div(), { className: 'x--closing', doneCallback: () => { throw new Error('boom'); } });
     await expect(handle.finished).resolves.toBe(true);
     expect(error).toHaveBeenCalled();
   });

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { __resetAdoptedStyles, adoptStyles, createStyleSlot } from './adopt-styles.js';
+import { __resetAdoptedStyles, adoptStyles, createStyleElement } from './adopt-styles.js';
 
 // jsdom has no constructable-stylesheet support, so these exercise the <style>
 // fallback path (the observable behavior is identical either way).
@@ -116,10 +116,10 @@ describe('adoptStyles — re-adoption and the constructable path', () => {
   });
 });
 
-describe('createStyleSlot', () => {
+describe('createStyleElement', () => {
   it('creates one element on first set and replaces content on the next', () => {
     const root = shadow();
-    const slot = createStyleSlot(root);
+    const slot = createStyleElement(root);
     slot.set('.a { color: red }');
     slot.set('.a { color: blue }'); // replaces — no stacking
     const styles = root.querySelectorAll('style');
@@ -129,7 +129,7 @@ describe('createStyleSlot', () => {
 
   it('falsy value clears the element; a later set re-inserts it', () => {
     const root = shadow();
-    const slot = createStyleSlot(root);
+    const slot = createStyleElement(root);
     slot.set('.a {}');
     expect(root.querySelectorAll('style')).toHaveLength(1);
     slot.set(null);
@@ -141,18 +141,18 @@ describe('createStyleSlot', () => {
   it("position 'first' inserts before existing content, 'last' appends", () => {
     const first = shadow();
     first.append(document.createElement('span'));
-    createStyleSlot(first, { position: 'first' }).set('.a {}');
+    createStyleElement(first, { position: 'first' }).set('.a {}');
     expect(first.firstElementChild!.tagName).toBe('STYLE');
 
     const last = shadow();
     last.append(document.createElement('span'));
-    createStyleSlot(last, { position: 'last' }).set('.a {}');
+    createStyleElement(last, { position: 'last' }).set('.a {}');
     expect(last.lastElementChild!.tagName).toBe('STYLE');
   });
 
   it('applies cssClass and destroy removes the element', () => {
     const root = shadow();
-    const slot = createStyleSlot(root, { cssClass: 'ms-custom-styles' });
+    const slot = createStyleElement(root, { cssClass: 'ms-custom-styles' });
     slot.set('.a {}');
     expect(root.querySelector('style')!.className).toBe('ms-custom-styles');
     slot.destroy();

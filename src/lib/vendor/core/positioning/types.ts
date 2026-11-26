@@ -112,7 +112,7 @@ export interface AnchorOptions {
    * Sugar for building `{ ...floatingUiPlatform, getOffsetParent: () =>
    * getFixedPositionOffsetParent(floating) }` yourself and passing it as
    * {@link platform}. Ignored when an explicit `platform` is given (yours wins).
-   * Pairs with {@link onDrift}. Default `false`.
+   * Pairs with {@link driftCallback}. Default `false`.
    */
   shouldUseFixedContainingBlock?: boolean;
   /** Extra viewport-edge padding (px) before flipping switches sides. Default `0`. */
@@ -163,9 +163,9 @@ export interface AnchorOptions {
    */
   arrow?: { element: HTMLElement; padding?: number };
   /** Called after each placement with the resolved placement. */
-  onPlaced?(placement: Placement): void;
+  placedCallback?(placement: Placement): void;
   /** Called after each placement with the computed viewport coordinates + placement. */
-  onComputed?(data: { x: number; y: number; placement: Placement }): void;
+  computedCallback?(data: { x: number; y: number; placement: Placement }): void;
   /**
    * Called after a placement ONLY when the panel drifted from where it was
    * positioned — i.e. an ancestor establishes a fixed containing block the
@@ -177,7 +177,7 @@ export interface AnchorOptions {
    * {@link shouldUseFixedContainingBlock}; needs a real-element reference (skipped for a
    * virtual/cursor reference). The report carries the drift + likely CSS culprit.
    */
-  onDrift?(report: DriftReport): void;
+  driftCallback?(report: DriftReport): void;
 }
 
 /** The teardown handle returned by {@link anchor}. */

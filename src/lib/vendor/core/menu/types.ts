@@ -9,7 +9,7 @@ export interface MenuPoint {
 }
 
 /**
- * Why a menu closed (the argument of {@link OpenMenuOptions.onClose}):
+ * Why a menu closed (the argument of {@link OpenMenuOptions.closeCallback}):
  * - `'action'` — a leaf item ran (and doesn't keep the menu open)
  * - `'escape'` — Escape on the root menu
  * - `'tab'` — Tab / Shift+Tab (focus leaves the menu)
@@ -90,7 +90,7 @@ export interface OpenMenuOptions<Ctx, A extends string = string> {
    */
   runAction?(item: MenuItem<Ctx, A>, invocation: MenuInvocation): unknown;
   /** Called once when the menu closes, with the reason. Not called when nothing was shown. */
-  onClose?(reason: MenuCloseReason): void;
+  closeCallback?(reason: MenuCloseReason): void;
   /**
    * Fill one item element yourself. Runs after the element got its classes /
    * ARIA / `data-*`; when you leave it empty the default content (icon, label,
@@ -106,6 +106,12 @@ export interface OpenMenuOptions<Ctx, A extends string = string> {
   renderMenuCallback?(menuElement: HTMLElement, close: () => void): void;
   /** A component's built-in state for an item (see `resolveMenuEntries`). */
   defaults?(item: MenuItem<Ctx, A>): Partial<ResolvedActionItem<A>> | undefined;
+  /**
+   * The component's own icons (its name → icon string), handed to every item icon's `renderIcon()` as its
+   * `defaults` (SPEC §12.33): an entry carries the NAME (`icon: 'rowDelete'`) and the page can still replace it
+   * through `el.icons` / `window.components.icons` / the hooks; a built-in name stays the built-in unless a map replaces it.
+   */
+  iconDefaults?: Readonly<Record<string, string>> | null;
   /** Rewrite an item before it is resolved, at every level (e.g. give a built-in its submenu). */
   prepareItemCallback?(item: MenuItem<Ctx, A>): MenuItem<Ctx, A>;
   /** Root placement. Default `'bottom-start'`. */

@@ -23,7 +23,7 @@ last synced against is listed in [`scripts/core-sync.json`](../../../../scripts/
 - `environment/motion.ts` — motion level (SPEC §12.16): `[data-motion]` presets on the
   `--base-duration-*` tokens, page-wide `window.components.motion`. Tree.svelte's `motion` prop.
 - `locale/` — labels + page-wide locale (SPEC §12.24): `page-locale.ts` (the `window.components.locale` /
-  `.security` accessors + `observeLocale`), `labels.ts` (`createLabels`: flat `<elementType>.<name>`
+  `.security` accessors + `observePageLocale`), `labels.ts` (`createLabels`: flat `<elementType>.<name>`
   keys, instance → own `translateCallback` → page `translateCallback` → the flat page dictionary →
   default), `settings.ts` (`resolveLocale`, Intl-derived settings), `numbers.ts` (`formatNumber` — number
   params). `src/lib/core/labels.ts` is the tree's seam on top (tag `'svelte-treeview'`).

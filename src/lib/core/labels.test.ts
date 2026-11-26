@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { resolveLabel, createTreeLabels, DEFAULT_LABELS } from './labels.js';
-import { observeLocale } from '../vendor/core/locale/page-locale.js';
+import { observePageLocale } from '../vendor/core/locale/page-locale.js';
 
 type PageComponents = { locale?: unknown; security?: unknown };
 const components = () => (window as unknown as { components: PageComponents }).components;
@@ -66,7 +66,7 @@ describe('labels — page-wide window.components.locale', () => {
 
 	it('notifies observers when the page-wide object is replaced', () => {
 		let calls = 0;
-		const off = observeLocale(() => calls++);
+		const off = observePageLocale(() => calls++);
 		components().locale = { labels: { 'svelte-treeview.messages.noData': 'A' } };
 		expect(calls).toBe(1);
 		off();

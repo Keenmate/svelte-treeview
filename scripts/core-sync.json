@@ -6,147 +6,319 @@
 			"name": "logging",
 			"description": "Core logger (SPEC §12.1 / §12.3): createLoggers, page-wide window.components.logging, perf logger.",
 			"mode": "identical",
-			"baseline": "dd29c43",
+			"baseline": "c2f5f83",
 			"files": [
-				["src/logging/log-core.ts", "src/lib/vendor/core/logging/log-core.ts"],
-				["src/logging/create-loggers.ts", "src/lib/vendor/core/logging/create-loggers.ts"],
-				["src/logging/global-logging.ts", "src/lib/vendor/core/logging/global-logging.ts"],
-				["src/logging/logger-registry.ts", "src/lib/vendor/core/logging/logger-registry.ts"],
-				["src/logging/element-logger.ts", "src/lib/vendor/core/logging/element-logger.ts"],
-				["src/logging/perf-logger.ts", "src/lib/vendor/core/logging/perf-logger.ts"],
-				["src/logging/safe-call.ts", "src/lib/vendor/core/logging/safe-call.ts"]
+				[
+					"src/logging/log-core.ts",
+					"src/lib/vendor/core/logging/log-core.ts"
+				],
+				[
+					"src/logging/create-loggers.ts",
+					"src/lib/vendor/core/logging/create-loggers.ts"
+				],
+				[
+					"src/logging/global-logging.ts",
+					"src/lib/vendor/core/logging/global-logging.ts"
+				],
+				[
+					"src/logging/logger-registry.ts",
+					"src/lib/vendor/core/logging/logger-registry.ts"
+				],
+				[
+					"src/logging/element-logger.ts",
+					"src/lib/vendor/core/logging/element-logger.ts"
+				],
+				[
+					"src/logging/perf-logger.ts",
+					"src/lib/vendor/core/logging/perf-logger.ts"
+				],
+				[
+					"src/logging/safe-call.ts",
+					"src/lib/vendor/core/logging/safe-call.ts"
+				]
 			]
 		},
 		{
 			"name": "environment",
 			"description": "Theme context (SPEC §12.10), viewport / device / breakpoints, element size, motion level (SPEC §12.16).",
 			"mode": "identical",
-			"baseline": "dd29c43",
+			"baseline": "c2f5f83",
 			"files": [
-				["src/environment/theme.ts", "src/lib/vendor/core/environment/theme.ts"],
-				["src/environment/environment.ts", "src/lib/vendor/core/environment/environment.ts"],
-				["src/environment/element-size.ts", "src/lib/vendor/core/environment/element-size.ts"],
-				["src/environment/motion.ts", "src/lib/vendor/core/environment/motion.ts"]
+				[
+					"src/environment/theme.ts",
+					"src/lib/vendor/core/environment/theme.ts"
+				],
+				[
+					"src/environment/environment.ts",
+					"src/lib/vendor/core/environment/environment.ts"
+				],
+				[
+					"src/environment/element-size.ts",
+					"src/lib/vendor/core/environment/element-size.ts"
+				],
+				[
+					"src/environment/motion.ts",
+					"src/lib/vendor/core/environment/motion.ts"
+				]
 			]
 		},
 		{
 			"name": "helpers",
 			"description": "dom / global helpers the vendored modules import; animate-out = row animation (docs/PLAN-row-animation.md).",
 			"mode": "identical",
-			"baseline": "bcb4db5",
+			"baseline": "c2f5f83",
 			"files": [
-				["src/global/shared-state.ts", "src/lib/vendor/core/global/shared-state.ts"],
-				["src/global/page-setting.ts", "src/lib/vendor/core/global/page-setting.ts"],
-				["src/dom/composed-tree.ts", "src/lib/vendor/core/dom/composed-tree.ts"],
-				["src/dom/once.ts", "src/lib/vendor/core/dom/once.ts"],
-				["src/dom/throttle.ts", "src/lib/vendor/core/dom/throttle.ts"],
-				["src/dom/frame-scheduler.ts", "src/lib/vendor/core/dom/frame-scheduler.ts"],
-				["src/dom/adopt-styles.ts", "src/lib/vendor/core/dom/adopt-styles.ts"],
-				["src/dom/animate-out.ts", "src/lib/vendor/core/dom/animate-out.ts"]
+				[
+					"src/global/shared-state.ts",
+					"src/lib/vendor/core/global/shared-state.ts"
+				],
+				[
+					"src/global/page-setting.ts",
+					"src/lib/vendor/core/global/page-setting.ts"
+				],
+				[
+					"src/dom/composed-tree.ts",
+					"src/lib/vendor/core/dom/composed-tree.ts"
+				],
+				[
+					"src/dom/once.ts",
+					"src/lib/vendor/core/dom/once.ts"
+				],
+				[
+					"src/dom/throttle.ts",
+					"src/lib/vendor/core/dom/throttle.ts"
+				],
+				[
+					"src/dom/frame-scheduler.ts",
+					"src/lib/vendor/core/dom/frame-scheduler.ts"
+				],
+				[
+					"src/dom/adopt-styles.ts",
+					"src/lib/vendor/core/dom/adopt-styles.ts"
+				],
+				[
+					"src/dom/animate-out.ts",
+					"src/lib/vendor/core/dom/animate-out.ts"
+				]
 			]
 		},
 		{
 			"name": "controller-facade",
 			"description": "The public controller (SPEC §12.34): createControllerFacade builds the frozen `controller` every ctx carries over the TreeEngine (core/tree-controller.ts) — same as web-treeview's TreeViewController.",
 			"mode": "identical",
-			"baseline": "c330cb0",
+			"baseline": "c2f5f83",
 			"files": [
-				["src/element/controller-facade.ts", "src/lib/vendor/core/element/controller-facade.ts"]
+				[
+					"src/element/controller-facade.ts",
+					"src/lib/vendor/core/element/controller-facade.ts"
+				]
 			]
 		},
 		{
 			"name": "pointer-drag",
 			"description": "Drag and drop (SPEC §12.28): core createPointerDrag drives the tree's ONE pointer drag (mouse / pen / touch — threshold, long press, scroll lock, hit test through shadow roots, auto-scroll, Escape, the swallowed trailing click) via TreeEngine.attachPointerDrag; same as web-treeview's renderer. scroll-container + ghost-click are its imports; scroll-container also backs scrollToPath({ containerScroll }) (was a hand-rolled findScrollableAncestor).",
 			"mode": "identical",
-			"baseline": "91e9f99",
+			"baseline": "c2f5f83",
 			"files": [
-				["src/dom/pointer-drag.ts", "src/lib/vendor/core/dom/pointer-drag.ts"],
-				["src/dom/scroll-container.ts", "src/lib/vendor/core/dom/scroll-container.ts"],
-				["src/overlay/ghost-click.ts", "src/lib/vendor/core/overlay/ghost-click.ts"]
+				[
+					"src/dom/pointer-drag.ts",
+					"src/lib/vendor/core/dom/pointer-drag.ts"
+				],
+				[
+					"src/dom/scroll-container.ts",
+					"src/lib/vendor/core/dom/scroll-container.ts"
+				],
+				[
+					"src/overlay/ghost-click.ts",
+					"src/lib/vendor/core/overlay/ghost-click.ts"
+				]
 			]
 		},
 		{
 			"name": "a11y",
-			"description": "ARIA tree (REVIEW B22, same as web-treeview's renderer): createActiveDescendant (SPEC §12.25, ARIA-only — the focused role=\"tree\" .stv__container owns aria-activedescendant, the tree keeps its own keys) + announce() (SPEC §12.23, the page's one polite live region: search results, drop outcome, refused drop). create-id is active-descendant's import.",
+			"description": "ARIA tree (REVIEW B22, same as web-treeview's renderer): createActiveDescendant (SPEC §12.25, ARIA-only — the focused role=\"tree\" .stv__container owns aria-activedescendant, the tree keeps its own keys) + announce() (SPEC §12.23, the page's one polite live region: search results, drop outcome, refused drop). create-id is active-descendant's import. Identical since the core rc26 re-sync (2026-11-24) — the callSafely/runSafely edit is gone.",
 			"mode": "identical",
-			"baseline": "60953d9",
+			"baseline": "c2f5f83",
 			"files": [
-				["src/dom/announce.ts", "src/lib/vendor/core/dom/announce.ts"],
-				["src/dom/create-id.ts", "src/lib/vendor/core/dom/create-id.ts"]
-			]
-		},
-		{
-			"name": "a11y active descendant",
-			"description": "createActiveDescendant (SPEC §12.25) — see the a11y group.",
-			"mode": "adapted",
-			"baseline": "60953d9",
-			"note": "One local edit: imports `callSafely as runSafely` — the vendored logging/safe-call.ts predates core's runSafely rename (25593da). Drop the edit when the logging group is re-synced (REVIEW §4).",
-			"files": [
-				["src/a11y/active-descendant.ts", "src/lib/vendor/core/a11y/active-descendant.ts"]
+				[
+					"src/a11y/active-descendant.ts",
+					"src/lib/vendor/core/a11y/active-descendant.ts"
+				],
+				[
+					"src/dom/announce.ts",
+					"src/lib/vendor/core/dom/announce.ts"
+				],
+				[
+					"src/dom/create-id.ts",
+					"src/lib/vendor/core/dom/create-id.ts"
+				]
 			]
 		},
 		{
 			"name": "locale",
 			"description": "Labels + page-wide locale (SPEC §12.24): flat <elementType>.<name> keys; createLabels = labels prop → the tree's translateCallback → window.components.locale.translateCallback → the flat page dictionary labels['svelte-treeview.<key>'] → English. src/lib/core/labels.ts is the seam.",
 			"mode": "identical",
-			"baseline": "7e87b5f",
+			"baseline": "c2f5f83",
 			"files": [
-				["src/locale/labels.ts", "src/lib/vendor/core/locale/labels.ts"],
-				["src/locale/page-locale.ts", "src/lib/vendor/core/locale/page-locale.ts"],
-				["src/locale/settings.ts", "src/lib/vendor/core/locale/settings.ts"],
-				["src/locale/numbers.ts", "src/lib/vendor/core/locale/numbers.ts"],
-				["src/dom/escape-html.ts", "src/lib/vendor/core/dom/escape-html.ts"]
+				[
+					"src/locale/labels.ts",
+					"src/lib/vendor/core/locale/labels.ts"
+				],
+				[
+					"src/locale/page-locale.ts",
+					"src/lib/vendor/core/locale/page-locale.ts"
+				],
+				[
+					"src/locale/settings.ts",
+					"src/lib/vendor/core/locale/settings.ts"
+				],
+				[
+					"src/locale/numbers.ts",
+					"src/lib/vendor/core/locale/numbers.ts"
+				],
+				[
+					"src/dom/escape-html.ts",
+					"src/lib/vendor/core/dom/escape-html.ts"
+				]
 			]
 		},
 		{
 			"name": "icons",
 			"description": "Icons (SPEC §12.33): renderIcon + ICON_CSS — node icons (TreeEngine.renderNodeIconHtml) and context-menu item icons: markup → built-in name → the tree's renderIconCallback → window.components.renderIconCallback → icon-font <i class=\"stv__icon …\"> → text. The `component` option (core 7e87b5f) names the tree, whose host is a <div>.",
 			"mode": "identical",
-			"baseline": "7e87b5f",
+			"baseline": "c2f5f83",
 			"files": [
-				["src/dom/render-icon.ts", "src/lib/vendor/core/dom/render-icon.ts"]
+				[
+					"src/dom/render-icon.ts",
+					"src/lib/vendor/core/dom/render-icon.ts"
+				]
+			]
+		},
+		{
+			"name": "search",
+			"description": "Search folding (SPEC §12.11): normalizeSearchText is the FlexSearch `normalize` step of the built-in index (src/lib/ltree/flex.ts) — lowercase, diacritics stripped, ł → l, ß → ss, æ → ae; the same folding as web-treeview / web-multiselect (REVIEW §4).",
+			"mode": "identical",
+			"baseline": "c2f5f83",
+			"files": [
+				[
+					"src/search/normalize.ts",
+					"src/lib/vendor/core/search/normalize.ts"
+				],
+				[
+					"src/search/types.ts",
+					"src/lib/vendor/core/search/types.ts"
+				]
+			]
+		},
+		{
+			"name": "virtual window",
+			"description": "Virtual scroll range math (SPEC §12.26): computeVirtualRange drives TreeEngine.vsRange (rows in view + virtualScrollOverscan, clamped) — the same math as web-treeview (REVIEW §4). Only the pure function is used; createVirtualWindow is not (Svelte renders the window).",
+			"mode": "identical",
+			"baseline": "c2f5f83",
+			"files": [
+				[
+					"src/dom/virtual-window.ts",
+					"src/lib/vendor/core/dom/virtual-window.ts"
+				]
+			]
+		},
+		{
+			"name": "css values",
+			"description": "Reading CSS tokens (REVIEW §4): readCssDurationMs (is --stv-row-animation-duration above 0s → row animation on) and readScrollBehavior (--stv-scroll-behavior → scrollToPath's default behavior).",
+			"mode": "identical",
+			"baseline": "c2f5f83",
+			"files": [
+				[
+					"src/dom/css-values.ts",
+					"src/lib/vendor/core/dom/css-values.ts"
+				]
 			]
 		},
 		{
 			"name": "vendored tests",
 			"description": "Core's unit tests for the vendored modules.",
 			"mode": "adapted",
-			"note": "`// @vitest-environment jsdom` docblock (this repo's vitest default is node); theme.test.ts also drops the BlissElement cases. motion.test.ts is NOT vendored (needs BlissElement) — e2e/motion-level.spec.ts covers motion.",
-			"baseline": "bcb4db5",
+			"note": "`// @vitest-environment jsdom` docblock (this repo's vitest default is node); theme.test.ts also drops the BlissElement cases. motion.test.ts is NOT vendored (needs BlissElement) — e2e/motion-level.spec.ts covers motion. Re-synced 2026-11-24 to core c2f5f83 (rc26 + D-NC-30 verbs) (theme.test / render-icon.test keep their trimmed local copies — they test unchanged behaviour without BlissElement).",
+			"baseline": "c2f5f83",
 			"files": [
-				["src/logging/create-loggers.test.ts", "src/lib/vendor/core/logging/create-loggers.test.ts"],
-				["src/logging/cross-copy.test.ts", "src/lib/vendor/core/logging/cross-copy.test.ts"],
-				["src/logging/perf-logger.test.ts", "src/lib/vendor/core/logging/perf-logger.test.ts"],
-				["src/environment/theme.test.ts", "src/lib/vendor/core/environment/theme.test.ts"],
-				["src/environment/environment.test.ts", "src/lib/vendor/core/environment/environment.test.ts"],
-				["src/environment/element-size.test.ts", "src/lib/vendor/core/environment/element-size.test.ts"],
-				["src/dom/throttle.test.ts", "src/lib/vendor/core/dom/throttle.test.ts"],
-				["src/dom/adopt-styles.test.ts", "src/lib/vendor/core/dom/adopt-styles.test.ts"],
-				["src/dom/animate-out.test.ts", "src/lib/vendor/core/dom/animate-out.test.ts"],
-				["src/dom/render-icon.test.ts", "src/lib/vendor/core/dom/render-icon.test.ts"]
+				[
+					"src/logging/create-loggers.test.ts",
+					"src/lib/vendor/core/logging/create-loggers.test.ts"
+				],
+				[
+					"src/logging/cross-copy.test.ts",
+					"src/lib/vendor/core/logging/cross-copy.test.ts"
+				],
+				[
+					"src/logging/perf-logger.test.ts",
+					"src/lib/vendor/core/logging/perf-logger.test.ts"
+				],
+				[
+					"src/environment/theme.test.ts",
+					"src/lib/vendor/core/environment/theme.test.ts"
+				],
+				[
+					"src/environment/environment.test.ts",
+					"src/lib/vendor/core/environment/environment.test.ts"
+				],
+				[
+					"src/environment/element-size.test.ts",
+					"src/lib/vendor/core/environment/element-size.test.ts"
+				],
+				[
+					"src/dom/throttle.test.ts",
+					"src/lib/vendor/core/dom/throttle.test.ts"
+				],
+				[
+					"src/dom/adopt-styles.test.ts",
+					"src/lib/vendor/core/dom/adopt-styles.test.ts"
+				],
+				[
+					"src/dom/animate-out.test.ts",
+					"src/lib/vendor/core/dom/animate-out.test.ts"
+				],
+				[
+					"src/dom/render-icon.test.ts",
+					"src/lib/vendor/core/dom/render-icon.test.ts"
+				]
 			]
 		},
 		{
 			"name": "actions",
 			"description": "Clickable-item model + activation runner behind the context menu (src/lib/core/menu.ts).",
 			"mode": "adapted",
-			"note": "coreLog(source,'UI',…) → the tree's uiLogger; ComponentContext = { controller } (no host element); resolve.test.ts: console spies → uiLogger, jsdom docblock. See src/lib/vendor/actions/README.md. Re-synced 2026-11-14; types.ts shortcut doc 2026-11-21 (f8bd89f).",
-			"baseline": "3d40786",
+			"note": "coreLog(source,'UI',…) → the tree's uiLogger; ComponentContext = { controller } (no host element); resolve.test.ts: console spies → uiLogger, jsdom docblock. See src/lib/vendor/actions/README.md. Re-synced 2026-11-24 to core c2f5f83 (rc26 + D-NC-30 verbs) + c2f5f83: getMenuChildren → loadMenuChildren (public export renamed too); cf20659: runAction option emitAction → dispatchAction.",
+			"baseline": "cf20659",
 			"files": [
-				["src/actions/types.ts", "src/lib/vendor/actions/types.ts"],
-				["src/actions/resolve.ts", "src/lib/vendor/actions/resolve.ts"],
-				["src/element/before-callback.ts", "src/lib/vendor/actions/before-callback.ts"],
-				["src/actions/resolve.test.ts", "src/lib/vendor/actions/resolve.test.ts"]
+				[
+					"src/actions/types.ts",
+					"src/lib/vendor/actions/types.ts"
+				],
+				[
+					"src/actions/resolve.ts",
+					"src/lib/vendor/actions/resolve.ts"
+				],
+				[
+					"src/element/before-callback.ts",
+					"src/lib/vendor/actions/before-callback.ts"
+				],
+				[
+					"src/actions/resolve.test.ts",
+					"src/lib/vendor/actions/resolve.test.ts"
+				]
 			]
 		},
 		{
 			"name": "shortcut",
 			"description": "Keyboard shortcut parse / match (SPEC §12.12) + isTypingTarget — context-menu item shortcuts and the tree keydown guard.",
 			"mode": "adapted",
-			"note": "Only the environment import path differs (../core/environment/environment.js). Vendored 2026-11-19.",
-			"baseline": "f399f63",
+			"note": "Only the environment import path differs (../core/environment/environment.js). Re-synced 2026-11-24 to core c2f5f83 (rc26 + D-NC-30 verbs) (shortcutKeycaps → getShortcutKeycaps, isEnabled(event)).",
+			"baseline": "c2f5f83",
 			"files": [
-				["src/actions/shortcut.ts", "src/lib/vendor/actions/shortcut.ts"]
+				[
+					"src/actions/shortcut.ts",
+					"src/lib/vendor/actions/shortcut.ts"
+				]
 			]
 		},
 		{
@@ -156,7 +328,10 @@
 			"note": "baseline estimated from the local file's last change (2026-10-13).",
 			"baseline": "74d6609",
 			"files": [
-				["src/positioning/tooltip.ts", "src/lib/actions/tooltip.ts"]
+				[
+					"src/positioning/tooltip.ts",
+					"src/lib/actions/tooltip.ts"
+				]
 			]
 		},
 		{
@@ -166,63 +341,141 @@
 			"note": "baseline = just before core's 2026-11-07 scroll-close change, which parity.md lists as 'to mirror' (svelte closes on any page scroll).",
 			"baseline": "ca759bd",
 			"files": [
-				["src/positioning/popover.ts", "src/lib/components/Node.svelte"],
-				["src/positioning/scroll-close.ts", "src/lib/components/Node.svelte"]
+				[
+					"src/positioning/popover.ts",
+					"src/lib/components/Node.svelte"
+				],
+				[
+					"src/positioning/scroll-close.ts",
+					"src/lib/components/Node.svelte"
+				]
 			]
 		},
 		{
 			"name": "loader hook",
 			"description": "core/loader.ts reads the page-wide loader hook core's renderLoader() publishes (SPEC §12.14).",
 			"mode": "mirror",
-			"note": "Reviewed 2026-11-14: reads renderLoadingCallback (+ the pre-rc19 renderLoaderCallback), default .stv__loader. The loadingPlaceholder snippet stays first and never needs window.components.",
-			"baseline": "dd29c43",
+			"note": "Reviewed 2026-11-24 (core rc26: RenderLoaderCallback → RenderLoadingCallback type name only): reads renderLoadingCallback (+ the pre-rc19 renderLoaderCallback), default .stv__loader. The loadingPlaceholder snippet stays first and never needs window.components.",
+			"baseline": "c2f5f83",
 			"files": [
-				["src/dom/render-loader.ts", "src/lib/core/loader.ts"]
+				[
+					"src/dom/render-loader.ts",
+					"src/lib/core/loader.ts"
+				]
 			]
 		},
 		{
 			"name": "global API",
 			"description": "global-api.ts publishes window.components['svelte-treeview'] in core registerComponent()'s shape (SPEC §12.3).",
 			"mode": "mirror",
-			"note": "Reviewed 2026-11-20: register also publishes window.components.renderIconCallback (publishIconHook) and window.components.locale / .security (publishLocaleHooks).",
-			"baseline": "7e87b5f",
+			"note": "Reviewed 2026-11-24 (core rc26): publishPageLogging / PageLoggingControls renames; publishIconHook also publishes window.components.icons (the page-wide icon map — typed on Window). register also publishes window.components.renderIconCallback (publishIconHook) and window.components.locale / .security (publishLocaleHooks).",
+			"baseline": "c2f5f83",
 			"files": [
-				["src/global/register-component.ts", "src/lib/global-api.ts"],
-				["src/global/instances.ts", "src/lib/global-api.ts"]
+				[
+					"src/global/register-component.ts",
+					"src/lib/global-api.ts"
+				],
+				[
+					"src/global/instances.ts",
+					"src/lib/global-api.ts"
+				]
 			]
 		},
 		{
 			"name": "context menu",
 			"description": "Context menu = core openMenu() (SPEC §12.13): rendering, submenus (lazy too), positioning, dismiss, the WAI-ARIA keyboard, the phone sheet / drawer (menuPresentation / menuSide). Tree.svelte opens it; a contextMenu snippet fills its custom-menu element.",
 			"mode": "adapted",
-			"note": "Only the /actions import paths differ (../../actions/ — svelte's adapted copy). menu/inputs.ts is NOT vendored (BlissElement input rows): Tree.svelte has menuPresentation / menuSide props instead. Vendored 2026-11-21 (was a hand-written Svelte mirror, baseline e6a0771).",
-			"baseline": "3d40786",
+			"note": "Only the /actions import paths differ (../../actions/ — svelte's adapted copy). menu/inputs.ts is NOT vendored (BlissElement input rows): Tree.svelte has menuPresentation / menuSide props instead. Re-synced 2026-11-24 to core c2f5f83 (rc26 + D-NC-30 verbs) (closeCallback; the phone sheet is a modal session). Vendored 2026-11-21 (was a hand-written Svelte mirror, baseline e6a0771).",
+			"baseline": "c2f5f83",
 			"files": [
-				["src/menu/open-menu.ts", "src/lib/vendor/core/menu/open-menu.ts"],
-				["src/menu/types.ts", "src/lib/vendor/core/menu/types.ts"]
+				[
+					"src/menu/open-menu.ts",
+					"src/lib/vendor/core/menu/open-menu.ts"
+				],
+				[
+					"src/menu/types.ts",
+					"src/lib/vendor/core/menu/types.ts"
+				]
 			]
 		},
 		{
 			"name": "menu helpers",
-			"description": "What core openMenu() imports: its stylesheet, overlay (one-open-at-a-time, sheet session / chrome, scroll lock, keyboard inset, phone Back), positioning (anchor, scroll close, containing block, theme inherit), dom (active element, direction).",
+			"description": "What core openMenu() imports: its stylesheet, overlay (one-open-at-a-time, sheet session / chrome, scroll lock, keyboard inset, phone Back), positioning (anchor, scroll close, containing block, theme inherit), dom (active element, direction). Since core rc26: overlay/modal-session (the phone sheet is modal) + its dom/focus-trap and dom/z-index.",
 			"mode": "identical",
-			"baseline": "3d40786",
+			"baseline": "a23b258",
 			"files": [
-				["src/menu/styles.ts", "src/lib/vendor/core/menu/styles.ts"],
-				["src/overlay/active-overlay.ts", "src/lib/vendor/core/overlay/active-overlay.ts"],
-				["src/overlay/back-entry.ts", "src/lib/vendor/core/overlay/back-entry.ts"],
-				["src/overlay/keyboard-inset.ts", "src/lib/vendor/core/overlay/keyboard-inset.ts"],
-				["src/overlay/scroll-lock.ts", "src/lib/vendor/core/overlay/scroll-lock.ts"],
-				["src/overlay/sheet-chrome.ts", "src/lib/vendor/core/overlay/sheet-chrome.ts"],
-				["src/overlay/sheet-session.ts", "src/lib/vendor/core/overlay/sheet-session.ts"],
-				["src/positioning/anchor.ts", "src/lib/vendor/core/positioning/anchor.ts"],
-				["src/positioning/containing-block.ts", "src/lib/vendor/core/positioning/containing-block.ts"],
-				["src/positioning/dropdown-offset.ts", "src/lib/vendor/core/positioning/dropdown-offset.ts"],
-				["src/positioning/inherit-theme.ts", "src/lib/vendor/core/positioning/inherit-theme.ts"],
-				["src/positioning/scroll-close.ts", "src/lib/vendor/core/positioning/scroll-close.ts"],
-				["src/positioning/types.ts", "src/lib/vendor/core/positioning/types.ts"],
-				["src/dom/active-element.ts", "src/lib/vendor/core/dom/active-element.ts"],
-				["src/dom/direction.ts", "src/lib/vendor/core/dom/direction.ts"]
+				[
+					"src/menu/styles.ts",
+					"src/lib/vendor/core/menu/styles.ts"
+				],
+				[
+					"src/overlay/active-overlay.ts",
+					"src/lib/vendor/core/overlay/active-overlay.ts"
+				],
+				[
+					"src/overlay/back-entry.ts",
+					"src/lib/vendor/core/overlay/back-entry.ts"
+				],
+				[
+					"src/overlay/keyboard-inset.ts",
+					"src/lib/vendor/core/overlay/keyboard-inset.ts"
+				],
+				[
+					"src/overlay/scroll-lock.ts",
+					"src/lib/vendor/core/overlay/scroll-lock.ts"
+				],
+				[
+					"src/overlay/sheet-chrome.ts",
+					"src/lib/vendor/core/overlay/sheet-chrome.ts"
+				],
+				[
+					"src/overlay/sheet-session.ts",
+					"src/lib/vendor/core/overlay/sheet-session.ts"
+				],
+				[
+					"src/positioning/anchor.ts",
+					"src/lib/vendor/core/positioning/anchor.ts"
+				],
+				[
+					"src/positioning/containing-block.ts",
+					"src/lib/vendor/core/positioning/containing-block.ts"
+				],
+				[
+					"src/positioning/dropdown-offset.ts",
+					"src/lib/vendor/core/positioning/dropdown-offset.ts"
+				],
+				[
+					"src/positioning/inherit-theme.ts",
+					"src/lib/vendor/core/positioning/inherit-theme.ts"
+				],
+				[
+					"src/positioning/scroll-close.ts",
+					"src/lib/vendor/core/positioning/scroll-close.ts"
+				],
+				[
+					"src/positioning/types.ts",
+					"src/lib/vendor/core/positioning/types.ts"
+				],
+				[
+					"src/dom/active-element.ts",
+					"src/lib/vendor/core/dom/active-element.ts"
+				],
+				[
+					"src/dom/direction.ts",
+					"src/lib/vendor/core/dom/direction.ts"
+				],
+				[
+					"src/overlay/modal-session.ts",
+					"src/lib/vendor/core/overlay/modal-session.ts"
+				],
+				[
+					"src/dom/focus-trap.ts",
+					"src/lib/vendor/core/dom/focus-trap.ts"
+				],
+				[
+					"src/dom/z-index.ts",
+					"src/lib/vendor/core/dom/z-index.ts"
+				]
 			]
 		}
 	]

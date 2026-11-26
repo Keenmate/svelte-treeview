@@ -31,7 +31,7 @@
 import { createFrameScheduler } from '../dom/frame-scheduler.js';
 import { once } from '../dom/once.js';
 import { createThrottle } from '../dom/throttle.js';
-import { callSafely, notifyEach } from '../logging/safe-call.js';
+import { runSafely, dispatchToListeners } from '../logging/safe-call.js';
 import { sharedState } from '../global/shared-state.js';
 
 /** The accuracy of the primary pointing device (the CSS `pointer` media feature): `coarse` = touch/stylus, `fine` = mouse/trackpad. */
@@ -191,7 +191,7 @@ function readBreakpointTokens(): void {
   const state = breakpointState();
   if (state.isSettled) return;
   if (typeof document === 'undefined' || !document.documentElement || typeof getComputedStyle !== 'function') return;
-  if (applyBreakpointTokens(state)) return;
+  if (loadBreakpointTokens(state)) return;
   if (document.readyState === 'complete' || typeof window === 'undefined' || typeof window.addEventListener !== 'function') {
     state.isSettled = true;
     return;
@@ -204,7 +204,7 @@ function readBreakpointTokens(): void {
       isWaitingForLoad = false;
       const s = breakpointState();
       if (s.isSettled) return;
-      const found = applyBreakpointTokens(s);
+      const found = loadBreakpointTokens(s);
       s.isSettled = true;
       if (!found) return;
       // The lines moved after snapshots were taken: re-resolve here and in every other copy.
@@ -218,7 +218,7 @@ function readBreakpointTokens(): void {
 }
 
 /** Read the tokens once; when either is set, apply it and settle. Returns whether one was found. */
-function applyBreakpointTokens(state: BreakpointState): boolean {
+function loadBreakpointTokens(state: BreakpointState): boolean {
   let style: CSSStyleDeclaration;
   try {
     style = getComputedStyle(document.documentElement);
@@ -394,7 +394,7 @@ function recompute(): void {
   const prev = current;
   current = next;
   if (!prev || !environmentEqual(prev, next)) {
-    notifyAll(subscribers, next);
+    dispatchToChannel(subscribers, next);
   }
   if (viewportSubscribers.size > 0 && (!prev || !viewportEqual(prev, next))) {
     viewportThrottle.schedule();
@@ -406,10 +406,10 @@ function recompute(): void {
  * so it can't keep the rest of the page (other components' responsive rules)
  * from hearing the change.
  */
-function notifyAll(channel: Set<EnvironmentListener>, snapshot: EnvironmentSnapshot): void {
+function dispatchToChannel(channel: Set<EnvironmentListener>, snapshot: EnvironmentSnapshot): void {
   // A listener that calls configureBreakpoints() runs a nested recompute, which notifies the
   // newer snapshot itself: stop here so no one is handed the stale one after it (review V-19 #1).
-  notifyEach(channel, snapshot, LISTENER_LOG, () => current !== snapshot);
+  dispatchToListeners(channel, snapshot, LISTENER_LOG, () => current !== snapshot);
 }
 
 const LISTENER_LOG = { message: 'environment listener threw' } as const;
@@ -418,7 +418,7 @@ const LISTENER_LOG = { message: 'environment listener threw' } as const;
 function fireViewport(): void {
   const snap = current;
   if (!snap) return;
-  notifyAll(viewportSubscribers, snap);
+  dispatchToChannel(viewportSubscribers, snap);
 }
 
 /**
@@ -538,7 +538,7 @@ function subscribe(channel: Set<EnvironmentListener>, listener: EnvironmentListe
   });
   // A throwing first call is logged like any later one; the subscription stands and
   // the caller still gets its unsubscribe (a rethrow here would leak the listener).
-  if (opts.shouldFireImmediately !== false) callSafely(() => listener(getEnvironment()), LISTENER_LOG);
+  if (opts.shouldFireImmediately !== false) runSafely(() => listener(getEnvironment()), LISTENER_LOG);
   return unsubscribe;
 }
 

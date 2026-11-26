@@ -503,7 +503,7 @@ export function createLTree<T>(
 
 			// Warn early about data mapping issues (most common user error)
 			if (conversionFailures.length > 0) {
-				console.warn(
+				dataLogger.warn(
 					`[Tree ${_treeId}] ${conversionFailures.length} of ${data.length} items have invalid paths (pathMember="${config.pathMember}"). These items will be skipped.\n` +
 						`First failure: ${conversionFailures[0].error}`
 				);
@@ -563,7 +563,7 @@ export function createLTree<T>(
 			// Log errors for backward compatibility and debugging
 			if (failedNodes.length > 0) {
 				const errorMessages = failedNodes.map((f) => f.error);
-				console.warn(
+				dataLogger.warn(
 					`[Tree ${_treeId}] ${failedNodes.length} nodes failed to insert:`,
 					errorMessages
 				);

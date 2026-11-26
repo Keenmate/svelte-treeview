@@ -28,7 +28,7 @@ function logError(log: SafeCallLog, error: unknown): void {
 }
 
 /** Run `fn`; a throw is logged and returned instead of propagating. */
-export function callSafely<T>(fn: () => T, log: SafeCallLog): SafeCallResult<T> {
+export function runSafely<T>(fn: () => T, log: SafeCallLog): SafeCallResult<T> {
   try {
     return { isOk: true, value: fn() };
   } catch (error) {
@@ -44,7 +44,7 @@ export function callSafely<T>(fn: () => T, log: SafeCallLog): SafeCallResult<T> 
  * mid-delivery is skipped. `isSuperseded` stops the delivery once a nested notify has
  * delivered a newer value (a listener that changed the state again).
  */
-export function notifyEach<T>(
+export function dispatchToListeners<T>(
   listeners: Iterable<(value: T) => void>,
   value: T,
   log: SafeCallLog,

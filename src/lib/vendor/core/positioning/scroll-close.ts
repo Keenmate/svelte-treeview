@@ -1,5 +1,6 @@
 /**
- * The one "close on scroll" rule for core's floating layers (`createPopover()`, `openMenu()`):
+ * The one "close on scroll" rule for core's floating layers (`createPopover()`, `openMenu()`,
+ * `createTooltip()`):
  * like a native `<select>`, close when the user scrolls the content the layer belongs to —
  *   - never a scroll inside the layer itself (its own list);
  *   - only a scroll of the page or of a scroller AROUND the reference (an unrelated scroller —
@@ -15,7 +16,7 @@
  * root between it and the reference.
  */
 import { deepActiveElement } from '../dom/active-element.js';
-import { composedParent } from '../dom/composed-tree.js';
+import { deepParent } from '../dom/composed-tree.js';
 
 type Rectish = { getBoundingClientRect(): DOMRect | { top: number; left: number } };
 
@@ -25,7 +26,7 @@ export interface ScrollCloseOptions {
   /** Is the scroll event inside the layer (its panels)? Those never close it. */
   isInside(event: Event): boolean;
   /** Called for a scroll that counts (it may be called again; make it idempotent). */
-  onScroll(event: Event): void;
+  scrollCallback(event: Event): void;
 }
 
 /** The document plus every shadow root between it and `node`. */
@@ -55,7 +56,7 @@ function isFullyVisible(el: Element): boolean {
   const inside = (top: number, left: number, bottom: number, right: number): boolean =>
     rect.top >= top && rect.left >= left && rect.bottom <= bottom && rect.right <= right;
   if (!inside(0, 0, window.innerHeight, window.innerWidth)) return false;
-  for (let n = composedParent(el); n && n !== document.documentElement && n !== document.body; n = composedParent(n)) {
+  for (let n = deepParent(el); n && n !== document.documentElement && n !== document.body; n = deepParent(n)) {
     const style = getComputedStyle(n);
     if (style.overflowX === 'visible' && style.overflowY === 'visible') continue;
     const clip = n.getBoundingClientRect();
@@ -112,7 +113,7 @@ export function watchScrollClose(opts: ScrollCloseOptions): () => void {
   const isAroundReference = (target: EventTarget | null): boolean => {
     if (!(target instanceof Element)) return true;
     if (!element) return false; // a virtual reference: only the page moves it
-    for (let n: Element | null = element; n; n = composedParent(n)) if (n === target) return true;
+    for (let n: Element | null = element; n; n = deepParent(n)) if (n === target) return true;
     return false;
   };
   const onScroll = (event: Event): void => {
@@ -123,7 +124,7 @@ export function watchScrollClose(opts: ScrollCloseOptions): () => void {
       return;
     }
     if (!hasMoved()) return;
-    opts.onScroll(event);
+    opts.scrollCallback(event);
   };
   const roots = scrollRoots(element);
   for (const root of roots) root.addEventListener('scroll', onScroll, { capture: true, passive: true });

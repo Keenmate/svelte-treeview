@@ -20,7 +20,7 @@
  */
 import { logging } from './logger.js';
 import type { LogLevelDesc } from './vendor/core/logging/create-loggers.js';
-import { publishGlobalLogging, type GlobalLoggingControls } from './vendor/core/logging/global-logging.js';
+import { publishPageLogging, type PageLoggingControls } from './vendor/core/logging/global-logging.js';
 import { publishLocaleHooks, type PageLocale, type PageSecurity } from './vendor/core/locale/page-locale.js';
 import { publishIconHook, type RenderIconCallback } from './vendor/core/dom/render-icon.js';
 import { getRegisteredTrees } from './core/clipboard.js';
@@ -64,9 +64,12 @@ declare global {
 		/** Registry of Keenmate components, keyed by tag/package name (+ the non-enumerable page-wide `logging`). */
 		components?: Record<string, unknown> & {
 			'svelte-treeview'?: GlobalTreeviewAPI;
-			readonly logging?: GlobalLoggingControls;
+			readonly logging?: PageLoggingControls;
 			/** Page-wide icon hook (core SPEC §12.33): maps an icon name that isn't a built-in to markup. Non-enumerable. */
 			renderIconCallback?: RenderIconCallback;
+			/** Page-wide flat icon map (core SPEC §12.33): `'svelte-treeview.<name>'` before `'<name>'` → an icon
+			 *  string (markup, a built-in name, class names). Asked before the hooks. Non-enumerable. */
+			icons?: Readonly<Record<string, string>>;
 			/** Page-wide locale, the flat `labels` dictionary and `translateCallback` (SPEC §12.24). Non-enumerable. */
 			locale?: PageLocale;
 			/** Page-wide security switches (`shouldEscapeLabels`, SPEC §12.24). Non-enumerable. */
@@ -102,7 +105,7 @@ if (typeof window !== 'undefined') {
 	// Adopt an entry the page created before this script ran (registerComponent does the same).
 	const existing = components[ENTRY_KEY];
 	components[ENTRY_KEY] = existing && typeof existing === 'object' ? Object.assign(existing, entry) : entry;
-	publishGlobalLogging(); // re-publish if the page replaced window.components
+	publishPageLogging(); // re-publish if the page replaced window.components
 	publishIconHook(); // window.components.renderIconCallback (SPEC §12.33)
 	publishLocaleHooks(); // window.components.locale / .security (SPEC §12.24)
 }

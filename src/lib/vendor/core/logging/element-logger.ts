@@ -32,20 +32,6 @@ export function getCoreLogging(): LoggerBundle<CoreLogCategory> {
   return sharedState(sharedStateKey('core-logging'), () => createLoggers('CORE', CORE_LOG_CATEGORIES));
 }
 
-/**
- * {@link getCoreLogging} as an object: every property is read from the bundle on access, so the
- * bundle (and `window.components.logging`) is created only when something actually uses it.
- */
-export const coreLogging: LoggerBundle<CoreLogCategory> = /* @__PURE__ */ new Proxy({} as LoggerBundle<CoreLogCategory>, {
-  get: (_target, key) => Reflect.get(getCoreLogging(), key),
-  has: (_target, key) => Reflect.has(getCoreLogging(), key),
-  ownKeys: () => Reflect.ownKeys(getCoreLogging()),
-  getOwnPropertyDescriptor: (_target, key) => {
-    const descriptor = Reflect.getOwnPropertyDescriptor(getCoreLogging(), key);
-    return descriptor && { ...descriptor, configurable: true };
-  },
-});
-
 const NO_OVERRIDE = (): undefined => undefined;
 
 /** Core loggers with no instance part, emitting per call (see makeInstanceLogger). */

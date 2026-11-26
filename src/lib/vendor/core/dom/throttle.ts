@@ -2,7 +2,8 @@
  * Leading + trailing throttle: `schedule()` runs `fn` straight away when `ms`
  * has passed since the last run, otherwise queues ONE trailing run at the end
  * of the window (later calls in the window fold into it — `fn` reads the latest
- * state when it runs). Internal.
+ * state when it runs).
+ * Main index (components use it instead of their own timers).
  */
 export interface Throttle {
   /** Run now (leading edge) or once the window ends (trailing edge). */

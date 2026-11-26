@@ -40,7 +40,7 @@ import { tick, untrack } from 'svelte';
 import { uiLogger, dragLogger } from '../logger.js';
 import { perfStart, perfEnd } from '../perf-logger.js';
 import { createTreeLabels, LABELS_TAG, resolveLabel, type TranslateCallback, type TreeLabels, type TreeLabelsInput } from './labels.js';
-import { observeLocale } from '../vendor/core/locale/page-locale.js';
+import { observePageLocale } from '../vendor/core/locale/page-locale.js';
 import {
 	type ClipboardEntry,
 	type TreeClipboard,
@@ -65,8 +65,11 @@ import { animateOut, readAnimationMs, type AnimateOutHandle } from '../vendor/co
 import { ICON_CSS, renderIcon, type IconRenderContext, type RenderIconCallback } from '../vendor/core/dom/render-icon.js';
 import { adoptStyles } from '../vendor/core/dom/adopt-styles.js';
 import { createPointerDrag, type PointerDrag } from '../vendor/core/dom/pointer-drag.js';
-import { findScrollContainer } from '../vendor/core/dom/scroll-container.js';
+import { findScrollContainer, scrollContainerToBox, scrollIntoContainer } from '../vendor/core/dom/scroll-container.js';
+import { computeVirtualRange } from '../vendor/core/dom/virtual-window.js';
+import { readCssDurationMs, readScrollBehavior } from '../vendor/core/dom/css-values.js';
 import { announce } from '../vendor/core/dom/announce.js';
+import { runBeforeCallback, runBeforeCallbackSync } from '../vendor/actions/before-callback.js';
 import { rowDomId } from '../helpers/string-helpers.js';
 
 // Re-register global API (safe to import multiple times)
@@ -365,12 +368,42 @@ export interface ScrollToPathOptions {
 	behavior?: ScrollBehavior;
 	block?: ScrollLogicalPosition;
 	inline?: ScrollLogicalPosition;
+	/** Also bring the row's scroll container into the viewport when it isn't fully visible. Default `true`. */
+	shouldRevealContainer?: boolean;
+}
+
+/** Who asked the tree to scroll a node into view — `beforeScrollCallback`'s `source` (= web-treeview). */
+export type TreeScrollSource = 'keyboard' | 'scroll-to-path' | 'paste';
+
+/** The scroll the tree is about to do (`beforeScrollCallback`'s `options`; a returned partial is merged over it). */
+export interface TreeScrollOptions {
+	/** Vertical alignment: `'nearest'` scrolls only as far as needed; `'start'` / `'center'` / `'end'` align. */
+	block: ScrollLogicalPosition;
+	/** Horizontal alignment (same values). */
+	inline: ScrollLogicalPosition;
+	/** `'auto'` (instant) or `'smooth'`. */
+	behavior: ScrollBehavior;
+	/** Also bring the scroll container itself into the viewport when it isn't fully visible. */
+	shouldRevealContainer: boolean;
 }
 
 /** The `controller` every callback / event context carries (web-treeview parity: its
  *  details carry `controller` + `element`; svelte has no element). */
 export interface TreeCallbackContext<T> {
 	controller: TreeController<T>;
+}
+
+/**
+ * ctx of `beforeScrollCallback` — the tree is about to scroll `node` into view on its own
+ * (a keyboard move, `scrollToPath`, the paste reveal). `container` = the scroll container core
+ * found around the row (`null` = only the page scrolls); `options` = the scroll it will do.
+ */
+export interface BeforeScrollContext<T> extends TreeCallbackContext<T> {
+	node: LTreeNode<T>;
+	path: string;
+	source: TreeScrollSource;
+	container: HTMLElement | null;
+	options: TreeScrollOptions;
 }
 
 /** ctx of `onFocusChange` — the new focused node (null = focus cleared). */
@@ -576,11 +609,11 @@ export interface TreeEngineProps<T> {
 	 *  `ariaLabels.showFullLabel` ("Show full label" — `nodeTitleOverflow: 'info'` button),
 	 *  `menuItems.copy` … `menuItems.sortAll` (built-in context-menu items), `ariaLabels.tree`
 	 *  ("Tree" — aria-label of the `role="tree"` container); screen-reader announcements (core
-	 *  `announce()`, `''` silences one): `ariaLabels.searchResults` ("Results: {count}"),
+	 *  `announce()`, `''` silences one): `ariaLabels.searchResults` ("Results: {ctx.count}"),
 	 *  `ariaLabels.searchNoResults`, `ariaLabels.movedInto|Before|After` /
-	 *  `ariaLabels.copiedInto|Before|After` ("{name} moved into {target}" — a drop the tree placed),
-	 *  `ariaLabels.dropItems` ("Items ({count})"), `ariaLabels.dropTreeRoot` ("the tree"),
-	 *  `ariaLabels.dropDenied` ("Cannot drop here: {target} does not accept dropped items"). `{name}` placeholders.
+	 *  `ariaLabels.copiedInto|Before|After` ("{ctx.name} moved into {ctx.target}" — a drop the tree placed),
+	 *  `ariaLabels.dropItems` ("Items ({ctx.count})"), `ariaLabels.dropTreeRoot` ("the tree"),
+	 *  `ariaLabels.dropDenied` ("Cannot drop here: {ctx.target} does not accept dropped items"). `{name}` placeholders; dynamic texts read `{ctx.*}`.
 	 *  The `noData` / `dropPlaceholder` snippets still replace the markup. */
 	labels?: TreeLabelsInput;
 	/** This tree's own translation seam (i18next / ICU / the app's lookup): gets
@@ -793,6 +826,10 @@ export interface TreeEngineProps<T> {
 	 *  restrict what's removed, or `false` to block entirely. `nodes` are the resolved
 	 *  top-level nodes about to be removed (descendants ride along). */
 	beforeDeleteCallback?: (ctx: BeforeDeleteContext<T>) => string[] | false | void;
+	/** Runs before the tree scrolls a node into view on its own (keyboard move, `scrollToPath`, the
+	 *  paste reveal). Return `false` to skip the scroll, or options to replace the defaults
+	 *  (`{ block, inline, behavior, shouldRevealContainer }`). Sync. Same as web-treeview. */
+	beforeScrollCallback?: (ctx: BeforeScrollContext<T>) => false | Partial<TreeScrollOptions> | void;
 	/**
 	 * Drop interceptor. Fires just before placement with a BeforeDropContext (symmetric with
 	 * NodeDropContext: `target`, full `dragged` set, `position`, `operation`, `event`). Return:
@@ -1288,6 +1325,7 @@ export class TreeEngine<T> {
 	beforePasteHandler: TreeEngineProps<T>['beforePasteCallback'];
 	/** @internal */
 	beforeDeleteHandler: TreeEngineProps<T>['beforeDeleteCallback'];
+	beforeScrollHandler: TreeEngineProps<T>['beforeScrollCallback'];
 	/** @internal */
 	outputTransformHandler: TreeEngineProps<T>['nodeOutputTransformationCallback'];
 	/** @internal */
@@ -1543,23 +1581,24 @@ export class TreeEngine<T> {
 	vsTotalCount = $derived(this.allFlatNodes.length);
 	/** @internal */
 	vsTotalHeight = $derived(this.vsTotalCount * this.vsRowHeight);
-	/** @internal */
-	vsStartIndex = $derived(
+	/** The rendered window: core `computeVirtualRange` (vendored, SPEC §12.26 — the same range math as
+	 *  web-treeview): the rows in view plus `virtualScrollOverscan` on each side, clamped to the count.
+	 *  @internal */
+	vsRange = $derived(
 		this.vsActive
-			? Math.max(0, Math.floor(this.vsScrollTop / this.vsRowHeight) - this.virtualScrollOverscan)
-			: 0
+			? computeVirtualRange({
+					scrollTop: this.vsScrollTop,
+					viewport: this.vsContainerRef?.clientHeight ?? 0,
+					count: this.vsTotalCount,
+					rowHeight: this.vsRowHeight,
+					overscan: this.virtualScrollOverscan
+				})
+			: { start: 0, end: this.vsTotalCount }
 	);
 	/** @internal */
-	vsEndIndex = $derived(
-		this.vsActive
-			? Math.min(
-					this.vsTotalCount,
-					Math.ceil(
-						(this.vsScrollTop + (this.vsContainerRef?.clientHeight ?? 0)) / this.vsRowHeight
-					) + this.virtualScrollOverscan
-				)
-			: this.vsTotalCount
-	);
+	vsStartIndex = $derived(this.vsRange.start);
+	/** @internal */
+	vsEndIndex = $derived(this.vsRange.end);
 	/** @internal */
 	vsOffsetY = $derived(this.vsStartIndex * this.vsRowHeight);
 
@@ -1781,7 +1820,7 @@ export class TreeEngine<T> {
 
 		// Page-wide locale (window.components.locale) changed → every getLabel() reader re-runs.
 		$effect(() =>
-			observeLocale(() => {
+			observePageLocale(() => {
 				uiLogger.debug('page-wide locale changed — re-resolving labels');
 				this.#localeRevision++;
 			})
@@ -2246,7 +2285,7 @@ export class TreeEngine<T> {
 			shouldSetHeightVar: true,
 			// Collapse first, then drop the closing state — same flush, so a row never
 			// snaps back to full height before it unmounts.
-			onDone: () => {
+			doneCallback: () => {
 				apply();
 				cleanup();
 			}
@@ -2274,7 +2313,7 @@ export class TreeEngine<T> {
 		for (const entry of entries) {
 			if (!entry.targets.some(isRelated)) continue;
 			const isReExpand = paths != null && entry.targets.length === 1 && paths.includes(entry.targets[0]);
-			entry.handle.cancel(); // class + inert off; core's onDone never runs
+			entry.handle.cancel(); // class + inert off; core's doneCallback never runs
 			for (const t of entry.targets) if (this.#closingHandles.get(t) === entry) this.#closingHandles.delete(t);
 			if (isReExpand) isCancelled = true;
 			else entry.apply();
@@ -2383,9 +2422,7 @@ export class TreeEngine<T> {
 		if ((this.maxAnimatedRowCount ?? 50) <= 0) return false;
 		const el = this.containerElement;
 		if (!el || typeof getComputedStyle !== 'function') return false;
-		const raw = getComputedStyle(el).getPropertyValue('--stv-row-animation-duration').trim();
-		const value = parseFloat(raw);
-		return Number.isFinite(value) && value > 0;
+		return readCssDurationMs(el, '--stv-row-animation-duration', 0) > 0; // core css-values (REVIEW §4)
 	}
 
 	/** The expand half of a UI toggle, after the gate: accordion side-effect + expand + events. */
@@ -3342,8 +3379,8 @@ export class TreeEngine<T> {
 		// Interceptor: can modify paths or block
 		const result =
 			operation === 'copy'
-				? this.beforeCopyHandler?.(this._ctx({ operation, paths: pathsToUse, nodes: nodesOf(pathsToUse) }))
-				: this.beforeCutHandler?.(this._ctx({ operation, paths: pathsToUse, nodes: nodesOf(pathsToUse) }));
+				? this._runBeforeHookSync(this.beforeCopyHandler, this._ctx({ operation, paths: pathsToUse, nodes: nodesOf(pathsToUse) }), 'beforeCopyCallback')
+				: this._runBeforeHookSync(this.beforeCutHandler, this._ctx({ operation, paths: pathsToUse, nodes: nodesOf(pathsToUse) }), 'beforeCutCallback');
 		if (result === false) return;
 		if (Array.isArray(result)) pathsToUse = result;
 
@@ -3407,14 +3444,18 @@ export class TreeEngine<T> {
 		// resolved target node + readonly entries (no per-node data rewriting; that's the
 		// transform's job).
 		if (this.beforePasteHandler) {
-			const result = this.beforePasteHandler(this._ctx({
-				operation,
-				target: {
-					path: targetPath,
-					node: targetPath ? (this.tree.getNodeByPath(targetPath) ?? null) : null
-				},
-				entries: workEntries
-			}));
+			const result = this._runBeforeHookSync(
+				this.beforePasteHandler,
+				this._ctx({
+					operation,
+					target: {
+						path: targetPath,
+						node: targetPath ? (this.tree.getNodeByPath(targetPath) ?? null) : null
+					},
+					entries: workEntries
+				}),
+				'beforePasteCallback'
+			);
 			if (result === false) {
 				const blocked: PasteResult<T> = {
 					success: false,
@@ -3555,7 +3596,7 @@ export class TreeEngine<T> {
 			void (async () => {
 				if (!target.isExpanded) await this.expandNodes(target.path);
 				await tick();
-				await this._scrollToPath(pasted.path, { block: 'nearest' }, false);
+				await this._scrollToPath(pasted.path, { block: 'nearest', shouldRevealContainer: false }, 'paste');
 			})();
 		}
 
@@ -3627,7 +3668,7 @@ export class TreeEngine<T> {
 			const nodes = targets
 				.map((p) => this.tree.getNodeByPath(p))
 				.filter((n): n is LTreeNode<T> => n !== null);
-			const result = this.beforeDeleteHandler(this._ctx({ paths: targets, nodes }));
+			const result = this._runBeforeHookSync(this.beforeDeleteHandler, this._ctx({ paths: targets, nodes }), 'beforeDeleteCallback');
 			if (result === false) return { removed: 0, blocked: targets.length };
 			if (Array.isArray(result)) targets = getTopLevelPaths(result, this.treePathSeparator);
 		}
@@ -3683,15 +3724,17 @@ export class TreeEngine<T> {
 		// Call custom handler first — return false to suppress default handling. Resolve the
 		// focus + selection sets up front so the consumer gets nodes, not raw paths.
 		if (options.beforeKeydownCallback) {
-			const result: unknown = options.beforeKeydownCallback({
-				event,
-				focusedNode: this.focusedNode ?? null,
-				selectedNodes: this.getSelectedNodes(),
-				controller: this.controller
-			});
-			if (result instanceof Promise) {
-				uiLogger.warn('beforeKeydownCallback is synchronous — a returned Promise is ignored');
-			} else if (result === false) {
+			const result = this._runBeforeHookSync(
+				options.beforeKeydownCallback,
+				{
+					event,
+					focusedNode: this.focusedNode ?? null,
+					selectedNodes: this.getSelectedNodes(),
+					controller: this.controller
+				},
+				'beforeKeydownCallback'
+			);
+			if (result === false) {
 				event.preventDefault();
 				return;
 			}
@@ -3945,7 +3988,7 @@ export class TreeEngine<T> {
 		return runAction({
 			detail,
 			beforeActionCallback: this.beforeActionHandler,
-			emitAction: (d) => this.onActionHandler?.(d),
+			dispatchAction: (d) => this.onActionHandler?.(d),
 			runBuiltIn: (d) => this._runBuiltInAction(d.action, ctx.node ?? null)
 		});
 	}
@@ -3996,7 +4039,7 @@ export class TreeEngine<T> {
 	/** Cancel current drag and reset all state. */
 	cancelDrag(): void {
 		dragLogger.debug('Drag cancelled via public API');
-		for (const drag of this.#pointerDrags) drag.cancel(); // core: onCancel → _handlePointerCancel
+		for (const drag of this.#pointerDrags) drag.cancel(); // core: cancelCallback → _handlePointerCancel
 		this._handlePointerCancel();
 	}
 
@@ -4074,9 +4117,38 @@ export class TreeEngine<T> {
 	 * `shouldExpandAncestors` (default true) opens its collapsed ancestors first;
 	 * `shouldHighlight` (default false) flashes `scrollHighlightClass`; `behavior` / `block` /
 	 * `inline` = native ScrollIntoViewOptions (defaults `--stv-scroll-behavior` — smooth, auto under reduced motion — / `'center'` / `'nearest'`).
+	 * Scrolls the row's scroll container only (core `scrollIntoContainer`); with none, the page gets the
+	 * same `block`. `shouldRevealContainer` (default true) first brings an off-screen container into the
+	 * viewport. `beforeScrollCallback` (source `'scroll-to-path'`) can skip or re-align it — a skipped
+	 * scroll still resolves true. Same as web-treeview.
 	 */
 	async scrollToPath(path: string, options?: ScrollToPathOptions): Promise<boolean> {
-		return this._scrollToPath(path, options, false);
+		return this._scrollToPath(path, options, 'scroll-to-path');
+	}
+
+	/**
+	 * The one gate of every self-initiated scroll (keyboard move, scrollToPath, paste reveal): runs
+	 * `beforeScrollCallback` with the node, the `source`, the container core finds around the row
+	 * (null = the page) and the `defaults`. Returns the options to use, or null when the callback
+	 * skipped the scroll (a throw skips too — core's before-callback runner). = web-treeview.
+	 */
+	private _resolveScroll(
+		node: LTreeNode<T>,
+		source: TreeScrollSource,
+		container: HTMLElement | null,
+		defaults: TreeScrollOptions
+	): TreeScrollOptions | null {
+		if (!this.beforeScrollHandler) return defaults;
+		const result = this._runBeforeHookSync(
+			this.beforeScrollHandler,
+			this._ctx({ node, path: node.path, source, container, options: { ...defaults } }),
+			'beforeScrollCallback'
+		);
+		if (result === false) {
+			uiLogger.debug('beforeScrollCallback skipped the scroll', { path: node.path, source });
+			return null;
+		}
+		return result && typeof result === 'object' ? { ...defaults, ...result } : defaults;
 	}
 
 	/** The default scroll behaviour of programmatic jumps — scrollToPath with no `behavior` passed:
@@ -4085,15 +4157,15 @@ export class TreeEngine<T> {
 	private resolveScrollBehavior(): ScrollBehavior {
 		const el = this.containerElement;
 		if (!el || typeof getComputedStyle === 'undefined') return 'smooth';
-		return (getComputedStyle(el).getPropertyValue('--stv-scroll-behavior').trim() || 'smooth') as ScrollBehavior;
+		return readScrollBehavior(el, '--stv-scroll-behavior'); // core css-values (REVIEW §4): auto / instant / smooth
 	}
 
-	/** scrollToPath + `isContainerScroll` (keyboard nav: scroll only the tree's scroll container,
-	 *  never the page). */
+	/** scrollToPath for every source: `'keyboard'` (nav moves — `block: 'nearest'`, instant, the
+	 *  container only), `'scroll-to-path'` (the public method), `'paste'` (the paste reveal). */
 	private async _scrollToPath(
 		path: string,
 		options: ScrollToPathOptions | undefined,
-		isContainerScroll: boolean
+		source: TreeScrollSource
 	): Promise<boolean> {
 		perfStart(`[${this.treeId}] scrollToPath`);
 		const {
@@ -4101,14 +4173,16 @@ export class TreeEngine<T> {
 			shouldHighlight: highlight = false,
 			behavior = this.resolveScrollBehavior(),
 			block = 'center',
-			inline = 'nearest'
+			inline = 'nearest',
+			shouldRevealContainer = true
 		} = options || {};
-		const scrollOptions: ScrollIntoViewOptions = { behavior, block, inline };
-		const containerScroll = isContainerScroll;
+		const defaults: TreeScrollOptions = { block, inline, behavior, shouldRevealContainer };
+		// Resolved once: before the index scroll in virtual scroll, else once the row is found.
+		let scroll: TreeScrollOptions | null | undefined;
 
 		const node = this.tree.getNodeByPath(path);
 		if (!node || !node.id) {
-			console.warn(`[Tree ${this.treeId}] Node not found for path: ${path}`);
+			uiLogger.warn(`[Tree ${this.treeId}] Node not found for path: ${path}`);
 			perfEnd(`[${this.treeId}] scrollToPath`);
 			return false;
 		}
@@ -4123,28 +4197,23 @@ export class TreeEngine<T> {
 		if (this.vsActive && this.vsContainerRef) {
 			const nodeIndex = this.allFlatNodes.findIndex((n) => n.path === path);
 			if (nodeIndex === -1) {
-				console.warn(`[Tree ${this.treeId}] Node not found in flat nodes for path: ${path}`);
+				uiLogger.warn(`[Tree ${this.treeId}] Node not found in flat nodes for path: ${path}`);
 				perfEnd(`[${this.treeId}] scrollToPath`);
 				return false;
 			}
 
-			// Scroll the virtual container: centre the node, or with block 'nearest' (keyboard
-			// moves) only as far as needed to bring it in (stays put while it is visible)
-			const rowTop = nodeIndex * this.vsRowHeight;
-			const viewHeight = this.vsContainerRef.clientHeight;
-			const currentTop = this.vsContainerRef.scrollTop;
-			const targetScroll =
-				block === 'nearest'
-					? rowTop < currentTop
-						? rowTop
-						: rowTop + this.vsRowHeight > currentTop + viewHeight
-							? rowTop + this.vsRowHeight - viewHeight
-							: currentTop
-					: rowTop - viewHeight / 2 + this.vsRowHeight / 2;
-			this.vsContainerRef.scrollTo({
-				top: Math.max(0, targetScroll),
-				behavior: scrollOptions.behavior
-			});
+			scroll = this._resolveScroll(node, source, this.vsContainerRef, defaults);
+			if (!scroll) {
+				perfEnd(`[${this.treeId}] scrollToPath`);
+				return true; // skipped by beforeScrollCallback — found, nothing to do
+			}
+			// Core's box math (SPEC §12.15), clamped to the scroll range: 'nearest' moves only as far
+			// as needed (a visible row stays put), 'center' centres it.
+			scrollContainerToBox(
+				this.vsContainerRef,
+				{ top: nodeIndex * this.vsRowHeight, height: this.vsRowHeight },
+				{ block: scroll.block, behavior: scroll.behavior }
+			);
 
 			// Wait for scroll + re-render — need multiple frames for
 			// rAF-throttled scroll handler → reactive update → DOM render
@@ -4189,40 +4258,23 @@ export class TreeEngine<T> {
 		}
 
 		if (!contentDiv) {
-			console.warn(`[Tree ${this.treeId}] DOM element not found for node ID: ${elementId}`);
+			uiLogger.warn(`[Tree ${this.treeId}] DOM element not found for node ID: ${elementId}`);
 			perfEnd(`[${this.treeId}] scrollToPath`);
 			return false;
 		}
 
-		if (containerScroll) {
-			const container = findScrollContainer(contentDiv);
-			if (container) {
-				const containerRect = container.getBoundingClientRect();
-				const elementRect = contentDiv.getBoundingClientRect();
-				// the visible client box (inside the borders, above a horizontal scrollbar)
-				const viewTop = containerRect.top + container.clientTop;
-				const viewBottom = viewTop + container.clientHeight;
-				let scrollTop: number;
-				if (block === 'nearest') {
-					// keyboard moves: scroll only as far as needed; a visible row stays put
-					// (the call still runs — same top = no-op)
-					scrollTop = container.scrollTop;
-					if (elementRect.top < viewTop) scrollTop += elementRect.top - viewTop;
-					else if (elementRect.bottom > viewBottom) scrollTop += elementRect.bottom - viewBottom;
-				} else {
-					scrollTop =
-						container.scrollTop +
-						(elementRect.top - viewTop) -
-						container.clientHeight / 2 +
-						elementRect.height / 2;
-				}
-				container.scrollTo({
-					top: scrollTop,
-					behavior: scrollOptions.behavior
-				});
-			}
-		} else {
-			contentDiv.scrollIntoView(scrollOptions);
+		// The row's scroll container only (core scrollIntoContainer — scroll-padding / scroll-margin
+		// honoured, never an overflow:hidden wrapper); with none, the page gets the same request.
+		const container = findScrollContainer(contentDiv);
+		scroll = this._resolveScroll(node, source, container, defaults);
+		if (scroll) {
+			scrollIntoContainer(contentDiv, {
+				block: scroll.block,
+				inline: scroll.inline,
+				behavior: scroll.behavior,
+				container: container ?? undefined,
+				shouldRevealContainer: scroll.shouldRevealContainer
+			});
 		}
 
 		if (highlight && this.scrollHighlightClass) {
@@ -4619,11 +4671,11 @@ export class TreeEngine<T> {
 
 		// Call interceptor if provided
 		if (this.beforeCheckboxToggleHandler) {
-			const result = this.beforeCheckboxToggleHandler(this._ctx({
-				node,
-				isChecked: newChecked,
-				affectedPaths
-			}));
+			const result = this._runBeforeHookSync(
+				this.beforeCheckboxToggleHandler,
+				this._ctx({ node, isChecked: newChecked, affectedPaths }),
+				'beforeCheckboxToggleCallback'
+			);
 			if (result === false) return;
 			if (Array.isArray(result)) {
 				affectedPaths = result;
@@ -5508,13 +5560,17 @@ export class TreeEngine<T> {
 		};
 
 		if (this.beforeDropHandler) {
-			const result = await this.beforeDropHandler(this._ctx({
-				target: dropNode ? this.getNodeRef(dropNode) : null,
-				dragged: draggedRefs,
-				position,
-				operation,
-				event
-			}));
+			const result = await this._runBeforeHook(
+				this.beforeDropHandler,
+				this._ctx({
+					target: dropNode ? this.getNodeRef(dropNode) : null,
+					dragged: draggedRefs,
+					position,
+					operation,
+					event
+				}),
+				'beforeDropCallback'
+			);
 			if (result === false) return false;
 			if (Array.isArray(result)) {
 				// Content-addressed routing: fan the drop out to the returned groups. Same-tree
@@ -5636,7 +5692,7 @@ export class TreeEngine<T> {
 	private _hoverCtrl: TreeEngine<any> | null = null;
 	/** The last pointer event of the drag — core's auto-scroll frames have none of their own. */
 	private _lastPointerEvent: PointerEvent | null = null;
-	/** The press that may become a drag, and its node (core hands `onStart` no event on a touch long press). */
+	/** The press that may become a drag, and its node (core hands `beforeStartCallback` no event on a touch long press). */
 	private _pressEvent: PointerEvent | null = null;
 	private _pressNode: LTreeNode<any> | null = null;
 	/** Every attached core drag (the tree's own container + custom renderers' containers). */
@@ -5673,7 +5729,7 @@ export class TreeEngine<T> {
 				this._pressNode = node;
 				return source;
 			},
-			onStart: ({ x, y }) => {
+			beforeStartCallback: ({ x, y }) => {
 				const node = this._pressNode;
 				const press = this._pressEvent;
 				if (!node || !press) return false;
@@ -5697,7 +5753,7 @@ export class TreeEngine<T> {
 				this._startPointerDrag(node, press, x, y);
 				if (!this.touchDragState.isDragging) return false; // beforeDragStartCallback vetoed it
 			},
-			onMove: ({ target, x, y, event }) => {
+			moveCallback: ({ target, x, y, event }) => {
 				if (!this.touchDragState.isDragging) return; // a denied hold: nothing moves
 				if (event instanceof PointerEvent) this._lastPointerEvent = event;
 				const ghost = this.touchDragState.ghostElement;
@@ -5707,10 +5763,10 @@ export class TreeEngine<T> {
 				}
 				if (this._lastPointerEvent) this._updatePointerHover(target, this._lastPointerEvent);
 			},
-			onDrop: ({ target, event }) => {
+			dropCallback: ({ target, event }) => {
 				void this._handlePointerDrop(target, event as PointerEvent);
 			},
-			onCancel: () => this._handlePointerCancel()
+			cancelCallback: () => this._handlePointerCancel()
 		});
 		this.#pointerDrags.add(drag);
 		return () => {
@@ -5728,11 +5784,15 @@ export class TreeEngine<T> {
 		this._dragSetOverride = null;
 		let draggedRefs = this._draggedRefs(node);
 		if (this.beforeDragStartHandler) {
-			const decision = this.beforeDragStartHandler(this._ctx({
-				lead: this.getNodeRef(node),
-				dragged: this._getDraggedRefsWithDescendants(draggedRefs),
-				event
-			}));
+			const decision = this._runBeforeHookSync(
+				this.beforeDragStartHandler,
+				this._ctx({
+					lead: this.getNodeRef(node),
+					dragged: this._getDraggedRefsWithDescendants(draggedRefs),
+					event
+				}),
+				'beforeDragStartCallback'
+			);
 			if (decision === false) {
 				this._resetPointerState();
 				return;
@@ -5865,7 +5925,7 @@ export class TreeEngine<T> {
 		this.activeDropPosition = null;
 	}
 
-	/** The pointer was released over `dropEl` (core onDrop; core has already let go of the gesture,
+	/** The pointer was released over `dropEl` (core dropCallback; core has already let go of the gesture,
 	 *  so an async beforeDropCallback can't see a second release / Escape re-enter the drop). */
 	private async _handlePointerDrop(dropEl: Element | null, event: PointerEvent) {
 		const st = this.touchDragState;
@@ -6053,12 +6113,34 @@ export class TreeEngine<T> {
 		}
 	}
 
+	// ── before*Callback runner (core SPEC §12.5, REVIEW §4) ─────────────
+
+	/**
+	 * Run a synchronous `before*Callback` through core's runner: `false` = reject, `undefined` =
+	 * continue, any other value = continue with it. A throw rejects (logged — a crashed guard must
+	 * not let a delete through); a returned Promise is ignored with a warning. Same as web-treeview.
+	 */
+	private _runBeforeHookSync<C, R>(fn: ((ctx: C) => R) | null | undefined, ctx: C, name: string): R | false | undefined {
+		const result = runBeforeCallbackSync<C, R>(fn, ctx, name);
+		return result.isRejected ? false : result.hasValue ? result.value : undefined;
+	}
+
+	/** The async twin of {@link _runBeforeHookSync} (the hook may return a Promise). */
+	private async _runBeforeHook<C, R>(
+		fn: ((ctx: C) => R) | null | undefined,
+		ctx: C,
+		name: string
+	): Promise<Awaited<R> | false | undefined> {
+		const result = await runBeforeCallback<C, Awaited<R>>(fn, ctx, name);
+		return result.isRejected ? false : result.hasValue ? result.value : undefined;
+	}
+
 	// ── Screen-reader announcements (core `announce()`) ─────────────────
 
 	/** Announce a label through the page's polite live region; a label set to `''` stays silent.
-	 *  The params also travel as `{ ctx }` — a `translateCallback` reads `params.ctx`, as in web-treeview. */
-	private _announce(key: keyof TreeLabels, params: Record<string, unknown>): void {
-		const text = this.getLabel(key, { ...params, ctx: params });
+	 *  The text reads its context as `{ctx.*}` (a `translateCallback` gets it as `params.ctx`) — as in web-treeview. */
+	private _announce(key: keyof TreeLabels, ctx: Record<string, unknown>): void {
+		const text = this.getLabel(key, { ctx });
 		uiLogger.debug('[announce]', { key, text });
 		if (text) announce(text, { document: this.containerElement?.ownerDocument });
 	}
@@ -6076,7 +6158,7 @@ export class TreeEngine<T> {
 		position: DropPosition,
 		operation: DropOperation
 	): void {
-		const name = count > 1 ? this.getLabel('ariaLabels.dropItems', { count, ctx: { count } }) : this._getAnnouncedName(dropped[0]);
+		const name = count > 1 ? this.getLabel('ariaLabels.dropItems', { ctx: { count } }) : this._getAnnouncedName(dropped[0]);
 		const targetName = target ? this._getAnnouncedName(target) : this.getLabel('ariaLabels.dropTreeRoot');
 		const where = !target || position === 'child' ? 'Into' : position === 'before' ? 'Before' : 'After';
 		this._announce(`ariaLabels.${operation === 'copy' ? 'copied' : 'moved'}${where}` as keyof TreeLabels, {
@@ -6344,7 +6426,7 @@ export class TreeEngine<T> {
 				const node = this.getNodeByPath(path);
 				if (!node) return;
 				this.selectNode(path, 'replace');
-				this._scrollToPath(path, { shouldExpandAncestors: false, block: 'nearest', behavior: 'auto' }, true);
+				this._scrollToPath(path, { shouldExpandAncestors: false, block: 'nearest', behavior: 'auto', shouldRevealContainer: false }, 'keyboard');
 			},
 
 			// Plain navigation: with nothing focused, Down / Next start at the first row, Up / Previous at the last.
@@ -6502,7 +6584,7 @@ export class TreeEngine<T> {
 		// Move focus to the target without clearing the selection
 		const node = this.tree.getNodeByPath(path);
 		if (node) this._setFocusedNode(node);
-		this._scrollToPath(path, { shouldExpandAncestors: false, block: 'nearest', behavior: 'auto' }, true);
+		this._scrollToPath(path, { shouldExpandAncestors: false, block: 'nearest', behavior: 'auto', shouldRevealContainer: false }, 'keyboard');
 		this.tree.refresh();
 	}
 }

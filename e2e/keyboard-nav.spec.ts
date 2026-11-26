@@ -398,14 +398,16 @@ test.describe('scrolling: keyboard moves always instant; --stv-scroll-behavior (
 		await spyScroll(page);
 		for (const key of ['ArrowDown', 'PageDown', 'End', 'Home', 'Shift+End']) await page.keyboard.press(key);
 		await expect(page.getByTestId('focused-path')).toHaveText('5');
-		await expect.poll(async () => (await scrollCalls(page)).length).toBeGreaterThanOrEqual(5);
+		// core scrollIntoContainer skips the call when the row is already in view (nothing to move),
+		// so not every key scrolls — but every scroll that happens is instant.
+		await expect.poll(async () => (await scrollCalls(page)).length).toBeGreaterThanOrEqual(1);
 		expect(new Set(await scrollCalls(page))).toEqual(new Set(['auto']));
 		await page.evaluate(() => {
 			document.documentElement.style.setProperty('--base-scroll-behavior', 'smooth');
 			(window as any).scrollCalls.length = 0;
 		});
-		await page.keyboard.press('ArrowUp');
-		await expect(page.getByTestId('focused-path')).toHaveText('4');
+		await page.keyboard.press('Home'); // back to the (now off-screen) first row
+		await expect(page.getByTestId('focused-path')).toHaveText('1');
 		await expect.poll(() => scrollCalls(page)).toEqual(['auto']);
 	});
 
@@ -445,7 +447,7 @@ test.describe('scrolling: keyboard moves always instant; --stv-scroll-behavior (
 		expect(before).toBeGreaterThan(0);
 		await page.keyboard.press('ArrowDown');
 		await expect(page.getByTestId('focused-path')).toHaveText('2');
-		await expect.poll(async () => (await scrollCalls(page)).length).toBeGreaterThanOrEqual(1);
+		await page.waitForTimeout(150); // the reveal runs after the render
 		expect(await hostTop()).toBe(before);
 		await page.keyboard.press('End');
 		await expect(page.getByTestId('focused-path')).toHaveText('5');

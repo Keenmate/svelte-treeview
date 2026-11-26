@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getLogger, isLogLevel, LOG_LEVELS, toLogLevelNumber } from './log-core.js';
-import { DEFAULT_CATEGORIES, createLoggers, type LogLevelDesc } from './create-loggers.js';
+import { getLogger, isLogLevel, LOG_LEVELS, parseLogLevel } from './log-core.js';
+import { DEFAULT_LOG_CATEGORIES, createLoggers, type LogLevelDesc } from './create-loggers.js';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -10,8 +10,8 @@ afterEach(() => {
 describe('createLoggers', () => {
   it('builds one logger per default category, namespaced', () => {
     const { loggers, LOGGING_CATEGORIES } = createLoggers('NSDEFAULTS');
-    expect(Object.keys(loggers)).toEqual([...DEFAULT_CATEGORIES]);
-    expect(LOGGING_CATEGORIES).toEqual([...DEFAULT_CATEGORIES]);
+    expect(Object.keys(loggers)).toEqual([...DEFAULT_LOG_CATEGORIES]);
+    expect(LOGGING_CATEGORIES).toEqual([...DEFAULT_LOG_CATEGORIES]);
     expect(getLogger('NSDEFAULTS:INIT')).toBe(loggers.INIT);
   });
 
@@ -19,7 +19,7 @@ describe('createLoggers', () => {
     const redefined = createLoggers('NSREDEF', ['INIT', 'DATA', 'INDEX', 'DRAG'] as const);
     expect(Object.keys(redefined.loggers)).toEqual(['INIT', 'DATA', 'INDEX', 'DRAG']);
 
-    const extended = createLoggers('NSEXT', [...DEFAULT_CATEGORIES, 'FILE'] as const);
+    const extended = createLoggers('NSEXT', [...DEFAULT_LOG_CATEGORIES, 'FILE'] as const);
     expect(Object.keys(extended.loggers)).toEqual(['INIT', 'DATA', 'UI', 'FILE']);
     // typed access to the extra category
     expect(extended.loggers.FILE).toBeDefined();
@@ -118,13 +118,13 @@ describe('createLoggers', () => {
 });
 
 // Review L-17: one level parser for every caller.
-describe('toLogLevelNumber / isLogLevel', () => {
+describe('parseLogLevel / isLogLevel', () => {
   it('reads names in any case and whole ranks 0-5; anything else is undefined', () => {
-    expect(toLogLevelNumber('debug')).toBe(LOG_LEVELS.DEBUG);
-    expect(toLogLevelNumber('SILENT')).toBe(LOG_LEVELS.SILENT);
-    expect(toLogLevelNumber(4)).toBe(4);
+    expect(parseLogLevel('debug')).toBe(LOG_LEVELS.DEBUG);
+    expect(parseLogLevel('SILENT')).toBe(LOG_LEVELS.SILENT);
+    expect(parseLogLevel(4)).toBe(4);
     for (const bad of ['verbose', 2.5, -1, 6, null, undefined, {}]) {
-      expect(toLogLevelNumber(bad)).toBeUndefined();
+      expect(parseLogLevel(bad)).toBeUndefined();
       expect(isLogLevel(bad)).toBe(false);
     }
   });

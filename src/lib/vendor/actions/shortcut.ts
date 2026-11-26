@@ -143,7 +143,7 @@ function keyLabel(key: string, isApple: boolean): string {
  * The key caps of a shortcut, per chord, in platform order: `[['Ctrl', 'Shift', 'Z']]` / Apple
  * `[['⇧', '⌘', 'Z']]`; `'g f'` → `[['G'], ['F']]`. For rendering `<kbd>`s.
  */
-export function shortcutKeycaps(shortcut: string | undefined, opts?: ShortcutOptions): string[][] {
+export function getShortcutKeycaps(shortcut: string | undefined, opts?: ShortcutOptions): string[][] {
   const isApple = isAppleDefault(opts);
   return parseShortcut(shortcut, opts).map((c) => {
     const caps: string[] = [];
@@ -168,7 +168,7 @@ export function shortcutKeycaps(shortcut: string | undefined, opts?: ShortcutOpt
  * space. Unparseable text comes back unchanged (a free-form hint still shows).
  */
 export function formatShortcut(shortcut: string | undefined, opts?: ShortcutOptions): string {
-  const caps = shortcutKeycaps(shortcut, opts);
+  const caps = getShortcutKeycaps(shortcut, opts);
   if (!caps.length) return shortcut ?? '';
   const isApple = isAppleDefault(opts);
   return caps.map((chord) => chord.join(isApple ? '' : '+')).join(' ');
@@ -190,8 +190,15 @@ export interface ShortcutBinding {
   shortcut: string | undefined;
   /** Runs on a match; then the event's default is prevented, unless it returns `false`. */
   run(event: KeyboardEvent): boolean | void;
-  /** Skip this binding right now (disabled item, wrong mode). */
-  isEnabled?(): boolean;
+  /**
+   * Key-press gate, asked with the event ONLY when this binding matched the key (incl. the first key of a
+   * sequence) — not for every binding on every key. `false` skips the binding: the key is NOT consumed (no
+   * `preventDefault()`), so another binding — or an outer `bindShortcuts` on an ancestor — still gets it.
+   * E.g. `(e) => !isTypingTarget(e)` = no shortcuts at all while a field has focus. Row / lock / permission
+   * gates are not this hook's job: they belong on the action item (`getIsDisabledCallback(ctx)` /
+   * `beforeActionCallback`).
+   */
+  isEnabled?(event: KeyboardEvent): boolean;
   /** Fire while typing in a field too. Default: only chords with Ctrl / Alt / Meta do, plain keys don't. */
   shouldFireWhileTyping?: boolean;
 }
@@ -205,7 +212,8 @@ export interface BindShortcutsOptions extends ShortcutOptions {
 
 /**
  * Listen for `keydown` on `target` and run the matching binding. Handles sequences (`'g f'`), skips
- * plain keys while typing, ignores IME composition and already-handled events. `bindings` may be a
+ * plain keys while typing, ignores IME composition and already-handled events (`defaultPrevented` — so an
+ * inner binding that handled a key wins over an outer one on an ancestor). `bindings` may be a
  * function, read on every key (a live list of action items). Returns the unbind.
  */
 export function bindShortcuts(
@@ -230,7 +238,7 @@ export function bindShortcuts(
     const typing = isTypingTarget(event);
     const list = (typeof bindings === 'function' ? bindings() : bindings)
       .map((b) => ({ b, chords: parseShortcut(b.shortcut, opts) }))
-      .filter(({ b, chords }) => chords.length && (b.isEnabled?.() ?? true));
+      .filter(({ chords }) => chords.length);
     const presses = [...pending, event];
     let isPrefix = false;
     for (const { b, chords } of list) {
@@ -239,6 +247,7 @@ export function bindShortcuts(
       const first = chords[0]!;
       const isPlain = !first.ctrl && !first.alt && !first.meta;
       if (typing && isPlain && !b.shouldFireWhileTyping) continue;
+      if (b.isEnabled && !b.isEnabled(event)) continue;
       if (chords.length > presses.length) {
         isPrefix = true;
         continue;

@@ -304,6 +304,8 @@ beforeDropCallback?: (
 beforeCopyCallback?: (ctx: BeforeCopyContext<T>) => string[] | false | void;
 beforeCutCallback?: (ctx: BeforeCutContext<T>) => string[] | false | void;
 beforeDeleteCallback?: (ctx: BeforeDeleteContext<T>) => string[] | false | void;
+// Before the tree scrolls a node into view on its own (keyboard / scrollToPath / paste reveal).
+beforeScrollCallback?: (ctx: BeforeScrollContext<T>) => false | Partial<TreeScrollOptions> | void;
 // Return { targetPath?, position? } to redirect, false to block, or nothing.
 beforePasteCallback?: (ctx: BeforePasteContext<T>) => { targetPath?: string; position?: DropPosition } | false | void;
 

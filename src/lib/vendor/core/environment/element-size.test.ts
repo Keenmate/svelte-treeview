@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { __resetElementSizeObservers, observeElementSize, type ElementSize } from './element-size.js';
+import { __resetElementSizeObservers, createElementSizeObserver, observeElementSize, type ElementSize } from './element-size.js';
 
 // jsdom has no ResizeObserver and no layout — drive both with controllable mocks.
 class MockResizeObserver {
@@ -214,5 +214,42 @@ describe('observeElementSize — layout size', () => {
     const unsub = observeElementSize(svg, (size) => seen.push(size));
     expect(seen).toEqual([{ width: 64, height: 32 }]);
     unsub();
+  });
+});
+
+describe('createElementSizeObserver', () => {
+  it('one listener for a changing set of elements over the shared observer', () => {
+    const a = sized(100);
+    const b = sized(200);
+    document.body.append(a, b);
+    const seen: [Element, number][] = [];
+    const set = createElementSizeObserver((size, el) => seen.push([el, size.width]), { throttleMs: 0 });
+    set.observe(a);
+    set.observe(b);
+    set.observe(a); // already watched
+    expect(seen).toEqual([[a, 100], [b, 200]]);
+    expect(observer().observed.has(a) && observer().observed.has(b)).toBe(true);
+    setSize(b, 250);
+    observer().emit(b);
+    expect(seen.at(-1)).toEqual([b, 250]);
+    set.unobserve(a);
+    expect(observer().observed.has(a)).toBe(false);
+    set.disconnect();
+    expect(MockResizeObserver.instances.every((ro) => ro.observed.size === 0)).toBe(true);
+    a.remove();
+    b.remove();
+  });
+
+  it('drops an element that left the page at its next entry', () => {
+    const a = sized(100);
+    document.body.append(a);
+    const cb = vi.fn();
+    const set = createElementSizeObserver(cb, { throttleMs: 0, shouldFireImmediately: false });
+    set.observe(a);
+    a.remove();
+    setSize(a, 120);
+    observer()?.emit(a);
+    expect(cb).not.toHaveBeenCalled();
+    set.disconnect();
   });
 });

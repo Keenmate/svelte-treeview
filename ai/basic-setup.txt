@@ -259,10 +259,10 @@ labels?: TreeLabelsInput — flat `<elementType>.<name>` keys (web-treeview's), 
   labels.dropBefore / dropAfter / dropChild "Before" / "After" / "Child" (floating drop pads)
   ariaLabels.loading "Loading…" | ariaLabels.showFullLabel | ariaLabels.closeSheet "Close"
   ariaLabels.tree "Tree" (aria-label of the role="tree" container)
-  Screen-reader announcements (core announce(), '' silences one): ariaLabels.searchResults "Results: {count}" |
+  Screen-reader announcements (core announce(), '' silences one): ariaLabels.searchResults "Results: {ctx.count}" |
   ariaLabels.searchNoResults | ariaLabels.movedInto|movedBefore|movedAfter|copiedInto|copiedBefore|copiedAfter
-  "{name} moved into {target}" | ariaLabels.dropItems "Items ({count})" | ariaLabels.dropTreeRoot "the tree" |
-  ariaLabels.dropDenied "Cannot drop here: {target} does not accept dropped items" (params also as params.ctx)
+  "{ctx.name} moved into {ctx.target}" | ariaLabels.dropItems "Items ({ctx.count})" | ariaLabels.dropTreeRoot "the tree" |
+  ariaLabels.dropDenied "Cannot drop here: {ctx.target} does not accept dropped items" (a translateCallback gets params.ctx)
   menuItems.copy … menuItems.sortAll (13 built-in menu items) | menuItems.back "Back"
 '' = deliberately empty (render nothing); missing/undefined = default.
 Per key: labels prop → translateCallback prop → window.components.locale.translateCallback

@@ -10,7 +10,11 @@
  *   weekStartDay: 1,
  *   decimalSeparator: ',', thousandsSeparator: ' ',
  *   labels: { 'web-dropzone.buttons.cancelFile': 'Zrušit {name}' },   // flat — the app's whole JSON fits
- *   translateCallback: ({ key, params }) => (i18next.exists(key) ? i18next.t(key, params) : null),
+ *   translateCallback: ({ key, params }) => {
+ *     const options = { ...params, count: params.ctx?.count };   // ctx.count → the plural count (exists() needs it too)
+ *     return i18next.exists(key, options) ? i18next.t(key, options) : null;
+ *   },
+ *   parseNumberCallback: ({ text, parseDefault }) => parseDefault() ?? myNumberParser(text),   // optional
  * };
  * window.components.security = { shouldEscapeLabels: true };
  * ```
@@ -23,7 +27,8 @@
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import { publishPageSetting } from '../global/page-setting.js';
 import { coreLog } from '../logging/element-logger.js';
-import { notifyEach } from '../logging/safe-call.js';
+import { dispatchToListeners } from '../logging/safe-call.js';
+import type { ParseNumberCallback } from './numbers.js';
 
 /** `translateCallback` context: look the full `key` up (i18next) or format `template` (ICU / FormatJS). */
 export interface LabelTranslateContext {
@@ -33,7 +38,11 @@ export interface LabelTranslateContext {
   key: string;
   /** The resolved template: the page-wide `labels[key]` → the component's English default. */
   template: string;
-  /** Placeholder values; HTML-escaped already when the label goes into HTML and labels aren't escaped as a whole. */
+  /**
+   * Placeholder values — `{ ctx }` (the text spot's callback context; `ctx.count` = the number to pluralize by) or
+   * flat `{name}` values. Strings HTML-escaped already (at any depth) when the label goes into HTML and labels
+   * aren't escaped as a whole.
+   */
   params: Readonly<Record<string, unknown>>;
   /** The resolved BCP-47 locale. */
   locale: string;
@@ -67,6 +76,11 @@ export interface PageLocale extends LocaleSettings {
    */
   labels?: Readonly<Record<string, string>>;
   translateCallback?: TranslateCallback;
+  /**
+   * Reads every number a user types in any component (`parseNumber`), after an element's own
+   * `parseNumberCallback`: return the number, `null` = not a number, `undefined` = core's parse.
+   */
+  parseNumberCallback?: ParseNumberCallback;
 }
 
 /** `window.components.security`. */
@@ -119,6 +133,10 @@ function freezeLocale(value: Record<string, unknown>): Readonly<PageLocale> {
     coreLog(null, 'INIT', 'ELEMENT').warn('window.components.locale.translateCallback must be a function — ignored');
     delete copy.translateCallback;
   }
+  if (copy.parseNumberCallback !== undefined && typeof copy.parseNumberCallback !== 'function') {
+    coreLog(null, 'INIT', 'ELEMENT').warn('window.components.locale.parseNumberCallback must be a function — ignored');
+    delete copy.parseNumberCallback;
+  }
   if ('formatLabelCallback' in copy) {
     coreLog(null, 'INIT', 'ELEMENT').warn('window.components.locale.formatLabelCallback is now translateCallback — ignored');
     delete copy.formatLabelCallback;
@@ -129,7 +147,7 @@ function freezeLocale(value: Record<string, unknown>): Readonly<PageLocale> {
 function changed(): void {
   const s = state();
   s.revision++;
-  notifyEach(s.listeners, undefined, { message: 'locale listener threw' });
+  dispatchToListeners(s.listeners, undefined, { message: 'locale listener threw' });
 }
 
 function setter(key: 'locale' | 'security', freeze: (v: Record<string, unknown>) => object) {
@@ -191,7 +209,7 @@ export function getLocaleRevision(): number {
  * browser language changed); returns the unsubscribe. A BlissElement gets this through the
  * `localeChanged()` hook instead.
  */
-export function observeLocale(listener: () => void): () => void {
+export function observePageLocale(listener: () => void): () => void {
   publishLocaleHooks();
   const { listeners } = state();
   const wrapped = (): void => listener();

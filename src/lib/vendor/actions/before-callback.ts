@@ -1,4 +1,4 @@
-// Vendored from @keenmate/web-components-core dd29c43 — src/element/before-callback.ts (tracked in scripts/core-sync.json).
+// Vendored from @keenmate/web-components-core c2f5f83 — src/element/before-callback.ts (tracked in scripts/core-sync.json).
 // Adapted (see README.md): `coreLog(source, 'UI', 'ELEMENT')` → the tree's `uiLogger`. Keep in sync by re-copying; don't diverge.
 import { uiLogger } from '../../logger.js';
 

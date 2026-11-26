@@ -339,3 +339,29 @@ test.describe('props after init (§3.1)', () => {
 		expect(await call(page, '__main', 'pasteNodes', '1')).toMatchObject({ success: true, count: 1 });
 	});
 });
+
+test.describe('before*Callback runner (REVIEW §4)', () => {
+	test.beforeEach(async ({ page }) => {
+		await page.goto(PAGE);
+		await expect(row(page, '2')).toBeVisible();
+	});
+
+	test('a THROWING beforeDeleteCallback blocks the delete (a crashed guard must not let it through)', async ({ page }) => {
+		const errors: string[] = [];
+		page.on('console', (m) => {
+			if (m.type() === 'error') errors.push(m.text());
+		});
+		const result = await page.evaluate(() => {
+			const t = (window as any).__main;
+			t.update({
+				beforeDeleteCallback: () => {
+					throw new Error('guard crashed');
+				}
+			});
+			return t.deleteNodes(['2']);
+		});
+		expect(result).toEqual({ removed: 0, blocked: 1 });
+		await expect(row(page, '2')).toBeVisible();
+		expect(errors.some((e) => e.includes('beforeDeleteCallback threw'))).toBe(true);
+	});
+});

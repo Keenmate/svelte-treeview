@@ -20,7 +20,7 @@
 import { sharedState } from '../global/shared-state.js';
 import { publishPageSetting } from '../global/page-setting.js';
 import { adoptStyles } from '../dom/adopt-styles.js';
-import { notifyEach } from '../logging/safe-call.js';
+import { dispatchToListeners } from '../logging/safe-call.js';
 
 /** Motion levels. `auto` = no override: follow the page / section / OS. */
 export const MOTION_VALUES = ['auto', 'none', 'snappy', 'smooth'] as const;
@@ -98,7 +98,7 @@ function setLevel(value: unknown): void {
   if (next === s.level) return;
   s.level = next;
   // A throwing listener is logged and skipped — the other elements still follow the level.
-  notifyEach(s.listeners, next, { message: 'page motion listener threw' });
+  dispatchToListeners(s.listeners, next, { message: 'page motion listener threw' });
 }
 
 /**
@@ -108,7 +108,7 @@ function setLevel(value: unknown): void {
  * host, which beat closer sections). An author-written `<html data-motion>` is the same
  * layer: the page level replaces it while set and `'auto'` puts it back.
  */
-function applyPageLevelToHtml(level: Motion): void {
+function setHtmlMotionLevel(level: Motion): void {
   if (typeof document === 'undefined' || !document.documentElement) return;
   const html = document.documentElement;
   const s = state();
@@ -139,10 +139,10 @@ export function publishMotionHook(): void {
   // Subscribed through the shared listener set, so a setter owned by another copy of core reaches it too.
   if (!s.hasHtmlWriter) {
     s.hasHtmlWriter = true;
-    s.listeners.add(applyPageLevelToHtml);
+    s.listeners.add(setHtmlMotionLevel);
   }
   publishPageSetting(HOOK_KEY, { get: () => state().level, set: setLevel });
-  applyPageLevelToHtml(s.level);
+  setHtmlMotionLevel(s.level);
 }
 
 /** The page-wide level (`'auto'` when unset). */

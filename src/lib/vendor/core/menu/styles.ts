@@ -47,20 +47,23 @@ const SPACE_MD = rem('space-md', 1.2); // 12px
 const SPACE_BASE = rem('space-base', 1.6); // 16px
 const RADIUS_SM = rem('border-radius-sm', 0.4); // 4px
 const RADIUS_LG = rem('border-radius-lg', 0.8); // 8px
-const SHADOW_COLOR = 'var(--base-shadow-color, rgba(0, 0, 0, 0.2))';
-const BORDER_COLOR = 'var(--base-border-color, light-dark(#e0e0e0, #3d3d3d))';
-const MUTED_TEXT = 'var(--base-text-color-3, light-dark(#707070, #a3a3a3))';
+/** Contract defaults (base-variables.css) — the fallbacks equal them, derived tokens use the contract formula. */
+const MAIN_BG = 'var(--base-main-bg, light-dark(#ffffff, #1e293b))';
+const TEXT_1 = 'var(--base-text-color-1, light-dark(#334155, #f1f5f9))';
+const SHADOW_COLOR = 'var(--base-shadow-color, light-dark(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.4)))';
+const BORDER_COLOR = `var(--base-border-color, light-dark(oklch(from var(--base-main-bg, light-dark(#ffffff, #1e293b)) calc(l - 0.096) c h), oklch(from var(--base-main-bg, light-dark(#ffffff, #1e293b)) calc(l + 0.192) c h)))`;
+const MUTED_TEXT = `var(--base-text-color-3, color-mix(in srgb, var(--base-text-color-1, light-dark(#334155, #f1f5f9)) 55%, var(--base-main-bg, light-dark(#ffffff, #1e293b))))`;
 const ITEM_GAP = km('item-gap', SPACE_SM);
 const ITEM_PADDING = km('item-padding', `${remOf(0.6)} ${SPACE_MD}`);
 const DISABLED_OPACITY = km('disabled-opacity', 'var(--base-disabled-opacity, 0.65)');
-const DANGER_COLOR = km('danger-color', 'var(--base-danger-color, light-dark(#d13438, #f87c86))');
+const DANGER_COLOR = km('danger-color', 'var(--base-danger-color, #dc2626)');
 const DIVIDER_COLOR = km('divider-color', BORDER_COLOR);
 const Z_INDEX = km('z-index', 'calc(var(--base-z-tooltip, 9000) + 1)');
-const BG = km('bg', 'var(--base-dropdown-bg, var(--base-elevated-bg, var(--base-main-bg, light-dark(#ffffff, #2b2b2b))))');
-const TEXT_COLOR = km('text-color', 'var(--base-text-color-1, light-dark(#242424, #f5f5f5))');
+const BG = km('bg', 'var(--base-dropdown-bg, var(--base-main-bg, light-dark(#ffffff, #1e293b)))');
+const TEXT_COLOR = km('text-color', TEXT_1);
 const FONT_FAMILY = km('font-family', 'var(--base-font-family, inherit)');
 const LINE_HEIGHT = km('line-height', 'var(--base-line-height-normal, 1.5)');
-const HOVER_BG = km('hover-bg', 'var(--base-hover-bg, color-mix(in srgb, currentColor 8%, transparent))');
+const HOVER_BG = km('hover-bg', `var(--base-hover-bg, light-dark(color-mix(in oklch, oklch(from var(--base-main-bg, light-dark(#ffffff, #1e293b)) calc(l - 0.45) c h) 14%, transparent), color-mix(in oklch, oklch(from var(--base-main-bg, light-dark(#ffffff, #1e293b)) calc(l + 0.45) c h) 28%, transparent)))`);
 const TOUCH_TARGET = 'var(--base-touch-target-min, 44px)';
 /** Open / close animation: the motion tokens only (SPEC §12.16 — `data-motion`, OS reduced motion → 0s). */
 const SHEET_DURATION = km('sheet-duration', 'var(--base-duration-medium, 0.25s)');
@@ -79,9 +82,9 @@ export const MENU_CSS = `
   overflow-y: auto;
   padding: ${km('padding', `${SPACE_XS} 0`)};
   background: ${BG};
-  border: ${km('border', `var(--base-dropdown-border, 1px solid ${BORDER_COLOR})`)};
+  border: ${km('border', `var(--base-dropdown-border, var(--base-border-width, 1px) solid ${BORDER_COLOR})`)};
   border-radius: ${km('border-radius', RADIUS_SM)};
-  box-shadow: ${km('shadow', 'var(--base-dropdown-box-shadow, 0 8px 16px rgba(0, 0, 0, 0.15))')};
+  box-shadow: ${km('shadow', `var(--base-dropdown-box-shadow, 0 8px 16px var(--base-shadow-color, light-dark(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.4))))`)};
   color: ${TEXT_COLOR};
   font-family: ${FONT_FAMILY};
   font-size: ${km('font-size', rem('font-size-sm', 1.4))};
@@ -128,11 +131,11 @@ export const MENU_CSS = `
 
 .km-menu__item--danger:hover,
 .km-menu__item--danger:focus {
-  background: ${km('danger-hover-bg', `var(--base-danger-bg-subtle, color-mix(in srgb, ${DANGER_COLOR} 10%, transparent))`)};
+  background: ${km('danger-hover-bg', `var(--base-danger-bg-subtle, light-dark(color-mix(in srgb, var(--_km-menu-danger-color, var(--km-menu-danger-color, var(--base-danger-color, #dc2626))) 10%, transparent), color-mix(in srgb, var(--_km-menu-danger-color, var(--km-menu-danger-color, var(--base-danger-color, #dc2626))) 20%, transparent)))`)};
 }
 
 .km-menu__item--toggled {
-  color: ${km('toggled-color', 'var(--base-primary-color, #0078d4)')};
+  color: ${km('toggled-color', 'var(--base-primary-color, #3b82f6)')};
 }
 
 .km-menu__icon {
@@ -207,7 +210,7 @@ export const MENU_CSS = `
   position: fixed;
   inset: 0;
   z-index: ${Z_INDEX};
-  background: ${km('backdrop', 'var(--base-overlay-bg, rgba(0, 0, 0, 0.4))')};
+  background: ${km('backdrop', 'var(--base-overlay-bg, rgba(30, 41, 59, 0.5))')};
   animation: km-menu-fade-in ${SHEET_DURATION} ${EASE_OUT};
 }
 

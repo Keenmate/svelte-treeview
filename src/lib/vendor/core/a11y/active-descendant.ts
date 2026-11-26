@@ -12,8 +12,7 @@
 import { createId } from '../dom/create-id.js';
 import { findScrollContainer, scrollIntoContainer } from '../dom/scroll-container.js';
 import { coreLog } from '../logging/element-logger.js';
-// svelte-treeview: the vendored safe-call still names it callSafely (core renamed it runSafely; re-sync = REVIEW §4).
-import { callSafely as runSafely } from '../logging/safe-call.js';
+import { runSafely } from '../logging/safe-call.js';
 
 export interface ActiveDescendantOptions {
   /** The items in order, read on every key (re-render freely). */

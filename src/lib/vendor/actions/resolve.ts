@@ -1,4 +1,4 @@
-// Vendored from @keenmate/web-components-core dd29c43 — src/actions/resolve.ts (tracked in scripts/core-sync.json).
+// Vendored from @keenmate/web-components-core c2f5f83 — src/actions/resolve.ts (tracked in scripts/core-sync.json).
 // Adapted (see README.md): `coreLog(...)` → the tree's `uiLogger`. Keep in sync by re-copying; don't diverge.
 import { runBeforeCallback } from './before-callback.js';
 import { uiLogger } from '../../logger.js';
@@ -141,7 +141,7 @@ export function resolveMenuEntries<Ctx, A extends string>(
 }
 
 /** A menu item's submenu: `getChildrenCallback` (may be async) wins over `children`. `logSource`: see {@link resolveActionItem}. */
-export async function getMenuChildren<Ctx, A extends string>(
+export async function loadMenuChildren<Ctx, A extends string>(
   item: MenuItem<Ctx, A>,
   ctx: Ctx,
   logSource: unknown = ctx,
@@ -213,7 +213,7 @@ export interface RunActionOptions<Ctx, A extends string> {
   /** The component's `beforeActionCallback` — `false` cancels everything (async OK). */
   beforeActionCallback?: ((detail: ActionEventDetail<Ctx, A>) => unknown) | null;
   /** Fire the `action` event (and its `onAction` twin) after the built-in — usually `this.emit('action', detail)`. */
-  emitAction(detail: ActionEventDetail<Ctx, A>): void;
+  dispatchAction(detail: ActionEventDetail<Ctx, A>): void;
   /** The built-in behaviour for `detail.action`, if any. */
   runBuiltIn?(detail: ActionEventDetail<Ctx, A>): void | Promise<void>;
 }
@@ -263,7 +263,7 @@ export async function runAction<Ctx, A extends string>(opts: RunActionOptions<Ct
       }
     }
     try {
-      opts.emitAction(detail);
+      opts.dispatchAction(detail);
     } catch (error) {
       // The action already ran; a throwing notification must not turn it into a rejection.
       uiLogger.error(`action "${detail.action}" event handler threw`, error);

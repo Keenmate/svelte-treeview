@@ -23,6 +23,7 @@ attribute in parentheses); svelte names are `<Tree>` props / exports. Decided 20
 | `indexerTimeout`, `searchTerm` | same (`searchTerm` `$bindable`) | same |
 | `indexerBatchSize` default `1000` (was 25; each idle slot is time-boxed ≤16 ms, ≤8 ms when forced, so the cap no longer governs smoothness — 55k nodes: svelte ~2 s, web ~21 s (being investigated), both ~2 min before) | same | same |
 | `maxSearchResultCount` (`max-search-result-count`, default `1000`; replaces FlexSearch's silent 100) | same | same |
+| search folding: the built-in index normalizes text with core `normalizeSearchText` (lowercase, diacritics stripped, `ł` → `l`, `ß` → `ss`, `æ` → `ae`) | same (2026-11-24, vendored; was FlexSearch `Charset.Normalize`, which left `ł` / `ß` unfolded) | same |
 | `filterScope` (`filter-scope`: `matches` \| `descendants` \| `tree-depth` \| `subtree-height` \| `levels-below`, default `matches`), `filterDescendantDepth` (`filter-descendant-depth`, default `1`), `shouldExpandFilterDescendants` (`expand-filter-descendants`, default `true`) | same | same |
 | `isKeyboardShortcutsEnabled` (`enable-keyboard-shortcuts`, default `true`) | same (`true`) | same |
 | `shouldAlignNodeIcons` (`align-node-icons`, default `true`) | same (`true`) | same |
@@ -93,7 +94,7 @@ Every web event has an `on<Name>` twin receiving the detail; every detail / ctx 
 | web | svelte | status |
 |---|---|---|
 | `beforeCopyCallback`, `beforeCutCallback`, `beforePasteCallback`, `beforeDeleteCallback`, `beforeDropCallback`, `beforeDragStartCallback`, `beforeCheckboxToggleCallback`, `beforeKeydownCallback`, `beforeExpandCallback`, `beforeActionCallback` | same | same |
-| `beforeScrollCallback({ node, path, source: 'keyboard' \| 'scroll-to-path' \| 'paste', container, options: { block, inline, behavior, shouldRevealContainer } })` → `false` skips / partial replaces the defaults; sync, no event (web 2026-11-02, core §12.15) | — | **to mirror** (2026-11-02): same prop + ctx; svelte has no core dependency, so its copy must follow core's `scrollIntoContainer` algorithm exactly |
+| `beforeScrollCallback({ node, path, source: 'keyboard' \| 'scroll-to-path' \| 'paste', container, options: { block, inline, behavior, shouldRevealContainer } })` → `false` skips / partial replaces the defaults; sync, no event (web 2026-11-02, core §12.15) | same (2026-11-24, REVIEW §4): every self-initiated scroll (keyboard move, `scrollToPath`, the paste reveal) goes through one gate + vendored core `scrollIntoContainer` / `scrollContainerToBox` | same |
 
 ## 5. get* callbacks / render hooks
 
@@ -116,7 +117,7 @@ Every web event has an `on<Name>` twin receiving the detail; every detail / ctx 
 | `expandAll`, `sortNodes`, `sortAll` | same | same |
 | `filterNodes(term, searchOptions?)`, `searchNodes(term, searchOptions?)` | same | same |
 | `scrollToPath(path, { shouldExpandAncestors = true, shouldHighlight = false, behavior?, block?, inline? }): Promise<boolean>` | same | same |
-| `scrollToPath` option `shouldRevealContainer` (default `true`): first scroll the page to an off-screen tree (web 2026-11-02) | — | **to mirror** (2026-11-02) |
+| `scrollToPath` option `shouldRevealContainer` (default `true`): first scroll the page to an off-screen tree (web 2026-11-02) | same (2026-11-24) — `scrollToPath` now scrolls the row's scroll container (core `scrollIntoContainer`; the page when there's none), no longer `scrollIntoView` | same |
 | `getNodeByPath`, `getChildren`, `getSiblings`, `getNodeRef(path)`, `getVisibleFlatNodes()`, `getTree()` | same | same |
 | `refreshNode(path)`, `refreshSiblings(parentPath)` | same | same |
 | `isNodeDropAllowed(path): boolean` | same | same |
@@ -147,7 +148,7 @@ Both resolve every key through core `/locale` `createLabels` (SPEC §12.24): the
 | export `DEFAULT_LABELS`, type `TreeViewLabels` | ✓ | `DEFAULT_LABELS`, type `TreeLabels` (+ `TreeLabelsInput`, `createTreeLabels`, `resolveLabel`) | intentional — type named after each library's component |
 | `ariaLabels.tree` (the `role="tree"` element's `aria-label`) | ✓ (tree body) | ✓ (2026-11-24; `.stv__container`) | same |
 | `messages.loading` (lazy context-submenu loading row), `ariaLabels.closeSheet`, `menuItems.back` | ✓ | ✓ (2026-11-21) | same |
-| `ariaLabels.searchResults*`, `ariaLabels.moved*` / `copied*`, `ariaLabels.drop*` (screen-reader announcements, core `announce()`) | ✓ — templates `{ctx.count}` / `{ctx.name}` / `{ctx.target}` / `{ctx.searchTerm}` | ✓ (2026-11-24) — templates `{count}` / `{name}` / `{target}` / `{searchTerm}`; the same values also go as `params.ctx` to a `translateCallback` | to align: svelte's vendored core `/locale` predates dotted `{ctx.*}` placeholders — switch the templates when it's re-synced (REVIEW §4) |
+| `ariaLabels.searchResults*`, `ariaLabels.moved*` / `copied*`, `ariaLabels.drop*` (screen-reader announcements, core `announce()`) | ✓ — templates `{ctx.count}` / `{ctx.name}` / `{ctx.target}` / `{ctx.searchTerm}` | ✓ (2026-11-24) — same templates and `params.ctx` (vendored core `/locale` re-synced to rc26) | same |
 
 ## 8. Exports
 
@@ -165,10 +166,10 @@ Event ctx types (2026-11-24, both): one type per event — `SelectionChangeConte
 | `createLTree`, `TreeEngine`, `EventEmitter`, `DomRenderer`, `createRenderCoordinator`, clipboard / drag-set registry helpers | — | intentional — web is renderer-pluggable / headless-capable |
 | pointer-events drag for mouse / pen / touch through core `createPointerDrag` (ctx `event` = `PointerEvent`); a cross-tree target is found by `.wtv__container[data-tree-id]` + the tree registry (2026-11-22; was HTML5 drag for mouse / pen) | pointer-events drag for mouse / pen / touch through vendored core `createPointerDrag` (ctx `event` = `PointerEvent`); custom renderers: `controller.attachPointerDrag(container)` + `[data-tree-path]` / `[data-drop-position]` — the HTML5 `startDrag` / `dragOver` / `drop` / `dropAt` were removed (rc18, 2026-11-22) | same — both on core `createPointerDrag` (svelte vendors it, core-sync group "pointer-drag") |
 | logging: `enableLogging`, `disableLogging`, `resetLogging`, `setLogLevel`, `setCategoryLevel`, `LOGGING_CATEGORIES`, `initLogger` / `dataLogger` / `indexLogger` / `uiLogger` / `dragLogger` / `renderLogger` — core `createLoggers()` bundle, namespace `TREEVIEW` | same (2026-11-13: core logging vendored in `vendor/core/logging`, replacing `loglevel` + `loglevel-plugin-prefix`), namespace `STV`; also the `Logger` / `LogLevelDesc` types | same engine + levels; namespace **intentional** (`STV` = the component prefix, like `DRP` — `TREEVIEW` would share levels / `km-log:*` keys with web-treeview on one page) |
-| perf: `enablePerfLogging`, `disablePerfLogging`, `setPerfThreshold` (`TREEVIEW:PERF` bundle) | same (`STV:PERF`) + `isPerfLoggingEnabled`, `perfStart`, `perfEnd`, `perfMeasure`, `perfSummary` | svelte-only extras kept |
+| perf: `enablePerfLogging`, `disablePerfLogging`, `setPerfThreshold` (`TREEVIEW:PERF` bundle, core `createPerfLogger`) | same (`STV:PERF`, core `createPerfLogger` since 2026-11-24 — lines log at `debug`) + `isPerfLoggingEnabled`, `perfStart`, `perfEnd`, `perfMeasure`, `perfSummary` (thin wrappers) | svelte-only extras kept |
 | environment: — (consumers import from `@keenmate/web-components-core/environment`) | `observeEnvironment`, `observeViewport`, `getEnvironment`, `classifyDevice`, `configureBreakpoints`, `observeElementSize`, `getPageMotion`, `observePageMotion`, `MOTION_VALUES` + their types (vendored core rc23 — `ObserveEnvironmentOptions` / `PointerAccuracy` are core's names) | intentional — no core dependency in svelte; breakpoints / motion state is shared through `globalThis`, so one `configureBreakpoints()` reaches both |
 | theme context: — (consumers import `setThemeMode` & co. from `@keenmate/web-components-core`) | `setThemeMode`, `getThemeMode`, `getThemeContext`, `observeThemeContext`, `ColorScheme` / `ThemeMode` / `ThemeSource` / `ThemeListener` (vendored core) | intentional — svelte has no core dependency to import from; the state is shared through `globalThis`, so svelte's `setThemeMode` also drives the web-* components on the page |
-| `getMenuChildren`, `ResolvedMenuEntry` (re-exported from core `/actions`) | `resolveMenuEntries`, `getMenuChildren`, `ResolvedMenuEntry` (vendored core `/actions` resolvers) | `getMenuChildren` / `ResolvedMenuEntry` same; `resolveMenuEntries` svelte-only (web resolves for its renderer — `ctx.entries`; or import it from `@keenmate/web-components-core/actions`) |
+| `getMenuChildren`, `ResolvedMenuEntry` (re-exported from core `/actions`, core rc25) | `resolveMenuEntries`, `loadMenuChildren`, `ResolvedMenuEntry` (vendored core `/actions` resolvers, core rc26) | **to align** (2026-11-24): core rc26 renamed `getMenuChildren` → `loadMenuChildren`; svelte re-synced, web gets it when it moves to core rc26. `ResolvedMenuEntry` same; `resolveMenuEntries` svelte-only (web resolves for its renderer — `ctx.entries`; or import it from `@keenmate/web-components-core/actions`) |
 | — | `TreeProvider`, `createTreeEngine`, `TreeEngine`, `ContextMenuItem` / divider components, `tooltip` action, environment helpers | intentional — Svelte framework exports |
 
 ## 9. Behaviour notes

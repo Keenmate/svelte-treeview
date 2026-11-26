@@ -30,7 +30,7 @@
  */
 
 import { sharedState } from '../global/shared-state.js';
-import { composedParent } from '../dom/composed-tree.js';
+import { deepParent } from '../dom/composed-tree.js';
 import { coreLog } from '../logging/element-logger.js';
 import { once } from '../dom/once.js';
 
@@ -227,7 +227,7 @@ function stopWatch(watch: Watch): void {
   watch.body = null;
 }
 
-function syncWatch(watch: Watch): void {
+function reconcileWatch(watch: Watch): void {
   if (shouldObserve(watch)) startWatch(watch);
   else stopWatch(watch);
 }
@@ -250,7 +250,7 @@ export function resolveThemeSource(host: Element, source: ThemeSource | undefine
   if (typeof source !== 'string') {
     found = source;
   } else if (source === 'closest') {
-    for (let el = composedParent(host); el; el = composedParent(el)) {
+    for (let el = deepParent(host); el; el = deepParent(el)) {
       if (readThemeSignal(el)) {
         found = el;
         break;
@@ -258,7 +258,7 @@ export function resolveThemeSource(host: Element, source: ThemeSource | undefine
     }
   } else {
     try {
-      for (let el = composedParent(host); el && !found; el = composedParent(el)) {
+      for (let el = deepParent(host); el && !found; el = deepParent(el)) {
         if (el.matches(source)) found = el;
       }
       found ??= document.querySelector(source);
@@ -280,7 +280,7 @@ function closestState(): ClosestState {
 /** The host's composed ancestors below the page (the page watch covers <html> / <body>). */
 function ancestorChain(host: Element): Element[] {
   const chain: Element[] = [];
-  for (let el = composedParent(host); el && !isPageElement(el); el = composedParent(el)) chain.push(el);
+  for (let el = deepParent(host); el && !isPageElement(el); el = deepParent(el)) chain.push(el);
   return chain;
 }
 
@@ -292,7 +292,7 @@ function moveSubscriber(sub: Subscriber, el: Element | null): void {
   const previous = sub.source;
   (previous ?? s.page).subscribers.delete(sub);
   if (previous) {
-    syncWatch(previous);
+    reconcileWatch(previous);
     if (previous.subscribers.size === 0) s.sources.delete(previous.element!);
   }
   let next: Watch | null = null;
@@ -302,8 +302,8 @@ function moveSubscriber(sub: Subscriber, el: Element | null): void {
   }
   sub.source = next;
   (next ?? s.page).subscribers.add(sub);
-  if (next) syncWatch(next);
-  syncWatch(s.page);
+  if (next) reconcileWatch(next);
+  reconcileWatch(s.page);
 }
 
 /** Re-resolve the `'closest'` subscribers whose ancestor chain contains one of `targets`. */
@@ -319,7 +319,7 @@ function reresolveClosest(targets: ReadonlySet<Node>): void {
  * One observer for every `'closest'` subscriber's ancestors, while any exists and the mode is
  * `'auto'`. `MutationObserver` can't unobserve one target, so a change in the set re-attaches it.
  */
-function syncClosest(): void {
+function reconcileClosest(): void {
   const c = closestState();
   c.observer?.disconnect();
   if (state().mode !== 'auto' || c.subscribers.size === 0) return;
@@ -357,8 +357,8 @@ export function setThemeMode(mode: ThemeMode): void {
   s.mode = mode;
   if (!hasDom()) return;
   const watches = [s.page, ...s.sources.values()];
-  for (const w of watches) syncWatch(w);
-  syncClosest();
+  for (const w of watches) reconcileWatch(w);
+  reconcileClosest();
   // Back to 'auto': an ancestor may have changed its signal while the observers were paused.
   if (mode === 'auto') {
     for (const sub of closestState().subscribers) {
@@ -420,12 +420,12 @@ export function observeThemeContext(
   }
   const sub: Subscriber = { source: watch, listener, last: undefined };
   (watch ?? s.page).subscribers.add(sub);
-  if (watch) syncWatch(watch);
-  syncWatch(s.page);
+  if (watch) reconcileWatch(watch);
+  reconcileWatch(s.page);
   if (source === 'closest') {
     sub.closest = { host, chain: ancestorChain(host) };
     closestState().subscribers.add(sub);
-    syncClosest();
+    reconcileClosest();
   }
 
   if (opts.shouldFireImmediately !== false) deliver(sub);
@@ -436,11 +436,11 @@ export function observeThemeContext(
     const current = sub.source;
     (current ?? s.page).subscribers.delete(sub);
     if (current) {
-      syncWatch(current);
+      reconcileWatch(current);
       if (current.subscribers.size === 0) s.sources.delete(current.element!);
     }
-    syncWatch(s.page);
-    if (sub.closest && closestState().subscribers.delete(sub)) syncClosest();
+    reconcileWatch(s.page);
+    if (sub.closest && closestState().subscribers.delete(sub)) reconcileClosest();
   });
 }
 

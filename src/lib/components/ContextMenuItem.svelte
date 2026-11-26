@@ -3,6 +3,7 @@
 	import type { TreeEngine } from '../core/TreeEngine.svelte.js';
 	import { renderIcon } from '../vendor/core/dom/render-icon.js';
 	import { formatShortcut } from '../vendor/actions/shortcut.js';
+	import { uiLogger } from '../logger.js';
 	import { computePosition, autoUpdate, offset, flip, shift } from '@floating-ui/dom';
 
 	/**
@@ -70,7 +71,7 @@
 		try {
 			await onClick?.();
 		} catch (error) {
-			console.error('Context menu callback error:', error);
+			uiLogger.error('Context menu callback error:', error);
 		}
 	}
 

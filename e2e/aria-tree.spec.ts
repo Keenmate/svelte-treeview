@@ -209,8 +209,8 @@ test.describe('announcements', () => {
 		await expect(region(page)).toHaveText('No results found');
 	});
 
-	test('labels read the params; translateCallback gets them as params.ctx', async ({ page }) => {
-		await page.evaluate(() => (window as any).__setAnnLabels({ 'ariaLabels.searchResults': '{searchTerm}: {count}' }));
+	test('labels read the spot context ({ctx.*}); translateCallback gets it as params.ctx', async ({ page }) => {
+		await page.evaluate(() => (window as any).__setAnnLabels({ 'ariaLabels.searchResults': '{ctx.searchTerm}: {ctx.count}' }));
 		await search(page, 'ann', 'Ap');
 		await expect(region(page)).toHaveText('Ap: 2');
 		await page.evaluate(() => {

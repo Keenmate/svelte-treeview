@@ -166,7 +166,7 @@ Rendering your own menu (a `contextMenu` snippet, or a headless `TreeProvider` /
 | `controller.menuContext(node)` | The menu ctx `{ node, path, parent, siblings }` + non-enumerable `controller` — pass it to `getContextMenuItemsCallback` and the functions below. `menuContext(null)` = a menu over empty space: `{ node: null }` + `controller`. |
 | `controller.menuItemDefaults(item, ctx)` | The built-in state of a built-in action item (text from `labels`, `isDisabled`, `isDanger`); `undefined` for consumer items. |
 | `resolveMenuEntries(entries, ctx, defaults?)` | Resolves one level: built-in names → items, `get*Callback`s evaluated, hidden items dropped, dividers collapsed (no leading / trailing / doubled). Returns `{ kind: 'item', item, resolved, hasChildren } \| { kind: 'divider', text? }` (`ResolvedMenuEntry`). |
-| `getMenuChildren(item, ctx)` | A submenu's entries: `getChildrenCallback(ctx)` (may be async) wins over `children`. |
+| `loadMenuChildren(item, ctx)` | A submenu's entries: `getChildrenCallback(ctx)` (may be async) wins over `children`. |
 | `controller.activateMenuItem(item, ctx, trigger?, event?)` | Runs the item exactly like the built-in menu: `beforeActionCallback` (`false` cancels — no `onClick`, built-in or `onAction`) → `onClick(detail)` → built-in action → `onAction(detail)`. Resolves `false` when cancelled. A custom renderer cannot bypass the veto. Closing the menu is yours (respect `item.shouldCloseOnClick !== false`). With a node-less ctx (`menuContext(null)`) only the node-free built-ins run — `paste` (into the root), `expand-all`, `collapse-all`, `sort-all`; node-bound ones are skipped (debug log) and `menuItemDefaults` marks them disabled. |
 
 ```svelte
@@ -229,6 +229,9 @@ The two per-node transforms are **operation-neutral** and defined by DIRECTION, 
 | `beforeCutCallback` | `(ctx: BeforeCutContext<T>) => string[] \| false \| void` | `undefined` | Runs before cut. Same shape as `beforeCopyCallback` |
 | `beforePasteCallback` | `(ctx: BeforePasteContext<T>) => { targetPath?, position? } \| false \| void` | `undefined` | Runs before paste. `ctx = { operation, target: { path, node }, entries }` (entries are readonly snapshots). Redirect the target/position or return `false` to block |
 | `beforeDeleteCallback` | `(ctx: BeforeDeleteContext<T>) => string[] \| false \| void` | `undefined` | Runs before the built-in Delete. `ctx = { paths, nodes }`. Return a narrowed path list or `false` to block |
+| `beforeScrollCallback` | `(ctx: BeforeScrollContext<T>) => false \| Partial<TreeScrollOptions> \| void` | `undefined` | Runs before the tree scrolls a node into view on its own — `ctx.source` `'keyboard'` (a nav move: `nearest`, instant, no reveal), `'scroll-to-path'`, `'paste'` (the paste reveal). `ctx = { node, path, source, container (the scroll container core found; null = the page), options: { block, inline, behavior, shouldRevealContainer } }`. Return `false` to skip the scroll, or options to replace the defaults. Sync. Same as web-treeview |
+
+Every `before*Callback` runs through core's runner (SPEC §12.5): `false` rejects, nothing continues, a value continues with it — and a **throw rejects** (logged as an error), so a crashed guard never lets a delete / drop / paste through. A sync hook that returns a Promise is ignored with a warning (`beforeDropCallback` may be async).
 | `nodeOutputTransformationCallback` | `({ data, ...ctx }: NodeTransformCallbackContext<T>) => T` | `undefined` | OUTPUT/egress — per-node clean/redact as a node leaves the source (phase `'output'`, `target` + `position` null). Fires on Ctrl+C/X and the capture side of a copy-drop |
 | `nodeInputTransformationCallback` | `({ data, ...ctx }: NodeTransformCallbackContext<T>) => T \| null` | `undefined` | INPUT/ingress — per-node derive ids/values/names as a duplicate lands (phase `'input'`); return `null` to skip. Fires on paste and the insert side of a copy-drop |
 
@@ -373,9 +376,12 @@ await tree.scrollToPath('1.2.3', {
   shouldExpandAncestors: false, // the row must already be visible
   shouldHighlight: true,        // flash scrollHighlightClass
   behavior: 'instant',
-  block: 'start'
+  block: 'start',
+  shouldRevealContainer: false  // don't scroll the page to an off-screen tree first (default true)
 });
 ```
+
+`scrollToPath` scrolls the row's own scroll container (core `scrollIntoContainer` — `scroll-padding` / `scroll-margin` honoured, never an `overflow: hidden` wrapper); with none, the page scrolls. `beforeScrollCallback` (source `'scroll-to-path'`) can skip it — a skipped scroll still resolves `true`.
 
 ```svelte
 <!-- Default background highlight -->

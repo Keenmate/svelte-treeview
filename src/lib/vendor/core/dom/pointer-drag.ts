@@ -6,14 +6,14 @@
  * Pointer events throughout. Mouse / pen: the drag starts after `threshold` px of movement. Touch: the
  * finger must rest `longPressMs` first (moving earlier = the user scrolls; the drag never starts); once
  * started, the page doesn't scroll (a non-passive `touchmove` is prevented) and the long-press context
- * menu is suppressed. While dragging: `onMove` with the element under the pointer (shadow roots
+ * menu is suppressed. While dragging: `moveCallback` with the element under the pointer (shadow roots
  * pierced — give the drag image `pointer-events: none`), auto-scroll near the scroll container's edges,
- * Escape / `pointercancel` → `onCancel`. After a drop the trailing click is swallowed.
+ * Escape / `pointercancel` → `cancelCallback`. After a drop the trailing click is swallowed.
  */
 
 import { findScrollContainer } from './scroll-container.js';
 import { guardGhostClick } from '../overlay/ghost-click.js';
-import { callSafely } from '../logging/safe-call.js';
+import { runSafely } from '../logging/safe-call.js';
 
 export interface PointerDragContext {
   /** The element the drag started on (`getSource`'s answer). */
@@ -24,14 +24,20 @@ export interface PointerDragContext {
   /** The deepest element under the pointer (through open shadow roots), or `null`. */
   target: Element | null;
   pointerType: string;
+  /** The event behind this call; `null` for a touch long-press start and an auto-scroll step. */
   event: PointerEvent | KeyboardEvent | null;
+  /** The `pointerdown` that armed the drag — present in every callback (also a touch long-press start). */
+  pressEvent: PointerEvent;
 }
 
 export interface PointerDragOptions {
   /** Which element a press starts a drag on (`null` = not draggable here); default: the container. */
   getSource?: (target: Element, event: PointerEvent) => HTMLElement | null;
-  /** Movement (px) before a mouse / pen drag starts, and that cancels a touch long press (default `5`). Read per press. */
-  threshold?: number | (() => number);
+  /**
+   * Movement (px) before a mouse / pen drag starts, and that cancels a touch long press (default `5`).
+   * A function is read per press and gets the `pointerdown` (e.g. `e.pointerType === 'touch' ? 10 : 5`).
+   */
+  threshold?: number | ((event: PointerEvent) => number);
   /** Touch hold before the drag starts (default `300`). A function is read per press (a component input). */
   longPressMs?: number | (() => number);
   /**
@@ -40,15 +46,15 @@ export interface PointerDragOptions {
    */
   autoScroll?: false | { edge?: number; maxSpeed?: number; container?: HTMLElement | null; isEnabled?: (ctx: PointerDragContext) => boolean };
   /** The drag starts; `false` refuses it. */
-  onStart?: (ctx: PointerDragContext) => boolean | void;
-  onMove?: (ctx: PointerDragContext) => void;
-  onDrop?: (ctx: PointerDragContext) => void;
-  onCancel?: (ctx: PointerDragContext) => void;
+  beforeStartCallback?: (ctx: PointerDragContext) => boolean | void;
+  moveCallback?: (ctx: PointerDragContext) => void;
+  dropCallback?: (ctx: PointerDragContext) => void;
+  cancelCallback?: (ctx: PointerDragContext) => void;
 }
 
 export interface PointerDrag {
   readonly isDragging: boolean;
-  /** Abort a drag in progress (`onCancel`). */
+  /** Abort a drag in progress (`cancelCallback`). */
   cancel(): void;
   destroy(): void;
 }
@@ -66,18 +72,19 @@ export function deepElementFromPoint(doc: Document, x: number, y: number): Eleme
 }
 
 export function createPointerDrag(container: HTMLElement, options: PointerDragOptions): PointerDrag {
-  const readOption = (value: number | (() => number) | undefined, fallback: number): number => {
-    const n = typeof value === 'function' ? value() : value;
+  const readOption = (value: number | ((event: PointerEvent) => number) | undefined, fallback: number, press: PointerEvent): number => {
+    const n = typeof value === 'function' ? value(press) : value;
     return typeof n === 'number' && Number.isFinite(n) ? n : fallback;
   };
-  // per press: a component input (touchDragDelay) may change between drags
-  let threshold = readOption(options.threshold, 5);
-  let longPressMs = readOption(options.longPressMs, 300);
+  // read per press (onDown): a component input (touchDragDelay) may change between drags
+  let threshold = 5;
+  let longPressMs = 300;
   const getSource = options.getSource ?? ((): HTMLElement => container);
   const doc = container.ownerDocument;
   const view = doc.defaultView ?? window;
 
   let source: HTMLElement | null = null;
+  let pressEvent: PointerEvent | null = null;
   let pointerId = -1;
   let pointerType = '';
   let startX = 0;
@@ -97,10 +104,11 @@ export function createPointerDrag(container: HTMLElement, options: PointerDragOp
     target: deepElementFromPoint(doc, lastX, lastY),
     pointerType,
     event,
+    pressEvent: pressEvent!,
   });
   const call = (fn: ((ctx: PointerDragContext) => unknown) | undefined, event: PointerDragContext['event'], name: string): unknown => {
     if (!fn) return undefined;
-    const result = callSafely(() => fn(context(event)), { source: container, message: `pointer drag ${name} threw` });
+    const result = runSafely(() => fn(context(event)), { source: container, message: `pointer drag ${name} threw` });
     return result.isOk ? result.value : undefined;
   };
 
@@ -113,7 +121,7 @@ export function createPointerDrag(container: HTMLElement, options: PointerDragOp
     if (!isDragging || !scroller || options.autoScroll === false) return;
     const { edge = 40, maxSpeed = 16, isEnabled } = options.autoScroll ?? {};
     if (isEnabled) {
-      const allowed = callSafely(() => isEnabled(context(null)), { source: container, message: 'autoScroll.isEnabled threw' });
+      const allowed = runSafely(() => isEnabled(context(null)), { source: container, message: 'autoScroll.isEnabled threw' });
       if (allowed.isOk && allowed.value === false) {
         scrollFrame = view.requestAnimationFrame(autoScroll); // ask again next frame
         return;
@@ -127,7 +135,7 @@ export function createPointerDrag(container: HTMLElement, options: PointerDragOp
     const before = scroller.scrollTop + scroller.scrollLeft;
     scroller.scrollTop += dy;
     scroller.scrollLeft += dx;
-    if (scroller.scrollTop + scroller.scrollLeft !== before) call(options.onMove, null, 'onMove'); // new content under the pointer
+    if (scroller.scrollTop + scroller.scrollLeft !== before) call(options.moveCallback, null, 'moveCallback'); // new content under the pointer
     scrollFrame = view.requestAnimationFrame(autoScroll);
   };
 
@@ -151,11 +159,12 @@ export function createPointerDrag(container: HTMLElement, options: PointerDragOp
     isDragging = false;
     isArmed = false;
     source = null;
+    pressEvent = null;
     pointerId = -1;
   };
 
   const start = (event: PointerEvent | null): void => {
-    if (call(options.onStart, event, 'onStart') === false) return reset();
+    if (call(options.beforeStartCallback, event, 'beforeStartCallback') === false) return reset();
     isDragging = true;
     const auto = options.autoScroll === false ? null : options.autoScroll;
     scroller = auto?.container ?? findScrollContainer(source!, { axis: 'both' }) ?? (container.scrollHeight > container.clientHeight ? container : null);
@@ -164,7 +173,7 @@ export function createPointerDrag(container: HTMLElement, options: PointerDragOp
     } catch {
       // the pointer is gone
     }
-    call(options.onMove, event, 'onMove');
+    call(options.moveCallback, event, 'moveCallback');
   };
 
   const onMove = (event: PointerEvent): void => {
@@ -182,7 +191,7 @@ export function createPointerDrag(container: HTMLElement, options: PointerDragOp
       return;
     }
     event.preventDefault();
-    call(options.onMove, event, 'onMove');
+    call(options.moveCallback, event, 'moveCallback');
     if (!scrollFrame) scrollFrame = view.requestAnimationFrame(autoScroll);
   };
 
@@ -192,14 +201,14 @@ export function createPointerDrag(container: HTMLElement, options: PointerDragOp
       lastX = event.clientX;
       lastY = event.clientY;
       const src = source!;
-      call(options.onDrop, event, 'onDrop');
+      call(options.dropCallback, event, 'dropCallback');
       guardGhostClick([src, container], { durationMs: 400 }); // the click that ends a drag isn't a click
     }
     reset();
   };
 
   const cancel = (event: PointerDragContext['event']): void => {
-    if (isDragging) call(options.onCancel, event, 'onCancel');
+    if (isDragging) call(options.cancelCallback, event, 'cancelCallback');
     reset();
   };
   const onCancelEvent = (event: PointerEvent): void => {
@@ -223,9 +232,10 @@ export function createPointerDrag(container: HTMLElement, options: PointerDragOp
     if (source || !event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) return;
     const found = getSource(event.target as Element, event);
     if (!found) return;
-    threshold = readOption(options.threshold, 5);
-    longPressMs = readOption(options.longPressMs, 300);
+    threshold = readOption(options.threshold, 5, event);
+    longPressMs = readOption(options.longPressMs, 300, event);
     source = found;
+    pressEvent = event;
     pointerId = event.pointerId;
     pointerType = event.pointerType;
     startX = lastX = event.clientX;

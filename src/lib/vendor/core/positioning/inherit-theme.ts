@@ -3,7 +3,7 @@
  * `/menu` phone sheet (which is not anchored). A file of its own so tests that mock
  * `anchor.js` keep it.
  */
-import { composedClosest, isAtOrBelow } from '../dom/composed-tree.js';
+import { deepClosest, isDeepInside } from '../dom/composed-tree.js';
 
 /**
  * The attributes a portaled layer inherits from the nearest element carrying each (self or
@@ -31,10 +31,10 @@ const INSTANCE_THEME_ATTRIBUTES: ReadonlySet<string> = new Set(['data-theme', 'd
  */
 export function inheritTheme(source: HTMLElement, target: HTMLElement): () => void {
   const restores: (() => void)[] = [];
-  const contextHost = composedClosest(source, '[data-context-theme]');
+  const contextHost = deepClosest(source, '[data-context-theme]');
   for (const name of THEME_ATTRIBUTES) {
-    let themed = composedClosest(source, `[${name}]`);
-    if (themed && contextHost && INSTANCE_THEME_ATTRIBUTES.has(name) && !isAtOrBelow(themed, contextHost)) {
+    let themed = deepClosest(source, `[${name}]`);
+    if (themed && contextHost && INSTANCE_THEME_ATTRIBUTES.has(name) && !isDeepInside(themed, contextHost)) {
       themed = null;
     }
     const theme = themed?.getAttribute(name);

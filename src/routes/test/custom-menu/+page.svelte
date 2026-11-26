@@ -1,13 +1,13 @@
 <script lang="ts">
 	// Custom menu renderer fixture: a menu rendered by the consumer (no <Tree> menu markup) over the
 	// engine API — engine.menuContext / menuItemDefaults / activateMenuItem +
-	// resolveMenuEntries / getMenuChildren. Activation must run the same path as the built-in
+	// resolveMenuEntries / loadMenuChildren. Activation must run the same path as the built-in
 	// menu (beforeActionCallback veto → onClick → built-in → onAction).
 	// Targeted by e2e/custom-menu.spec.ts.
 	import {
 		TreeProvider,
 		resolveMenuEntries,
-		getMenuChildren,
+		loadMenuChildren,
 		createMenuDivider,
 		type TreeEngine,
 		type TreeMenuContext,
@@ -71,7 +71,7 @@
 	}
 
 	async function openSub(item: TreeMenuItem<Item>, ctx: TreeMenuContext<Item>) {
-		const children = await getMenuChildren(item, ctx);
+		const children = await loadMenuChildren(item, ctx);
 		submenu = children.map((c) => ('text' in c ? String(c.text) : '-'));
 	}
 </script>

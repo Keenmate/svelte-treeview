@@ -25,7 +25,7 @@ import { createFrameScheduler } from '../dom/frame-scheduler.js';
  * alone while the user has pinch-zoomed (`visualViewport.scale !== 1`: the visual
  * viewport is then smaller than the screen for a reason other than the keyboard).
  */
-export function observeKeyboardInset(panel: HTMLElement): () => void {
+export function fitToVisibleViewport(panel: HTMLElement): () => void {
   const view = panel.ownerDocument?.defaultView ?? (typeof window !== 'undefined' ? window : null);
   const vv = view?.visualViewport ?? null;
   if (!vv) return () => {};

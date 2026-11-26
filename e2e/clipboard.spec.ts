@@ -64,22 +64,35 @@ test.describe('Clipboard — Ctrl/Cmd + C / X / V', () => {
 
 		await page.evaluate(() => {
 			document.documentElement.style.setProperty('--base-scroll-behavior', 'instant');
-			const calls: { text: string; behavior?: string; block?: string }[] = ((window as any).revealCalls = []);
-			const orig = Element.prototype.scrollIntoView;
-			Element.prototype.scrollIntoView = function (this: Element, o?: boolean | ScrollIntoViewOptions) {
-				const opts = typeof o === 'object' && o ? o : {};
-				calls.push({ text: this.textContent ?? '', behavior: opts.behavior, block: opts.block });
-				return orig.call(this, o);
+			// A small scroll box around the tree, scrolled to the top, so the pasted row (under
+			// Folder B) lands off-screen and the reveal has to move it (core scrollIntoContainer
+			// only scrolls when something is out of view).
+			const host = document.querySelector('.stv__container')!.parentElement as HTMLElement;
+			host.style.maxHeight = '60px';
+			host.style.overflowY = 'auto';
+			host.scrollTop = 0;
+			const calls: (string | undefined)[] = ((window as any).revealCalls = []);
+			const orig = Element.prototype.scrollTo as (...a: unknown[]) => void;
+			(Element.prototype as any).scrollTo = function (this: Element, o?: unknown, ...rest: unknown[]) {
+				calls.push(typeof o === 'object' && o ? (o as ScrollToOptions).behavior : undefined);
+				return orig.call(this, o, ...rest);
 			};
 		});
 		await page.keyboard.press('Control+v');
 		await expect(page.getByTestId('last-log')).toHaveText('pasted 1');
 
-		await expect(nodeByName(page, 'B-child-1')).toBeVisible(); // Folder B opened
-		await expect(tree(page).locator('.stv__node[data-tree-path^="2."] span[data-name="A-child-1"]')).toBeVisible();
-		await expect
-			.poll(() => page.evaluate(() => (window as any).revealCalls))
-			.toContainEqual({ text: expect.stringContaining('A-child-1'), behavior: 'instant', block: 'nearest' });
+		const pasted = tree(page).locator('.stv__node[data-tree-path^="2."] span[data-name="A-child-1"]');
+		await expect(pasted).toHaveCount(1); // Folder B opened, the copy is in it
+		// Revealed: the box scrolled (with the token's behavior) and the copy sits inside it.
+		await expect.poll(() => page.evaluate(() => (window as any).revealCalls)).toContain('instant');
+		const isInsideBox = () =>
+			page.evaluate(() => {
+				const host = document.querySelector('.stv__container')!.parentElement as HTMLElement;
+				const r = document.querySelector('.stv__node[data-tree-path^="2."] span[data-name="A-child-1"]')!.getBoundingClientRect();
+				const b = host.getBoundingClientRect();
+				return r.top >= b.top - 1 && r.bottom <= b.bottom + 1;
+			});
+		await expect.poll(isInsideBox).toBe(true);
 	});
 
 	test('cut dims the node; Escape cancels and un-dims', async ({ page }) => {

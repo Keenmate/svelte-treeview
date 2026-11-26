@@ -420,17 +420,26 @@ Example async context menu item (the menu closes after onClick settles):
 
 ERROR HANDLING
 --------------
-Handle errors in async callbacks:
+Every before*Callback runs through core's runner: false = reject, nothing = continue, a value =
+continue with it, and a THROW = reject (logged as an error) — a crashed guard never lets the
+operation through. A sync hook that returns a Promise is ignored (warned); beforeDropCallback may be async.
+Catch yourself when you want to show the user why:
 
-beforeDropCallback={async (drop, drag, pos) => {
+beforeDropCallback={async (ctx) => {
   try {
-    await validateMove(drag, drop);
-    return true;
+    await validateMove(ctx.dragged, ctx.target);
   } catch (error) {
     showError(error.message);
     return false;
   }
 }}
+
+BEFORE SCROLL CALLBACK
+----------------------
+beforeScrollCallback?: (ctx: BeforeScrollContext<T>) => false | Partial<TreeScrollOptions> | void
+  // ctx = { node, path, source: 'keyboard' | 'scroll-to-path' | 'paste', container (scroll container; null = page),
+  //         options: { block, inline, behavior, shouldRevealContainer }, controller }
+  // false skips the scroll; a partial replaces the defaults (e.g. { block: 'start' } under a sticky header).
 
 Context menu with error handling:
 {

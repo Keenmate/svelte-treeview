@@ -7,7 +7,7 @@
  * `data-motion` and zeroed by OS reduced motion), so `readAnimationMs()` reads back what CSS
  * resolved: `0` means no animation and `animateOut()` finishes at once, with no waiting.
  */
-import { callSafely } from '../logging/safe-call.js';
+import { runSafely } from '../logging/safe-call.js';
 
 /** The CSS variable {@link AnimateOutOptions.shouldSetHeightVar} writes: the element's height in px. */
 export const EXIT_HEIGHT_VAR = '--km-exit-height';
@@ -50,14 +50,14 @@ export interface AnimateOutOptions {
   /**
    * The closing class; its CSS runs the disappear `@keyframes` (`forwards`). A function is asked once
    * per element — different BEM modifiers on one call (`cp__container--closing` /
-   * `cp__backdrop--closing`), so `cancel()` takes each one's own class off and `onDone` waits for both.
+   * `cp__backdrop--closing`), so `cancel()` takes each one's own class off and `doneCallback` waits for both.
    */
   className: string | ((el: Element) => string);
   /**
    * Runs once every element's closing animation ended (at once when there is none): remove the
    * elements, collapse the node, … Never runs after `cancel()`. A throw is logged.
    */
-  onDone?(): void;
+  doneCallback?(): void;
   /** Make the elements `inert` while they animate out (no clicks, no focus). Default `true`. */
   shouldSetInert?: boolean;
   /**
@@ -72,26 +72,26 @@ export interface AnimateOutOptions {
 /** Handle returned by {@link animateOut}. */
 export interface AnimateOutHandle {
   /**
-   * Stop: the closing class, `inert` and the height variable come off, `onDone` never runs (the
+   * Stop: the closing class, `inert` and the height variable come off, `doneCallback` never runs (the
    * user reopened mid-close). No-op once finished.
    */
   cancel(): void;
-  /** Resolves `true` after `onDone`, `false` when cancelled. */
+  /** Resolves `true` after `doneCallback`, `false` when cancelled. */
   readonly finished: Promise<boolean>;
 }
 
 /**
  * Animate elements out: add the closing class (+ `inert`), wait for their closing animations,
- * then run `onDone` — synchronously when nothing animates (motion off, `0s`, reduced motion). An
+ * then run `doneCallback` — synchronously when nothing animates (motion off, `0s`, reduced motion). An
  * element that gets no `animationend` (a hidden tab, `display: none`) is given up on after its
- * duration + 50ms. The closing class stays on after `onDone` (the caller removes or resets the
+ * duration + 50ms. The closing class stays on after `doneCallback` (the caller removes or resets the
  * elements); `inert` and the height variable are put back.
  *
  * ```ts
- * animateOut(rows, { className: 'wtv__row--closing', shouldSetHeightVar: true, onDone: () => collapse(node) });
+ * animateOut(rows, { className: 'wtv__row--closing', shouldSetHeightVar: true, doneCallback: () => collapse(node) });
  * animateOut([panel, backdrop], {
  *   className: (el) => (el === backdrop ? 'xx__backdrop--closing' : 'xx__panel--closing'),
- *   onDone: () => { panel.remove(); backdrop.remove(); },
+ *   doneCallback: () => { panel.remove(); backdrop.remove(); },
  * });
  * ```
  */
@@ -133,8 +133,8 @@ export function animateOut(elements: Element | readonly Element[], opts: Animate
     if (timer !== undefined) clearTimeout(timer);
     for (const el of targets) el.removeEventListener('animationend', onEnd);
     if (isDone) {
-      const { onDone } = opts;
-      if (onDone) callSafely(onDone, { source: targets[0] ?? null, message: 'animateOut onDone threw' });
+      const { doneCallback } = opts;
+      if (doneCallback) runSafely(doneCallback, { source: targets[0] ?? null, message: 'animateOut doneCallback threw' });
     } else {
       for (const el of targets) el.classList.remove(classes.get(el)!);
     }

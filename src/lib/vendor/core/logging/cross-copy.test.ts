@@ -31,7 +31,7 @@ describe('logging across copies of core', () => {
     vi.resetModules();
     const other = await import('./element-logger.js');
     expect(other.getCoreLogging()).toBe(getCoreLogging());
-    expect(other.coreLogging.namespace).toBe('CORE');
+    expect(other.getCoreLogging().namespace).toBe('CORE');
   });
 
   // Review L-23: the package is sideEffects:false — importing must not create the CORE bundle.
@@ -44,7 +44,7 @@ describe('logging across copies of core', () => {
       vi.resetModules();
       const fresh = await import('./element-logger.js');
       expect(g[key]).toBeUndefined();
-      expect(fresh.coreLogging.LOGGING_CATEGORIES).toEqual(['ELEMENT', 'ACTIONS', 'MENU', 'THEME']);
+      expect(fresh.getCoreLogging().LOGGING_CATEGORIES).toEqual(['ELEMENT', 'ACTIONS', 'MENU', 'THEME']);
       expect(g[key]).toBe(fresh.getCoreLogging());
     } finally {
       g[key] = saved;

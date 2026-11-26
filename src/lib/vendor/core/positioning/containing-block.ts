@@ -19,7 +19,7 @@
  * import graph.
  */
 
-import { composedParent } from '../dom/composed-tree.js';
+import { deepParent } from '../dom/composed-tree.js';
 
 const notNone = (v: string | undefined): v is string => !!v && v !== 'none';
 
@@ -96,7 +96,7 @@ export function getFixedPositionOffsetParent(el: Element): Element | Window {
  * transform on the slot's wrapper applies to it), then the parent / the shadow host.
  */
 function flatParent(node: Element): Element | null {
-  return (node as Element & { assignedSlot?: HTMLSlotElement | null }).assignedSlot ?? composedParent(node);
+  return (node as Element & { assignedSlot?: HTMLSlotElement | null }).assignedSlot ?? deepParent(node);
 }
 
 function isTopLayer(el: Element): boolean {

@@ -8,7 +8,7 @@
  * `position: fixed` sheet in its own box — warned once per session through the element's logger, naming it.
  */
 import { claimBackEntry } from './back-entry.js';
-import { observeKeyboardInset } from './keyboard-inset.js';
+import { fitToVisibleViewport } from './keyboard-inset.js';
 import { lockBodyScroll } from './scroll-lock.js';
 import { describeContainingBlockProps, getFixedPositionOffsetParent } from '../positioning/containing-block.js';
 import { coreLog } from '../logging/element-logger.js';
@@ -19,11 +19,11 @@ export interface SheetSessionOptions {
    * from inside it to go up one level instead (a submenu, a nested step) and keep the sheet open.
    * Omit for a sheet Back shouldn't close (rare).
    */
-  onBack?: () => void;
+  backCallback?: () => void;
   /** Lock page scroll while open. Default `true`. */
   shouldLockScroll?: boolean;
   /** Track the virtual keyboard (`--km-keyboard-inset` on the panel). Default `true`. */
-  shouldObserveKeyboardInset?: boolean;
+  shouldFitToVisibleViewport?: boolean;
   /** Warn once when an ancestor traps the fixed panel in its own box. Default `true`. */
   shouldCheckContainingBlock?: boolean;
   /** The element whose logger the warning goes through (default: the panel's shadow host, else the panel). */
@@ -31,7 +31,7 @@ export interface SheetSessionOptions {
 }
 
 export interface SheetSession {
-  /** Re-arm the Back entry from inside `onBack` (one level up; the sheet stays open). */
+  /** Re-arm the Back entry from inside `backCallback` (one level up; the sheet stays open). */
   rearmBack(): void;
   /** Undo everything (idempotent) — call it on EVERY close: ✕, Escape, a pick, Back, disconnect. */
   end(): void;
@@ -46,10 +46,10 @@ export function startSheetSession(panel: HTMLElement, opts: SheetSessionOptions 
   let isEnded = false;
 
   if (opts.shouldLockScroll ?? true) undo.push(lockBodyScroll());
-  if (opts.shouldObserveKeyboardInset ?? true) undo.push(observeKeyboardInset(panel));
+  if (opts.shouldFitToVisibleViewport ?? true) undo.push(fitToVisibleViewport(panel));
   const claim = (): void => {
-    if (!opts.onBack || isEnded) return;
-    releaseBack = claimBackEntry(() => opts.onBack!());
+    if (!opts.backCallback || isEnded) return;
+    releaseBack = claimBackEntry(() => opts.backCallback!());
   };
   claim();
 

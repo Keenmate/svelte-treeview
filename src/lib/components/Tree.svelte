@@ -384,7 +384,7 @@
 						isSnippet && snippetHost ? (el) => el.appendChild(snippetHost) : undefined,
 					runAction: (item, { triggerElement, sourceEvent }) =>
 						engine.activateMenuItem(item, ctx, triggerElement, sourceEvent),
-					onClose: () => {
+					closeCallback: () => {
 						if (contextMenuHandle !== menu) return; // replaced by a newer open / torn down
 						contextMenuHandle = null;
 						if (engine.isContextMenuOpen) engine.closeContextMenu();

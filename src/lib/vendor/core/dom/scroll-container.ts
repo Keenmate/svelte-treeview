@@ -11,7 +11,7 @@
  * clipped inside an outer one stays out of sight unless `shouldRevealContainer`).
  */
 
-import { composedParent } from './composed-tree.js';
+import { deepParent } from './composed-tree.js';
 
 /** Which overflow axis makes an ancestor a scroll container. */
 export type ScrollAxis = 'y' | 'x' | 'both';
@@ -53,7 +53,7 @@ function isAvailable(): boolean {
 /** Flat-tree parent: a slotted node lays out inside its slot, so the slot's scroller is the
  *  one that moves it; otherwise the composed parent (shadow root → host). */
 function flatParent(node: Element): Element | null {
-  return node.assignedSlot ?? composedParent(node);
+  return node.assignedSlot ?? deepParent(node);
 }
 
 function isPage(el: Element, doc: Document): boolean {

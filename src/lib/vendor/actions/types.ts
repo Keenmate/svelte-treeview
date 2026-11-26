@@ -1,4 +1,4 @@
-// Vendored from @keenmate/web-components-core 3d40786 — src/actions/types.ts (tracked in scripts/core-sync.json).
+// Vendored from @keenmate/web-components-core c2f5f83 — src/actions/types.ts (tracked in scripts/core-sync.json).
 // Adapted (see README.md): `ComponentContext` is declared locally (svelte has no host element). Keep in sync by re-copying; don't diverge.
 /** The context every ctx carries (core: `controller` + `element`; svelte-treeview: `controller`). */
 export interface ComponentContext<C = unknown> {

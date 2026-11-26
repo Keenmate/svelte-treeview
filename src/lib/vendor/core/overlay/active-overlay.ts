@@ -15,7 +15,7 @@
  * of pickers that shouldn't close a sidebar of pickers. Overlays registered with no
  * group share the default (ungrouped) group. Opening a group-`A` overlay dismisses only
  * other group-`A` overlays. {@link dismissAllOverlays}() (no argument) crosses every
- * group via the {@link ALL_GROUPS} wildcard.
+ * group via the {@link ALL_OVERLAY_GROUPS} wildcard.
  *
  * ## Nesting (parents)
  * Overlays form a tree: a dropdown inside a modal, a context menu inside the dropdown, a
@@ -31,14 +31,14 @@
  *
  * Direction A — dismiss KM overlays from outside code:
  *   document.dispatchEvent(new CustomEvent('km-overlay-activate', { detail: { source: myId, group: 'A' } }))
- *   // or, if you import core: notifyOverlayActivated(myId, 'A')
+ *   // or, if you import core: dispatchOverlayActivated(myId, 'A')
  *
  * Direction B — have your own popover dismissed when a KM overlay opens:
  *   document.addEventListener('km-overlay-activate', (e) => {
  *     const { source, group, ancestors = [] } = e.detail;
  *     if (source !== myId && !ancestors.includes(myId) && group === myGroup) closeMyPopover();
  *   })
- *   // or, if you import core: onOverlayActivated((source, group) => { … })
+ *   // or, if you import core: observeOverlayActivation((source, group) => { … })
  *
  * `source` is an opaque identity used only for `===` self-comparison so an opener never
  * dismisses itself. Registered participants get a private token automatically; external
@@ -48,7 +48,7 @@
  */
 
 import { deepActiveElement } from '../dom/active-element.js';
-import { composedParent } from '../dom/composed-tree.js';
+import { deepParent } from '../dom/composed-tree.js';
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import { coreLog } from '../logging/element-logger.js';
 
@@ -60,13 +60,13 @@ export const OVERLAY_ACTIVATE_EVENT = 'km-overlay-activate';
  * registry symbol (`Symbol.for`), so every bundled copy of core — and outside code —
  * holds the same value: `dismissAllOverlays()` from one component reaches all of them.
  */
-export const ALL_GROUPS: unique symbol = Symbol.for('km-overlay-all-groups');
+export const ALL_OVERLAY_GROUPS: unique symbol = Symbol.for('km-overlay-all-groups');
 
 /** Detail payload of {@link OVERLAY_ACTIVATE_EVENT}. */
 export interface OverlayActivateDetail {
   /** Opaque identity of the overlay that opened; peers with a different source dismiss. */
   source: unknown;
-  /** Coordination group; only same-group overlays dismiss (or all when {@link ALL_GROUPS}). */
+  /** Coordination group; only same-group overlays dismiss (or all when {@link ALL_OVERLAY_GROUPS}). */
   group: unknown;
   /** Sources of the opener's ancestor overlays (parent first) — never dismissed by this activation. */
   ancestors?: readonly unknown[];
@@ -124,6 +124,12 @@ export interface ActivateOverlayOptions {
    * (a focus-triggered picker would reopen on it).
    */
   returnFocusTo?: HTMLElement | null;
+  /**
+   * More groups this activation dismisses, besides the overlay's own — with the same exclusions (this
+   * overlay and its ancestors). `startModalSession` passes the default group: a modal opening closes the
+   * page's dropdowns / popovers / menus, but not the chain it was opened from.
+   */
+  dismissGroups?: readonly unknown[];
 }
 
 /** Handle returned by {@link registerOverlay}. */
@@ -394,7 +400,7 @@ function hasDocument(): boolean {
 
 /** An activation in `eventGroup` dismisses a participant in `participantGroup` when they match. */
 function groupMatches(participantGroup: unknown, eventGroup: unknown): boolean {
-  return eventGroup === ALL_GROUPS || participantGroup === eventGroup;
+  return eventGroup === ALL_OVERLAY_GROUPS || participantGroup === eventGroup;
 }
 
 /** The single document listener: dismiss same-group participants that aren't the opener or its ancestors. */
@@ -420,7 +426,7 @@ function onActivated(e: Event): void {
 
 /** Does `container` contain `node`, crossing shadow roots (a trigger inside a component's shadow DOM)? */
 function containsComposed(container: Element, node: Node): boolean {
-  for (let n: Node | null = node; n; n = composedParent(n)) {
+  for (let n: Node | null = node; n; n = deepParent(n)) {
     if (n === container) return true;
   }
   return false;
@@ -527,6 +533,9 @@ export function registerOverlay(
       // Route through the event so external listeners see KM activations too; the shared
       // listener dismisses every *other* same-group participant that isn't an ancestor.
       broadcast(participant.id, participant.group, ancestors);
+      for (const group of activateOpts?.dismissGroups ?? []) {
+        if (group !== participant.group) broadcast(participant.id, group, ancestors);
+      }
     },
     deactivate,
     claimCurrentClick(): void {
@@ -544,10 +553,10 @@ export function registerOverlay(
  * Framework-agnostic trigger for non-registered code (Svelte, plain DOM, …): announce
  * that an overlay opened so all registered/listening overlays in `group` except `source`
  * dismiss. Pass your own stable `source` to avoid dismissing yourself; pass a `group`
- * (default: ungrouped) to scope it, or {@link ALL_GROUPS} to hit every group; pass
+ * (default: ungrouped) to scope it, or {@link ALL_OVERLAY_GROUPS} to hit every group; pass
  * `ancestors` to keep the overlays your overlay was opened from.
  */
-export function notifyOverlayActivated(source?: unknown, group?: unknown, ancestors?: readonly unknown[]): void {
+export function dispatchOverlayActivated(source?: unknown, group?: unknown, ancestors?: readonly unknown[]): void {
   broadcast(source, group, ancestors);
 }
 
@@ -556,7 +565,7 @@ export function notifyOverlayActivated(source?: unknown, group?: unknown, ancest
  * no argument (or `undefined`) it crosses every group; pass a `group` to dismiss just that group.
  */
 export function dismissAllOverlays(group?: unknown): void {
-  broadcast(undefined, group === undefined ? ALL_GROUPS : group);
+  broadcast(undefined, group === undefined ? ALL_OVERLAY_GROUPS : group);
 }
 
 /**
@@ -564,7 +573,7 @@ export function dismissAllOverlays(group?: unknown): void {
  * the opener's `source`, `group` and `ancestors`; compare them to your own to decide
  * whether to close. Returns an unsubscribe function. No-op without a `document`.
  */
-export function onOverlayActivated(handler: (source: unknown, group: unknown, ancestors: readonly unknown[]) => void): () => void {
+export function observeOverlayActivation(handler: (source: unknown, group: unknown, ancestors: readonly unknown[]) => void): () => void {
   if (!hasDocument()) return () => {};
   const listener = (e: Event) => {
     const detail = (e as CustomEvent<OverlayActivateDetail>).detail;
