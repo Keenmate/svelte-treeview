@@ -153,8 +153,6 @@ Full reference: [FlexSearch options](https://github.com/nextapps-de/flexsearch#o
   idMember="path"
   pathMember="path"
   dragDropMode="both"
-  getIsDraggableCallback={() => true}
-  getIsDropAllowedCallback={() => true}
   orderMember="sortOrder"
   dragOverNodeClass="stv__dragover--highlight"
   onNodeDragStart={onDragStart}

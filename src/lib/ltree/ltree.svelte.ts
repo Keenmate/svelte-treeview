@@ -1472,8 +1472,8 @@ export function createLTree<T>(
 
 			// Seed the resolved per-node flags exactly as insertArray does (rowToNode). Nodes added
 			// here (addNode, and therefore duplicateNode and processChanges 'add') otherwise keep
-			// createLTreeNode's defaults — notably isDraggable=false and isDropAllowed=false —
-			// which the DOM `draggable` attribute and the drag-over / drop gates read directly.
+			// createLTreeNode's defaults (isDraggable / isDropAllowed true) even when a member or
+			// callback says no — the drag start and the drag-over / drop gates read them directly.
 			if (data) seedNodeFlags(newNode, data);
 			else newNode.isExpanded = !!config.expandLevel && newNode.level! <= config.expandLevel;
 

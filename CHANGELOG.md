@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.0.0-rc18] - 2026-11-22
 
+### Changed — `dragDropMode` alone makes the rows draggable (2026-11-26)
+
+- With `dragDropMode` on and no `isDraggableMember` / `getIsDraggableCallback` (or `isDropAllowedMember` / `getIsDropAllowedCallback`), every node can now be dragged and accepts drops — the node defaults are `isDraggable` / `isDropAllowed` `true`, as in web-treeview. Before, svelte also needed a member or callback saying yes, so `dragDropMode="self"` on its own did nothing. `dragDropMode` (default `'none'`) stays the switch; the members / callbacks now only say no per node. A member that is set but missing on a row still reads as not draggable (same as web-treeview).
+
 ### Changed — node tooltips and the ⓘ full-label popover are core's `createTooltip` / `createPopover` (2026-11-25)
 
 - The `use:tooltip` action (node tooltips) is now a thin wrapper over core `createTooltip`, and the `nodeTitleOverflow: 'info'` reveal is core `createPopover` — the same ones web-treeview uses (they were hand-written copies that had fallen behind). New behaviour that comes with them:

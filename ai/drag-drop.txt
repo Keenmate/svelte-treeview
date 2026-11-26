@@ -2,7 +2,9 @@ DRAG AND DROP
 =============
 
 CRITICAL: Drag and drop is DISABLED by default
-- Set dragDropMode="both" to enable
+- Set dragDropMode="both" to enable — then EVERY node is draggable and accepts drops
+  (isDraggable / isDropAllowed default true, = web-treeview); isDraggableMember /
+  getIsDraggableCallback / isDropAllowedMember / getIsDropAllowedCallback only say no per node
 - Three drop positions: before, after, child
 - Same-tree and cross-tree moves
 - Touch support for mobile

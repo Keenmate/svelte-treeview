@@ -21,8 +21,8 @@ Full Props, Methods, Events, and Snippets reference for `@keenmate/svelte-treevi
 | `levelMember` | `string \| null` | `null` | Property name for node level |
 | `isExpandedMember` | `string \| null` | `null` | Property name for expanded state |
 | `isCheckedMember` | `string \| null` | `null` | Property name for selected state |
-| `isDraggableMember` | `string \| null` | `null` | Property name for draggable state |
-| `isDropAllowedMember` | `string \| null` | `null` | Property name for drop allowed state |
+| `isDraggableMember` | `string \| null` | `null` | Property name for draggable state. Without it (and without `getIsDraggableCallback`) every node is draggable once `dragDropMode` allows dragging |
+| `isDropAllowedMember` | `string \| null` | `null` | Property name for drop allowed state. Without it (and without `getIsDropAllowedCallback`) every node accepts drops once `dragDropMode` allows them |
 | `allowedDropPositionsMember` | `string \| null` | `null` | Property name for allowed drop positions array |
 | `isCollapsibleMember` | `string \| null` | `null` | Property name for collapsible state |
 | `getIsCollapsibleCallback` | `({ node }) => boolean` | `undefined` | Callback to determine if a node is collapsible |

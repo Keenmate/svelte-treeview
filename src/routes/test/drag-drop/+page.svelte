@@ -755,6 +755,8 @@
 <main>
 	<h1>Drag &amp; Drop Test Fixture</h1>
 
+	<!-- No isDraggable / isDropAllowed member or callback on purpose: dragDropMode alone makes
+	     every row draggable + droppable (the node defaults, = web-treeview). -->
 	<section data-testid="section-single">
 		<h2>Single-Tree Drag</h2>
 		<div class="drop-state">
@@ -775,8 +777,6 @@
 				isSorted={true}
 				expandLevel={10}
 				dragDropMode="self"
-				getIsDraggableCallback={() => true}
-				getIsDropAllowedCallback={() => true}
 				onNodeDrop={onSingleDrop}
 			>
 				{#snippet nodeTemplate(node: LTreeNode<Item>)}
