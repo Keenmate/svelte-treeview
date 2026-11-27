@@ -276,23 +276,16 @@
     };
     insertResult = null;
     lastExpandTime = null;
+    lastUpdateTime = null;
     clearSearch();
     dataSource = null;
   }
 
   function redraw() {
+    metrics.generateTime = null; // nothing was generated
     metrics.renderStart = performance.now();
     metrics.renderTime = null;
     treeKey++;
-  }
-
-  function sortCallback({ nodes: items }: { nodes: any[] }) {
-    if (!isSorted) return items;
-    return [...items].sort((a, b) => {
-      const aVal = a.data?.name ?? '';
-      const bVal = b.data?.name ?? '';
-      return aVal.localeCompare(bVal);
-    });
   }
 
   function timedExpandAll() {
@@ -394,7 +387,7 @@
     currentSearchIdx = idx;
     const node = searchResults[idx];
     if (node?.path) {
-      treeRef?.scrollToPath(node.path, { shouldExpandAncestors: true, shouldHighlight: true, behavior: 'smooth', block: 'center' });
+      treeRef?.scrollToPath(node.path, { shouldHighlight: true });
     }
   }
 
@@ -414,6 +407,7 @@
   }
 
   function clearSearch() {
+    clearTimeout(filterTimer);
     searchInputValue = '';
     searchTerm = '';
     searchResults = [];
@@ -421,19 +415,25 @@
     lastSearchTime = null;
   }
 
+  let filterTimer: ReturnType<typeof setTimeout> | undefined;
+
   function onSearchInput() {
     if (searchMode === 'filter') {
-      searchTerm = searchInputValue;
-      const start = performance.now();
-      // Also collect matching nodes for navigation
-      const results = treeRef?.searchNodes(searchInputValue.trim()) ?? [];
-      searchResults = results;
-      currentSearchIdx = results.length > 0 ? 0 : -1;
-      requestAnimationFrame(() => {
+      // Debounce filter to avoid heavy rebuilds on every keystroke
+      clearTimeout(filterTimer);
+      filterTimer = setTimeout(() => {
+        const start = performance.now();
+        searchTerm = searchInputValue;
+        // Also collect matching nodes for navigation
+        const results = treeRef?.searchNodes(searchInputValue.trim()) ?? [];
+        searchResults = results;
+        currentSearchIdx = results.length > 0 ? 0 : -1;
         requestAnimationFrame(() => {
-          lastSearchTime = performance.now() - start;
+          requestAnimationFrame(() => {
+            lastSearchTime = performance.now() - start;
+          });
         });
-      });
+      }, 150);
     } else {
       // In search mode, clear stale results but don't search until Enter
       searchResults = [];
@@ -546,13 +546,13 @@
 </script>
 
 <svelte:head>
-  <title>Performance Test - Svelte Treeview</title>
+  <title>Performance & Virtual Scrolling - Svelte Treeview</title>
 </svelte:head>
 
 <header>
   <a href="/" class="back-link">&larr; Back to Examples</a>
-  <h1>Performance Test</h1>
-  <p class="subtitle">Compare flat vs virtual-scroll rendering with large datasets</p>
+  <h1>Performance &amp; Virtual Scrolling</h1>
+  <p class="subtitle">Compare flat vs virtual scroll rendering with large datasets, and benchmark expand, update, and search timings</p>
 </header>
 
 <div class="card">
@@ -612,9 +612,9 @@
       Expand Level:
       <input type="number" bind:value={expandLevel} min="0" max="10" />
     </label>
-    <label>
+    <label title="isSorted: the generated data is already in insert order — skip sorting">
       <input type="checkbox" bind:checked={isSorted} />
-      Sort by name
+      Data pre-sorted (isSorted)
     </label>
     <label>
       <input type="checkbox" bind:checked={isInternalSearchIndexEnabled} />
@@ -623,7 +623,7 @@
     {#if isInternalSearchIndexEnabled}
       <label>
         Index Batch:
-        <input type="number" bind:value={indexerBatchSize} min="25" max="5000" step="25" />
+        <input type="number" bind:value={indexerBatchSize} min="5" max="5000" step="5" />
       </label>
     {/if}
   </div>
@@ -645,56 +645,24 @@
 
 <div class="card">
   <h2>PF03 · Performance Metrics</h2>
-  <div class="metrics">
-    <div class="metric">
-      <span class="value">{metrics.nodeCount.toLocaleString()}</span>
-      <span class="label">Nodes</span>
-    </div>
-    <div class="metric">
-      <span class="value">{metrics.generateTime?.toFixed(2) ?? '-'} ms</span>
-      <span class="label">Generate</span>
-    </div>
-    <div class="metric">
-      <span class="value">{metrics.renderTime?.toFixed(2) ?? 'measuring...'} ms</span>
-      <span class="label">Render</span>
-    </div>
-    <div class="metric total">
-      <span class="value">
-        {metrics.renderTime
-          ? ((metrics.generateTime || 0) + metrics.renderTime).toFixed(2)
-          : '-'} ms
-      </span>
-      <span class="label">Total</span>
-    </div>
+  <div class="controls">
+    <span class="pill pill--muted">Nodes:&nbsp;{metrics.nodeCount.toLocaleString()}</span>
+    <span class="pill pill--muted">Generate:&nbsp;{metrics.generateTime !== null ? `${metrics.generateTime.toFixed(2)} ms` : '-'}</span>
+    <span class="pill pill--muted">Render:&nbsp;{metrics.renderTime ? `${metrics.renderTime.toFixed(2)} ms` : metrics.nodeCount ? 'measuring...' : '-'}</span>
+    <span class="pill pill--ok">Total:&nbsp;{metrics.renderTime ? `${((metrics.generateTime || 0) + metrics.renderTime).toFixed(2)} ms` : '-'}</span>
+  </div>
+  <div class="controls">
     {#if lastExpandTime !== null}
-      <div class="metric expand-time">
-        <span class="value">{lastExpandTime.toFixed(2)} ms</span>
-        <span class="label">Expand/Collapse</span>
-      </div>
+      <span class="pill pill--info">Expand/Collapse:&nbsp;{lastExpandTime.toFixed(2)} ms</span>
     {/if}
     {#if lastUpdateTime !== null}
-      <div class="metric expand-time">
-        <span class="value">{lastUpdateTime.toFixed(2)} ms</span>
-        <span class="label">Update Node</span>
-      </div>
+      <span class="pill pill--info">Update Node:&nbsp;{lastUpdateTime.toFixed(2)} ms</span>
     {/if}
     {#if lastSearchTime !== null}
-      <div class="metric search-time">
-        <span class="value">{lastSearchTime.toFixed(2)} ms</span>
-        <span class="label">Search/Filter</span>
-      </div>
+      <span class="pill pill--warn">Search/Filter:&nbsp;{lastSearchTime.toFixed(2)} ms</span>
     {/if}
-    {#if isProgressiveRenderEnabled}
-      <div class="metric" class:rendering={isRendering}>
-        <span class="value">
-          {#if isRendering}
-            {renderStats.pending} pending
-          {:else}
-            Done
-          {/if}
-        </span>
-        <span class="label">Progressive</span>
-      </div>
+    {#if isProgressiveRenderEnabled && renderMode !== 'virtual' && metrics.nodeCount}
+      <span class="pill pill--info">Progressive:&nbsp;{isRendering ? `${renderStats.pending} pending` : 'Done'}</span>
     {/if}
   </div>
 
@@ -712,11 +680,11 @@
       ({metrics.nodeCount.toLocaleString()} nodes) - {renderMode === 'virtual' ? 'Virtual Scroll' : 'Flat Mode'}
     </h2>
     <div class="controls">
-      <button onclick={timedExpandOneNode}>Expand One</button>
-      <button onclick={timedCollapseOneNode}>Collapse One</button>
+      <button onclick={timedExpandOneNode}>Expand One (timed)</button>
+      <button onclick={timedCollapseOneNode}>Collapse One (timed)</button>
       <span class="muted">|</span>
-      <button class="secondary" onclick={timedExpandAll}>Expand All</button>
-      <button class="secondary" onclick={timedCollapseAll}>Collapse All</button>
+      <button class="secondary" onclick={timedExpandAll}>Expand All (timed)</button>
+      <button class="secondary" onclick={timedCollapseAll}>Collapse All (timed)</button>
     </div>
     <div class="controls">
       <input type="text" bind:value={updateNodePath} placeholder="Node path (empty = random)" class="mono w-lg" />
@@ -777,7 +745,6 @@
           levelMember="level"
           hasChildrenMember="hasChildren"
           displayValueMember="name"
-          {sortCallback}
           {isSorted}
           {expandLevel}
           {isProgressiveRenderEnabled}
@@ -819,8 +786,9 @@
     <ol>
       <li><strong>Initial render:</strong> Generate data with different node counts and expand levels. Compare render times between modes.</li>
       <li><strong>Expand/Collapse ONE node:</strong> The key test! Use "Expand One" and "Collapse One" buttons. This is the typical user interaction - expanding a single node.</li>
-      <li><strong>Expand/Collapse ALL:</strong> Bulk operations - these may be similar between modes since both need to render thousands of nodes.</li>
-      <li><strong>Perf Logging:</strong> Enable to see detailed timing in the console.</li>
+      <li><strong>Expand/Collapse ALL:</strong> Bulk operations - compare flat (mounts every visible row) with virtual scroll (stays windowed).</li>
+      <li><strong>Search/Filter:</strong> Toggle between filter mode (live) and search mode (Enter to navigate between matches).</li>
+      <li><strong>Perf Logging:</strong> Turn it on to see detailed timings in the console.</li>
     </ol>
   </div>
 
@@ -836,39 +804,6 @@
 
 
 <style>
-  /* PF03 metric tiles (.metrics / .metric are showcase-local): tinted variants for the derived figures. */
-  .metric.total {
-    background: var(--kmwc-accent-color);
-    border-color: var(--kmwc-accent-color);
-    color: var(--kmwc-text-color-on-accent);
-  }
-
-  .metric.expand-time {
-    background: color-mix(in srgb, var(--kmwc-success-color) 16%, transparent);
-    border-color: var(--kmwc-success-color);
-  }
-
-  .metric.search-time {
-    background: color-mix(in srgb, var(--kmwc-info-color) 16%, transparent);
-    border-color: var(--kmwc-info-color);
-  }
-
-  .metric.rendering {
-    background: color-mix(in srgb, var(--kmwc-warning-color) 20%, transparent);
-    border-color: var(--kmwc-warning-color);
-    animation: pulse 1s infinite;
-  }
-
-  .metric.total .label {
-    color: inherit;
-    opacity: 0.85;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-  }
-
   .update-time {
     color: var(--kmwc-success-color);
   }

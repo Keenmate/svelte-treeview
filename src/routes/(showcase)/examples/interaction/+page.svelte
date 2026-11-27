@@ -64,6 +64,30 @@
 
 	type Item = (typeof sampleData)[0];
 
+	// IN01 data — the same tree as web-treeview's examples-interaction.html IN01, so both demos
+	// can be tested step by step. About.tsx is locked = not selectable (getIsSelectableCallback).
+	type FileItem = { id: number; path: string; name: string; isLocked?: boolean };
+	const fileTree: FileItem[] = [
+		{ id: 1, path: '1', name: 'src' },
+		{ id: 2, path: '1.1', name: 'components' },
+		{ id: 3, path: '1.1.1', name: 'Button.tsx' },
+		{ id: 4, path: '1.1.2', name: 'Input.tsx' },
+		{ id: 5, path: '1.1.3', name: 'Modal.tsx' },
+		{ id: 6, path: '1.2', name: 'pages' },
+		{ id: 7, path: '1.2.1', name: 'Home.tsx' },
+		{ id: 8, path: '1.2.2', name: 'About.tsx (locked)', isLocked: true },
+		{ id: 9, path: '1.2.3', name: 'Settings.tsx' },
+		{ id: 10, path: '1.3', name: 'utils' },
+		{ id: 11, path: '1.3.1', name: 'helpers.ts' },
+		{ id: 12, path: '1.3.2', name: 'constants.ts' },
+		{ id: 13, path: '2', name: 'public' },
+		{ id: 14, path: '2.1', name: 'index.html' },
+		{ id: 15, path: '2.2', name: 'favicon.ico' },
+		{ id: 16, path: '3', name: 'package.json' },
+		{ id: 17, path: '4', name: 'tsconfig.json' },
+		{ id: 18, path: '5', name: 'README.md' }
+	];
+
 	function sortByName({ nodes: items }: { nodes: LTreeNode<Item>[] }) {
 		return [...items].sort((a, b) => (a.data?.name || '').localeCompare(b.data?.name || ''));
 	}
@@ -143,7 +167,7 @@
 		{ value: 'stv__node-content--selected-bold', label: 'Bold' },
 		{ value: 'stv__node-content--selected-border', label: 'Border' },
 		{ value: 'stv__node-content--selected-brackets', label: 'Brackets' },
-		{ value: 'stv__node-content--selected-fill', label: 'Highlight (Explorer-style)' },
+		{ value: 'stv__node-content--selected-fill', label: 'Fill (Explorer-style)' },
 		{ value: 'stv__node-content--selected-glow', label: 'Glow (soft ring)' }
 	];
 
@@ -152,9 +176,8 @@
 	// yourself and pass via focusedNodeClass to override the default.
 	const focusedNodeClassOptions = [
 		{ value: '', label: 'Default (ring)' },
+		{ value: 'demo-focused-ring', label: 'Ring (inset)' },
 		{ value: 'demo-focused-underline', label: 'Underline' },
-		{ value: 'demo-focused-bg', label: 'Background tint' },
-		{ value: 'demo-focused-bar', label: 'Left bar' },
 		{ value: 'demo-focus-none', label: 'None' }
 	];
 
@@ -170,8 +193,8 @@
 	let shouldClickToggleCheckbox = $state(saved.shouldClickToggleCheckbox);
 
 	// Three-level state
-	let clickTreeRef: Tree<Item>;
-	let focusedNode1 = $state<LTreeNode<Item> | null>(null);
+	let clickTreeRef: Tree<FileItem>;
+	let focusedNode1 = $state<LTreeNode<FileItem> | null>(null);
 	let selectedPaths1 = $state(new Set<string>());
 	let checkedPaths1 = $state(new Set<string>());
 
@@ -187,7 +210,7 @@
 		saveSettings();
 	});
 
-	function onClickDemoNodeClick(_ctx: NodeRef<Item>) {}
+	function onClickDemoNodeClick(_ctx: NodeRef<FileItem>) {}
 
 	// ── Multi-select range mode (shared by the merged IN01 tree) ──────
 	let rangeSelectionMode = $state<'visual' | 'logical'>(saved.rangeSelectionMode);
@@ -312,8 +335,8 @@
 		<label>
 			Selection Mode:
 			<select bind:value={selectionMode}>
-				<option value="single">single (Ctrl/Shift+click = plain click)</option>
-				<option value="multiple">multiple (Ctrl-toggle, Shift-range, Shift+Arrow)</option>
+				<option value="single">single (one node; Ctrl+click deselects)</option>
+				<option value="multiple">multiple (Ctrl-toggle, Shift-range, Ctrl+Shift adds)</option>
 			</select>
 		</label>
 		<label>
@@ -340,8 +363,8 @@
 			<label>
 				Checkbox Mode:
 				<select bind:value={checkboxMode}>
-					<option value="independent">independent (each checkbox standalone)</option>
-					<option value="cascade">cascade (parent toggles all children)</option>
+					<option value="independent">independent (each node standalone)</option>
+					<option value="cascade">cascade (parent toggles children)</option>
 				</select>
 			</label>
 			<label>
@@ -353,7 +376,7 @@
 			Range Selection Mode:
 			<select bind:value={rangeSelectionMode}>
 				<option value="visual">visual (only visible/expanded nodes)</option>
-				<option value="logical">logical (all nodes in tree order)</option>
+				<option value="logical">logical (full tree walk, incl. collapsed)</option>
 			</select>
 		</label>
 		<button
@@ -369,8 +392,18 @@
 				clickTreeRef?.clearSelection();
 				clickTreeRef?.uncheckAll();
 				clickTreeRef?.clearFocus();
-			}}>Clear All</button
+			}}>Clear all</button
 		>
+	</div>
+
+	<div class="note">
+		<p class="note-title">Selection rules (the same in svelte-treeview and web-treeview)</p>
+		<ul>
+			<li><strong>Click</strong> selects only that node; <kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+click toggles it — both move the range anchor there.</li>
+			<li><kbd>Shift</kbd>+click selects anchor … node (the anchor stays); <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+click <em>adds</em> that range to the selection.</li>
+			<li><strong>About.tsx (locked)</strong> is not selectable: a click focuses it but keeps the selection, and ranges skip it.</li>
+			<li><strong>single</strong> mode holds one node whoever writes it — <em>Select 1.1.1, 1.1.3, 1.2.1</em> selects only 1.1.1, <kbd>Ctrl+A</kbd> does nothing.</li>
+		</ul>
 	</div>
 
 	<div class="note">
@@ -396,12 +429,12 @@
 		<div class="tree-container tree-container-tall">
 			<Tree
 				bind:this={clickTreeRef}
-				nodes={sampleData}
+				nodes={fileTree}
 				idMember="id"
 				pathMember="path"
-				sortCallback={sortByName}
-				isSorted={true}
-				expandLevel={3}
+				displayValueMember="name"
+				getIsSelectableCallback={({ node }) => !node.data?.isLocked}
+				expandLevel={2}
 				{selectedNodeClass}
 				{focusedNodeClass}
 				{clickBehavior}
@@ -415,17 +448,13 @@
 				bind:checkedPaths={checkedPaths1}
 				onNodeClick={onClickDemoNodeClick}
 				{...getTreeProps()}
-			>
-				{#snippet nodeTemplate(node: any)}
-					<span>{node.data?.icon} <span class="demo-node-name">{node.data?.name}</span></span>
-				{/snippet}
-			</Tree>
+			/>
 		</div>
 		<div>
 			<div class="output">
 				<p class="output-label">Focused Node</p>
 				<pre>{focusedNode1
-						? `${focusedNode1.data?.icon} ${focusedNode1.data?.name} (${focusedNode1.path})`
+						? `${focusedNode1.data?.name} (${focusedNode1.path})`
 						: '(none)'}</pre>
 			</div>
 			<div class="output">
@@ -458,8 +487,8 @@
   'expand'           — click expands only, no selection
 
 <!-- selectionMode options:
-  'single' — plain click only; Ctrl/Shift+click degrade to plain click (default)
-  'multiple' — Ctrl-toggle, Shift-range, Shift+Arrow extends, Enter toggles
+  'single'   — one node, also through the API (default); Ctrl+click on it deselects, Shift is ignored
+  'multiple' — Ctrl-toggle, Shift-range, Ctrl+Shift adds the range, Shift+Arrow extends
 
 <!-- checkboxMode options:
   'independent' — each checkbox standalone (default)
@@ -803,25 +832,21 @@ onMount(async () => {
 	   ring, shown when no focusedNodeClass is set); these are opt-in FLAVORS
 	   an app defines itself and passes via `focusedNodeClass` to override it.
 	   :global so they apply to nodes rendered inside <Tree>. */
-	/* .demo-focus-none needs no rule — passing ANY focusedNodeClass already
-	   suppresses the built-in focus bar. */
-	/* Underline the LABEL only (not the icon / emoji), dropped well clear of the
-	   descenders so it reads as a marker rather than a text link. */
-	:global(.demo-focused-underline .demo-node-name) {
+	/* Same options as web-treeview's examples-interaction.html IN01 (there injected into the
+	   shadow root via getCustomStylesCallback). .demo-focus-none needs no rule — passing ANY
+	   focusedNodeClass already suppresses the built-in focus ring. */
+	/* An INSET ring (stays inside the pill, no spill). */
+	:global(.demo-focused-ring) {
+		box-shadow: inset 0 0 0 2px var(--stv-accent-color);
+		border-radius: var(--stv-border-radius-sm);
+	}
+	/* Underline the LABEL only, dropped well clear of the descenders so it reads as a
+	   marker rather than a text link. */
+	:global(.demo-focused-underline .stv__node-label) {
 		text-decoration: underline;
 		text-decoration-color: var(--stv-accent-color);
 		text-decoration-thickness: 2px;
 		text-underline-offset: 0.4em;
 		text-decoration-skip-ink: none;
-	}
-	:global(.demo-focused-bg) {
-		background-color: color-mix(in srgb, var(--stv-accent-color) 12%, transparent);
-	}
-	/* Left accent bar, painted as a background-image layer so it sits over the
-	   highlight tint and survives box-shadow presets. */
-	:global(.demo-focused-bar) {
-		background-image: linear-gradient(var(--stv-accent-color), var(--stv-accent-color));
-		background-repeat: no-repeat;
-		background-size: 2px 100%;
 	}
 </style>

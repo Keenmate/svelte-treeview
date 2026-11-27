@@ -624,22 +624,22 @@
 			<tr><th colspan="3" scope="colgroup">Typography</th></tr>
 			<tr><td><code>--stv-font-family</code></td><td><code>var(--base-font-family, system stack)</code></td><td>Font family for all tree text</td></tr>
 			<tr><td><code>--stv-font-size</code></td><td><code>(--base-font-size-sm, 1.4) × rem</code> (= 14px)</td><td>Node text size</td></tr>
-			<tr><td><code>--stv-node-icon-margin-right</code></td><td><code>0.6 × rem</code> (= 6px)</td><td>Gap between node icon and label</td></tr>
+			<tr><td><code>--stv-node-icon-margin-right</code></td><td><code>--stv-spacing-sm</code> (= 4px)</td><td>Gap between node icon and label</td></tr>
 			<tr><td><code>--stv-node-path-font-size</code></td><td><code>(--base-font-size-xs, 1.2) × rem</code> (= 12px)</td><td>Path / debug text size</td></tr>
 			<tr><td><code>--stv-node-path-color</code></td><td><code>var(--base-text-color-3, #6c757d)</code></td><td>Path / muted text color</td></tr>
 
 			<tr><th colspan="3" scope="colgroup">Node layout</th></tr>
 			<tr><td><code>--stv-indent-size</code></td><td><code>0.8 × rem</code> (= 8px)</td><td>Indentation per nesting level</td></tr>
-			<tr><td><code>--stv-node-padding</code></td><td><code>0.4 × rem / 0.4 × rem</code> (= 4px 4px)</td><td>Inner padding of a node row (V / H)</td></tr>
+			<tr><td><code>--stv-node-padding</code></td><td><code>--stv-spacing-sm / --stv-spacing-md</code> (= 4px 8px)</td><td>Inner padding of a node row (V / H)</td></tr>
 			<tr><td><code>--stv-node-border-radius</code></td><td><code>= --stv-border-radius-sm</code> (4px)</td><td>Node row corner rounding</td></tr>
 			<tr><td><code>--stv-node-bg-hover</code> / <code>--stv-node-bg-active</code></td><td><code>= --stv-hover-bg / --stv-active-bg</code></td><td>Row hover / pressed background (neutral overlays of the surface)</td></tr>
 			<tr><td><code>--stv-children-margin-top</code></td><td><code>0.2 × rem</code> (= 2px)</td><td>Top margin of child list</td></tr>
 
 			<tr><th colspan="3" scope="colgroup">Toggle icon</th></tr>
-			<tr><td><code>--stv-toggle-icon-size</code></td><td><code>1.6 × rem</code> (= 16px)</td><td>SVG icon size (chevron / +/- / arrow / leaf)</td></tr>
-			<tr><td><code>--stv-toggle-icon-width</code></td><td><code>2.0 × rem</code> (= 20px)</td><td>Width reserved for the toggle column</td></tr>
+			<tr><td><code>--stv-toggle-icon-size</code></td><td><code>--stv-font-size-xs</code> (= 12px)</td><td>SVG icon size (chevron / +/- / arrow / leaf)</td></tr>
+			<tr><td><code>--stv-toggle-icon-width</code></td><td><code>2.4 × rem</code> (= 24px)</td><td>Width reserved for the toggle column</td></tr>
 			<tr><td><code>--stv-toggle-icon-color</code></td><td><code>var(--base-text-color-3, #6c757d)</code></td><td>Icon color (via <code>currentColor</code> mask)</td></tr>
-			<tr><td><code>--stv-toggle-icon-margin-right</code></td><td><code>0.8 × rem</code> (= 8px)</td><td>Gap between toggle and node label</td></tr>
+			<tr><td><code>--stv-toggle-icon-margin-right</code></td><td><code>0</code></td><td>Extra gap between the toggle column and the node label</td></tr>
 			<tr><td><code>--stv-toggle-icon-transition</code></td><td><code>transform var(--stv-transition-normal) var(--stv-ease-standard)</code></td><td>Expand / collapse turn of the glyph</td></tr>
 			<tr><td><code>--stv-icon-expand</code></td><td><code>var(--base-icon-chevron, …)</code></td><td>Disclosure glyph (collapsed / rotate mode). Re-pointed by <code>iconSet</code>.</td></tr>
 			<tr><td><code>--stv-icon-collapse</code></td><td>Lucide chevron-down</td><td>Glyph shown expanded — only in swap / plus-minus</td></tr>

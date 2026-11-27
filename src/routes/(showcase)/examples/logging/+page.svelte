@@ -158,7 +158,7 @@
 	}
 
 	onMount(() => {
-		// Start silent (production default), then paint the panel.
+		// Start silent (the default level is warn) so the console only shows what you turn on.
 		disableAll();
 		console.log('%c🌐 window.components demo ready', 'color:#667eea;font-size:1.3rem;font-weight:bold;');
 		console.log(`Try: %cwindow.components['${ENTRY}']`, 'font-family:monospace;background:#eef;padding:2px 4px;');
@@ -345,12 +345,12 @@
 // moment the tree module is loaded anywhere on the page.
 const tv = window.components['svelte-treeview'];
 
-tv.version();                       // "5.0.0-rc16"
+tv.version();                       // the package version
 tv.config;                          // { name, version, author, license, … }
 tv.getInstances();                  // each live tree's public controller
 
 // Logging (the tree's logger bundle — every tree on the page)
-tv.logging.getCategories();         // ["STV:INIT","STV:DATA","STV:RENDER","STV:INDEX","STV:DRAG","STV:UI"]
+tv.logging.getCategories();         // ["STV:INIT","STV:DATA","STV:INDEX","STV:UI","STV:DRAG","STV:RENDER"]
 tv.logging.enableLogging();         // all categories → debug
 tv.logging.setLogLevel('info');     // all → info
 tv.logging.setCategoryLevel('INDEX', 'debug');

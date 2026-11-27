@@ -189,6 +189,7 @@
 		source,
 		target,
 		dragged,
+		dropped,
 		position,
 		operation
 	}: NodeDropContext<FileItem>) {
@@ -206,7 +207,20 @@
 			return;
 		}
 
-		// Cross-tree drags - use duplicateNode to include children
+		// A cross-tree COPY (Ctrl+drag) is placed by the library itself (cross-tree auto-copy,
+		// ids minted by nodeInputTransformationCallback) — ctx.dropped lists the copies. Copying
+		// again here would insert every node twice.
+		if (dropped) {
+			addLog(
+				'Cross-tree copy',
+				`${dropped.length} node(s) to "${dropNode?.data?.name || 'root'}"`,
+				'success'
+			);
+			return;
+		}
+
+		// A cross-tree MOVE is left to the consumer (dropped = null) — this demo copies the
+		// dragged subtrees in with duplicateNode, so the source tree keeps its nodes.
 		// Calculate parent path and sibling for positioning
 		let parentPath: string;
 		let siblingPath: string | undefined;
@@ -225,8 +239,8 @@
 			copyPosition = position as 'before' | 'after';
 		}
 
-		// Multi-drag across trees: cross-tree multi-drag isn't auto-handled by the
-		// library (it only auto-places the lead node), but ctx.dragged still carries
+		// Multi-drag across trees: a cross-tree move isn't placed by the library, but
+		// ctx.dragged still carries
 		// the FULL top-level dragged set — already draggable-filtered (pinned nodes
 		// like "File C" are excluded) — so we just copy each subtree in turn. No need
 		// to re-read selectedPaths or re-run the isDraggable predicate here.

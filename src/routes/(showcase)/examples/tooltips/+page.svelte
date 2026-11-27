@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Tree from '$lib/components/Tree.svelte';
-	import type { LTreeNode, TooltipPlacement } from '$lib/ltree/types.js';
+	import type { LTreeNode, NodeRenderContext, TooltipPlacement } from '$lib/ltree/types.js';
 	import RenderModeSwitch from '../RenderModeSwitch.svelte';
 	import { getTreeProps } from '../render-mode.svelte.js';
 
@@ -8,14 +8,15 @@
 
 	const sampleData: FileItem[] = [
 		{ id: 1, path: '1', name: 'Fruits', icon: '🍎', desc: 'Sweet, edible plant fruits' },
-		{ id: 2, path: '1.1', name: 'Apple', icon: '🍏', desc: 'Crisp orchard fruit, great raw or baked' },
+		{ id: 2, path: '1.1', name: 'Apple', icon: '🍏', desc: 'Crisp orchard fruit' },
 		{ id: 3, path: '1.2', name: 'Banana', icon: '🍌', desc: 'Potassium-rich berry' },
 		{ id: 4, path: '1.3', name: 'Citrus', icon: '🍊', desc: 'Tangy, high in vitamin C' },
 		{ id: 5, path: '1.3.1', name: 'Orange', icon: '🍊', desc: 'Juicy citrus staple' },
 		{ id: 6, path: '1.3.2', name: 'Lemon', icon: '🍋', desc: '' /* empty → no tooltip */ },
 		{ id: 7, path: '2', name: 'Vegetables', icon: '🥦', desc: 'Edible plants & roots' },
 		{ id: 8, path: '2.1', name: 'Carrot', icon: '🥕', desc: 'Crunchy orange root' },
-		{ id: 9, path: '2.2', name: 'Potato', icon: '🥔', desc: 'Starchy tuber, endlessly versatile' }
+		{ id: 9, path: '2.2', name: 'Potato', icon: '🥔', desc: 'Starchy tuber' },
+		{ id: 10, path: '2.3', name: 'Spinach', icon: '🥬', desc: 'Leafy green, eaten raw in salads or cooked; rich in iron, folate and vitamins A, C and K, and one of the quickest crops to grow' }
 	];
 
 	function sortByPath({ nodes: items }: { nodes: LTreeNode<FileItem>[] }) {
@@ -64,8 +65,9 @@
 	<a href="/" class="back-link">&larr; Back to Examples</a>
 	<h1>Tooltips</h1>
 	<p class="subtitle">
-		Hover/focus node tooltips — a plain-text callback or a rich snippet, themed through the
-		shared <code>--base-tooltip-*</code> tokens (parity with web-multiselect's option tooltips).
+		Hover/focus node tooltips — the direct analog of <code>@keenmate/web-multiselect</code>'s
+		option tooltips, built on the shared <code>createTooltip</code> core primitive and themed
+		through the same <code>--base-tooltip-*</code> tokens.
 	</p>
 	<RenderModeSwitch />
 </header>
@@ -106,6 +108,7 @@
 			idMember="id"
 			pathMember="path"
 			displayValueMember="name"
+			iconMember="icon"
 			sortCallback={sortByPath}
 			isSorted={true}
 			expandLevel={3}
@@ -117,16 +120,14 @@
 			tooltipOffset={offset}
 			{...getTreeProps()}
 		>
-			{#snippet nodeTemplate(node: LTreeNode<FileItem>)}
-				<span>{node.data?.icon} {node.data?.name}</span>
-			{/snippet}
 		</Tree>
 	</div>
 
 	<p class="form-text">
-		<code>getNodeTooltipCallback(node) =&gt; string | null</code>. Knobs:
-		<code>tooltipPlacement</code> (<code>'top-start'</code>), <code>tooltipDelay</code>
-		(<code>{'{ show: 400, hide: 100 }'}</code>), <code>tooltipOffset</code> (<code>8</code>),
+		<code>getNodeTooltipCallback(&#123; node &#125;) =&gt; string | null</code>. Return
+		<code>null</code> / empty to skip a row. Tune timing with <code>tooltipDelay</code>
+		(default <code>{'{ show: 400, hide: 100 }'}</code>), <code>tooltipPlacement</code>
+		(<code>'top-start'</code>), <code>tooltipOffset</code> (<code>8</code>) and
 		<code>shouldTooltipFollowCursor</code>.
 	</p>
 </div>
@@ -136,8 +137,14 @@
 	<h2>TT02 · Rich tooltips (the <code>tooltip</code> snippet)</h2>
 	<p class="description">
 		Pass a <code>tooltip</code> snippet for arbitrary Svelte content — it wins over the string
-		callback. The library renders it into a hidden host and adopts it into the portaled panel,
-		so it stays reactive. Here: icon + name, description, and the node path.
+		callback (web-treeview's analog: return an <code>HTMLElement</code> from the callback). It
+		gets the node, so the content can show its place in the tree: here a bold icon + name, the
+		description in italics, and a chip — <em>folder · N items</em> for a branch, <em>leaf</em>
+		otherwise — with the level and path. The library renders it into a hidden host and adopts it
+		into the portaled panel, so it stays reactive: the second row of chips reads
+		<code>isSelected</code> / <code>isChecked</code> / <code>isExpanded</code> from the render
+		context. Click a row, tick a checkbox or press <kbd>Space</kbd> / <kbd>Enter</kbd> with a
+		tooltip open — it follows. Tooltip content is display-only: no buttons or links.
 	</p>
 
 	<div class="tree-container">
@@ -146,21 +153,29 @@
 			idMember="id"
 			pathMember="path"
 			displayValueMember="name"
+			iconMember="icon"
 			sortCallback={sortByPath}
 			isSorted={true}
 			expandLevel={3}
 			isNodeTooltipsShown
-			tooltipPlacement="right-start"
+			isCheckboxesShown
 			{...getTreeProps()}
 		>
-			{#snippet nodeTemplate(node: LTreeNode<FileItem>)}
-				<span>{node.data?.icon} {node.data?.name}</span>
-			{/snippet}
-			{#snippet tooltip(node: LTreeNode<FileItem>)}
+			{#snippet tooltip(node: LTreeNode<FileItem>, ctx: NodeRenderContext)}
+				{@const count = Object.keys(node.children ?? {}).length}
 				<div class="tip">
-					<strong>{node.data?.icon} {node.data?.name}</strong>
-					<span class="tip__desc">{node.data?.desc || '—'}</span>
-					<span class="tip__path">path {node.data?.path}</span>
+					<strong class="tip__name">{node.data?.icon} {node.data?.name}</strong>
+					<span class="tip__desc">{node.data?.desc || 'No description'}</span>
+					<span class="tip__chip" class:tip__chip--branch={count > 0}>
+						{count ? `folder · ${count} item${count === 1 ? '' : 's'}` : 'leaf'} · level {node.level} · path {node.path}
+					</span>
+					<span class="tip__states">
+						<span class="tip__state" class:tip__state--on={ctx.isSelected}>{ctx.isSelected ? '✓' : '✗'} selected</span>
+						<span class="tip__state" class:tip__state--on={ctx.isChecked}>{ctx.isChecked ? '✓' : '✗'} checked</span>
+						{#if count}
+							<span class="tip__state" class:tip__state--on={ctx.isExpanded}>{ctx.isExpanded ? '✓' : '✗'} expanded</span>
+						{/if}
+					</span>
 				</div>
 			{/snippet}
 		</Tree>
@@ -194,6 +209,7 @@
 			idMember="id"
 			pathMember="path"
 			displayValueMember="name"
+			iconMember="icon"
 			sortCallback={sortByPath}
 			isSorted={true}
 			expandLevel={3}
@@ -201,9 +217,6 @@
 			getNodeTooltipCallback={({ node }) => node.data?.desc || node.data?.name || null}
 			{...getTreeProps()}
 		>
-			{#snippet nodeTemplate(node: LTreeNode<FileItem>)}
-				<span>{node.data?.icon} {node.data?.name}</span>
-			{/snippet}
 		</Tree>
 	</div>
 
@@ -239,6 +252,7 @@
 			idMember="id"
 			pathMember="path"
 			displayValueMember="name"
+			iconMember="icon"
 			sortCallback={sortByPath}
 			isSorted={true}
 			expandLevel={2}
@@ -247,9 +261,6 @@
 			theme={tipTheme}
 			{...getTreeProps()}
 		>
-			{#snippet nodeTemplate(node: LTreeNode<FileItem>)}
-				<span>{node.data?.icon} {node.data?.name}</span>
-			{/snippet}
 		</Tree>
 	</div>
 </div>
@@ -290,19 +301,54 @@
 		--stv-tooltip-max-width: var(--tt-max-width, calc(32 * var(--stv-rem)));
 	}
 
-	/* Tooltip snippet content. The library paints the portaled .stv__tooltip surface;
-	   this lays out the inner lines. :global because it's portaled into .stv__container. */
+	/* Tooltip snippet content (= web-treeview's TT02 element). The library paints the portaled
+	   .stv__tooltip surface; this lays out the inner lines. :global because it's portaled into
+	   .stv__container. */
 	:global(.tip) {
-		display: flex;
-		flex-direction: column;
-		gap: 0.15rem;
+		display: grid;
+		gap: 0.25rem;
+		white-space: normal;
+	}
+	:global(.tip__name) {
+		font-size: 1.05em;
+		letter-spacing: 0.02em;
+		text-transform: uppercase;
 	}
 	:global(.tip__desc) {
-		opacity: 0.85;
+		opacity: 0.8;
+		font-style: italic;
 	}
-	:global(.tip__path) {
+	:global(.tip__chip) {
+		justify-self: start;
+		margin-top: 0.15rem;
+		padding: 0 0.45rem;
+		border-radius: 999px;
 		font-size: 0.85em;
+		border: 1px solid currentColor;
+		opacity: 0.75;
+	}
+	:global(.tip__chip--branch) {
+		background: #2563eb;
+		color: #fff;
+		border: 0;
+		opacity: 1;
+	}
+	:global(.tip__states) {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem;
+	}
+	:global(.tip__state) {
+		padding: 0 0.45rem;
+		border-radius: 999px;
+		font-size: 0.85em;
+		border: 1px dashed currentColor;
 		opacity: 0.6;
-		font-variant-numeric: tabular-nums;
+	}
+	:global(.tip__state--on) {
+		background: #16a34a;
+		color: #fff;
+		border: 0;
+		opacity: 1;
 	}
 </style>

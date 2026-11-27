@@ -198,7 +198,8 @@
 		For full Svelte control (components, badges, reactive markup) pass an <code>icon</code> snippet. It
 		receives the node, the resolved value and the render context, and wins over every rule above;
 		color still flows from <code>iconColorMember</code> onto the wrapper (so <code>currentColor</code>
-		tints the SVG). Here it draws the same Lucide names plus a child count on branches.
+		tints the SVG). Here it draws the same Lucide names plus a child count on branches
+		(web-treeview builds the same from <code>renderIconCallback</code>'s <code>ctx.node</code>).
 	</p>
 	<div class="tree-container">
 		<Tree

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Tree from '$lib/components/Tree.svelte';
 	import type { LTreeNode, CheckboxMode, CascadeCheckPolicy, FilterScope, IndexProgress, SearchStatus } from '$lib/ltree/types.js';
-	import { untrack } from 'svelte';
+	import type { BeforeScrollContext, TreeScrollOptions } from '$lib/core/TreeEngine.svelte.js';
 	import RenderModeSwitch from '../RenderModeSwitch.svelte';
 	import { getTreeProps } from '../render-mode.svelte.js';
 
@@ -379,6 +379,95 @@
 		const t = scopeTerm.trim().toLowerCase();
 		return !!t && !!name && name.toLowerCase().includes(t);
 	}
+
+	// ── SF02 / SF03 / SF05 data (= web-treeview's examples-search.html) ──
+	type SimpleItem = { id: number | string; path: string; name: string; description?: string };
+	const projectTree: SimpleItem[] = [
+		{ id: 1, path: '1', name: 'src' },
+		{ id: 2, path: '1.1', name: 'components' },
+		{ id: 3, path: '1.1.1', name: 'Button.tsx' },
+		{ id: 4, path: '1.1.2', name: 'Input.tsx' },
+		{ id: 5, path: '1.2', name: 'pages' },
+		{ id: 6, path: '1.2.1', name: 'Home.tsx' },
+		{ id: 7, path: '1.2.2', name: 'tests' },
+		{ id: 8, path: '1.2.2.1', name: 'unit-test-1.ts' },
+		{ id: 9, path: '1.2.2.2', name: 'unit-test-2.ts' },
+		{ id: 10, path: '1.3', name: 'utils' },
+		{ id: 11, path: '1.3.1', name: 'helpers.ts' },
+		{ id: 12, path: '1.3.2', name: 'config.ts' },
+		{ id: 13, path: '2', name: 'docs' },
+		{ id: 14, path: '2.1', name: 'README.md' },
+		{ id: 15, path: '2.2', name: 'test-plan.md' }
+	];
+	const orgTree: SimpleItem[] = [
+		{ id: 1, path: '1', name: 'Engineering', description: 'builds the product' },
+		{ id: 2, path: '1.1', name: 'Frontend', description: 'web UI team' },
+		{ id: 3, path: '1.2', name: 'Backend', description: 'API and services' },
+		{ id: 4, path: '2', name: 'Design', description: 'product design' },
+		{ id: 5, path: '2.1', name: 'UX Research', description: 'user studies' },
+		{ id: 6, path: '3', name: 'Marketing', description: 'growth and brand' }
+	];
+	function sortByPath({ nodes: items }: { nodes: LTreeNode<SimpleItem>[] }) {
+		return [...items].sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
+	}
+	const listMatches = (matches: LTreeNode<SimpleItem>[]) =>
+		matches.length
+			? `Found ${matches.length} match(es):\n` + matches.map((n) => `  - ${n.data?.name} (${n.path})`).join('\n')
+			: 'No matches';
+
+	// ── SF02 · Filter vs Search ──────────────────────────
+	let sf02FilterText = $state('');
+	let sf02SearchText = $state('');
+	let sf02Output = $state('Type to search');
+	let sf02SearchTree: Tree<SimpleItem>;
+	function onSf02Search() {
+		const q = sf02SearchText.trim();
+		sf02Output = q ? listMatches(sf02SearchTree?.searchNodes(q) ?? []) : 'Type to search';
+	}
+
+	// ── SF03 · index toggle ──────────────────────────────
+	let sf03IndexEnabled = $state(true);
+	let sf03Text = $state('');
+	let sf03Output = $state('Type to search');
+	let sf03Tree: Tree<SimpleItem>;
+	function onSf03Search() {
+		const q = sf03Text.trim();
+		if (!q) sf03Output = 'Type to search';
+		else if (!sf03IndexEnabled) sf03Output = 'Index disabled — searchNodes() returns no matches.';
+		else sf03Output = listMatches(sf03Tree?.searchNodes(q) ?? []);
+	}
+
+	// ── SF05 · beforeScrollCallback ──────────────────────
+	const scrollNodes: SimpleItem[] = [];
+	for (let g = 1; g <= 40; g++) {
+		scrollNodes.push({ id: `g${g}`, path: `${g}`, name: `Group ${g}` });
+		for (let i = 1; i <= 8; i++) scrollNodes.push({ id: `g${g}-${i}`, path: `${g}.${i}`, name: `Item ${g}.${i}` });
+	}
+	let sf05Tree: Tree<SimpleItem>;
+	let sf05CancelKeyboard = $state(false);
+	let sf05AlignStart = $state(false);
+	let sf05Reveal = $state(true);
+	let sf05Log = $state<string[]>([]);
+	function onBeforeScroll({ source, path, container, options }: BeforeScrollContext<SimpleItem>) {
+		const where = container ? container.id || container.className : 'page';
+		let verdict = 'defaults';
+		let result: false | Partial<TreeScrollOptions> | undefined;
+		if (source === 'keyboard' && sf05CancelKeyboard) {
+			result = false;
+			verdict = 'skipped';
+		} else if (source === 'scroll-to-path' && sf05AlignStart) {
+			result = { block: 'start' };
+			verdict = '→ block start';
+		}
+		sf05Log = [`${source}  ${path}  container=${where}  ${JSON.stringify(options)}  ${verdict}`, ...sf05Log].slice(0, 30);
+		return result;
+	}
+	function onScrollDemo(text: string) {
+		const q = text.trim();
+		if (!q) return;
+		const [hit] = sf05Tree?.searchNodes(q) ?? [];
+		if (hit) sf05Tree.scrollToPath(hit.path, { shouldHighlight: true, shouldRevealContainer: sf05Reveal });
+	}
 </script>
 
 <svelte:head>
@@ -388,7 +477,7 @@
 <header>
 	<a href="/" class="back-link">&larr; Back to Examples</a>
 	<h1>Search & Filter</h1>
-	<p class="subtitle">Internal search index with result navigation</p>
+	<p class="subtitle">Filter the tree down to matches, or search-and-navigate while keeping the whole tree visible &mdash; powered by the internal FlexSearch index</p>
 	<RenderModeSwitch />
 </header>
 
@@ -396,24 +485,19 @@
 <div class="card">
 	<h2>SF01 · Search & Navigate</h2>
 	<p class="description">
-		Type to search the tree. <strong>Filter</strong> mode hides non-matching nodes.
-		<strong>Search</strong> mode keeps the tree visible and navigates to results.
-		Use <kbd>Enter</kbd> for next, <kbd>Shift+Enter</kbd> for previous, <kbd>Esc</kbd> to clear.
+		Type to query the tree. <strong>Filter</strong> mode hides non-matching nodes and auto-expands
+		ancestors of matches. <strong>Search</strong> mode keeps the whole tree visible and jumps between
+		matches. Use <kbd>Enter</kbd> for next, <kbd>Shift+Enter</kbd> for previous, <kbd>Esc</kbd> to
+		clear. Toggle the mode with the icon button. Tick checkboxes while filtered — the checked list
+		keeps what you picked.
 	</p>
 
 	<div class="search-bar">
 		<button class="search-mode-btn" onclick={toggleSearchMode} title="Toggle filter/search mode">
 			{#if searchMode === 'filter'}
-				<!-- Funnel icon -->
-				<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-					<path d="M1.5 1.5h13l-5 6v5l-3 2v-7z"/>
-				</svg>
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
 			{:else}
-				<!-- Magnifying glass icon -->
-				<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-					<circle cx="6.5" cy="6.5" r="5" fill="none" stroke="currentColor" stroke-width="2"/>
-					<line x1="10" y1="10" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-				</svg>
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
 			{/if}
 		</button>
 		<span class="search-mode-label">{searchMode === 'filter' ? 'Filter' : 'Search'}</span>
@@ -430,10 +514,10 @@
 		{#if searchResults.length > 0}
 			<span class="search-counter">{currentResultIndex + 1}/{searchResults.length}</span>
 			<button class="search-nav-btn" title="Previous (Shift+Enter)" aria-label="Previous result" onclick={searchPrev}>
-				<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M6 2L1 7h10z"/></svg>
+				<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
 			</button>
 			<button class="search-nav-btn" title="Next (Enter)" aria-label="Next result" onclick={searchNext}>
-				<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M6 10L1 5h10z"/></svg>
+				<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
 			</button>
 		{:else if searchInputValue.trim()}
 			<span class="search-counter no-results">0 results</span>
@@ -441,7 +525,7 @@
 
 		{#if searchInputValue}
 			<button class="search-nav-btn" title="Clear (Esc)" aria-label="Clear search" onclick={clearSearch}>
-				<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+				<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
 			</button>
 		{/if}
 
@@ -562,7 +646,7 @@
 
 	<div class="note">
 		<p class="note-title">Note</p>
-		<p>The search index is built asynchronously after page load. If no results appear immediately, wait a moment.</p>
+		<p>The search index is built asynchronously after the data is set. If no results appear on the very first keystroke, wait a moment for indexing to finish (the status line above says when it is ready).</p>
 	</div>
 
 	<div class="code-block" data-language="svelte">
@@ -608,10 +692,105 @@ ${"<"}/script>
 	</div>
 </div>
 
-<!-- Search Configuration -->
+<!-- SF02 · Filter vs Search -->
 <div class="card">
-	<h2>SF02 · Search Configuration</h2>
-	<p class="description">Configure how the search index is built and queried.</p>
+	<h2>SF02 · Filter vs Search</h2>
+	<p class="description">
+		Both consult the same index, but they do different things to the tree. Run the two live demos
+		below with the same query to feel the difference.
+	</p>
+
+	<table class="reference-table">
+		<thead>
+			<tr>
+				<th>API</th>
+				<th>Effect on the tree</th>
+				<th>Returns</th>
+				<th>Use when</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr class="is-highlight">
+				<td><code>searchTerm</code> (bindable) / <code>filterNodes(text)</code></td>
+				<td>Prunes &mdash; hides non-matching nodes, auto-expands ancestors of matches</td>
+				<td><code>void</code></td>
+				<td>You want to narrow a large tree down to what matters</td>
+			</tr>
+			<tr>
+				<td><code>searchNodes(text)</code></td>
+				<td>None &mdash; the tree stays fully intact</td>
+				<td><code>LTreeNode&lt;T&gt;[]</code></td>
+				<td>You want to count / navigate matches without losing context</td>
+			</tr>
+			<tr>
+				<td><code>scrollToPath(path, opts)</code></td>
+				<td>Scrolls a node into view (auto-expands ancestors)</td>
+				<td><code>Promise&lt;boolean&gt;</code></td>
+				<td>Jumping to a search result (<code>&#123; shouldExpandAncestors, shouldHighlight &#125;</code>)</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<div class="grid" style="--grid-min: 320px; margin-top: 1rem">
+		<div>
+			<p class="output-label"><code>searchTerm</code> &mdash; non-matches disappear</p>
+			<div class="controls">
+				<input type="text" id="sf02-filter-input" placeholder="Filter (e.g. 'test')..." bind:value={sf02FilterText} />
+				<button class="btn-outline" onclick={() => (sf02FilterText = '')}>Clear</button>
+			</div>
+			<div class="tree-container tree-container-sm">
+				<Tree
+					nodes={projectTree}
+					idMember="id"
+					pathMember="path"
+					displayValueMember="name"
+					sortCallback={sortByPath}
+					isSorted={true}
+					expandLevel={1}
+					searchValueMember="name"
+					searchTerm={sf02FilterText.trim()}
+					{...getTreeProps()}
+				/>
+			</div>
+		</div>
+		<div>
+			<p class="output-label"><code>searchNodes</code> &mdash; tree intact, matches listed</p>
+			<div class="controls">
+				<input type="text" id="sf02-search-input" placeholder="Search (e.g. 'test')..." bind:value={sf02SearchText} oninput={onSf02Search} />
+				<button class="btn-outline" onclick={() => { sf02SearchText = ''; onSf02Search(); }}>Clear</button>
+			</div>
+			<div class="tree-container tree-container-sm">
+				<Tree
+					bind:this={sf02SearchTree}
+					nodes={projectTree}
+					idMember="id"
+					pathMember="path"
+					displayValueMember="name"
+					sortCallback={sortByPath}
+					isSorted={true}
+					expandLevel={1}
+					searchValueMember="name"
+					{...getTreeProps()}
+				/>
+			</div>
+			<div class="output">
+				<p class="output-label">Matches:</p>
+				<pre id="sf02-output">{sf02Output}</pre>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- SF03 · Internal Search Index (FlexSearch) -->
+<div class="card">
+	<h2>SF03 · Internal Search Index (FlexSearch)</h2>
+	<p class="description">
+		Search is backed by an internal <strong>FlexSearch</strong> index, built asynchronously off the
+		node data. It is on by default (<code>isInternalSearchIndexEnabled</code>); tell it which value
+		to index via <code>searchValueMember</code> (or the <code>getSearchValueCallback</code> for
+		multi-field / computed text). Without the index enabled, <code>searchTerm</code> /
+		<code>searchNodes</code> have nothing to query.
+	</p>
 
 	<table class="reference-table">
 		<thead>
@@ -622,88 +801,126 @@ ${"<"}/script>
 			</tr>
 		</thead>
 		<tbody>
-			<tr>
+			<tr class="is-highlight">
 				<td><code>isInternalSearchIndexEnabled</code></td>
 				<td><code>boolean</code></td>
-				<td>Enable the internal search index (required for search/filter)</td>
+				<td>Build the internal FlexSearch index (required for search/filter). Default <code>true</code>; <code>false</code> = no index, search finds nothing</td>
 			</tr>
 			<tr>
 				<td><code>searchValueMember</code></td>
 				<td><code>string</code></td>
-				<td>Property name to index for searching (e.g., "name")</td>
+				<td>Property name whose value gets indexed (e.g. <code>"name"</code>)</td>
 			</tr>
 			<tr>
 				<td><code>getSearchValueCallback</code></td>
-				<td><code>(node: LTreeNode&lt;T&gt;) =&gt; string</code></td>
-				<td>Custom function to extract search value from node</td>
+				<td><code>(&#123; node &#125;) =&gt; string</code></td>
+				<td>Custom extractor &mdash; index multiple fields / computed text</td>
+			</tr>
+			<tr>
+				<td><code>indexerBatchSize</code></td>
+				<td><code>number</code></td>
+				<td>Max nodes indexed per idle slot (default 1000; each slot is also time-boxed)</td>
+			</tr>
+			<tr>
+				<td><code>indexerTimeout</code></td>
+				<td><code>number</code></td>
+				<td>Idle timeout (ms) between index batches (default 50)</td>
+			</tr>
+			<tr>
+				<td><code>initializeIndexCallback</code></td>
+				<td><code>() =&gt; Index</code></td>
+				<td>Factory for a custom FlexSearch <code>Index</code> (tokenizer, charset, …) instead of the built-in one; a change rebuilds the index</td>
 			</tr>
 			<tr>
 				<td><code>searchTerm</code></td>
 				<td><code>string</code></td>
-				<td>Bindable prop for filtering the tree visually</td>
+				<td>The active filter term (bindable) &mdash; the declarative twin of <code>filterNodes(text)</code></td>
+			</tr>
+			<tr>
+				<td><code>maxSearchResultCount</code></td>
+				<td><code>number</code></td>
+				<td>Max matches a search / filter returns (default 1000); <code>onSearchStatusChange</code> reports <code>isLimited</code></td>
+			</tr>
+			<tr>
+				<td><code>filterScope</code></td>
+				<td><code>'matches' | 'descendants' | 'tree-depth' | 'subtree-height' | 'levels-below'</code></td>
+				<td><strong>Experimental.</strong> Which descendants of a filter match stay visible (ancestors always do) &mdash; see SF04</td>
+			</tr>
+			<tr>
+				<td><code>filterDescendantDepth</code></td>
+				<td><code>number</code></td>
+				<td><strong>Experimental.</strong> The x of the depth-limited filter scopes (default 1)</td>
+			</tr>
+			<tr>
+				<td><code>shouldExpandFilterDescendants</code></td>
+				<td><code>boolean</code></td>
+				<td><strong>Experimental.</strong> Expand the descendants a filter scope adds (default <code>true</code>); off, they start collapsed</td>
 			</tr>
 		</tbody>
 	</table>
 
-	<h3 class="subsection">Methods</h3>
 	<table class="reference-table">
 		<thead>
 			<tr>
-				<th>Method</th>
-				<th>Returns</th>
-				<th>Description</th>
+				<th>Event prop</th>
+				<th>ctx</th>
+				<th>Fires when</th>
 			</tr>
 		</thead>
 		<tbody>
 			<tr>
-				<td><code>searchNodes(text)</code></td>
-				<td><code>LTreeNode&lt;T&gt;[]</code></td>
-				<td>Query the index without filtering - returns matching nodes</td>
+				<td><code>onIndexProgress</code></td>
+				<td><code>&#123; processed, total, isComplete &#125;</code></td>
+				<td>The async index filled another batch, and once more with <code>isComplete: true</code> at the end &mdash; results are partial until then</td>
 			</tr>
 			<tr>
-				<td><code>scrollToPath(path, options)</code></td>
-				<td><code>void</code></td>
-				<td>Scroll tree to make a node visible (expands parents automatically)</td>
+				<td><code>onSearchStatusChange</code></td>
+				<td><code>&#123; searchTerm, matchCount, isLimited, limit, isIndexing &#125;</code></td>
+				<td>A filter was applied or cleared (also the automatic re-filter when indexing completes); <code>isLimited</code> = more matched than <code>maxSearchResultCount</code></td>
 			</tr>
 		</tbody>
 	</table>
 
-	<div class="code-block" data-language="svelte">
-		<pre>{`<!-- Using searchValueMember (simple) -->
-<Tree
-  isInternalSearchIndexEnabled={true}
-  searchValueMember="name"
-  ...
-/>
+	<div class="controls mt-1">
+		<label>
+			<input type="checkbox" id="sf03-index-toggle" bind:checked={sf03IndexEnabled} onchange={() => queueMicrotask(onSf03Search)} />
+			Internal search index enabled
+		</label>
+		<input type="text" id="sf03-input" placeholder="Search (e.g. 'frontend')..." bind:value={sf03Text} oninput={onSf03Search} />
+		<button class="btn-outline" onclick={() => { sf03Text = ''; onSf03Search(); }}>Clear</button>
+	</div>
 
-<!-- Using getSearchValueCallback (custom - search multiple fields) -->
+	<div class="tree-container tree-container-sm">
+		<Tree
+			bind:this={sf03Tree}
+			nodes={orgTree}
+			idMember="id"
+			pathMember="path"
+			displayValueMember="name"
+			sortCallback={sortByPath}
+			isSorted={true}
+			expandLevel={1}
+			searchValueMember="name"
+			isInternalSearchIndexEnabled={sf03IndexEnabled}
+			{...getTreeProps()}
+		/>
+	</div>
+
+	<div class="output">
+		<p class="output-label">Result:</p>
+		<pre id="sf03-output">{sf03Output}</pre>
+	</div>
+
+	<div class="code-block" data-language="svelte">
+		<pre>{`<!-- Simple: index a single member -->
+<Tree isInternalSearchIndexEnabled searchValueMember="name" ... />
+
+<!-- Advanced: index a computed string across several fields -->
 <Tree
-  isInternalSearchIndexEnabled={true}
-  getSearchValueCallback={({ node }) => \`\${node.data?.name} \${node.data?.description}\`}
+  isInternalSearchIndexEnabled
+  getSearchValueCallback={({ node }) => \`\${node.data?.name} \${node.data?.description ?? ''}\`}
   ...
 />`}</pre>
-	</div>
-</div>
-
-<!-- FlexSearch Integration -->
-<div class="card">
-	<h2>SF03 · FlexSearch Integration</h2>
-	<p class="description">For advanced full-text search, integrate with FlexSearch (optional peer dependency).</p>
-
-	<div class="note">
-		<p class="note-title">Installation</p>
-		<pre>npm install flexsearch</pre>
-	</div>
-
-	<div class="code-block" data-language="ts">
-		<pre>{`// FlexSearch provides advanced features:
-// - Fuzzy matching
-// - Phonetic search
-// - Language-specific tokenization
-// - Scoring and relevance ranking
-
-// The tree component can work with FlexSearch
-// by providing a custom search callback`}</pre>
 	</div>
 </div>
 
@@ -836,6 +1053,80 @@ ${"<"}/script>
   shouldExpandFilterDescendants={false}  // added subtrees start collapsed
   ...
 />`}</pre>
+	</div>
+</div>
+
+<!-- SF05 · Scroll control (beforeScrollCallback) -->
+<div class="card">
+	<h2>SF05 · Scroll control (beforeScrollCallback)</h2>
+	<p class="description">
+		The tree scrolls a node into view on its own in three places: a keyboard move
+		(<code>source: 'keyboard'</code> &mdash; <code>nearest</code>, always instant),
+		<code>scrollToPath</code> (<code>'scroll-to-path'</code> &mdash; <code>center</code>, the
+		<code>--stv-scroll-behavior</code> token, and it first scrolls the page to the tree when the tree
+		is off-screen) and the reveal after a paste into a node (<code>'paste'</code>). Each scroll moves
+		only the tree's scroll container, never the page; a tree without one scrolls the page with the
+		same alignment. <code>beforeScrollCallback</code> runs first: return <code>false</code> to skip
+		the scroll, or options to replace the defaults. Type to jump with <code>scrollToPath</code>, or
+		click a node and use the arrow keys / <kbd>PageDown</kbd> / <kbd>End</kbd>. Scroll the page so
+		the tree is out of sight, then search with &ldquo;Reveal the tree&rdquo; on and off.
+	</p>
+
+	<div class="controls">
+		<input type="search" id="sf05-input" placeholder="Search (e.g. 'Item 27.5')..." oninput={(e) => onScrollDemo(e.currentTarget.value)} />
+		<label><input type="checkbox" id="sf05-cancel-keyboard" bind:checked={sf05CancelKeyboard} /> Cancel keyboard scrolls</label>
+		<label><input type="checkbox" id="sf05-start" bind:checked={sf05AlignStart} /> Align to start (not center)</label>
+		<label><input type="checkbox" id="sf05-reveal" bind:checked={sf05Reveal} /> Reveal the tree</label>
+	</div>
+
+	<table class="reference-table">
+		<thead>
+			<tr><th>ctx field</th><th>Type</th><th>Description</th></tr>
+		</thead>
+		<tbody>
+			<tr><td><code>node</code> / <code>path</code></td><td><code>LTreeNode</code> / <code>string</code></td><td>The node being revealed</td></tr>
+			<tr class="is-highlight"><td><code>source</code></td><td><code>'keyboard' | 'scroll-to-path' | 'paste'</code></td><td>What made the tree scroll</td></tr>
+			<tr><td><code>container</code></td><td><code>HTMLElement | null</code></td><td>The scroll container found around the row (the tree's own, or a wrapper); <code>null</code> = only the page scrolls</td></tr>
+			<tr><td><code>options</code></td><td><code>&#123; block, inline, behavior, shouldRevealContainer &#125;</code></td><td>What the tree is about to use; return a partial to replace it</td></tr>
+			<tr><td><code>controller</code></td><td><code>TreeController</code></td><td>The usual callback context</td></tr>
+		</tbody>
+	</table>
+
+	<div class="tree-container tree-container-sm mt-1" id="sf05-container">
+		<Tree
+			bind:this={sf05Tree}
+			nodes={scrollNodes}
+			idMember="id"
+			pathMember="path"
+			displayValueMember="name"
+			sortCallback={sortByPath}
+			isSorted={true}
+			expandLevel={1}
+			searchValueMember="name"
+			beforeScrollCallback={onBeforeScroll}
+			{...getTreeProps()}
+		/>
+	</div>
+
+	<div class="output">
+		<p class="output-label">beforeScrollCallback ctx:</p>
+		<div class="log-panel" id="sf05-log">
+			{#each sf05Log as line, i (i)}<div>{line}</div>{/each}
+		</div>
+	</div>
+
+	<div class="code-block" data-language="svelte">
+		<pre>{`<Tree
+  beforeScrollCallback={({ source, path, container, options }) => {
+    if (source === 'keyboard' && cancelKeyboard) return false;  // skip it
+    if (source === 'scroll-to-path') return { block: 'start' };  // replace a default
+    // nothing → the defaults in \`options\`
+  }}
+  ...
+/>
+
+<!-- scrollToPath brings an off-screen tree into view first — opt out per call: -->
+tree.scrollToPath('27.5', { shouldRevealContainer: false });`}</pre>
 	</div>
 </div>
 
