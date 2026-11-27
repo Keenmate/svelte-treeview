@@ -56,7 +56,7 @@ import {
 	getDragSet,
 	clearDragSet
 } from './clipboard.js';
-import type { TreeNavigation, TreeNavigationOverrides } from './navigation.js';
+import type { NavigationPreset, TreeNavigation, TreeNavigationOverrides } from './navigation.js';
 import type { TreeMenuContext, TreeMenuEntry, TreeMenuItem, TreeAction, TreeActionEventDetail } from './menu.js';
 import type { MenuItem, ResolvedActionItem } from '../vendor/actions/types.js';
 import { runAction } from '../vendor/actions/resolve.js';
@@ -69,6 +69,8 @@ import { findScrollContainer, scrollContainerToBox, scrollIntoContainer } from '
 import { computeVirtualRange } from '../vendor/core/dom/virtual-window.js';
 import { readCssDurationMs, readScrollBehavior } from '../vendor/core/dom/css-values.js';
 import { announce } from '../vendor/core/dom/announce.js';
+import { isRtl } from '../vendor/core/dom/direction.js';
+import { compileKeyBindings, findKeyBinding, type CompiledKeyBinding, type TreeKeyBindings } from './key-bindings.js';
 import { runBeforeCallback, runBeforeCallbackSync } from '../vendor/actions/before-callback.js';
 import { createSelection } from '../vendor/core/selection/selection.js';
 import { rowDomId } from '../helpers/string-helpers.js';
@@ -894,6 +896,15 @@ export interface TreeEngineProps<T> {
 	hasContextMenuSnippet?: boolean;
 	/** Override individual navigation methods (e.g. for custom ArrowDown/Up behavior) */
 	navigationOverrides?: TreeNavigationOverrides<T>;
+	/** What the arrow keys do: `'classic'` (default — → enters a node, opening it first; ← goes to
+	 *  the parent) or `'wai-aria'` (→ opens, a second → enters; ← collapses, a second ← goes up;
+	 *  `*` expands the siblings). Live. */
+	navigationPreset?: NavigationPreset;
+	/** Rebind keys on top of the preset: key chord (core shortcut syntax — `'Plus'`, `'Shift+End'`,
+	 *  `'*'`) → a navigation action NAME from the closed set `NAVIGATION_ACTIONS`, or `null` = the tree
+	 *  ignores that key. Merged over the preset's map per chord; an unknown name is warned + ignored.
+	 *  Spread `CLASSIC_KEY_BINDINGS` / `WAI_ARIA_KEY_BINDINGS` to build your own. Live. */
+	keyBindings?: TreeKeyBindings;
 
 	// VISUALS
 	bodyClass?: string | null | undefined;
@@ -1443,6 +1454,20 @@ export class TreeEngine<T> {
 
 	// ── Navigation strategy ────────────────────────────────────────────
 	navigation!: TreeNavigation<T>;
+	navigationPreset = $state<NavigationPreset>('classic');
+	keyBindings = $state.raw<TreeKeyBindings | undefined>(undefined);
+	#compiledKeyBindings: { preset: NavigationPreset; source: TreeKeyBindings | undefined; list: CompiledKeyBinding[] } | null = null;
+
+	/** The active key map (preset + keyBindings), compiled once per change. */
+	private _activeKeyBindings(): CompiledKeyBinding[] {
+		const preset = this.navigationPreset;
+		const source = this.keyBindings;
+		const cached = this.#compiledKeyBindings;
+		if (cached && cached.preset === preset && cached.source === source) return cached.list;
+		const list = compileKeyBindings(preset, source, (message) => uiLogger.warn(message));
+		this.#compiledKeyBindings = { preset, source, list };
+		return list;
+	}
 
 	// ── Internal mutable state ──────────────────────────────────────────
 
@@ -3804,46 +3829,28 @@ export class TreeEngine<T> {
 
 		if (this.allFlatNodes.length === 0) return;
 
+		// The key map (navigationPreset + keyBindings; ArrowLeft / ArrowRight swapped in a right-to-left
+		// tree): a bound key runs its navigation action — through this.navigation, so navigationOverrides
+		// decide what it does — and a key bound to null is left to the page. Ctrl+A / Space / Escape
+		// below run only when the map doesn't claim them.
+		const binding = findKeyBinding(this._activeKeyBindings(), event, isRtl(this.containerElement));
+		if (binding) {
+			if (binding.action) {
+				this.navigation[binding.action]();
+				event.preventDefault();
+			}
+			return;
+		}
+
+		// Ctrl/Cmd+A selects every visible selectable node (multiple mode; = web-treeview).
+		if (matchesShortcut(event, 'Ctrl+A') || matchesShortcut(event, 'Meta+A')) {
+			event.preventDefault();
+			this.selectAll();
+			return;
+		}
+
 		let isHandled = true;
-		// Shift+nav extends the selection range (a no-op in single mode — see _extendSelectionTo).
 		switch (event.key) {
-			case 'ArrowDown':
-				if (event.shiftKey) this.extendSelectionNext();
-				else this.focusNextAtLevel();
-				break;
-			case 'ArrowUp':
-				if (event.shiftKey) this.extendSelectionPrevious();
-				else this.focusPreviousAtLevel();
-				break;
-			case 'ArrowRight':
-				this.focusFirstChild();
-				break;
-			case 'ArrowLeft':
-				this.focusParent();
-				break;
-			case 'Backspace':
-				this.collapseParent();
-				break;
-			case 'Home':
-				if (event.shiftKey) this.extendSelectionToFirst();
-				else this.focusFirst();
-				break;
-			case 'End':
-				if (event.shiftKey) this.extendSelectionToLast();
-				else this.focusLast();
-				break;
-			case 'PageDown':
-				if (event.shiftKey) this.extendSelectionNextPage();
-				else this.focusNextPage();
-				break;
-			case 'PageUp':
-				if (event.shiftKey) this.extendSelectionPreviousPage();
-				else this.focusPreviousPage();
-				break;
-			case 'Enter':
-				// WAI-ARIA tree: Enter = the node's default action (expand / collapse).
-				this.toggleFocusedNodeExpanded();
-				break;
 			case ' ':
 				// WAI-ARIA tree: Space toggles selection. With checkboxes: the focused node's
 				// checkbox; multiple mode: the focused node in the selection; single mode:
@@ -4607,7 +4614,7 @@ export class TreeEngine<T> {
 			this.onNodeClickHandler?.(this._ctx(this.getNodeRef(node)));
 			if (isSelectionChanged) this._dispatchSelectionChange();
 			if (this.focusedNode?.path !== prevFocusPath)
-				this.onFocusChangeHandler?.(this._ctx({ focusedNode: this.focusedNode }));
+				this.onFocusChangeHandler?.(this._ctx({ focusedNode: this.focusedNode ?? null }));
 		}
 		this.tree.refresh();
 
@@ -6333,6 +6340,18 @@ export class TreeEngine<T> {
 	collapseParent(): void {
 		this.navigation.collapseParent();
 	}
+	/** ArrowRight under navigationPreset 'wai-aria': open a closed node (focus stays), enter an open one */
+	expandOrFocusFirstChild(): void {
+		this.navigation.expandOrFocusFirstChild();
+	}
+	/** ArrowLeft under navigationPreset 'wai-aria': collapse an open node (focus stays), else go to the parent */
+	collapseOrFocusParent(): void {
+		this.navigation.collapseOrFocusParent();
+	}
+	/** `*` under navigationPreset 'wai-aria': expand every sibling of the focused node */
+	expandSiblings(): void {
+		this.navigation.expandSiblings();
+	}
 	/** Toggle expand/collapse of current node */
 	toggleFocusedNodeExpanded(): void {
 		this.navigation.toggleFocusedNodeExpanded();
@@ -6460,6 +6479,42 @@ export class TreeEngine<T> {
 				const node = this.getNodeByPath(currentPath);
 				if (!node?.parentPath) return;
 				go(node.parentPath);
+			},
+
+			// WAI-ARIA →: a closed node opens like its toggle glyph (accordion, beforeExpandCallback,
+			// collapsible) and keeps focus; an open node moves to its first child; a leaf does nothing.
+			expandOrFocusFirstChild: () => {
+				const node = this.focusedNode ? this.getNodeByPath(this.focusedNode.path) : null;
+				if (!node?.hasChildren) return;
+				if (!node.isExpanded) {
+					void this.toggleNodeExpanded(node.path);
+					return;
+				}
+				const { nodes, index } = cursor();
+				if (index >= 0 && index + 1 < nodes.length) go(nodes[index + 1].path);
+			},
+
+			// WAI-ARIA ←: an open (collapsible) node collapses and keeps focus; else go to the parent.
+			collapseOrFocusParent: () => {
+				const node = this.focusedNode ? this.getNodeByPath(this.focusedNode.path) : null;
+				if (!node) return;
+				if (node.hasChildren && node.isExpanded && this.tree.getNodeIsCollapsible(node)) {
+					void this.toggleNodeExpanded(node.path);
+					return;
+				}
+				if (node.parentPath) go(node.parentPath);
+			},
+
+			// WAI-ARIA *: expand every sibling (the focused node included); focus stays. Skipped under
+			// the accordion, which allows one open sibling.
+			expandSiblings: () => {
+				const path = this.focusedNode?.path;
+				if (!path || this.shouldExpandAsAccordion) return;
+				const paths = this.tree
+					.getSiblings(path)
+					.filter((n) => n.hasChildren && !n.isExpanded)
+					.map((n) => n.path);
+				if (paths.length > 0) void this.expandNodes(paths);
 			},
 
 			collapseParent: () => {

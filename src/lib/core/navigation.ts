@@ -14,10 +14,19 @@ export interface TreeNavigation<T> {
 	focusNextAtLevel(): void;
 	/** Move to previous visible node at the same level */
 	focusPreviousAtLevel(): void;
-	/** Move to first child (expands if collapsed) */
+	/** ArrowRight (navigationPreset 'classic') — move to the first child (expands if collapsed) */
 	focusFirstChild(): void;
-	/** Move to parent node (no collapse) */
+	/** ArrowLeft (navigationPreset 'classic') — move to the parent node (no collapse) */
 	focusParent(): void;
+	/** ArrowRight (navigationPreset 'wai-aria') — a closed node opens (focus stays), an open node
+	 *  moves to its first child, a leaf does nothing */
+	expandOrFocusFirstChild(): void;
+	/** ArrowLeft (navigationPreset 'wai-aria') — an open node collapses (focus stays), a closed node
+	 *  or a leaf moves to its parent */
+	collapseOrFocusParent(): void;
+	/** `*` (navigationPreset 'wai-aria') — expand every sibling of the focused node (focus stays;
+	 *  nothing under shouldExpandAsAccordion) */
+	expandSiblings(): void;
 	/** Collapse parent and select it (Backspace behavior) */
 	collapseParent(): void;
 	/** Toggle expand/collapse of current node */
@@ -47,3 +56,13 @@ export interface TreeNavigation<T> {
 }
 
 export type TreeNavigationOverrides<T> = Partial<TreeNavigation<T>>;
+
+/**
+ * Which navigation method the arrow keys call (= web-treeview):
+ * - `'classic'` (default) — → enters a node (opening it first), ← goes to the parent without
+ *   collapsing; Enter toggles, Backspace collapses the parent.
+ * - `'wai-aria'` — the WAI-ARIA tree pattern: → opens a closed node, a second → enters it; ← collapses
+ *   an open node, a second ← goes to the parent; `*` expands every sibling. Enter / Backspace as classic.
+ * `navigationOverrides` still replace the methods either preset calls.
+ */
+export type NavigationPreset = 'classic' | 'wai-aria';

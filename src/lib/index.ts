@@ -23,7 +23,15 @@ export type { TooltipParams } from "./actions/tooltip.js"
 // Clipboard types & utilities
 export type { ClipboardEntry, TreeClipboard } from "./core/clipboard.js"
 export { setClipboard, getClipboard, clearClipboard, hasClipboard, getClipboardOperation, uniqueName } from "./core/clipboard.js"
-export type { TreeNavigation, TreeNavigationOverrides } from "./core/navigation.js"
+export type { TreeNavigation, TreeNavigationOverrides, NavigationPreset } from "./core/navigation.js"
+export {
+	NAVIGATION_ACTIONS,
+	CLASSIC_KEY_BINDINGS,
+	WAI_ARIA_KEY_BINDINGS,
+	KEY_BINDING_PRESETS,
+	isNavigationAction
+} from "./core/key-bindings.js"
+export type { NavigationAction, TreeKeyBindings } from "./core/key-bindings.js"
 export type { RenderStats } from "./ltree/types.js"
 export { DEFAULT_LABELS, LABELS_TAG, resolveLabel, createTreeLabels } from "./core/labels.js"
 // Context-menu model (same as @keenmate/web-treeview; core /actions vendored)

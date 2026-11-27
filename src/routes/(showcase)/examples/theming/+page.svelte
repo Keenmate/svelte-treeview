@@ -631,6 +631,7 @@
 			<tr><th colspan="3" scope="colgroup">Node layout</th></tr>
 			<tr><td><code>--stv-indent-size</code></td><td><code>0.8 × rem</code> (= 8px)</td><td>Indentation per nesting level</td></tr>
 			<tr><td><code>--stv-node-padding</code></td><td><code>--stv-spacing-sm / --stv-spacing-md</code> (= 4px 8px)</td><td>Inner padding of a node row (V / H)</td></tr>
+			<tr><td><code>--stv-node-label-font-weight</code></td><td><code>--stv-font-weight-normal</code> (= 400)</td><td>Weight of the built-in label (<code>500</code> = medium)</td></tr>
 			<tr><td><code>--stv-node-border-radius</code></td><td><code>= --stv-border-radius-sm</code> (4px)</td><td>Node row corner rounding</td></tr>
 			<tr><td><code>--stv-node-bg-hover</code> / <code>--stv-node-bg-active</code></td><td><code>= --stv-hover-bg / --stv-active-bg</code></td><td>Row hover / pressed background (neutral overlays of the surface)</td></tr>
 			<tr><td><code>--stv-children-margin-top</code></td><td><code>0.2 × rem</code> (= 2px)</td><td>Top margin of child list</td></tr>

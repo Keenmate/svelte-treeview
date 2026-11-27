@@ -387,3 +387,13 @@ test.describe('selection = core createSelection (REVIEW §4)', () => {
 		await expect.poll(() => selected(page)).toEqual(['2']);
 	});
 });
+
+test('labels are regular weight (400); --stv-node-label-font-weight changes it (= web-treeview)', async ({ page }) => {
+	const weight = () => label(page, '1.1.1').evaluate((el) => getComputedStyle(el).fontWeight);
+	expect(await weight()).toBe('400');
+	await main(page)
+		.locator('.stv__container')
+		.first()
+		.evaluate((el: HTMLElement) => el.style.setProperty('--stv-node-label-font-weight', '500'));
+	expect(await weight()).toBe('500');
+});

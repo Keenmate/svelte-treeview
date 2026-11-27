@@ -28,7 +28,8 @@ export const TREE_CONTROLLER_METHODS = [
 	'isNodeChecked', 'focusNode', 'clearFocus',
 	// keyboard navigation
 	'focusAndSelectNode', 'focusNext', 'focusPrevious', 'focusNextAtLevel', 'focusPreviousAtLevel',
-	'focusFirstChild', 'focusParent', 'collapseParent', 'toggleFocusedNodeExpanded', 'focusFirst',
+	'focusFirstChild', 'focusParent', 'collapseParent', 'expandOrFocusFirstChild', 'collapseOrFocusParent',
+	'expandSiblings', 'toggleFocusedNodeExpanded', 'focusFirst',
 	'focusLast', 'focusNextPage', 'focusPreviousPage', 'extendSelectionNext', 'extendSelectionPrevious',
 	'extendSelectionToFirst', 'extendSelectionToLast', 'extendSelectionNextPage',
 	'extendSelectionPreviousPage',

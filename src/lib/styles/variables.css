@@ -108,6 +108,7 @@
 	--stv-font-size-xs: calc(var(--base-font-size-xs, 1.2) * var(--stv-rem));
 	--stv-font-size-sm: calc(var(--base-font-size-sm, 1.4) * var(--stv-rem));
 	--stv-font-size: var(--stv-font-size-sm);
+	--stv-font-weight-normal: var(--base-font-weight-normal, 400);
 	--stv-font-weight-medium: var(--base-font-weight-medium, 500);
 	--stv-font-weight-semibold: var(--base-font-weight-semibold, 600);
 
@@ -160,6 +161,8 @@
 	--stv-indent-size: calc(var(--base-tree-indent, 1.6) * var(--stv-rem));
 	/* Row pill padding (= web-treeview's --wtv-node-padding: 4px 8px). */
 	--stv-node-padding: var(--stv-spacing-sm) var(--stv-spacing-md);
+	/* The built-in label's weight (= web-treeview); 500 for a heavier look. */
+	--stv-node-label-font-weight: var(--stv-font-weight-normal);
 	/* Corner radius of the row pill (hover / selected / focused paint on it). */
 	--stv-node-border-radius: var(--stv-border-radius-sm);
 	/* Row transition. Default none = instant hover (crisper). Restore a fade with

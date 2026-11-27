@@ -159,6 +159,8 @@ moveNodes → tree-editing.txt
 N
 -
 navigationOverrides → advanced-patterns.txt
+navigationPreset ('classic' | 'wai-aria' arrow keys) → advanced-patterns.txt
+keyBindings / CLASSIC_KEY_BINDINGS / WAI_ARIA_KEY_BINDINGS / NAVIGATION_ACTIONS → advanced-patterns.txt
 focusFirstChild → typescript-types.txt, advanced-patterns.txt
 focusParent → typescript-types.txt, advanced-patterns.txt
 noData → basic-setup.txt

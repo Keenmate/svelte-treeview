@@ -132,6 +132,8 @@ export const TREE_OPTION_DEFAULTS: Record<TreeOptionKey, unknown> = {
 	beforeActionCallback: undefined,
 	onAction: undefined,
 	navigationOverrides: undefined,
+	navigationPreset: 'classic',
+	keyBindings: undefined,
 	hasContextMenuSnippet: false,
 	bodyClass: undefined,
 	selectedNodeClass: undefined,

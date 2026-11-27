@@ -237,6 +237,23 @@ test('Space selects the focused node in single mode (no checkboxes), no expand c
 	await expect(page.getByTestId('highlighted-sorted')).toHaveText('2');
 });
 
+test('Ctrl+A selects every visible selectable node (multiple mode; = web-treeview)', async ({ page }) => {
+	await clickToFocus(page, '1');
+	await page.keyboard.press('Enter'); // collapse Root-A: its 7 descendants are hidden
+	await expect.poll(() => visibleCount(page)).toBe(11);
+	await page.keyboard.press('ControlOrMeta+a');
+	await expect(page.getByTestId('highlighted-size')).toHaveText('11');
+	await expect(page.getByTestId('highlighted-sorted')).toHaveText('1,2,2.1,2.1.1,2.1.2,2.2,3,3.1,3.2,4,5');
+});
+
+test('Ctrl+A does nothing in single mode', async ({ page }) => {
+	await page.getByTestId('btn-single').click();
+	await clickToFocus(page, '2');
+	await page.keyboard.press('ControlOrMeta+a');
+	await page.waitForTimeout(100);
+	await expect(page.getByTestId('highlighted-sorted')).toHaveText('2');
+});
+
 // ── Home / End: jump to ends of visible flat list ──────────────────────────
 
 test.describe('Home / End — jump to first/last visible', () => {
@@ -487,4 +504,160 @@ test('--stv-indent-size (→ --base-tree-indent × --stv-rem): a 16px visual ste
 	expect(Math.round(l3 - l2)).toBe(16);
 	await page.evaluate(() => document.documentElement.style.setProperty('--base-tree-indent', '2.4'));
 	expect(Math.round((await left('1.1')) - (await left('1')))).toBe(24);
+});
+
+// ── navigationPreset 'wai-aria' (= web-treeview's keyboard-nav.spec) ──────────
+
+test.describe("navigationPreset 'wai-aria' — → opens then enters, ← collapses then goes up, * expands siblings", () => {
+	test.beforeEach(async ({ page }) => {
+		await page.goto(`${PAGE}?preset=wai-aria`);
+		await expect.poll(() => visibleCount(page)).toBe(18);
+	});
+
+	test('ArrowRight on a closed parent opens it and keeps focus; a second ArrowRight enters it', async ({ page }) => {
+		await clickToFocus(page, '1');
+		await page.keyboard.press('Enter'); // collapse Root-A
+		await expect.poll(() => visibleCount(page)).toBe(11);
+
+		await page.keyboard.press('ArrowRight');
+		await expect.poll(() => visibleCount(page)).toBe(18);
+		await expect(page.getByTestId('focused-path')).toHaveText('1');
+
+		await page.keyboard.press('ArrowRight');
+		await expect(page.getByTestId('focused-path')).toHaveText('1.1');
+	});
+
+	test('ArrowRight on a leaf is a no-op', async ({ page }) => {
+		await clickToFocus(page, '1.3');
+		await page.keyboard.press('ArrowRight');
+		await expect(page.getByTestId('focused-path')).toHaveText('1.3');
+		await expect.poll(() => visibleCount(page)).toBe(18);
+	});
+
+	test('ArrowLeft on an open parent collapses it and keeps focus; a second ArrowLeft goes to the parent', async ({ page }) => {
+		await clickToFocus(page, '1.1');
+		await page.keyboard.press('ArrowLeft');
+		await expect.poll(() => visibleCount(page)).toBe(16);
+		await expect(page.getByTestId('focused-path')).toHaveText('1.1');
+
+		await page.keyboard.press('ArrowLeft');
+		await expect(page.getByTestId('focused-path')).toHaveText('1');
+		await expect.poll(() => visibleCount(page)).toBe(16); // Root-A stays open
+	});
+
+	test('ArrowLeft on a leaf goes to the parent; on a closed root it is a no-op', async ({ page }) => {
+		await clickToFocus(page, '1.3');
+		await page.keyboard.press('ArrowLeft');
+		await expect(page.getByTestId('focused-path')).toHaveText('1');
+		await clickToFocus(page, '4');
+		await page.keyboard.press('ArrowLeft');
+		await expect(page.getByTestId('focused-path')).toHaveText('4');
+	});
+
+	test('* expands every sibling of the focused node; focus stays', async ({ page }) => {
+		await clickToFocus(page, '1');
+		await page.keyboard.press('Enter'); // collapse Root-A
+		await clickToFocus(page, '2');
+		await page.keyboard.press('Enter'); // collapse Root-B
+		await expect.poll(() => visibleCount(page)).toBe(7);
+
+		await page.keyboard.press('*');
+		await expect.poll(() => visibleCount(page)).toBe(18);
+		await expect(page.getByTestId('focused-path')).toHaveText('2');
+	});
+
+	test('dir="rtl" swaps them: ArrowLeft opens / enters, ArrowRight collapses / goes up', async ({ page }) => {
+		await page.goto(`${PAGE}?preset=wai-aria&dir=rtl`);
+		await expect.poll(() => visibleCount(page)).toBe(18);
+		await clickToFocus(page, '1.1');
+		await page.keyboard.press('ArrowRight');
+		await expect.poll(() => visibleCount(page)).toBe(16);
+		await page.keyboard.press('ArrowLeft');
+		await expect.poll(() => visibleCount(page)).toBe(18);
+		await page.keyboard.press('ArrowLeft');
+		await expect(page.getByTestId('focused-path')).toHaveText('1.1.1');
+	});
+});
+
+test("classic preset (default): * does nothing", async ({ page }) => {
+	await clickToFocus(page, '1');
+	await page.keyboard.press('Enter'); // collapse Root-A
+	await expect.poll(() => visibleCount(page)).toBe(11);
+	await page.keyboard.press('*');
+	await page.waitForTimeout(100);
+	expect(await visibleCount(page)).toBe(11);
+});
+
+test('dir="rtl" (classic): ArrowLeft expands + moves into the first child; ArrowRight goes back to the parent (= web-treeview)', async ({ page }) => {
+	await page.goto(`${PAGE}?dir=rtl`);
+	await expect.poll(() => visibleCount(page)).toBe(18);
+	await clickToFocus(page, '1');
+	await page.keyboard.press('Enter'); // collapse Root-A
+	await expect.poll(() => visibleCount(page)).toBe(11);
+
+	await page.keyboard.press('ArrowLeft');
+	await expect(page.getByTestId('focused-path')).toHaveText('1.1');
+	await expect.poll(() => visibleCount(page)).toBe(18);
+
+	await page.keyboard.press('ArrowRight');
+	await expect(page.getByTestId('focused-path')).toHaveText('1');
+});
+
+async function setKeyBindings(page: Page, bindings: Record<string, string | null>) {
+	await page.evaluate((b) => (window as any).tree.update({ keyBindings: b }), bindings);
+}
+
+// ── keyBindings: rebind keys over the preset (closed set of action names) ──────────────
+
+test.describe('keyBindings — key chord → navigation action name, merged over the preset', () => {
+	test('added keys run their action; untouched keys keep the preset; null leaves a key alone', async ({ page }) => {
+		await setKeyBindings(page, { Plus: 'expandSiblings', '-': 'collapseOrFocusParent', Backspace: null });
+		await clickToFocus(page, '1');
+		await page.keyboard.press('Enter'); // collapse Root-A
+		await clickToFocus(page, '2');
+		await page.keyboard.press('Enter'); // collapse Root-B
+		await expect.poll(() => visibleCount(page)).toBe(7);
+
+		await page.keyboard.type('+');
+		await expect.poll(() => visibleCount(page)).toBe(18);
+
+		await clickToFocus(page, '1.1');
+		await page.keyboard.type('-'); // open 1.1 → collapses it, focus stays
+		await expect.poll(() => visibleCount(page)).toBe(16);
+		await expect(page.getByTestId('focused-path')).toHaveText('1.1');
+
+		await page.keyboard.press('ArrowDown'); // the preset's binding still applies
+		await expect(page.getByTestId('focused-path')).toHaveText('1.2');
+
+		await page.keyboard.press('Backspace'); // unbound: Root-A stays open
+		await page.waitForTimeout(100);
+		await expect(page.getByTestId('focused-path')).toHaveText('1.2');
+		expect(await visibleCount(page)).toBe(16);
+	});
+
+	test('a binding replaces the preset entry for the same chord (alias spelling too)', async ({ page }) => {
+		await setKeyBindings(page, { Right: 'expandOrFocusFirstChild' }); // 'Right' = ArrowRight
+		await clickToFocus(page, '1');
+		await page.keyboard.press('Enter'); // collapse Root-A
+		await expect.poll(() => visibleCount(page)).toBe(11);
+		await page.keyboard.press('ArrowRight'); // wai-aria behaviour under classic: opens, focus stays
+		await expect.poll(() => visibleCount(page)).toBe(18);
+		await expect(page.getByTestId('focused-path')).toHaveText('1');
+	});
+
+	test('a value outside the closed set of action names is warned about and ignored', async ({ page }) => {
+		const warnings: string[] = [];
+		page.on('console', (m) => {
+			if (m.type() === 'warning' && m.text().includes('keyBindings')) warnings.push(m.text());
+		});
+		await setKeyBindings(page, { x: 'constructor', y: 'toString', w: '__proto__', z: 'focusLast' });
+		await clickToFocus(page, '1');
+		await page.keyboard.press('x');
+		await page.keyboard.press('y');
+		await page.keyboard.press('w');
+		await expect(page.getByTestId('focused-path')).toHaveText('1');
+		await page.keyboard.press('z');
+		await expect(page.getByTestId('focused-path')).toHaveText('5');
+		expect(warnings.length).toBe(3);
+	});
 });

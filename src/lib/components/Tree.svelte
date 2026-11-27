@@ -429,8 +429,14 @@
 	// `nodes` is input AND current state: the engine writes the tree's data back after a
 	// mutation (reverse effect below); that echo must not be fed in again as a new input.
 	let isNodesEcho = false;
+	// True once the engine has the tree's data — the first run of the effect below (effects don't
+	// run on the server). Until then the empty state stays blank instead of saying "No data" for a tree that
+	// has data — the server-rendered HTML and the first paint before hydration (= web-treeview,
+	// whose element stays hidden until it is ready).
+	let isDataReady = $state(false);
 	$effect(() => {
 		const incoming = nodes;
+		isDataReady = true;
 		if (isNodesEcho) {
 			isNodesEcho = false;
 			return;
@@ -782,6 +788,9 @@
 	export function focusFirstChild(): void { engine.focusFirstChild(); }
 	export function focusParent(): void { engine.focusParent(); }
 	export function collapseParent(): void { engine.collapseParent(); }
+	export function expandOrFocusFirstChild(): void { engine.expandOrFocusFirstChild(); }
+	export function collapseOrFocusParent(): void { engine.collapseOrFocusParent(); }
+	export function expandSiblings(): void { engine.expandSiblings(); }
 	export function toggleFocusedNodeExpanded(): void { engine.toggleFocusedNodeExpanded(); }
 	export function focusFirst(): void { engine.focusFirst(); }
 	export function focusLast(): void { engine.focusLast(); }
@@ -948,6 +957,8 @@
 				{@const dropHereText = engine.getLabel('messages.dropHere')}
 				{#if dropHereText}<div class="stv__drop-placeholder-content">{dropHereText}</div>{/if}
 			{/if}
+		{:else if !isDataReady}
+			<!-- data not handed to the engine yet (SSR / before hydration): no "No data" -->
 		{:else if noData}
 			{@render noData()}
 		{:else}

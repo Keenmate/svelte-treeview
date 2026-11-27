@@ -100,7 +100,7 @@
    Matches the `<span class="wtv__node-label">` wrapper in @keenmate/web-treeview so
    structures stay parallel between packages. No default styles — purely a CSS hook. */
 .stv__node-label {
-	/* intentionally empty */
+	font-weight: var(--stv-node-label-font-weight);
 }
 
 /* ── nodeTitleOverflow: ellipsis | info ──────────────────────────────────────

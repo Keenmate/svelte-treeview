@@ -122,3 +122,13 @@ test('a live labels change re-renders the rows (the prop path)', async ({ page }
 	});
 	await expect(scenario(page, 'no-display').locator('.stv__node-label')).toHaveText('PROP');
 });
+
+test('no "No data" before a tree got its nodes: server HTML has no empty-state text; an empty tree shows it once hydrated', async ({ page, request }) => {
+	// Trees WITH data are server-rendered before their nodes reach the engine (an $effect):
+	// the empty state stays blank there instead of claiming "No data".
+	const html = await (await request.get('/test/basic')).text();
+	expect(html).toContain('stv__container');
+	expect(html).not.toContain('stv__empty-state-content');
+	// A really empty tree still says so after hydration.
+	await expect(emptyText(page, 'empty')).toHaveText('No data');
+});

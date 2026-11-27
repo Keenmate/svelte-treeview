@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.0.0-rc18] - 2026-11-22
 
+### Added — `navigationPreset`: the WAI-ARIA arrow keys (2026-11-27, = web-treeview)
+
+- New prop `navigationPreset: 'classic' | 'wai-aria'`. `'classic'` (default) is the behavior so far: → opens a node and moves into it, ← goes to the parent without collapsing. `'wai-aria'` is the WAI-ARIA tree pattern screen-reader users expect: → on a closed node opens it and keeps focus, on an open node moves to its first child; ← on an open node collapses it and keeps focus, on a closed node or a leaf moves to the parent; `*` expands every sibling. Enter, Backspace, Space, Home / End and PageUp / PageDown are the same in both. Three new navigation methods carry it — `expandOrFocusFirstChild`, `collapseOrFocusParent`, `expandSiblings` — on `<Tree>`, the controller and `navigationOverrides`; type `NavigationPreset`. docs/accessibility.md; guarded by e2e/keyboard-nav.spec.ts (`?preset=wai-aria`).
+- New prop `keyBindings` rebinds keys on top of the preset: a key chord in the context-menu shortcut syntax (`'Plus'`, `'Shift+End'`, `'*'`) → the NAME of a navigation action, or `null` (the tree ignores the key). The names are a closed set (`NAVIGATION_ACTIONS`); anything else is warned about and ignored, so a binding never runs code of its own — what an action does stays `navigationOverrides`' job. Merged per chord over the preset; the built-in maps are exported frozen (`CLASSIC_KEY_BINDINGS`, `WAI_ARIA_KEY_BINDINGS`, `KEY_BINDING_PRESETS`) to spread into your own preset. Types `NavigationAction`, `TreeKeyBindings`. Guarded by e2e/keyboard-nav.spec.ts ("keyBindings").
+- The navigation keys now match their modifiers exactly: Ctrl+ArrowDown, Alt+Home, Shift+ArrowRight … no longer move focus as if the modifier weren't held (bind them in `keyBindings` if you want them).
+
+### Fixed — no "No data" flash for a tree that has data (2026-11-27)
+
+- `<Tree>` hands `nodes` to its engine in an `$effect`, which doesn't run on the server, so the server-rendered HTML (and the first paint before hydration) showed the empty-state "No data" for a tree that did have data. The empty state now stays blank until the engine has the data; a really empty tree still shows "No data" once hydrated. web-treeview never showed it (its element stays hidden until ready). Guarded by e2e/page-labels.spec.ts.
+
+### Added — `--stv-node-label-font-weight` (2026-11-27, = web-treeview)
+
+- The built-in label's weight is now a token, `--stv-node-label-font-weight` (default `--stv-font-weight-normal` → `--base-font-weight-normal`, 400 — unchanged look). New `--stv-font-weight-normal`. web-treeview drew its labels at 500 and now defaults to 400 too, so the same tree looks the same in both; set `500` for the heavier look. Guarded by e2e/regressions.spec.ts.
+
+### Added — Ctrl/Cmd+A selects every visible node (2026-11-27, = web-treeview)
+
+- In `selectionMode: 'multiple'` Ctrl+A (Cmd+A on a Mac) selects every visible selectable node, as web-treeview always did (`selectAll()`; nothing in single mode). Guarded by e2e/keyboard-nav.spec.ts.
+
+### Fixed — ← / → swap in a right-to-left tree (2026-11-27, = web-treeview)
+
+- In a `dir="rtl"` tree ArrowLeft now moves forward (into a node) and ArrowRight back, as the WAI-ARIA tree pattern and web-treeview do. They were not swapped. Guarded by e2e/keyboard-nav.spec.ts (`?dir=rtl`).
+
+### Documented — the library places a cross-tree copy drop; check `ctx.dropped` (2026-11-27)
+
+- Since rc13 a cross-tree COPY drop (Ctrl+drag, or `beforeDropCallback` returning `{ operation: 'copy' }`) is inserted by the library (`shouldAutoHandleCopy`, default `true`), and `onNodeDrop`'s `ctx.dropped` holds the new copies. An app that still inserts the dragged nodes itself in `onNodeDrop` gets two copies per drop. Insert only when `ctx.dropped` is `null`, or set `shouldAutoHandleCopy={false}` to keep placing them yourself. A cross-tree MOVE is unchanged: `ctx.dropped` is `null` and the app places the nodes. docs/usage.md `onNodeDrop`.
+
 ### Changed — the event order of a click (2026-11-27, = web-treeview)
 
 - A node click now fires, synchronously and in this order: `onNodeClick` → `onSelectionChange` (+ `onCheckedChange` without checkboxes) → `onFocusChange` → with `clickBehavior: 'expand-and-focus'`, `onNodeExpand` / `onNodeCollapse` + `onExpandedChange`. Before, `onFocusChange` came first. The state (focus, selection) is applied before any of them, so every handler reads the new values — like a native click → change. Guarded by e2e/event-context.spec.ts.

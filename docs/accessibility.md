@@ -12,13 +12,60 @@ The tree is fully navigable from the keyboard. Focus the tree (`Tab` into it), t
 |-----|--------|
 | `ArrowDown` | Move focus to the next visible node at the same level |
 | `ArrowUp` | Move focus to the previous visible node at the same level |
-| `ArrowRight` | Move focus to the first child (expands the node first if it is collapsed) |
-| `ArrowLeft` | Move focus to the parent (does not collapse) |
+| `ArrowRight` | Move focus to the first child (expands the node first if it is collapsed) — `navigationPreset='wai-aria'`: see below |
+| `ArrowLeft` | Move focus to the parent (does not collapse) — `navigationPreset='wai-aria'`: see below |
 | `Backspace` | Collapse the parent and focus it |
 | `Home` | Focus the first visible node |
 | `End` | Focus the last visible node |
 | `PageDown` | Jump forward ~10 visible nodes |
 | `PageUp` | Jump back ~10 visible nodes |
+
+### Arrow-key presets (`navigationPreset`)
+
+| Key | `'classic'` (default) | `'wai-aria'` (the WAI-ARIA tree pattern) |
+|-----|-----------------------|------------------------------------------|
+| `ArrowRight` | Open the node if closed **and** move to its first child | Closed node: open it, focus stays. Open node: move to its first child. Leaf: nothing |
+| `ArrowLeft` | Move to the parent (no collapse) | Open node: collapse it, focus stays. Closed node or leaf: move to the parent |
+| `*` | — | Expand every sibling of the focused node (focus stays; nothing under `shouldExpandAsAccordion`) |
+
+Everything else (Enter, Backspace, Space, Home / End, PageUp / PageDown, the Shift variants) is the
+same in both. In a right-to-left tree (`dir="rtl"`) ArrowLeft and ArrowRight swap. The keys call
+`focusFirstChild` / `focusParent` (classic) or `expandOrFocusFirstChild` / `collapseOrFocusParent` /
+`expandSiblings` (wai-aria) — `navigationOverrides` can replace any of them. Same in web-treeview (`navigation-preset`).
+
+### Custom key bindings (`keyBindings`)
+
+`keyBindings` rebinds keys on top of the preset: a key chord, in the same syntax as context-menu
+shortcuts (`'Plus'`, `'Shift+End'`, `'Ctrl+ArrowUp'`, `'*'`, `'Right'` = `'ArrowRight'`), maps to the
+**name** of a navigation action, or to `null` (the tree ignores that key, so it reaches the page).
+Merged per chord, so you list only what changes:
+
+```svelte
+<Tree
+  navigationPreset="wai-aria"
+  keyBindings={{ Plus: 'expandSiblings', '-': 'collapseOrFocusParent', Backspace: null }}
+/>
+```
+
+- **Closed set.** A value must be one of `NAVIGATION_ACTIONS` — `focusNext`, `focusPrevious`,
+  `focusNextAtLevel`, `focusPreviousAtLevel`, `focusFirstChild`, `focusParent`, `collapseParent`,
+  `expandOrFocusFirstChild`, `collapseOrFocusParent`, `expandSiblings`, `toggleFocusedNodeExpanded`,
+  `focusFirst`, `focusLast`, `focusNextPage`, `focusPreviousPage`, `extendSelectionNext`,
+  `extendSelectionPrevious`, `extendSelectionToFirst`, `extendSelectionToLast`, `extendSelectionNextPage`,
+  `extendSelectionPreviousPage`. Anything else is warned about (UI logger) and ignored — a binding never
+  calls code of its own; what an action does is `navigationOverrides`' job.
+- **Your own preset.** The built-in maps are exported (frozen): `CLASSIC_KEY_BINDINGS`,
+  `WAI_ARIA_KEY_BINDINGS`, `KEY_BINDING_PRESETS`. Spread one and change entries:
+  `{ ...WAI_ARIA_KEY_BINDINGS, Plus: 'expandSiblings' }`.
+- **Modifiers match exactly** (`'ArrowDown'` doesn't fire on Ctrl+ArrowDown); a single character with
+  no modifier also matches with Shift (`'*'`, `'+'`).
+- **Written for left-to-right**: in a `dir="rtl"` tree ArrowLeft and ArrowRight swap before the lookup.
+- A binding also claims Ctrl+A, Space and Escape when you bind them. The clipboard / Delete shortcuts
+  (`isKeyboardShortcutsEnabled`), Shift+F10 / the ContextMenu key and `beforeKeydownCallback` run before the map —
+  use `beforeKeydownCallback` for anything that isn't a navigation action.
+
+Layers: ``navigationPreset`` + `keyBindings` pick the action for a key → `navigationOverrides` decide what
+the action does → `beforeKeydownCallback` runs first and can take any key over. Same in web-treeview (`key-bindings`).
 
 ### Activation
 
@@ -39,6 +86,7 @@ Hold `Shift` together with any movement key to extend the highlight range from t
 | `Shift+End` | Extend selection to the last visible node |
 | `Shift+PageDown` | Extend selection forward ~10 visible nodes |
 | `Shift+PageUp` | Extend selection back ~10 visible nodes |
+| `Ctrl+A` / `Cmd+A` | Select every visible selectable node |
 
 ### Pointer modifiers (`selectionMode='multiple'`)
 

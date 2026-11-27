@@ -187,6 +187,17 @@ Built-in keys:
 - Space: toggle selection — the checkbox (isCheckboxesShown), the focused node in the selection
   (selectionMode 'multiple'); in single mode without checkboxes: selects the focused node
 - Backspace: collapse parent and select it
+- navigationPreset 'wai-aria' (default 'classic' = the list above): ArrowRight on a closed node opens
+  it (focus stays), on an open node moves to the first child; ArrowLeft on an open node collapses it
+  (focus stays), else moves to the parent; * expands every sibling. Methods expandOrFocusFirstChild /
+  collapseOrFocusParent / expandSiblings (overridable). dir="rtl" swaps Left / Right. = web-treeview.
+- Ctrl/Cmd+A: select every visible selectable node (multiple mode).
+- keyBindings: rebind keys over the preset — chord (shortcut syntax 'Plus', 'Shift+End', '*') → action
+  NAME from the closed set NAVIGATION_ACTIONS, or null (key ignored). Merged per chord; unknown names
+  warned + ignored. Exact modifiers. Own preset: { ...WAI_ARIA_KEY_BINDINGS, Plus: 'expandSiblings' }.
+  Layers: preset + keyBindings pick the action → navigationOverrides implement it → beforeKeydownCallback
+  runs first for anything else.
+    <Tree keyBindings={{ Plus: 'expandSiblings', '-': 'collapseOrFocusParent', Backspace: null }} />
 
 Custom navigation overrides (navigationOverrides prop):
 Override individual navigation methods; unlisted methods fall back to defaults.

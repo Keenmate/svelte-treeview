@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import Tree from '$lib/components/Tree.svelte';
 	import type { LTreeNode } from '$lib/ltree/types.js';
+	import type { NavigationPreset } from '$lib/core/navigation.js';
 
 	// Deterministic e2e fixture for keyboard navigation. Targeted by
 	// e2e/keyboard-nav.spec.ts.
@@ -30,6 +32,11 @@
 	//
 	// PageDown=10 from index 0 lands on '2.1.1' (B-1-x); from '2.1.1' it
 	// clamps to '5'. PageUp=10 from '5' lands on '1.3' (A-3).
+	//
+	// ?preset=wai-aria → navigationPreset 'wai-aria'; ?dir=rtl → the tree box is right-to-left
+	// (= web-treeview's test/keyboard-nav.html).
+	const navigationPreset = (page.url.searchParams.get('preset') ?? 'classic') as NavigationPreset;
+	const dir = page.url.searchParams.get('dir') === 'rtl' ? 'rtl' : undefined;
 
 	type Item = { id: number; path: string; name: string; sortOrder: number };
 
@@ -112,7 +119,7 @@
 	</section>
 
 	<section data-testid="section-tree">
-		<div class="tree-box">
+		<div class="tree-box" {dir}>
 			<Tree
 				bind:this={treeRef}
 				treeId="keyboard-nav"
@@ -125,6 +132,7 @@
 				expandLevel={10}
 				clickBehavior="select"
 				{selectionMode}
+				{navigationPreset}
 				bind:focusedNode
 				bind:selectedPaths
 			>
