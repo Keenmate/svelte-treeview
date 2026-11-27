@@ -4519,13 +4519,17 @@ export class TreeEngine<T> {
 	 * A click on a node row's content, routed like `<Tree>` does (a custom renderer can call it):
 	 * with `shouldClickToggleCheckbox` + checkboxes, a plain click on a selectable node toggles its
 	 * checkbox (no focus / selection; still expands unless `clickBehavior` is 'select'); else
-	 * `clickBehavior` — 'expand' only expands, 'expand-and-focus' selects + expands, 'select' only
-	 * selects. Ctrl/Shift(+Cmd) clicks manage the selection and never expand (OS file explorers).
+	 * `clickBehavior` — 'expand-and-focus' selects + expands, 'select' only selects, 'expand' only
+	 * expands a FOLDER (selection + focus stay) while a leaf is selected like in the other modes.
+	 * Ctrl/Shift(+Cmd) clicks manage the selection in every mode and never expand (OS file
+	 * explorers). (= web-treeview; svelte-treeview-canvas routes its own clicks.)
 	 */
 	handleNodeClick(node: LTreeNode<T>, event?: MouseEvent): void {
 		uiLogger.debug(`Node clicked: ${node.path}`, { id: node.id, hasChildren: node.hasChildren });
 		const modifiers = event ? { isCtrlPressed: event.ctrlKey || event.metaKey, isShiftPressed: event.shiftKey } : undefined;
 		const hasModifiers = !!(modifiers?.isCtrlPressed || modifiers?.isShiftPressed);
+		// A modifier click breaks a double-click in the making (= web-treeview).
+		if (hasModifiers) this._resetDoubleClick();
 		const toggleExpanded = () => {
 			if (node.hasChildren && this.tree.getNodeIsCollapsible(node)) void this.toggleNodeExpanded(node.path);
 		};
@@ -4535,13 +4539,42 @@ export class TreeEngine<T> {
 			if (this.clickBehavior !== 'select') toggleExpanded();
 			return;
 		}
-		// 'expand': no selection, so Ctrl/Shift mean nothing — and don't expand either.
-		if (this.clickBehavior === 'expand') {
-			if (!hasModifiers) toggleExpanded();
+		// 'expand': a plain click on a folder only expands / collapses — selection and focus stay
+		// (browse folders without losing the picked file). A double-click is still detected (the
+		// 2nd click is consumed, so the folder ends up toggled once). Leaves and modifier clicks
+		// fall through to the selection below.
+		if (this.clickBehavior === 'expand' && !hasModifiers && node.hasChildren) {
+			if (this._detectDoubleClick(node)) return;
+			toggleExpanded();
 			return;
 		}
 		this._handleNodeSelectClick(node, modifiers, { uiClick: true });
 		if (this.clickBehavior === 'expand-and-focus' && !hasModifiers) toggleExpanded();
+	}
+
+	/**
+	 * Manual double-click detection for a plain click on `node` (see _lastClickPath): true on the
+	 * 2nd click within 400 ms — it fired onNodeDoubleClick (and, in 'select' mode, toggled the node
+	 * like its glyph) and the caller must consume the click.
+	 */
+	private _detectDoubleClick(node: LTreeNode<T>): boolean {
+		const now = Date.now();
+		if (this._lastClickPath === node.path && now - this._lastClickTime < 400) {
+			this._resetDoubleClick();
+			this.onNodeDoubleClickHandler?.(this._ctx(this.getNodeRef(node)));
+			// Same path as the toggle glyph: accordion, the pending beforeExpand guard,
+			// getNodeIsCollapsible and a mid-collapse cancel all apply.
+			if (this.clickBehavior === 'select') void this.toggleNodeExpanded(node.path);
+			return true;
+		}
+		this._lastClickPath = node.path;
+		this._lastClickTime = now;
+		return false;
+	}
+
+	private _resetDoubleClick(): void {
+		this._lastClickPath = null;
+		this._lastClickTime = 0;
 	}
 
 	private async _handleNodeSelectClick(
@@ -4564,19 +4597,7 @@ export class TreeEngine<T> {
 		// coupling unrelated clicks. Gated on uiClick so programmatic selection
 		// API calls never get mistaken for a double-click.
 		if (options?.uiClick && !modifiers?.isCtrlPressed && !modifiers?.isShiftPressed) {
-			const now = Date.now();
-			const isDouble = this._lastClickPath === node.path && now - this._lastClickTime < 400;
-			if (isDouble) {
-				this._lastClickPath = null;
-				this._lastClickTime = 0;
-				this.onNodeDoubleClickHandler?.(this._ctx(this.getNodeRef(node)));
-				// Same path as the toggle glyph: accordion, the pending beforeExpand guard,
-				// getNodeIsCollapsible and a mid-collapse cancel all apply.
-				if (this.clickBehavior === 'select') void this.toggleNodeExpanded(node.path);
-				return;
-			}
-			this._lastClickPath = node.path;
-			this._lastClickTime = now;
+			if (this._detectDoubleClick(node)) return;
 		}
 
 		const ctrl = modifiers?.isCtrlPressed ?? false;

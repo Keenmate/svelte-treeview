@@ -28,7 +28,8 @@ Click behavior (default: 'expand-and-focus'):
 <Tree clickBehavior="select" />
 
 'select' = click selects, double-click expands/collapses.
-'expand' = click expands/collapses only, no selection.
+'expand' = a plain click on a folder only expands/collapses (selection + focus stay); a leaf click selects + focuses.
+Ctrl/Shift clicks select (toggle/range) in every mode and never expand; onNodeDoubleClick fires in every mode.
 'expand-and-focus' = click selects + expands/collapses.
 
 DRAG EVENTS

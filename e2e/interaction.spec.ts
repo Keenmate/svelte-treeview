@@ -312,8 +312,45 @@ test.describe('Click Behavior tree', () => {
 		await nodeContent(docs).click();
 		await expect(nodeInCard(card, '1.1')).toBeHidden();
 
+		// Gap > 400ms so the re-click reads as a distinct single click, not a
+		// double-click (which the controller consumes as a single open gesture).
+		await page.waitForTimeout(450);
 		await nodeContent(docs).click();
 		await expect(nodeInCard(card, '1.1')).toBeVisible();
+	});
+
+	test('expand mode: a leaf click selects + focuses; a folder click only toggles (selection + focus stay); Ctrl selects any row', async ({ page }) => {
+		await gotoInteraction(page);
+		const card = clickBehaviorCard(page);
+		await card.getByLabel('Click Behavior:').selectOption('expand');
+
+		await nodeContent(nodeInCard(card, '1.1')).click(); // leaf: Work
+		await expect(outputValue(card, 'Focused Node')).toContainText('Work');
+		await expect(outputValue(card, 'Selected')).toContainText('1.1');
+
+		await nodeContent(nodeInCard(card, '2')).click(); // folder: Downloads collapses
+		await expect(nodeInCard(card, '2.1')).toBeHidden();
+		await expect(outputValue(card, 'Focused Node')).toContainText('Work');
+		await expect(outputValue(card, 'Selected')).toContainText('1.1');
+		await expect(outputValue(card, 'Selected')).not.toContainText('2');
+
+		await nodeContent(nodeInCard(card, '3')).click({ modifiers: ['ControlOrMeta'] }); // folder + Ctrl: selects, no toggle
+		await expect(outputValue(card, 'Selected')).toContainText('1.1');
+		await expect(outputValue(card, 'Selected')).toContainText('3');
+		await expect(nodeInCard(card, '3.1')).toBeVisible();
+	});
+
+	test('expand mode: a double-click on a folder toggles it once', async ({ page }) => {
+		await gotoInteraction(page);
+		const card = clickBehaviorCard(page);
+		await card.getByLabel('Click Behavior:').selectOption('expand');
+
+		const docs = nodeContent(nodeInCard(card, '1'));
+		await docs.click();
+		await docs.click(); // within 400 ms: the double — consumed, no second toggle
+		await page.waitForTimeout(450);
+		await expect(nodeInCard(card, '1.1')).toBeHidden();
+		await expect(outputValue(card, 'Focused Node')).toHaveText('(none)');
 	});
 
 	test('select mode: double-click toggles expand state', async ({ page }) => {

@@ -188,7 +188,7 @@ All on* events are fire-and-forget and take ONE context object.
 Click behavior (default 'expand-and-focus'):
 <Tree clickBehavior="select" ... />
 <!-- 'select' = click selects, dblclick expands -->
-<!-- 'expand' = click expands only -->
+<!-- 'expand' = a folder click only expands/collapses (selection + focus stay); a leaf click selects -->
 <!-- 'expand-and-focus' = click focuses + expands -->
 
 SCROLL TO NODE
