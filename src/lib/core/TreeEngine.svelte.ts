@@ -539,6 +539,9 @@ export interface NodeConfig {
 	// dragged visual dims the whole set in BOTH recursive and flat rendering (recursive
 	// nodes can't inherit a single top-level flag, else nested files never dim).
 	draggedPaths: Set<string>;
+	/** Paths a cut is holding (until paste / cancel) — they render `stv__node-content--cut`
+	 *  (dimmed, `--stv-cut-opacity`; = web-treeview's `wtv__node-content--cut`). */
+	cutPaths: Set<string>;
 	/** Rows the last expand revealed (capped at maxAnimatedRowCount) — they render
 	 *  `stv__node--opening`. Reassigned wholesale like draggedPaths. */
 	revealedPaths: Set<string>;
@@ -1075,6 +1078,7 @@ export class TreeEngine<T> {
 		dragOverNodeClass: undefined,
 		draggedNodeClass: undefined,
 		draggedPaths: new Set(),
+		cutPaths: new Set(),
 		revealedPaths: new Set(),
 		closingPaths: new Set(),
 		expandPendingPaths: new Set(),
@@ -1819,6 +1823,7 @@ export class TreeEngine<T> {
 			dragOverNodeClass: this.dragOverNodeClass,
 			draggedNodeClass: this.draggedNodeClass,
 			draggedPaths: this.draggedPaths,
+			cutPaths: this.cutPaths,
 			revealedPaths: this.revealedPaths,
 			closingPaths: this.closingPaths,
 			expandPendingPaths: this.expandPendingPaths,
@@ -1837,10 +1842,13 @@ export class TreeEngine<T> {
 		// component instantiates this class. Must be created during component init.
 
 		// Page-wide locale (window.components.locale) changed → every getLabel() reader re-runs.
+		// The listener runs synchronously inside whatever assigned the page object — often a
+		// consumer's $effect; a bare `++` would READ the revision there, make it a dependency
+		// of that effect and loop it (effect_update_depth_exceeded). untrack keeps it a write.
 		$effect(() =>
 			observePageLocale(() => {
 				uiLogger.debug('page-wide locale changed — re-resolving labels');
-				this.#localeRevision++;
+				untrack(() => this.#localeRevision++);
 			})
 		);
 
@@ -1881,6 +1889,7 @@ export class TreeEngine<T> {
 				dragOverNodeClass: this.dragOverNodeClass,
 			draggedNodeClass: this.draggedNodeClass,
 			draggedPaths: this.draggedPaths,
+			cutPaths: this.cutPaths,
 			revealedPaths: this.revealedPaths,
 			closingPaths: this.closingPaths,
 			expandPendingPaths: this.expandPendingPaths,
@@ -4587,12 +4596,18 @@ export class TreeEngine<T> {
 		this.#selection.click(node.path, { ctrlKey: ctrl, shiftKey: shift });
 		const isSelectionChanged = this._reconcileSelection();
 
-		// Update focus (always — focus is independent of selectability; silent = no onFocusChange)
-		this._setFocusedNode(node, silent);
+		// Update focus (always — focus is independent of selectability). Event order of a click
+		// (= web-treeview): the state first (focus + selection, so every handler reads the new
+		// values), then onNodeClick, then onSelectionChange, then onFocusChange — all synchronous,
+		// like native click → change.
+		const prevFocusPath = this.focusedNode?.path;
+		this._setFocusedNode(node, true);
 
 		if (!silent) {
 			this.onNodeClickHandler?.(this._ctx(this.getNodeRef(node)));
 			if (isSelectionChanged) this._dispatchSelectionChange();
+			if (this.focusedNode?.path !== prevFocusPath)
+				this.onFocusChangeHandler?.(this._ctx({ focusedNode: this.focusedNode }));
 		}
 		this.tree.refresh();
 

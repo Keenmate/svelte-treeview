@@ -91,6 +91,17 @@ test.describe('Event contexts', () => {
 		expect(hl[hl.length - 1]).toEqual({ paths: ['1.1'], nodes: ['1.1'] });
 	});
 
+	test('a click fires onNodeClick, then onSelectionChange, then onFocusChange (= web-treeview)', async ({ page }) => {
+		// The state is already applied when onNodeClick runs; the change events follow it,
+		// like native click → change.
+		await clickA(page, 'A1');
+		expect(await readLog(page, 'event-order')).toEqual(['click', 'selection', 'focus']);
+		await page.getByTestId('clear').click();
+		await page.waitForTimeout(450); // past the 400ms double-click window
+		await clickA(page, 'A1'); // same node again: no change → only the click
+		expect(await readLog(page, 'event-order')).toEqual(['click']);
+	});
+
 	test('onNodeDoubleClick carries a NodeRef', async ({ page }) => {
 		await nodeA(page, 'A2').dblclick();
 		const dbl = await readLog(page, 'dblclick-ctx');

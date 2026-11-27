@@ -6,7 +6,7 @@ PARITY: Any public API change must update docs/parity.md and be mirrored in the 
 
 CORE_SYNC: everything taken from web-components-core (vendored src/lib/vendor/core + vendor/actions, plus hand-ported mirrors: loader hook, global API, context menu) is listed in scripts/core-sync.json with the core commit it was synced against; `npm run check:core-sync` reports drift (docs/CORE-SYNC.md = process + current status). Add new vendored files / mirrors to the manifest in the same commit.
 
-LOGGING: Keenmate core logger vendored in src/lib/vendor/core/logging (README there; 1:1 from web-components-core). src/lib/logger.ts = `createLoggers('STV', [INIT,DATA,RENDER,INDEX,DRAG,UI])` shim (mirrors web-treeview's logger.ts; namespace STV, not TREEVIEW, so it never shares levels with web-treeview); perf-logger.ts = own `STV:PERF` bundle; global-api.ts publishes window.components['svelte-treeview'] in core registerComponent shape (version/config/logging/getInstances = live TreeControllers). Default level warn; page switch window.components.logging.
+LOGGING: Keenmate core logger vendored in src/lib/vendor/core/logging (README there; 1:1 from web-components-core). src/lib/logger.ts = `createLoggers('STV', [INIT,DATA,INDEX,UI,DRAG,RENDER])` shim (mirrors web-treeview's logger.ts; namespace STV, not TREEVIEW, so it never shares levels with web-treeview); perf-logger.ts = own `STV:PERF` bundle; global-api.ts publishes window.components['svelte-treeview'] in core registerComponent shape (version/config/logging/getInstances = live TreeControllers). Default level warn; page switch window.components.logging.
 
 CORE_FILES:
 - src/lib/components/Tree.svelte - main component

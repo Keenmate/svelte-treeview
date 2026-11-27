@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.0.0-rc18] - 2026-11-22
 
+### Changed — the event order of a click (2026-11-27, = web-treeview)
+
+- A node click now fires, synchronously and in this order: `onNodeClick` → `onSelectionChange` (+ `onCheckedChange` without checkboxes) → `onFocusChange` → with `clickBehavior: 'expand-and-focus'`, `onNodeExpand` / `onNodeCollapse` + `onExpandedChange`. Before, `onFocusChange` came first. The state (focus, selection) is applied before any of them, so every handler reads the new values — like a native click → change. Guarded by e2e/event-context.spec.ts.
+
+### Changed — row spacing defaults = web-treeview (2026-11-27)
+
+- The default row geometry now matches web-treeview to the pixel, so the same tree looks the same in both:
+  - `--stv-toggle-icon-width` 17px → **24px** (the toggle column reserved on every row);
+  - `--stv-toggle-icon-size` 16px → **12px** (`--stv-font-size-xs`, the chevron glyph);
+  - `--stv-toggle-icon-margin-right` 2.5px → **0**;
+  - `--stv-node-padding` 4px 4px → **4px 8px** (`--stv-spacing-sm` / `--stv-spacing-md`);
+  - `--stv-node-icon-margin-right` 6px → **4px** (`--stv-spacing-sm`).
+- A label now starts 8px further right on a plain row (48 vs 40px at level 2). To keep the old look, set the old values on `.stv__container`.
+- `--stv-toggle-icon-width: 0` is a supported way to hide the chevrons (navigation-style trees): labels stay aligned, a row click and Enter still toggle (with `clickBehavior="select"` only a double-click or the keyboard expands). docs/theming.md; guarded by e2e/basic.spec.ts. Same in web-treeview.
+
+### Fixed — setting the page-wide locale from a `$effect` no longer loops (2026-11-27)
+
+- Assigning `window.components.locale` inside a Svelte `$effect` (e.g. a language switch: `$effect(() => { window.components.locale = lang === 'cs' ? cs : null; })`) killed the page with `effect_update_depth_exceeded`. Every tree's locale listener runs synchronously inside that assignment and bumped its label revision with `++`, which READ the revision inside the consumer's effect, so the effect depended on it and re-ran forever. The listener now only writes it (`untrack`).
+
+### Fixed — cut rows are dimmed (2026-11-27)
+
+- A cut (Ctrl+X / `cutNodes`) now dims its rows until they are pasted or the cut is cancelled (`cancelCut()` / Escape): `.stv__node-content--cut`, opacity `--stv-cut-opacity` (0.4) — as web-treeview does. Before, the tree kept `cutPaths` but drew nothing, so a demo or app had to dim the rows in its own `nodeTemplate`.
+
 ### Changed — the selection is core's `createSelection` (2026-11-26, REVIEW §4)
 
 - The UI selection (`selectedPaths`, `selectionAnchor`, click / Ctrl / Shift handling, Shift+Arrow ranges) now runs on core's selection model — the same one web-treeview uses — instead of the tree's own copy. What changes:

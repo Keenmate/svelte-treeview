@@ -24,6 +24,14 @@
 	$effect(() => {
 		(window as unknown as { __labelTrees: object }).__labelTrees = { translate: translateTree, noDisplay: noDisplayTree };
 	});
+	// A page that sets the page-wide locale from its own $effect (the usual Svelte way). The
+	// tree's locale listener runs inside this effect — it must not make the effect loop.
+	let effectLang = $state<'en' | 'cs'>('en');
+	$effect(() => {
+		const w = window as unknown as { components?: { locale?: unknown } };
+		// Only once the button is pressed — other tests assign the locale before the tree loads.
+		if (effectLang === 'cs') (w.components ??= {}).locale = { labels: { 'svelte-treeview.messages.noData': 'Z efektu' } };
+	});
 </script>
 
 <main>
@@ -59,6 +67,12 @@
 			sortCallback={sortByPath}
 			getContextMenuItemsCallback={menu}
 		/>
+	</div>
+
+	<div data-scenario="effect">
+		<p>The page assigns window.components.locale from its own $effect.</p>
+		<button onclick={() => (effectLang = 'cs')}>cs</button>
+		<Tree nodes={[]} idMember="id" pathMember="path" displayValueMember="name" sortCallback={sortByPath} />
 	</div>
 
 	<div data-scenario="no-display">

@@ -178,6 +178,7 @@ Event ctx types (2026-11-24, both): one type per event — `SelectionChangeConte
 - ARIA tree (svelte since 2026-11-24, REVIEW B22): the focused element is `role="tree"` — web: the tree body (`.wtv__tree`, which holds focus), svelte: `.stv__container` (which holds focus — intentional: in each library the element that owns focus owns `aria-activedescendant`); rows `role="treeitem"` + `aria-level` / `aria-posinset` / `aria-setsize` (over every visible sibling, virtual scroll included) / `aria-expanded` (parents) / `aria-selected` / `aria-checked` (checkboxes shown; `mixed`); `aria-multiselectable` in multiple mode; `aria-activedescendant` = the focused node's row via core `createActiveDescendant` (ARIA-only, no core keys / scroll); row ids `{treeId}-{path}` (`rowDomId`) — same. Announcements (core `announce()`): settled search, a drop the tree placed, a refused drop — same (e2e `aria-tree` in svelte = `aria-tree` + `announce` in web).
 - Keyboard (WAI-ARIA, both): `Enter` = the node's default action (expand / collapse); `Space` = toggle selection — the checkbox when checkboxes are shown, the focused node in the selection in `multiple` mode, selects the focused node in `single` mode; `Space` never expands / collapses — same.
 - Assigning the expanded / selected / checked set (`expandedPaths` / `selectedPaths` / `checkedPaths`; web: also the values held before the first build) is silent in both — no `expanded-change` / `selection-change` / `checked-change` / `focus-change` / `nodes-change`. The methods (`expandNodes`, `selectNodes`, `checkNodes`, …) and user interaction announce (unless `{ isSilent: true }`) — same.
+- The event order of a node click is the same in both: node-click → selection-change (+ checked-change without checkboxes) → focus-change → (expand-and-focus) node-expand / node-collapse + expanded-change, all synchronous; the state is applied before the first one.
 - `expanded-change` / `onExpandedChange` from the expand / collapse methods (and toggle / keyboard) fires synchronously, after that call's `node-expand` / `node-collapse`; after a data change it follows on the next microtask — same.
 - `nodes-change` / `onNodesChange`: only after data / structure mutations (add / insert / update / move / remove / `processChanges` / branch ops / paste / drop / duplicate / sort), one per change (coalesced on a microtask), never for expand / select / check / focus nor for loading `nodes` — same.
 - An `isSilent` expand still runs `beforeExpandCallback` (a gate, not a notification); `expandAll` flags leaves `isExpanded`, so they are in `expandedPaths` — same.
@@ -233,17 +234,12 @@ Kept as each library looked before (aligning them changes one library's look —
 | name | why |
 |---|---|
 | `drop-placeholder-min-height` | same 60px; web reads --wtv-tree-min-height |
-| `node-icon-margin-right` | web 4px, svelte 6px |
-| `node-padding` | svelte pill hugs the label (4px / 4px), web 4px / 8px — kept, both libraries look as before |
-| `toggle-icon-size` | web glyph 12px in a 24px column; svelte 16px glyph, slot = glyph + 1px |
-| `toggle-icon-width` | see toggle-icon-size |
 
 ### Library-only names
 
 | name | library: why |
 |---|---|
 | `context-menu-arrow-font-size` | web: core's menu draws the submenu arrow as a text glyph (svelte: a mask icon) |
-| `cut-opacity` | web: dims cut nodes; svelte keeps `cutPaths` but does not render the dimming yet (API gap) |
 | `drag-denied-badge-color` | svelte: the no-entry badge is a mask icon (web: a text glyph) |
 | `drop-zone-max-width` | svelte: width cap of a side drop zone (web: sized by JS) |
 | `icon-arrow-left` | svelte: arrows of the scrollToPath highlight |
@@ -255,6 +251,6 @@ Kept as each library looked before (aligning them changes one library's look —
 | `node-path-font-size` | svelte: the path shown next to the label |
 | `scroll-highlight-arrow-color` | svelte: arrows of the scrollToPath highlight |
 | `text-color-4` | svelte: its own menu's faint text (web: core's menu) |
-| `toggle-icon-margin-right` | svelte: gap after the toggle (web: the toggle column has a fixed width) |
+| `toggle-icon-margin-right` | svelte: extra gap after the toggle column, default 0 (web: the fixed-width column alone) |
 | `tree-min-height` | web: min height of the empty / loading tree (svelte sizes the drop placeholder only) |
 | `disabled-tree-opacity` | web: the whole tree while `disabled` — **to mirror** with svelte's `isDisabled` (§1) |

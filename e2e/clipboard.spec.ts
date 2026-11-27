@@ -100,10 +100,16 @@ test.describe('Clipboard — Ctrl/Cmd + C / X / V', () => {
 		await page.keyboard.press('Control+x');
 		await expect(page.getByTestId('last-log')).toHaveText('cut 1');
 		await expect(tree(page).locator('.cut-dimmed span[data-name="A-child-2"], span.cut-dimmed[data-name="A-child-2"]')).toHaveCount(1);
+		// The library's own cut class (= web-treeview's wtv__node-content--cut), from controller.cutPaths.
+		const cutRows = tree(page).locator('.stv__node-content--cut');
+		await expect(cutRows).toHaveCount(1);
+		await expect(cutRows.locator('span[data-name="A-child-2"]')).toHaveCount(1);
+		expect(await cutRows.evaluate((el) => getComputedStyle(el).opacity)).toBe('0.4');
 
 		await page.keyboard.press('Escape');
 		await expect(page.getByTestId('last-log')).toHaveText('cut-cancelled');
 		await expect(tree(page).locator('.cut-dimmed')).toHaveCount(0);
+		await expect(cutRows).toHaveCount(0);
 	});
 
 	test('cut + paste moves the node (count stays the same)', async ({ page }) => {

@@ -115,6 +115,31 @@ test.describe('Simple Tree card', () => {
 		await expect(outputValue(card, 'Last Clicked')).toContainText('Personal');
 		await expect(outputValue(card, 'Last Clicked')).toContainText('1.2');
 	});
+
+	test('--stv-toggle-icon-width: 0 hides the chevrons; a row click and Enter still toggle', async ({ page }) => {
+		// Supported: a zero toggle column hides the chevrons (navigation-style trees). The
+		// labels stay aligned and expanding still works from the row and the keyboard.
+		await gotoBasic(page);
+		const card = simpleCard(page);
+		await treeIn(card)
+			.locator('.stv__container')
+			.evaluate((el: HTMLElement) => el.style.setProperty('--stv-toggle-icon-width', '0px'));
+
+		// offsetWidth = layout width (an expanded chevron is rotated, its client rect isn't 0).
+		const widths = await treeIn(card)
+			.locator('.stv__toggle-icon')
+			.evaluateAll((els) => els.map((el) => (el as HTMLElement).offsetWidth));
+		expect(widths.length).toBeGreaterThan(0);
+		expect(new Set(widths)).toEqual(new Set([0]));
+
+		await expect(nodeIn(card, '2.1')).toBeVisible();
+		await nodeContent(nodeIn(card, '2')).click(); // default clickBehavior: expand-and-focus
+		await expect(nodeIn(card, '2.1')).toBeHidden();
+		await page.keyboard.press('Enter');
+		await expect(nodeIn(card, '2.1')).toBeVisible();
+		await page.keyboard.press('Enter');
+		await expect(nodeIn(card, '2.1')).toBeHidden();
+	});
 });
 
 // ── Expand Controls ────────────────────────────────────────────────────────

@@ -275,6 +275,7 @@ Callback props (one-way notification):
 - onCheckedChange
 - onNodeExpand / onNodeCollapse / onExpandedChange
 - onFocusChange ({ focusedNode, controller }) / onNodesChange ({ controller }, after mutations)
+- Click order (= web-treeview): onNodeClick → onSelectionChange (+ onCheckedChange without checkboxes) → onFocusChange → (expand-and-focus) onNodeExpand/onNodeCollapse + onExpandedChange; all sync, state already applied.
 - beforeExpandCallback (interceptor; Promise = lazy load with loading state)
 - onNodeCopy / onNodeCut / onNodePaste / onNodeDelete
 - beforeKeydownCallback (interceptor)

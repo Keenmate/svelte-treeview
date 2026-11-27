@@ -8,6 +8,7 @@
 	//   - onNodeCopy / onNodeCut / onNodeDelete ({ operation?, paths, nodes })
 	// Two trees (treeA source / treeB target) exercise same-tree vs cross-tree drops.
 	// Targeted by e2e/event-context.spec.ts.
+	import { untrack } from 'svelte';
 	import { Tree } from '$lib/index.js';
 	import type {
 		NodeRef,
@@ -54,6 +55,9 @@
 	let copyLog = $state<any[]>([]);
 	let cutLog = $state<any[]>([]);
 	let deleteLog = $state<any[]>([]);
+	// Order of the click events on treeA (onNodeClick / onSelectionChange / onFocusChange).
+	let orderLog = $state<string[]>([]);
+	const logOrder = (name: string) => (orderLog = [...untrack(() => orderLog), name]);
 
 	function clearLogs() {
 		clickLog = [];
@@ -66,6 +70,7 @@
 		copyLog = [];
 		cutLog = [];
 		deleteLog = [];
+		orderLog = [];
 	}
 
 	function sortByName({ nodes: items }: { nodes: LTreeNode<Item>[] }) {
@@ -85,6 +90,7 @@
 	const refs = (rs: NodeRef<Item>[]) => rs.map(ref);
 
 	function logClick(ctx: NodeRef<Item>) {
+		logOrder('click');
 		clickLog = [...clickLog, ref(ctx)];
 	}
 	function logDblClick(ctx: NodeRef<Item>) {
@@ -117,6 +123,7 @@
 		];
 	}
 	function logSelection(ctx: SelectionChangeContext<Item>) {
+		logOrder('selection');
 		selectionLog = [...selectionLog, { paths: [...ctx.paths], nodes: ctx.nodes.map((n) => n.path) }];
 	}
 	function logChecked(ctx: CheckedChangeContext<Item>) {
@@ -152,6 +159,7 @@
 	<pre data-testid="copy-ctx">{JSON.stringify(copyLog)}</pre>
 	<pre data-testid="cut-ctx">{JSON.stringify(cutLog)}</pre>
 	<pre data-testid="delete-ctx">{JSON.stringify(deleteLog)}</pre>
+	<pre data-testid="event-order">{JSON.stringify(orderLog)}</pre>
 
 	<div class="trees">
 		<div class="tree" data-testid="tree-a" style="max-width: 360px; border: 1px solid #ccc;">
@@ -182,6 +190,7 @@
 				onNodeCopy={logCopy}
 				onNodeCut={logCut}
 				onNodeDelete={logDelete}
+				onFocusChange={() => logOrder('focus')}
 			>
 				{#snippet nodeTemplate(node: LTreeNode<Item>)}
 					<span data-name={node.data?.name} data-path={node.path}>{node.data?.name}</span>

@@ -10,10 +10,10 @@
  * Categories (`STV:*`):
  * - INIT   — tree initialization and configuration
  * - DATA   — data insertion, tree manipulation, node operations
- * - RENDER — progressive / virtual rendering
  * - INDEX  — search indexing operations
- * - DRAG   — drag and drop
  * - UI     — user interactions (click, expand/collapse, selection, menus)
+ * - DRAG   — drag and drop
+ * - RENDER — progressive / virtual rendering
  *
  * Levels coalesce, closest first: a category's own level → the tree's type level
  * (these functions / `window.components['svelte-treeview'].logging`) → the page level
@@ -31,7 +31,7 @@ import { createLoggers, type Logger, type LogLevelDesc } from './vendor/core/log
 
 export type { Logger, LogLevelDesc };
 
-const CATEGORIES = ['INIT', 'DATA', 'RENDER', 'INDEX', 'DRAG', 'UI'] as const;
+const CATEGORIES = ['INIT', 'DATA', 'INDEX', 'UI', 'DRAG', 'RENDER'] as const;
 type Category = (typeof CATEGORIES)[number];
 
 /**

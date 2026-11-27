@@ -120,3 +120,9 @@
 	-webkit-mask: var(--stv-icon-arrow-left) center / contain no-repeat;
 	mask: var(--stv-icon-arrow-left) center / contain no-repeat;
 }
+
+/* Cut (Ctrl+X / cutNodes) rows stay dimmed until they are pasted or the cut is cancelled
+   (cancelCut / Escape) — = web-treeview's .wtv__node-content--cut. */
+.stv__node-content--cut {
+	opacity: var(--stv-cut-opacity);
+}

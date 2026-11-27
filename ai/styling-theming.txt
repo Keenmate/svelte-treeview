@@ -119,7 +119,9 @@ ICON CLASSES
 
 The disclosure glyph comes from `iconSet` (chevron | triangle | plus-minus | arrow) + the
 --stv-icon-* variables; `toggleIconMode` rotates or swaps it. (expandIconClass /
-collapseIconClass were removed in rc16.) Custom leaf marker:
+collapseIconClass were removed in rc16.) Hide the chevrons (supported):
+`.stv__container { --stv-toggle-icon-width: 0 }` — labels stay aligned, a row click / Enter still
+toggle (with clickBehavior="select" only double-click or the keyboard expands). Custom leaf marker:
 .my-leaf::before { content: '•'; }
 <Tree leafIconClass="my-leaf" />
 

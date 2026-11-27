@@ -464,8 +464,9 @@ controller.cancelCut();
 controller.hasClipboardContent();       // boolean
 controller.getClipboardOperation();     // 'copy' | 'cut' | null
 
-Cut nodes are tracked via controller.cutPaths (Set<string>) and rendered at
-reduced opacity.
+Cut nodes are tracked via controller.cutPaths (Set<string>) and rendered dimmed:
+.stv__node-content--cut (opacity --stv-cut-opacity, default 0.4) until paste or cancelCut()
+/ Escape — same as web-treeview's .wtv__node-content--cut.
 
 pasteNodes signature:
 pasteNodes(

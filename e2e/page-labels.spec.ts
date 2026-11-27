@@ -41,6 +41,18 @@ test('a page-wide label replaces the default live; the labels prop still wins; n
 	await expect(scenario(page, 'nodes').locator('.stv__node-label').nth(1)).toHaveText('[N/A]');
 });
 
+test('assigning the page locale inside a consumer $effect does not loop', async ({ page }) => {
+	// The tree's locale listener runs synchronously inside the assigning effect; it used to
+	// READ its revision counter there (`++`) → effect_update_depth_exceeded, page dead.
+	const errors: string[] = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	await page.reload();
+	await ready(page);
+	await scenario(page, 'effect').getByRole('button', { name: 'cs' }).click();
+	await expect(emptyText(page, 'effect')).toHaveText('Z efektu');
+	expect(errors).toEqual([]);
+});
+
 test("another component's key and '' work as in core; a nested per-tag table is ignored", async ({ page }) => {
 	await setLocale(page, {
 		labels: { 'web-treeview.messages.noData': 'not mine', 'svelte-treeview.messages.noData': '' }

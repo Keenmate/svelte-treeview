@@ -230,6 +230,19 @@ rotates or swaps to the collapse glyph on expand. `plus-minus` always swaps.
 > `expandIconClass` / `collapseIconClass` were removed in 5.0.0-rc16 — `iconSet` +
 > `toggleIconMode` (and the `--stv-icon-*` variables for a custom glyph) cover them.
 
+### Hiding the chevrons
+
+Set the toggle column to zero to hide the chevrons (navigation-style trees, or a
+`nodeTemplate` that draws its own). Labels stay aligned; a row click and the keyboard
+(Enter toggles, → opens and moves to the first child) still expand. With
+`clickBehavior="select"` a click only selects, so expanding is left to a double-click or the
+keyboard — pair it with the default `'expand-and-focus'` (or `'expand'`). Same in web-treeview
+(`--wtv-toggle-icon-width: 0`).
+
+```css
+.nav-tree .stv__container { --stv-toggle-icon-width: 0; }
+```
+
 ## See also
 
 - [Live theming demo](https://svelte-treeview.keenmate.dev/examples/theming)

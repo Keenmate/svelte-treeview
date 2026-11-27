@@ -59,6 +59,7 @@
 	// This node is part of the active drag (lead, a multi-drag member, or a traveling
 	// descendant). Derived per-node from the controller's complete manifest.
 	const isDraggedNode = $derived(config.draggedPaths?.has(node.path) ?? false);
+	const isCutNode = $derived(config.cutPaths?.has(node.path) ?? false);
 	// Row animation: only rows the last expand revealed play the enter keyframes
 	// (a _rev re-key re-mounts the row — mounting alone must not animate).
 	const isOpening = $derived(config.revealedPaths?.has(node.path) ?? false);
@@ -338,6 +339,7 @@
 			class:stv__node-content--focused-default={node.isFocused && !focusedNodeClass}
 			class:stv__clickable={node.isSelectable}
 			class:stv__node-content--dragged={isDraggedNode && !draggedNodeClass}
+			class:stv__node-content--cut={isCutNode}
 			class:stv__node-content--draggable={node?.isDraggable}
 			class:stv__node-content--glow-before={dropZoneMode === 'glow' && isDragInProgress && isHoveredForDrop && activeDropPosition === 'before' && isPositionAllowed('before')}
 			class:stv__node-content--glow-after={dropZoneMode === 'glow' && isDragInProgress && isHoveredForDrop && activeDropPosition === 'after' && isPositionAllowed('after')}

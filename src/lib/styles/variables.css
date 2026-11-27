@@ -158,8 +158,8 @@
 	   visual step in both modes (the toggle column sits inside each row). Reads the contract's
 	   unitless --base-tree-indent multiplier (1.6 → 16px). */
 	--stv-indent-size: calc(var(--base-tree-indent, 1.6) * var(--stv-rem));
-	/* Row pill padding — small horizontal padding keeps the label close to the icon. */
-	--stv-node-padding: var(--stv-spacing-sm) var(--stv-spacing-sm);
+	/* Row pill padding (= web-treeview's --wtv-node-padding: 4px 8px). */
+	--stv-node-padding: var(--stv-spacing-sm) var(--stv-spacing-md);
 	/* Corner radius of the row pill (hover / selected / focused paint on it). */
 	--stv-node-border-radius: var(--stv-border-radius-sm);
 	/* Row transition. Default none = instant hover (crisper). Restore a fade with
@@ -175,7 +175,7 @@
 	/* Per-node icon: colour inherits the row text (a per-node iconColor overrides
 	   it); width is the reserved column used when shouldAlignNodeIcons is on. */
 	--stv-node-icon-color: currentColor;
-	--stv-node-icon-margin-right: calc(0.6 * var(--stv-rem));
+	--stv-node-icon-margin-right: var(--stv-spacing-sm);
 	--stv-node-icon-width: calc(1.8 * var(--stv-rem));
 	/* Path shown next to the label (debug / search results) */
 	--stv-node-path-font-size: var(--stv-font-size-xs);
@@ -192,12 +192,12 @@
 	/* -------------------------------------------------------------------------
 	   TOGGLE ICON (chevron / +/- / arrow / leaf)
 	   ------------------------------------------------------------------------- */
-	/* Glyph size (font-size of the toggle slot); the slot is the glyph + 0.1rem. */
-	--stv-toggle-icon-size: calc(1.6 * var(--stv-rem));
-	--stv-toggle-icon-width: calc(var(--stv-toggle-icon-size) + calc(0.1 * var(--stv-rem)));
+	/* Glyph size (12px) and the toggle column reserved on every row (24px) — = web-treeview. */
+	--stv-toggle-icon-size: var(--stv-font-size-xs);
+	--stv-toggle-icon-width: calc(2.4 * var(--stv-rem));
 	--stv-toggle-icon-color: var(--stv-text-color-3);
-	/* Gap between the chevron and the label. */
-	--stv-toggle-icon-margin-right: calc(0.25 * var(--stv-rem));
+	/* Extra gap between the toggle column and the label (0 — the 24px column already spaces it). */
+	--stv-toggle-icon-margin-right: 0;
 	--stv-toggle-icon-transition: transform var(--stv-transition-normal) var(--stv-ease-standard);
 
 	/* Disclosure glyph — ONE variable set, reconfigured per `icon-set` via the
@@ -304,6 +304,8 @@
 	/* Dragged source row (dimmed in place while its ghost follows the pointer);
 	   scale anchored left (drag-drop.css), 1 disables the shrink. */
 	--stv-dragged-opacity: 0.5;
+	/* A cut row, until it is pasted or the cut is cancelled (= web-treeview --wtv-cut-opacity). */
+	--stv-cut-opacity: 0.4;
 	--stv-dragged-scale: 0.95;
 
 	/* Touch ghost */
